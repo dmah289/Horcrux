@@ -1,7 +1,7 @@
 ﻿using UnityEditor;
 using UnityEngine;
 
-namespace manhnd_sdk.EditorTool.Common
+namespace Horcrux.Editor.Common
 {
     // GUIStyle init is deferred to first OnGUI because GUI.skin is not available before that.
     public static class StaticStyles

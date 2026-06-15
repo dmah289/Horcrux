@@ -1,6 +1,6 @@
 ﻿using UnityEngine;
 
-namespace manhnd_sdk.EditorTool.Common
+namespace Horcrux.Editor.Common
 {
     public static class StaticGUILayout
     {

@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 
-namespace manhnd_sdk.Editor.PlayerPrefsEditor
+namespace Horcrux.Editor.PlayerPrefsEditor
 {
     public interface IPlayerPrefsProvider
     {

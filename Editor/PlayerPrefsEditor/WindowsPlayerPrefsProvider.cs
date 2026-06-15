@@ -5,7 +5,7 @@ using Microsoft.Win32;
 using UnityEditor;
 using UnityEngine;
 
-namespace manhnd_sdk.Editor.PlayerPrefsEditor
+namespace Horcrux.Editor.PlayerPrefsEditor
 {
     public class WindowsPlayerPrefsProvider : IPlayerPrefsProvider
     {

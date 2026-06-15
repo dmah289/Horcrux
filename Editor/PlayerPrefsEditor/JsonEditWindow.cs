@@ -1,10 +1,10 @@
 using System;
 using System.Text;
-using manhnd_sdk.EditorTool.Common;
+using Horcrux.Editor.Common;
 using UnityEditor;
 using UnityEngine;
 
-namespace manhnd_sdk.Editor.PlayerPrefsEditor
+namespace Horcrux.Editor.PlayerPrefsEditor
 {
     public class JsonEditWindow : EditorWindow
     {

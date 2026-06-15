@@ -1,7 +1,7 @@
 ﻿using System;
 using UnityEngine;
 
-namespace manhnd_sdk.Editor.PlayerPrefsEditor
+namespace Horcrux.Editor.PlayerPrefsEditor
 {
     public struct PlayerPrefsPair
     {

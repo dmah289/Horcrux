@@ -1,4 +1,3 @@
-#if UNITY_EDITOR
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -7,7 +6,7 @@ using UnityEditor;
 using UnityEngine;
 using Object = UnityEngine.Object;
 
-namespace manhnd_sdk.Serializables
+namespace Horcrux.Editor.Serializables
 {
     [Serializable, DrawWithUnity]
     public class FolderReference
@@ -137,4 +136,3 @@ namespace manhnd_sdk.Serializables
         }
     }
 }
-#endif
