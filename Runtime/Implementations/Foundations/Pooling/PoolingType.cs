@@ -1,4 +1,4 @@
-﻿namespace Horcrux.Runtime.Implementations.PoolingSystem
+﻿namespace Horcrux.Runtime.Implementations.Pooling
 {
     public enum PoolingType : byte
     {

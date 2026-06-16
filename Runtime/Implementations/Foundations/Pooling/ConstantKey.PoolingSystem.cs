@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using Horcrux.Runtime.Implementations.PoolingSystem;
+using Horcrux.Runtime.Implementations.Pooling;
 
 namespace Horcrux.Runtime.Utilities
 {

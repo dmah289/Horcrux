@@ -2,11 +2,12 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using Cysharp.Threading.Tasks;
+using Horcrux.Runtime.Abstractions.Pooling;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
 using Horcrux.Runtime.Utilities;
 
-namespace Horcrux.Runtime.Implementations.PoolingSystem
+namespace Horcrux.Runtime.Implementations.Pooling
 {
     public static class ObjectPooler
     {
@@ -89,7 +90,7 @@ namespace Horcrux.Runtime.Implementations.PoolingSystem
             instance.transform.SetParent(parent);
             instance.gameObject.SetActive(true);
             
-            if (instance is IPoolableObject poolable)
+            if (instance is IPoolable poolable)
                 poolable.OnGetFromPool();
             else onGetObject?.Invoke(instance);
             
