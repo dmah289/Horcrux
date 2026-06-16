@@ -1,7 +1,8 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
-namespace manhnd_sdk.Scripts.SystemDesign.EventBus
+
+namespace Horcrux.Runtime.Utilities.EventBus
 {
     public sealed class EventBinding<T> where T : struct, IEventDTO
     {

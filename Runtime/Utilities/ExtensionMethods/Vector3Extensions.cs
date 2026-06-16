@@ -1,7 +1,6 @@
-using manhnd_sdk.Scripts.ExtensionMethods.EnumTypes;
 using UnityEngine;
 
-namespace manhnd_sdk.Scripts.ExtensionMethods
+namespace Horcrux.Runtime.Utilities.ExtensionMethods
 {
     public static class Vector3Extensions
     {

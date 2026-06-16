@@ -1,4 +1,4 @@
-﻿namespace manhnd_sdk.Scripts.ExtensionMethods
+﻿namespace Horcrux.Runtime.Utilities.ExtensionMethods
 {
     public static class StringExtensions
     {

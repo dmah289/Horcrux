@@ -4,7 +4,7 @@ using System.IO;
 using Horcrux.Runtime.Abstractions.Singleton;
 using Sirenix.OdinInspector;
 
-namespace manhnd_sdk.Runtime
+namespace Horcrux.Runtime.Utilities
 {
     public class ScreenshotTaker : MonoSingleton<ScreenshotTaker>
     {

@@ -1,4 +1,4 @@
-﻿namespace manhnd_sdk.Scripts.SystemDesign.EventBus
+﻿namespace Horcrux.Runtime.Utilities.EventBus
 {
     public interface IEventBusListener
     {

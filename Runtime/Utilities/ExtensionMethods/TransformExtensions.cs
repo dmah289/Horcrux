@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using Object = UnityEngine.Object;
 
-namespace manhnd_sdk.Scripts.ExtensionMethods
+namespace Horcrux.Runtime.Utilities.ExtensionMethods
 {
     public static class TransformExtensions
     {

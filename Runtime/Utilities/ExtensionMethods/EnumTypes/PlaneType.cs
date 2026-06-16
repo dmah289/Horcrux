@@ -1,4 +1,4 @@
-﻿namespace manhnd_sdk.Scripts.ExtensionMethods.EnumTypes
+﻿namespace Horcrux.Runtime.Utilities.ExtensionMethods
 {
     public enum PlaneType : byte
     {
