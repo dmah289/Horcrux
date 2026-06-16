@@ -1,6 +1,6 @@
 {
-    "name": "com.horcrux.runtime.implementations",
-    "rootNamespace": "Horcrux.Runtime.Implementations",
+    "name": "com.horcrux.runtime",
+    "rootNamespace": "Horcrux.Runtime",
     "references": [
         "GUID:d263cfcb6fe4c8e458b5530d29ee4d1f",
         "GUID:76ccd20425a997e4fa7d12750eb80eb1",

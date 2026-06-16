@@ -1,0 +1,13 @@
+{
+  "name": "com.dmah.horcrux",
+  "version": "1.0.0",
+  "displayName": "Horcrux",
+  "description": "Game Development Framework for Unity",
+  "unity": "6000.0",
+  "dependencies": {
+    "com.unity.addressables": "2.7.6",
+    "com.cysharp.unitask": "https://github.com/Cysharp/UniTask.git?path=src/UniTask/Assets/Plugins/UniTask",
+    "com.sisus.init-args": "1.4.0",
+    "com.sisus.shared": "1.0.0"
+  }
+}
