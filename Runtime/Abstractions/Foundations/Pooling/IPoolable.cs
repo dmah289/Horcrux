@@ -1,7 +1,8 @@
-﻿namespace Horcrux.Runtime.Abstractions.Pooling
+namespace Horcrux.Runtime.Abstractions.Pooling
 {
     public interface IPoolable
     {
-        public void OnGetFromPool();
+        void OnGetFromPool();
+        void OnReturnToPool();
     }
 }

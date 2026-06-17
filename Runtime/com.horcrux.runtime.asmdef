@@ -5,7 +5,9 @@
         "InitArgs",
         "InitArgs.Services",
         "Unity.Addressables",
-        "UniTask"
+        "Unity.ResourceManager",
+        "UniTask",
+        "UniTask.Addressables"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

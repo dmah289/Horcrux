@@ -39,6 +39,7 @@ Giá trị chỉ cache vào PlayerPrefs khi parse thành công. Remote trả sai
 ### 1. Triển khai provider (game project)
 
 ```csharp
+[Service(typeof(IRemoteConfigProvider))]
 public class FirebaseRemoteConfigProvider : IRemoteConfigProvider
 {
     public event Action OnFetched;
@@ -58,6 +59,7 @@ public class FirebaseRemoteConfigProvider : IRemoteConfigProvider
 ### 2. Khai báo biến (partial class)
 
 ```csharp
+[Service(typeof(IRCVariableCollection))]
 public partial class RCVariableCollection
 {
     [RegisteredRCVar]
