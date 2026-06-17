@@ -8,8 +8,7 @@ namespace Horcrux.Runtime.Implementations.Pooling
     public struct PoolConfig
     {
         public AssetReference prefab;
-        public bool lazyInit;
-        [Min(1)] public int initialPoolSize;
-        [Min(2)] public int maxPoolSize;
+        public int initialPoolSize;
+        public int maxPoolSize;
     }
 }

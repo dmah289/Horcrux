@@ -16,99 +16,82 @@ namespace Horcrux.Runtime.Implementations.Pooling
         [SerializeField] private PoolConfig[] poolConfigs;
 
         private readonly Dictionary<Type, PoolEntry> _pools = new();
-        private readonly HashSet<int> _loadedConfigIndices = new();
-
-        #region Initialization
-        public async UniTask Initialize(CancellationToken cancellationToken)
-        {
-            for (int i = 0; i < poolConfigs.Length; i++)
-            {
-                if (poolConfigs[i].lazyInit || !poolConfigs[i].prefab.RuntimeKeyIsValid())
-                    continue;
-
-                await LoadAndCreatePool(i, cancellationToken);
-            }
-        }
-
-        private async UniTask<PoolEntry> LoadAndCreatePool(int configIndex, CancellationToken cancellationToken)
-        {
-            PoolConfig config = poolConfigs[configIndex];
-            AsyncOperationHandle<GameObject> handle = config.prefab.LoadAssetAsync<GameObject>();
-            GameObject prefab = await handle.ToUniTask(cancellationToken: cancellationToken);
-
-            Component poolable = prefab.GetComponent<IPoolable>() as Component;
-            if (poolable == null)
-            {
-                Debug.LogError($"[PoolManager] Prefab '{prefab.name}' does not have an IPoolable component. Releasing.");
-                Addressables.Release(handle);
-                return null;
-            }
-
-            Type type = poolable.GetType();
-            if (_pools.ContainsKey(type))
-            {
-                Debug.LogWarning($"[PoolManager] Pool for type '{type.Name}' already exists. Skipping duplicate config.");
-                Addressables.Release(handle);
-                return _pools[type];
-            }
-
-            var entry = new PoolEntry(handle, poolable, config.maxPoolSize, config.initialPoolSize);
-            _pools[type] = entry;
-            _loadedConfigIndices.Add(configIndex);
-
-            // Pre-warm
-            for (int i = 0; i < config.initialPoolSize; i++)
-            {
-                Component instance = Instantiate(poolable, transform);
-                instance.gameObject.SetActive(false);
-                entry.Inactive.Push(instance);
-            }
-
-            return entry;
-        }
-
-        private async UniTask<PoolEntry> LazyLoad<T>(CancellationToken cancellationToken) where T : Component, IPoolable
-        {
-            for (int i = 0; i < poolConfigs.Length; i++)
-            {
-                if (_loadedConfigIndices.Contains(i))
-                    continue;
-
-                if (!poolConfigs[i].prefab.RuntimeKeyIsValid())
-                    continue;
-
-                PoolEntry entry = await LoadAndCreatePool(i, cancellationToken);
-                if (entry != null && entry.Prefab is T)
-                    return entry;
-            }
-
-            return null;
-        }
-        #endregion
 
         #region Unity Callbacks
+
+        private void Awake()
+        {
+            DontDestroyOnLoad(this);
+        }
+
         private void OnDestroy()
         {
             Dispose();
         }
         #endregion
+        
+        #region Initialization
+        public async UniTask Initialize(CancellationToken cancellationToken)
+        {
+            for (int i = 0; i < poolConfigs.Length; i++)
+            {
+                if (!poolConfigs[i].prefab.RuntimeKeyIsValid())
+                    continue;
+
+                await LoadAndCreatePool(poolConfigs[i], cancellationToken);
+            }
+        }
+
+        private async UniTask LoadAndCreatePool(PoolConfig config, CancellationToken cancellationToken)
+        {
+            AsyncOperationHandle<GameObject> handle = config.prefab.LoadAssetAsync<GameObject>();
+            GameObject prefab = await handle.ToUniTask(cancellationToken: cancellationToken);
+
+            Component poolablePrefab = prefab.GetComponent<IPoolable>() as Component;
+            if (poolablePrefab == null)
+            {
+                Debug.LogError($"[PoolManager] Prefab '{prefab.name}' does not have an IPoolable component. Releasing.");
+                Addressables.Release(handle);
+                return;
+            }
+
+            Type type = poolablePrefab.GetType();
+            if (_pools.ContainsKey(type))
+            {
+                Debug.LogWarning($"[PoolManager] Pool for type '{type.Name}' already exists. Skipping duplicate config.");
+                Addressables.Release(handle);
+                return;
+            }
+
+            var entry = new PoolEntry(handle, poolablePrefab, config.maxPoolSize, config.initialPoolSize);
+            _pools[type] = entry;
+
+            // Pre-warm
+            for (int i = 0; i < config.initialPoolSize; i++)
+            {
+                Component instance = Instantiate(poolablePrefab, transform);
+                instance.gameObject.SetActive(false);
+                instance.transform.SetParent(transform);
+                entry.Inactive.Add(instance);
+            }
+        }
+        #endregion
 
         #region Methods
-        public async UniTask<T> Get<T>(Transform parent = null, CancellationToken cancellationToken = default) where T : Component, IPoolable
+        public T Get<T>(Transform parent = null) where T : Component, IPoolable
         {
             Type type = typeof(T);
             if (!_pools.TryGetValue(type, out PoolEntry entry))
-            {
-                entry = await LazyLoad<T>(cancellationToken);
-                if (entry == null)
-                    throw new InvalidOperationException($"[PoolManager] No PoolConfig found for type '{type.Name}'.");
-            }
+                throw new InvalidOperationException($"[PoolManager] No pool registered for type '{type.Name}'. Ensure it is configured in poolConfigs.");
 
             T instance = null;
 
-            while (entry.Inactive.Count > 0)
+            for (int i = entry.Inactive.Count - 1; i >= 0; i--)
             {
-                instance = entry.Inactive.Pop() as T;
+                Component candidate = entry.Inactive[i];
+                entry.Inactive.RemoveAt(i);
+                if (!candidate) continue; // Unity destroyed check — non-generic nên operator hoạt động
+                instance = candidate as T;
                 if (instance != null) break;
             }
 
@@ -134,10 +117,16 @@ namespace Horcrux.Runtime.Implementations.Pooling
                 Destroy(instance.gameObject);
                 return;
             }
-
-            if (!instance.gameObject.activeSelf)
+            
+            if (entry.Inactive.Count >= entry.MaxPoolSize)
             {
-                Debug.LogWarning($"[PoolManager] '{type.Name}' is already inactive — possible double Return. Ignoring.");
+                Destroy(instance.gameObject);
+                return;
+            }
+
+            if (entry.Inactive.Contains(instance))
+            {
+                Debug.LogWarning($"[PoolManager] '{type.Name}' is already in the pool — double Return. Ignoring.");
                 return;
             }
 
@@ -145,13 +134,7 @@ namespace Horcrux.Runtime.Implementations.Pooling
             instance.gameObject.SetActive(false);
             instance.transform.SetParent(transform);
 
-            if (entry.Inactive.Count >= entry.MaxPoolSize)
-            {
-                Destroy(instance.gameObject);
-                return;
-            }
-
-            entry.Inactive.Push(instance);
+            entry.Inactive.Add(instance);
         }
 
         public void Dispose()
@@ -163,17 +146,17 @@ namespace Horcrux.Runtime.Implementations.Pooling
                 CleanupEntry(entry);
 
             _pools.Clear();
-            _loadedConfigIndices.Clear();
         }
 
         private void CleanupEntry(PoolEntry entry)
         {
-            while (entry.Inactive.Count > 0)
+            for (int i = 0; i < entry.Inactive.Count; i++)
             {
-                Component instance = entry.Inactive.Pop();
-                if (instance != null)
-                    Destroy(instance.gameObject);
+                if (entry.Inactive[i] != null)
+                    Destroy(entry.Inactive[i].gameObject);
             }
+
+            entry.Inactive.Clear();
 
             if (entry.Handle.IsValid())
                 Addressables.Release(entry.Handle);
@@ -185,14 +168,14 @@ namespace Horcrux.Runtime.Implementations.Pooling
             public readonly AsyncOperationHandle<GameObject> Handle;
             public readonly Component Prefab;
             public readonly int MaxPoolSize;
-            public readonly Stack<Component> Inactive;
+            public readonly List<Component> Inactive;
 
             public PoolEntry(AsyncOperationHandle<GameObject> handle, Component prefab, int maxPoolSize, int initialCapacity)
             {
                 Handle = handle;
                 Prefab = prefab;
                 MaxPoolSize = maxPoolSize;
-                Inactive = new Stack<Component>(initialCapacity);
+                Inactive = new List<Component>(initialCapacity);
             }
         }
     }
