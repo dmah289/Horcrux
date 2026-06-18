@@ -27,8 +27,24 @@ namespace Horcrux.Editor.QuickAccess
         [HideInInspector] public List<Object> loadedAssets;
         [HideInInspector] public List<Object> loadedSubfolders;
 
-        [HideInInspector] public bool foldoutExpanded;
+        [NonSerialized] public bool foldoutExpanded;
         [NonSerialized] public bool editExpanded;
+
+        [NonSerialized] private string _foldoutSessionKey;
+        [NonSerialized] private string _foldoutKeyTitle;
+
+        public string FoldoutSessionKey
+        {
+            get
+            {
+                if (_foldoutSessionKey == null || _foldoutKeyTitle != title)
+                {
+                    _foldoutKeyTitle = title;
+                    _foldoutSessionKey = "QuickAccess_Foldout_" + (title ?? "unnamed");
+                }
+                return _foldoutSessionKey;
+            }
+        }
 
         public void RebuildLoaded()
         {

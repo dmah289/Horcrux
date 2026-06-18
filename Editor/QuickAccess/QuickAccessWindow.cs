@@ -200,9 +200,10 @@ namespace Horcrux.Editor.QuickAccess
             EditorGUILayout.BeginHorizontal();
 
             string title = string.IsNullOrEmpty(group.title) ? "unnamed" : group.title;
-            bool wasExpanded = group.foldoutExpanded;
+            string sessionKey = group.FoldoutSessionKey;
+            group.foldoutExpanded = SessionState.GetBool(sessionKey, false);
             group.foldoutExpanded = EditorGUILayout.Foldout(group.foldoutExpanded, title, true, StaticStyles.GroupTitle);
-            if (group.foldoutExpanded != wasExpanded) _config.Persist();
+            SessionState.SetBool(sessionKey, group.foldoutExpanded);
             GUILayout.FlexibleSpace();
 
             if (GUILayout.Button(StaticGUIContent.Edit, EditorStyles.miniButton, StaticGUILayout.Mini40))
