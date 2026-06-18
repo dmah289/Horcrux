@@ -55,7 +55,7 @@ namespace Horcrux.Editor.PlayerPrefsEditor
         private int lastStatusTotal = -1, lastStatusVisible = -1, lastStatusModified = -1;
         private bool lastStatusHasSearch;
 
-        [MenuItem("manhnd_sdk/Player Prefs Editor")]
+        [MenuItem("Horcrux/Player Prefs Editor")]
         public static void ShowWindow()
         {
             var window = GetWindow<PlayerPrefsEditor>();

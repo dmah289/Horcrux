@@ -5,7 +5,7 @@ namespace Horcrux.Editor.Utilities
 {
     public class MissingScriptCleaner : UnityEditor.Editor
     {
-        [MenuItem("manhnd_sdk/Utility/Clean Missing Scripts")]
+        [MenuItem("Horcrux/Utility/Clean Missing Scripts")]
         public static void CleanMissingScripts()
         {
             GameObject[] selectedObjects = Selection.gameObjects;

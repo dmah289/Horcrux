@@ -10,13 +10,6 @@ using Horcrux.Editor.Common;
 
 namespace Horcrux.Editor.QuickAccess
 {
-    /// <summary>
-    /// Editor window providing fast access to scenes, configurable groups of folders, and pinned shortcuts.
-    /// Drag-drop into a group:
-    ///   • all folders, no Shift → added as roots (auto-loaded into group)
-    ///   • Shift held, or any non-folder → pinned (reference-only)
-    /// Drops outside any group are rejected.
-    /// </summary>
     public class QuickAccessWindow : EditorWindow
     {
         // ──────────────── Types ────────────────
@@ -29,7 +22,6 @@ namespace Horcrux.Editor.QuickAccess
 
         // ──────────────── Build-scenes cache (shared across windows) ────────────────
 
-        private static Object[] _buildScenes      = Array.Empty<Object>();
         private static string[] _buildSceneNames  = Array.Empty<string>();
         private static string[] _buildScenePaths  = Array.Empty<string>();
         private static bool     _buildScenesDirty = true;
@@ -45,7 +37,7 @@ namespace Horcrux.Editor.QuickAccess
 
         // ──────────────── Lifecycle ────────────────
 
-        [MenuItem("manhnd_sdk/Quick Access")]
+        [MenuItem("Horcrux/Quick Access")]
         private static void ShowWindow()
         {
             var window = GetWindow<QuickAccessWindow>();
@@ -55,13 +47,7 @@ namespace Horcrux.Editor.QuickAccess
 
         private void OnEnable()
         {
-            EditorBuildSettings.sceneListChanged += MarkBuildScenesDirty;
             MarkBuildScenesDirty();
-        }
-
-        private void OnDisable()
-        {
-            EditorBuildSettings.sceneListChanged -= MarkBuildScenesDirty;
         }
 
         private void OnGUI()
@@ -69,7 +55,7 @@ namespace Horcrux.Editor.QuickAccess
             StaticStyles.Ensure();
             StaticGUIContent.EnsureIcons();
             _config = QuickAccessConfig.instance;
-            EnsureBuildScenes();
+            EnsureSceneNames();
 
             if (Event.current.type == EventType.Repaint)
                 _groupRects.Clear();
@@ -80,7 +66,6 @@ namespace Horcrux.Editor.QuickAccess
 
             _scroll = GUILayout.BeginScrollView(_scroll);
             DrawFavouriteSection();
-            DrawBuildScenesSection();
             DrawGroupsSection();
             HandleDragAndDrop();
             GUILayout.EndScrollView();
@@ -88,15 +73,14 @@ namespace Horcrux.Editor.QuickAccess
             ApplyPendingRemovals();
         }
 
-        // ──────────────── Build-scenes cache ────────────────
+        // ──────────────── Scene-name cache (for loading-scene picker) ────────────────
 
-        private static void EnsureBuildScenes()
+        private static void EnsureSceneNames()
         {
             if (!_buildScenesDirty) return;
 
             EditorBuildSettingsScene[] scenes = EditorBuildSettings.scenes;
             int n = scenes.Length;
-            if (_buildScenes.Length     != n) _buildScenes     = new Object[n];
             if (_buildSceneNames.Length != n) _buildSceneNames = new string[n];
             if (_buildScenePaths.Length != n) _buildScenePaths = new string[n];
 
@@ -104,7 +88,6 @@ namespace Horcrux.Editor.QuickAccess
             {
                 string path  = scenes[i].path;
                 Object asset = AssetDatabase.LoadAssetAtPath<Object>(path);
-                _buildScenes[i]     = asset;
                 _buildScenePaths[i] = path;
                 _buildSceneNames[i] = asset != null ? asset.name : "<missing>";
             }
@@ -179,14 +162,6 @@ namespace Horcrux.Editor.QuickAccess
             GUILayout.Space(8);
         }
 
-        private void DrawBuildScenesSection()
-        {
-            DrawSectionTitle(StaticGUIContent.BuildScenes);
-            for (int i = 0; i < _buildScenes.Length; i++)
-                DrawAssetRow(_buildScenes[i]);
-            GUILayout.Space(8);
-        }
-
         private void DrawGroupsSection()
         {
             if (_config.groups == null) return;
@@ -225,7 +200,9 @@ namespace Horcrux.Editor.QuickAccess
             EditorGUILayout.BeginHorizontal();
 
             string title = string.IsNullOrEmpty(group.title) ? "unnamed" : group.title;
+            bool wasExpanded = group.foldoutExpanded;
             group.foldoutExpanded = EditorGUILayout.Foldout(group.foldoutExpanded, title, true, StaticStyles.GroupTitle);
+            if (group.foldoutExpanded != wasExpanded) _config.Persist();
             GUILayout.FlexibleSpace();
 
             if (GUILayout.Button(StaticGUIContent.Edit, EditorStyles.miniButton, StaticGUILayout.Mini40))

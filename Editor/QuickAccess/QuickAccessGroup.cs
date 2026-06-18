@@ -27,7 +27,7 @@ namespace Horcrux.Editor.QuickAccess
         [HideInInspector] public List<Object> loadedAssets;
         [HideInInspector] public List<Object> loadedSubfolders;
 
-        [NonSerialized] public bool foldoutExpanded;
+        [HideInInspector] public bool foldoutExpanded;
         [NonSerialized] public bool editExpanded;
 
         public void RebuildLoaded()
