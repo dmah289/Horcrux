@@ -10,7 +10,7 @@ using UnityEngine.ResourceManagement.AsyncOperations;
 
 namespace Horcrux.Runtime.Implementations.Pooling
 {
-    [Service(typeof(IPoolManager))]
+    [Service(typeof(IPoolManager), FindFromScene = true)]
     public class PoolManager : MonoBehaviour, IPoolManager
     {
         [SerializeField] private PoolConfig[] poolConfigs;
@@ -18,7 +18,6 @@ namespace Horcrux.Runtime.Implementations.Pooling
         private readonly Dictionary<Type, PoolEntry> _pools = new();
 
         #region Unity Callbacks
-
         private void Awake()
         {
             DontDestroyOnLoad(this);
@@ -29,10 +28,11 @@ namespace Horcrux.Runtime.Implementations.Pooling
             Dispose();
         }
         #endregion
-        
-        #region Initialization
+
+        #region Methods
         public async UniTask Initialize(CancellationToken cancellationToken)
         {
+            _pools.Clear();
             for (int i = 0; i < poolConfigs.Length; i++)
             {
                 if (!poolConfigs[i].prefab.RuntimeKeyIsValid())
@@ -75,9 +75,7 @@ namespace Horcrux.Runtime.Implementations.Pooling
                 entry.Inactive.Add(instance);
             }
         }
-        #endregion
-
-        #region Methods
+        
         public T Get<T>(Transform parent = null) where T : Component, IPoolable
         {
             Type type = typeof(T);
