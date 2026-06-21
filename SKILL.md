@@ -6,7 +6,7 @@ Tài liệu hướng dẫn thiết kế hệ thống cho `Assets/Horcrux`.
 
 Dự án dùng assembly definitions (`.asmdef`) để kiểm soát dependency:
 
-- **`com.horcrux.runtime`** (`Assets/Horcrux/Runtime/`) — Core SDK runtime. Namespace: `Horcrux.Runtime`. References: Init(args), Addressables, UniTask, DOTween.
+- **`com.horcrux.runtime`** (`Assets/Horcrux/Runtime/`) — Core SDK runtime. Namespace: `Horcrux.Runtime`. References: Init(args), Addressables, UniTask.
 - **`com.horcrux.editor`** (`Assets/Horcrux/Editor/`) — Editor-only tools. Namespace: `Horcrux.Editor`. Không có runtime dependencies.
 
 ## Namespaces
