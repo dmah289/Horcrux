@@ -58,16 +58,61 @@ public class FirebaseRemoteConfigProvider : IRemoteConfigProvider
 
 ### 2. Khai báo biến (partial class)
 
-```csharp
-[Service(typeof(IRCVariableCollection))]
-public partial class RCVariableCollection
-{
-    [RegisteredRCVar]
-    [SerializeField] private RCVariable<int> maxRetryCount;
+Vì `RCVariableCollection` nằm trong assembly `com.horcrux.runtime` (submodule), file partial class ở game project **phải** được route về cùng assembly bằng `.asmref`.
 
-    public RCVariable<int> MaxRetryCount => maxRetryCount;
+**Bước 1:** Tạo thư mục riêng cho partial class (KHÔNG đặt chung với file `.cs` khác thuộc assembly khác):
+
+```
+Assets/.../RemoteConfig/
+├── com.horcrux.runtime.asmref
+└── RCVariableCollection.Level.cs
+```
+
+**Bước 2:** Tạo file `.asmref` trỏ về assembly gốc:
+
+```json
+// com.horcrux.runtime.asmref
+{
+    "reference": "com.horcrux.runtime"
 }
 ```
+
+> ⚠️ Tất cả `.cs` trong thư mục chứa `.asmref` sẽ thuộc assembly `com.horcrux.runtime`.
+> Không đặt file `.asmref` vào thư mục đã có file thuộc assembly khác — sẽ gây conflict.
+
+**Bước 3:** Khai báo biến trong partial class **và** partial interface — **phải tạo cả hai**:
+
+```csharp
+// File: IRCVariableCollection.Level.cs (cùng thư mục .asmref)
+namespace Horcrux.Runtime.Abstractions.RemoteConfigSystem
+{
+    public partial interface IRCVariableCollection
+    {
+        public RCVariable<int> MaxRetryCount { get; }
+    }
+}
+```
+
+```csharp
+// File: RCVariableCollection.Level.cs (cùng thư mục .asmref)
+using Horcrux.Runtime.Abstractions.RemoteConfigSystem;
+using UnityEngine;
+
+namespace Horcrux.Runtime.Implementations.RemoteConfigSystem
+{
+    public partial class RCVariableCollection
+    {
+        [RegisteredRCVar]
+        [SerializeField] private RCVariable<int> maxRetryCount;
+
+        public RCVariable<int> MaxRetryCount => maxRetryCount;
+    }
+}
+```
+
+> ⚠️ **Bắt buộc tạo cả 2 file:** mỗi property khai báo trong `RCVariableCollection` phải có property tương ứng trong `IRCVariableCollection`. Nếu chỉ tạo partial class mà không tạo partial interface, code bên ngoài sẽ không truy cập được qua interface.
+
+> ⚠️ Partial class/interface yêu cầu **cùng assembly + cùng namespace**. Thiếu một trong hai sẽ không compile.
 
 ### 3. Khởi tạo (thứ tự tùy ý)
 

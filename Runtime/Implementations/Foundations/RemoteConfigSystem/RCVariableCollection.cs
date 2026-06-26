@@ -13,16 +13,28 @@ namespace Horcrux.Runtime.Implementations.RemoteConfigSystem
     [AttributeUsage(AttributeTargets.Field)]
     public sealed class RegisteredRCVar : Attribute { }
     
-    [Service(typeof(IRCVariableCollection))]
-    [CreateAssetMenu(menuName = "manhnd_sdk/RCVariableCollection", fileName = "RCVariableCollection")]
-    public partial class RCVariableCollection : SingletonSO<RCVariableCollection>, IRCVariableCollection
+    [Service(typeof(IRCVariableCollection), ResourcePath = RESOURCE_PATH)]
+    [CreateAssetMenu(menuName = "Horcrux/RCVariableCollection", fileName = "RCVariableCollection")]
+    public partial class RCVariableCollection : ScriptableObject, IRCVariableCollection
     {
+        private const string RESOURCE_PATH = "Config/RCVariableCollection";
+        
         private List<IRCVariable> rcVariables = new();
         private List<FieldInfo> cachedRCFields;
         private IRemoteConfigProvider provider;
         
         public IEnumerable<IRCVariable> RCVariables => rcVariables;
         public IRemoteConfigProvider RemoteConfigProvider => provider;
+
+        #region Unity Callbacks
+
+        private void OnDestroy()
+        {
+            if (provider != null)
+                provider.OnFetched -= OnRemoteConfigFetched;
+        }
+
+        #endregion
 
         private List<FieldInfo> GetRCFields()
         {
@@ -53,12 +65,6 @@ namespace Horcrux.Runtime.Implementations.RemoteConfigSystem
         {
             for(int i = 0; i < rcVariables.Count; i++)
                 rcVariables[i].ApplyRemoteValue(provider);
-        }
-
-        private void OnDestroy()
-        {
-            if (provider != null)
-                provider.OnFetched -= OnRemoteConfigFetched;
         }
 
 #if UNITY_EDITOR

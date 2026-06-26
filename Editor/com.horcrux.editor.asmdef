@@ -1,7 +1,9 @@
 {
     "name": "com.horcrux.editor",
     "rootNamespace": "Horcrux.Editor",
-    "references": [],
+    "references": [
+        "com.horcrux.runtime"
+    ],
     "includePlatforms": [
         "Editor"
     ],
