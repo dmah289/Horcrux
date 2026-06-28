@@ -12,8 +12,8 @@ namespace Horcrux.Runtime.Implementations.RemoteConfigSystem
     {
         [SerializeField] private string firebaseKey;
         [SerializeField] private bool allowFetching = true;
-        [SerializeField] private T value;
-        [SerializeField] private bool fetched;
+        [MultiLineProperty][SerializeField] private T value;
+        [NonSerialized, ShowInInspector] private bool fetched;
 
         public string FirebaseKey => firebaseKey;
         public bool AllowFetching
@@ -24,6 +24,11 @@ namespace Horcrux.Runtime.Implementations.RemoteConfigSystem
         public T Value => value;
         
         public static implicit operator T(RCVariable<T> variable) => variable != null ? variable.Value : default;
+
+        public void ResetFetchedState()
+        {
+            fetched = false;
+        }
 
         public void ApplyRemoteValue(IRemoteConfigProvider provider)
         {

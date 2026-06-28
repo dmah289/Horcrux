@@ -50,7 +50,11 @@ namespace Horcrux.Runtime.Implementations.RemoteConfigSystem
             List<FieldInfo> rcFields = GetRCFields();
 
             for (int i = 0; i < rcFields.Count; i++)
-                rcVariables.Add((IRCVariable)rcFields[i].GetValue(this));
+            {
+                IRCVariable variable = (IRCVariable)rcFields[i].GetValue(this);
+                variable.ResetFetchedState();
+                rcVariables.Add(variable);
+            }
 
             if (IRemoteConfigProvider.TryGet(out provider))
             {

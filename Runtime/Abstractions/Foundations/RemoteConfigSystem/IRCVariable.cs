@@ -6,5 +6,6 @@
         public bool AllowFetching { get; set; }
 
         public void ApplyRemoteValue(IRemoteConfigProvider provider);
+        public void ResetFetchedState();
     }
 }
