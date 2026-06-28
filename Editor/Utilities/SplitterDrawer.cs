@@ -2,12 +2,12 @@ using Horcrux.Runtime.Implementations.Utilities;
 using UnityEditor;
 using UnityEngine;
 
-namespace Horcrux.Editor.Common
+namespace Horcrux.Editor.Utilities
 {
     [CustomPropertyDrawer(typeof(SplitterAttribute))]
     public sealed class SplitterDrawer : DecoratorDrawer
     {
-        private static readonly Color AccentColor = new(0.35f, 0.7f, 1f, 1f);
+        private static readonly Color FallbackAccentColor = new(0.35f, 0.7f, 1f, 1f);
         private static readonly Color LineColorDark = new(0.3f, 0.3f, 0.3f, 0.7f);
         private static readonly Color LineColorLight = new(0.65f, 0.65f, 0.65f, 0.7f);
 
@@ -44,8 +44,9 @@ namespace Horcrux.Editor.Common
 
             float barY = position.y + TopPadding;
 
+            Color accentColor = attr.AccentColor.a > 0f ? attr.AccentColor : FallbackAccentColor;
             var accentRect = new Rect(position.x, barY, AccentBarWidth, AccentBarHeight);
-            EditorGUI.DrawRect(accentRect, AccentColor);
+            EditorGUI.DrawRect(accentRect, accentColor);
 
             if (!string.IsNullOrEmpty(attr.Title))
             {
