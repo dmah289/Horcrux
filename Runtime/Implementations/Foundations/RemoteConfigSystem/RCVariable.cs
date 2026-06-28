@@ -12,7 +12,7 @@ namespace Horcrux.Runtime.Implementations.RemoteConfigSystem
     {
         [SerializeField] private string firebaseKey;
         [SerializeField] private bool allowFetching = true;
-        [MultiLineProperty][SerializeField] private T value;
+        [SerializeField] private T value;
         [NonSerialized, ShowInInspector] private bool fetched;
 
         public string FirebaseKey => firebaseKey;
@@ -97,6 +97,8 @@ namespace Horcrux.Runtime.Implementations.RemoteConfigSystem
         
         #if UNITY_EDITOR
         
+        [MultiLineProperty, SerializeField] private string valueToImport;
+        
         [Button]
         private void CopyJsonToClipboard()
         {
@@ -106,9 +108,9 @@ namespace Horcrux.Runtime.Implementations.RemoteConfigSystem
         }
 
         [Button]
-        private void ImportDefaultValue(string defaultVal)
+        private void ImportValue()
         {
-            if(!string.IsNullOrEmpty(defaultVal) && TryParseValueFromString(defaultVal, out T parsed))
+            if(!string.IsNullOrEmpty(valueToImport) && TryParseValueFromString(valueToImport, out T parsed))
                 value = parsed;
         }
         
