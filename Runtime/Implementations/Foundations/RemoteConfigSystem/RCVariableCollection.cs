@@ -26,6 +26,8 @@ namespace Horcrux.Runtime.Implementations.RemoteConfigSystem
         public IEnumerable<IRCVariable> RCVariables => rcVariables;
         public IRemoteConfigProvider RemoteConfigProvider => provider;
 
+        partial void OnRemoteValuesApplied();
+
         #region Unity Callbacks
 
         private void OnDestroy()
@@ -65,6 +67,8 @@ namespace Horcrux.Runtime.Implementations.RemoteConfigSystem
         {
             for(int i = 0; i < rcVariables.Count; i++)
                 rcVariables[i].ApplyRemoteValue(provider);
+
+            OnRemoteValuesApplied();
         }
 
 #if UNITY_EDITOR
