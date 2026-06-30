@@ -1,17 +1,16 @@
-﻿using System;
 using UnityEngine;
 
 namespace Horcrux.Editor.PlayerPrefsEditor
 {
     public struct PlayerPrefsPair
     {
-        private static string AliasInt = "int";
-        private static string AliasFloat = "float";
-        private static string AliasString = "string";
-        
+        private static readonly string AliasInt = "int";
+        private static readonly string AliasFloat = "float";
+        private static readonly string AliasString = "string";
+
         public string Key;
         public object Value;
-        
+
         public Color TypeColor =>
             Value switch
             {
@@ -20,7 +19,7 @@ namespace Horcrux.Editor.PlayerPrefsEditor
                 string => Color.green,
                 _ => Color.white
             };
-        
+
         public string AliasType =>
             Value switch
             {
@@ -29,7 +28,5 @@ namespace Horcrux.Editor.PlayerPrefsEditor
                 string => AliasString,
                 _ => string.Empty
             };
-
-        public Type ValueType => Value.GetType();
     }
 }

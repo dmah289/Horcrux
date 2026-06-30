@@ -19,7 +19,7 @@ namespace Horcrux.Editor.PlayerPrefsEditor
         private Vector2 scrollPos;
         private Dictionary<string, string> inputPlayerPrefs = new();
         private Dictionary<string, Vector2> m_stringScrollPositions = new();
-        private HashSet<string> savedKey = new();
+        private HashSet<string> tempKeyBuffer = new();
         private List<PlayerPrefsPair> currentPairs;
         private int visibleCount;
         private const int MAX_STRING_LINES = 7;
@@ -27,6 +27,11 @@ namespace Horcrux.Editor.PlayerPrefsEditor
         // Cached per-row data — rebuilt once per Layout event, reused across Repaint
         private string[] cachedValueStrs = Array.Empty<string>();
         private bool[] cachedIsJson = Array.Empty<bool>();
+        private string[] cachedAliasTypes = Array.Empty<string>();
+        private Color[] cachedTypeColors = Array.Empty<Color>();
+
+        // O(1) key→index lookup — rebuilt alongside per-row data
+        private readonly Dictionary<string, int> keyToIndex = new();
 
         // Reusable GUIContent for CalcHeight — avoids GC alloc per string row per frame
         private readonly GUIContent m_calcHeightContent = new();
@@ -37,11 +42,22 @@ namespace Horcrux.Editor.PlayerPrefsEditor
 
         // Layout options — rebuilt only when window width changes
         private float cachedWidth;
+        private float cachedValueWidth;
         private GUILayoutOption[] keyWidthOpt, typeWidthOpt, valueWidthOpt, actionWidthOpt;
+
+        // String row height — rebuilt once when style inits or lineHeight changes
+        private float cachedLineHeight;
+        private float cachedStringMaxHeightValue;
+        private GUILayoutOption[] cachedStringMaxHeightOpt;
         private static readonly GUILayoutOption[] jsonBtnWidth = { GUILayout.Width(24) };
         private static readonly GUILayoutOption[] searchLabelWidth = { GUILayout.Width(50) };
         private static readonly GUILayoutOption[] clearSearchWidth = { GUILayout.Width(20) };
         private static readonly GUILayoutOption[] expandWidthTrue = { GUILayout.ExpandWidth(true) };
+        private static readonly GUILayoutOption[] refreshBtnWidth = { GUILayout.Width(80) };
+        private const float RefreshBtnFixedWidth = 80f;
+        private const float ToolbarSpacing = 16f;
+        private GUILayoutOption[] quickBtnWidthOpt;
+        private static readonly GUIContent clearSearchContent = new("X", "Clear search");
 
         // Colors
         private static readonly Color RowEvenColor = new(0f, 0f, 0f, 0.06f);
@@ -64,6 +80,37 @@ namespace Horcrux.Editor.PlayerPrefsEditor
             window.Show();
         }
 
+        #region Lifecycle
+
+        private void OnEnable()
+        {
+            playerPrefsProvider?.MarkDirty();
+            EditorApplication.playModeStateChanged += OnPlayModeChanged;
+        }
+
+        private void OnDisable()
+        {
+            EditorApplication.playModeStateChanged -= OnPlayModeChanged;
+        }
+
+        private void OnFocus()
+        {
+            RefreshFromSource();
+        }
+
+        private void OnPlayModeChanged(PlayModeStateChange change)
+        {
+            RefreshFromSource();
+        }
+
+        private void RefreshFromSource()
+        {
+            playerPrefsProvider?.MarkDirty();
+            Repaint();
+        }
+
+        #endregion
+
         private void OnGUI()
         {
             StaticStyles.Ensure();
@@ -76,6 +123,8 @@ namespace Horcrux.Editor.PlayerPrefsEditor
                 EditorGUILayout.HelpBox("PlayerPrefs Editor is only supported on Windows.", MessageType.Warning);
                 return;
             }
+
+            CacheStringMaxHeight();
 
             if (Event.current.type == EventType.Layout)
             {
@@ -114,32 +163,53 @@ namespace Horcrux.Editor.PlayerPrefsEditor
         private void CacheLayoutOptions()
         {
             float w = position.width;
-            if (Math.Abs(w - cachedWidth) < 1f) return;
+            if (keyWidthOpt != null && Math.Abs(w - cachedWidth) < 1f) return;
             cachedWidth = w;
 
-            int max = (int)w;
+            int max = Mathf.Max((int)w, 1);
             keyWidthOpt = new[] { GUILayout.Width((int)(max * 0.25f)) };
             typeWidthOpt = new[] { GUILayout.Width((int)(max * 0.1f)) };
             valueWidthOpt = new[] { GUILayout.Width((int)(max * 0.4f)) };
             actionWidthOpt = new[] { GUILayout.Width((int)(max * 0.23f / 3f)) };
+            cachedValueWidth = max * 0.4f;
+
+            float btnWidth = Mathf.Max((w - RefreshBtnFixedWidth - ToolbarSpacing) / 3f, 60f);
+            quickBtnWidthOpt = new[] { GUILayout.Width(btnWidth) };
+        }
+
+        private void CacheStringMaxHeight()
+        {
+            float lineHeight = wordWrapStyle.lineHeight > 0 ? wordWrapStyle.lineHeight : EditorGUIUtility.singleLineHeight;
+            if (cachedStringMaxHeightOpt != null && Math.Abs(lineHeight - cachedLineHeight) < 0.01f) return;
+            cachedLineHeight = lineHeight;
+            cachedStringMaxHeightValue = lineHeight * MAX_STRING_LINES + wordWrapStyle.padding.vertical;
+            cachedStringMaxHeightOpt = new[] { GUILayout.Height(cachedStringMaxHeightValue) };
         }
 
         private void CachePerRowData()
         {
             int count = currentPairs.Count;
-            if (cachedValueStrs.Length < count)
+            if (cachedValueStrs.Length < count
+                || cachedAliasTypes.Length < count
+                || cachedTypeColors.Length < count)
             {
                 cachedValueStrs = new string[count];
                 cachedIsJson = new bool[count];
+                cachedAliasTypes = new string[count];
+                cachedTypeColors = new Color[count];
             }
 
+            keyToIndex.Clear();
             for (int i = 0; i < count; i++)
             {
                 PlayerPrefsPair pair = currentPairs[i];
                 object v = pair.Value;
 
-                cachedValueStrs[i] = v is string s ? s : v.ToString();
+                cachedValueStrs[i] = v is string s ? s : v?.ToString() ?? string.Empty;
                 cachedIsJson[i] = v is string && JsonEditWindow.IsJsonLike(cachedValueStrs[i]);
+                cachedAliasTypes[i] = pair.AliasType;
+                cachedTypeColors[i] = pair.TypeColor;
+                keyToIndex[pair.Key] = i;
             }
         }
 
@@ -155,16 +225,16 @@ namespace Horcrux.Editor.PlayerPrefsEditor
 
             GUI.enabled = hasModified;
             GUI.backgroundColor = SaveColor;
-            if (GUILayout.Button(StaticGUIContent.PrefsSaveAll))
+            if (GUILayout.Button(StaticGUIContent.PrefsSaveAll, quickBtnWidthOpt))
                 SaveAll();
 
             GUI.backgroundColor = RevertColor;
-            if (GUILayout.Button(StaticGUIContent.PrefsRevertAll))
+            if (GUILayout.Button(StaticGUIContent.PrefsRevertAll, quickBtnWidthOpt))
                 RevertAll();
 
             GUI.enabled = hasEntries;
             GUI.backgroundColor = StaticColor.DangerColor;
-            if (GUILayout.Button(StaticGUIContent.PrefsDeleteAll))
+            if (GUILayout.Button(StaticGUIContent.PrefsDeleteAll, quickBtnWidthOpt))
             {
                 string message = searchField.Length > 0
                     ? $"This will delete ALL {currentPairs.Count} entries, not just the filtered results.\nThis cannot be undone."
@@ -174,9 +244,15 @@ namespace Horcrux.Editor.PlayerPrefsEditor
                     DeleteAll();
             }
 
-            GUILayout.EndHorizontal();
             GUI.enabled = true;
             GUI.backgroundColor = origBg;
+
+            // Refresh — fixed width, right-aligned
+            GUILayout.FlexibleSpace();
+            if (GUILayout.Button(StaticGUIContent.Refresh, refreshBtnWidth))
+                RefreshFromSource();
+
+            GUILayout.EndHorizontal();
         }
 
         private void DrawSearchField()
@@ -184,8 +260,14 @@ namespace Horcrux.Editor.PlayerPrefsEditor
             GUILayout.BeginHorizontal(EditorStyles.toolbar);
             GUILayout.Label("Search", searchLabelWidth);
             searchField = GUILayout.TextField(searchField);
-            if (searchField.Length > 0 && GUILayout.Button("X", clearSearchWidth))
+
+            // Keep control count stable: always render the button, disable when empty
+            bool hasSearchText = searchField.Length > 0;
+            GUI.enabled = hasSearchText;
+            if (GUILayout.Button(clearSearchContent, clearSearchWidth) && hasSearchText)
                 searchField = "";
+            GUI.enabled = true;
+
             GUILayout.EndHorizontal();
         }
 
@@ -209,15 +291,22 @@ namespace Horcrux.Editor.PlayerPrefsEditor
             for (int i = 0; i < currentPairs.Count; i++)
             {
                 PlayerPrefsPair pair = currentPairs[i];
+
+                // Safety: skip rows that exceed the cached data range
+                // (can happen if currentPairs was mutated between Layout and Repaint)
+                if (i >= cachedValueStrs.Length) break;
+
                 string valueStr = cachedValueStrs[i];
                 bool isJson = cachedIsJson[i];
                 bool isString = pair.Value is string;
+
+                string aliasType = cachedAliasTypes[i];
 
                 if (hasSearch)
                 {
                     bool match = pair.Key.IndexOf(searchField, StringComparison.OrdinalIgnoreCase) >= 0
                                  || valueStr.IndexOf(searchField, StringComparison.OrdinalIgnoreCase) >= 0
-                                 || pair.AliasType.IndexOf(searchField, StringComparison.OrdinalIgnoreCase) >= 0;
+                                 || aliasType.IndexOf(searchField, StringComparison.OrdinalIgnoreCase) >= 0;
                     if (!match) continue;
                 }
 
@@ -229,8 +318,8 @@ namespace Horcrux.Editor.PlayerPrefsEditor
                 GUILayout.Label(pair.Key, keyWidthOpt);
 
                 // Type
-                typeStyle.normal.textColor = pair.TypeColor;
-                GUILayout.Label(pair.AliasType, typeStyle, typeWidthOpt);
+                typeStyle.normal.textColor = cachedTypeColors[i];
+                GUILayout.Label(aliasType, typeStyle, typeWidthOpt);
 
                 // Value
                 bool isChanged = inputPlayerPrefs.TryGetValue(pair.Key, out string dirtyValue);
@@ -242,18 +331,15 @@ namespace Horcrux.Editor.PlayerPrefsEditor
                 string editedValue;
                 if (isString)
                 {
-                    float valueWidth = cachedWidth * 0.4f;
-                    float lineHeight = wordWrapStyle.lineHeight > 0 ? wordWrapStyle.lineHeight : EditorGUIUtility.singleLineHeight;
-                    float maxHeight = lineHeight * MAX_STRING_LINES + wordWrapStyle.padding.vertical;
                     m_calcHeightContent.text = displayValue;
-                    float fullHeight = wordWrapStyle.CalcHeight(m_calcHeightContent, valueWidth);
+                    float fullHeight = wordWrapStyle.CalcHeight(m_calcHeightContent, cachedValueWidth);
 
-                    if (fullHeight > maxHeight)
+                    if (fullHeight > cachedStringMaxHeightValue)
                     {
                         if (!m_stringScrollPositions.TryGetValue(pair.Key, out Vector2 strScroll))
                             strScroll = Vector2.zero;
 
-                        strScroll = EditorGUILayout.BeginScrollView(strScroll, GUILayout.Height(maxHeight), valueWidthOpt[0]);
+                        strScroll = EditorGUILayout.BeginScrollView(strScroll, cachedStringMaxHeightOpt[0], valueWidthOpt[0]);
                         editedValue = EditorGUILayout.TextArea(displayValue, wordWrapStyle, expandWidthTrue);
                         EditorGUILayout.EndScrollView();
 
@@ -302,6 +388,7 @@ namespace Horcrux.Editor.PlayerPrefsEditor
                     {
                         inputPlayerPrefs.Remove(pair.Key);
                         PlayerPrefs.Save();
+                        playerPrefsProvider.MarkDirty();
                     }
                 }
 
@@ -319,6 +406,7 @@ namespace Horcrux.Editor.PlayerPrefsEditor
                     m_stringScrollPositions.Remove(pair.Key);
                     PlayerPrefs.DeleteKey(pair.Key);
                     PlayerPrefs.Save();
+                    playerPrefsProvider.MarkDirty();
                 }
 
                 GUI.backgroundColor = origBg;
@@ -398,15 +486,16 @@ namespace Horcrux.Editor.PlayerPrefsEditor
             {
                 int index = FindPairIndex(input.Key);
                 if (index >= 0 && Save(input.Key, currentPairs[index].Value, input.Value))
-                    savedKey.Add(input.Key);
+                    tempKeyBuffer.Add(input.Key);
             }
 
-            if (savedKey.Count > 0)
+            if (tempKeyBuffer.Count > 0)
             {
-                foreach (var key in savedKey)
+                foreach (var key in tempKeyBuffer)
                     inputPlayerPrefs.Remove(key);
-                savedKey.Clear();
+                tempKeyBuffer.Clear();
                 PlayerPrefs.Save();
+                playerPrefsProvider.MarkDirty();
             }
         }
 
@@ -423,16 +512,12 @@ namespace Horcrux.Editor.PlayerPrefsEditor
             inputPlayerPrefs.Clear();
             m_stringScrollPositions.Clear();
             PlayerPrefs.Save();
+            playerPrefsProvider.MarkDirty();
         }
 
         private int FindPairIndex(string key)
         {
-            for (int i = 0; i < currentPairs.Count; i++)
-            {
-                if (currentPairs[i].Key == key)
-                    return i;
-            }
-            return -1;
+            return keyToIndex.TryGetValue(key, out int index) ? index : -1;
         }
 
         private void HandleScrollWheelBoost()
@@ -446,25 +531,25 @@ namespace Horcrux.Editor.PlayerPrefsEditor
         {
             if (inputPlayerPrefs.Count == 0 && m_stringScrollPositions.Count == 0) return;
 
-            savedKey.Clear();
+            tempKeyBuffer.Clear();
             foreach (var key in inputPlayerPrefs.Keys)
             {
                 if (FindPairIndex(key) < 0)
-                    savedKey.Add(key);
+                    tempKeyBuffer.Add(key);
             }
 
             foreach (var key in m_stringScrollPositions.Keys)
             {
                 if (FindPairIndex(key) < 0)
-                    savedKey.Add(key);
+                    tempKeyBuffer.Add(key);
             }
 
-            foreach (var key in savedKey)
+            foreach (var key in tempKeyBuffer)
             {
                 inputPlayerPrefs.Remove(key);
                 m_stringScrollPositions.Remove(key);
             }
-            savedKey.Clear();
+            tempKeyBuffer.Clear();
         }
 
     }
