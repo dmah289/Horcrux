@@ -40,6 +40,10 @@ namespace Horcrux.Editor.Common
             public static GUIContent PrefsRevertAll;
             public static GUIContent PrefsDeleteAll;
 
+            // Null Reference Scanner
+            public static readonly GUIContent ScannerTitle = new("Null Reference Scanner");
+            public static GUIContent ScannerScan;
+
             private static bool _iconsLoaded;
 
             public static void EnsureIcons()
@@ -59,6 +63,8 @@ namespace Horcrux.Editor.Common
                 PrefsSaveAll   = WithIconAndText("d_SaveAs",           " Save All",   "Save all modified entries");
                 PrefsRevertAll = WithIconAndText("d_RotateTool",       " Revert All", "Revert all changes");
                 PrefsDeleteAll = WithIconAndText("d_TreeEditor.Trash", " Delete All", "Delete all entries");
+
+                ScannerScan = WithIconAndText("d_Search Icon", " Scan", "Scan for null references");
             }
 
             private static GUIContent WithIcon(string iconName, string tooltip, string textFallback)

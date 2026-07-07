@@ -13,5 +13,9 @@ namespace Horcrux.Editor.Common
         public static readonly GUILayoutOption[] AssetName    = { GUILayout.MinWidth(150) };
         public static readonly GUILayoutOption[] FolderName   = { GUILayout.MinWidth(200) };
         public static readonly GUILayoutOption[] Remove       = { GUILayout.MinWidth(50), GUILayout.MaxWidth(60) };
+
+        // Null Reference Scanner
+        public static readonly GUILayoutOption[] WarningIcon  = { GUILayout.Width(20) };
+        public static readonly GUILayoutOption[] ScanBtn      = { GUILayout.Width(80) };
     }
 }
