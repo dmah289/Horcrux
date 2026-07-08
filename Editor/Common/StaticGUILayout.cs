@@ -15,7 +15,8 @@ namespace Horcrux.Editor.Common
         public static readonly GUILayoutOption[] Remove       = { GUILayout.MinWidth(50), GUILayout.MaxWidth(60) };
 
         // Null Reference Scanner
-        public static readonly GUILayoutOption[] WarningIcon  = { GUILayout.Width(20) };
-        public static readonly GUILayoutOption[] ScanBtn      = { GUILayout.Width(80) };
+        public static readonly GUILayoutOption[] WarningIcon    = { GUILayout.Width(20) };
+        public static readonly GUILayoutOption[] ScanBtn        = { GUILayout.Width(80) };
+        public static readonly GUILayoutOption[] ScanFullWidth  = { GUILayout.ExpandWidth(true), GUILayout.Height(24) };
     }
 }

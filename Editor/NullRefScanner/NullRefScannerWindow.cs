@@ -1,14 +1,14 @@
 using System;
 using System.Collections.Generic;
+using System.Text;
 using Horcrux.Editor.Common;
 using UnityEditor;
-using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
 namespace Horcrux.Editor.NullRefScanner
 {
-    public class NullRefScannerWindow : EditorWindow
+    public sealed class NullRefScannerWindow : EditorWindow
     {
         // ──────────────── Types ────────────────
 
@@ -16,10 +16,11 @@ namespace Horcrux.Editor.NullRefScanner
 
         // ──────────────── Static eager cache ────────────────
 
-        private static readonly GUILayoutOption[] _scopeBtnOpts = { GUILayout.Width(75) };
-
-        private static readonly Color RowEvenColor = new(0f, 0f, 0f, 0.06f);
-        private static readonly Color RowOddColor  = new(0f, 0f, 0f, 0.12f);
+        // Static readonly GUIContent cho string literals dùng trong OnGUI
+        private static readonly GUIContent ClearBtnLabel  = new("✕");
+        private static readonly GUIContent ScopeScene     = new("Scene",     "Scan all GameObjects in the active scene (including children)");
+        private static readonly GUIContent ScopeSelection = new("Selection", "Scan only selected GameObjects in the Hierarchy (including children)");
+        private static readonly GUIContent ScopePrefabs   = new("Prefabs",   "Scan selected Prefab assets in the Project window");
 
         // ──────────────── Per-instance state ────────────────
 
@@ -27,9 +28,14 @@ namespace Horcrux.Editor.NullRefScanner
         private string    _filterText = "";
         private Vector2   _scroll;
 
-        private List<GameObjectResult> _results;         // null until first scan
-        private List<GameObjectResult> _filteredResults;  // rebuilt on Layout when dirty
+        private List<GameObjectResult> _results;          // null until first scan
+        private List<GameObjectResult> _filteredResults;   // rebuilt on Layout when dirty
         private bool _filterDirty = true;
+
+        // ──────────────── Cached counts (computed in RebuildFilteredResults) ────────────────
+
+        private int _cachedTotalIssues;
+        private int _cachedFilteredIssues;
 
         // ──────────────── Dirty-flag cache: status bar ────────────────
 
@@ -38,9 +44,18 @@ namespace Horcrux.Editor.NullRefScanner
         private int        _lastStatusFiltered;
         private bool       _lastStatusHasFilter;
 
-        // ──────────────── Reusable GUIContent for dynamic labels ────────────────
+        // ──────────────── Dirty-flag cache: filter count ────────────────
 
-        private readonly GUIContent _goLabelContent = new();
+        private readonly GUIContent _filterCountContent = new();
+        private int _lastFilterCount = -1;
+
+        // ──────────────── Reusable StringBuilder (status/filter strings) ────────────────
+
+        private static readonly StringBuilder SharedSB = new(64);
+
+        // ──────────────── Result drawer (SRP) ────────────────
+
+        private NullRefResultDrawer _resultDrawer;
 
         // ──────────────── Menu ────────────────
 
@@ -58,6 +73,7 @@ namespace Horcrux.Editor.NullRefScanner
         {
             StaticStyles.Ensure();
             StaticGUIContent.EnsureIcons();
+            _resultDrawer ??= new NullRefResultDrawer();
 
             HandleScrollWheelBoost();
 
@@ -76,7 +92,7 @@ namespace Horcrux.Editor.NullRefScanner
             DrawSeparator();
 
             _scroll = GUILayout.BeginScrollView(_scroll);
-            DrawResults();
+            _resultDrawer.Draw(_results, _filteredResults ?? _results);
             GUILayout.EndScrollView();
 
             DrawStatusBar();
@@ -86,27 +102,37 @@ namespace Horcrux.Editor.NullRefScanner
 
         private void DrawToolbar()
         {
+            // Row 1: Scope toggles — chia đều chiều ngang, active toggle có màu xanh dương
             EditorGUILayout.BeginHorizontal(EditorStyles.toolbar);
 
-            // Scope radio buttons
-            DrawScopeToggle(ScanScope.Scene,     "Scene");
-            DrawScopeToggle(ScanScope.Selection,  "Selection");
-            DrawScopeToggle(ScanScope.Prefabs,    "Prefabs");
-
-            GUILayout.FlexibleSpace();
-
-            // Scan button
-            if (GUILayout.Button(StaticGUIContent.ScannerScan, EditorStyles.toolbarButton,
-                    StaticGUILayout.ScanBtn))
-                ExecuteScan();
+            DrawScopeToggle(ScanScope.Scene,     ScopeScene);
+            DrawScopeToggle(ScanScope.Selection,  ScopeSelection);
+            DrawScopeToggle(ScanScope.Prefabs,    ScopePrefabs);
 
             EditorGUILayout.EndHorizontal();
+
+            // Row 2: Scan button — full width, màu xanh lá
+            Color savedBg = GUI.backgroundColor;
+            GUI.backgroundColor = StaticColor.ScanBtnColor;
+            if (GUILayout.Button(StaticGUIContent.ScannerScan, StaticGUILayout.ScanFullWidth))
+                ExecuteScan();
+            GUI.backgroundColor = savedBg;
         }
 
-        private void DrawScopeToggle(ScanScope scope, string label)
+        private void DrawScopeToggle(ScanScope scope, GUIContent content)
         {
             bool active = _scope == scope;
-            bool toggled = GUILayout.Toggle(active, label, EditorStyles.toolbarButton, _scopeBtnOpts);
+
+            // Active scope → tint xanh dương
+            Color savedBg = GUI.backgroundColor;
+            if (active)
+                GUI.backgroundColor = StaticColor.ScopeActiveColor;
+
+            bool toggled = GUILayout.Toggle(active, content, EditorStyles.toolbarButton,
+                               GUILayout.ExpandWidth(true));
+
+            GUI.backgroundColor = savedBg;
+
             if (toggled && !active)
                 _scope = scope;
         }
@@ -117,16 +143,17 @@ namespace Horcrux.Editor.NullRefScanner
         {
             EditorGUILayout.BeginHorizontal(EditorStyles.toolbar);
 
-            GUILayout.Label("Filter:", EditorStyles.miniLabel, StaticGUILayout.Mini40);
-
+            // Search field — expand full width
             EditorGUI.BeginChangeCheck();
-            _filterText = GUILayout.TextField(_filterText, EditorStyles.toolbarSearchField);
+            _filterText = GUILayout.TextField(_filterText, EditorStyles.toolbarSearchField,
+                              GUILayout.ExpandWidth(true));
             if (EditorGUI.EndChangeCheck())
                 _filterDirty = true;
 
+            // Clear button
             if (!string.IsNullOrEmpty(_filterText))
             {
-                if (GUILayout.Button("✕", EditorStyles.toolbarButton, StaticGUILayout.Mini24))
+                if (GUILayout.Button(ClearBtnLabel, EditorStyles.toolbarButton, StaticGUILayout.Mini24))
                 {
                     _filterText = "";
                     _filterDirty = true;
@@ -134,135 +161,20 @@ namespace Horcrux.Editor.NullRefScanner
                 }
             }
 
-            GUILayout.FlexibleSpace();
-
+            // Issue count — hiển thị sát bên phải
             if (_filteredResults != null)
             {
-                int count = CountTotalIssues(_filteredResults);
-                GUILayout.Label($"Found: {count} issues", EditorStyles.miniLabel);
+                int count = _cachedFilteredIssues;
+                if (count != _lastFilterCount)
+                {
+                    _lastFilterCount = count;
+                    SharedSB.Clear();
+                    SharedSB.Append("Found: ").Append(count).Append(" issues");
+                    _filterCountContent.text = SharedSB.ToString();
+                }
+                GUILayout.Label(_filterCountContent, EditorStyles.miniLabel, GUILayout.ExpandWidth(false));
             }
 
-            EditorGUILayout.EndHorizontal();
-        }
-
-        // ──────────────── Results ────────────────
-
-        private void DrawResults()
-        {
-            if (_results == null)
-            {
-                EditorGUILayout.HelpBox("Click Scan to find null references.", MessageType.Info);
-                return;
-            }
-
-            var list = _filteredResults ?? _results;
-
-            if (list.Count == 0)
-            {
-                string msg = _results.Count == 0
-                    ? "✅ No null references found!"
-                    : "No results match the filter.";
-                EditorGUILayout.HelpBox(msg, MessageType.Info);
-                return;
-            }
-
-            for (int i = 0; i < list.Count; i++)
-            {
-                DrawGameObjectRow(list[i], i);
-            }
-        }
-
-        private void DrawGameObjectRow(GameObjectResult goResult, int index)
-        {
-            int goId = goResult.gameObject != null ? goResult.gameObject.GetInstanceID() : index;
-            string foldKey = "NullRefScanner_GO_" + goId;
-            bool expanded = SessionState.GetBool(foldKey, true);
-
-            // Row background
-            Rect rowRect = EditorGUILayout.BeginHorizontal();
-            if (Event.current.type == EventType.Repaint)
-            {
-                Color bg = index % 2 == 0 ? RowEvenColor : RowOddColor;
-                EditorGUI.DrawRect(rowRect, bg);
-            }
-
-            // Foldout
-            expanded = EditorGUILayout.Foldout(expanded, GUIContent.none, true);
-            SessionState.SetBool(foldKey, expanded);
-
-            // Clickable GO name with issue count
-            _goLabelContent.text = $"🎮 {goResult.gameObjectName} ({goResult.TotalIssueCount} issues)";
-            if (GUILayout.Button(_goLabelContent, StaticStyles.AssetButton))
-            {
-                if (goResult.gameObject != null)
-                    SelectAndPing(goResult.gameObject);
-            }
-
-            EditorGUILayout.EndHorizontal();
-
-            if (!expanded) return;
-
-            // Draw components indented
-            EditorGUI.indentLevel++;
-            for (int c = 0; c < goResult.components.Count; c++)
-                DrawComponentRow(goResult, c, goResult.components[c]);
-            EditorGUI.indentLevel--;
-        }
-
-        private void DrawComponentRow(GameObjectResult parent, int compIndex, ComponentResult comp)
-        {
-            if (comp.isMissingScript)
-            {
-                EditorGUILayout.BeginHorizontal();
-                GUILayout.Space(20);
-                Color saved = GUI.contentColor;
-                GUI.contentColor = StaticColor.WarningColor;
-                GUILayout.Label("⚠ Missing Script", EditorStyles.boldLabel);
-                GUI.contentColor = saved;
-                EditorGUILayout.EndHorizontal();
-                return;
-            }
-
-            int goId = parent.gameObject != null ? parent.gameObject.GetInstanceID() : 0;
-            string foldKey = $"NullRefScanner_Comp_{goId}_{compIndex}";
-            bool expanded = SessionState.GetBool(foldKey, true);
-
-            EditorGUILayout.BeginHorizontal();
-            GUILayout.Space(20);
-            expanded = EditorGUILayout.Foldout(expanded, $"📦 {comp.componentName}", true);
-            SessionState.SetBool(foldKey, expanded);
-            EditorGUILayout.EndHorizontal();
-
-            if (!expanded) return;
-
-            for (int f = 0; f < comp.fields.Count; f++)
-                DrawFieldRow(parent.gameObject, comp.component, comp, comp.fields[f]);
-        }
-
-        private void DrawFieldRow(GameObject go, Component comp, ComponentResult compResult, FieldResult field)
-        {
-            EditorGUILayout.BeginHorizontal();
-            GUILayout.Space(40);
-
-            // Warning icon
-            Color saved = GUI.contentColor;
-            GUI.contentColor = StaticColor.WarningColor;
-            GUILayout.Label("⚠", StaticGUILayout.WarningIcon);
-            GUI.contentColor = saved;
-
-            // Full path: ComponentName > readable path — click to ping component
-            string fullPath = $"{compResult.componentName} > {field.displayPath}";
-            if (GUILayout.Button(fullPath, EditorStyles.label))
-            {
-                if (go != null)
-                    SelectAndPingProperty(go, comp, field.propertyPath);
-            }
-
-            // Separator + type
-            GUILayout.Label("——", EditorStyles.miniLabel, StaticGUILayout.Mini24);
-            GUILayout.Label(field.fieldTypeName, EditorStyles.miniLabel);
-
-            GUILayout.FlexibleSpace();
             EditorGUILayout.EndHorizontal();
         }
 
@@ -272,8 +184,8 @@ namespace Horcrux.Editor.NullRefScanner
         {
             if (_results == null) return;
 
-            int total    = CountTotalIssues(_results);
-            int filtered = _filteredResults != null ? CountTotalIssues(_filteredResults) : total;
+            int total    = _cachedTotalIssues;
+            int filtered = _cachedFilteredIssues;
             bool hasFilter = !string.IsNullOrEmpty(_filterText);
 
             // Dirty-flag cache: rebuild only when values change
@@ -287,9 +199,12 @@ namespace Horcrux.Editor.NullRefScanner
                 _lastStatusHasFilter = hasFilter;
 
                 _statusContent ??= new GUIContent();
-                _statusContent.text = hasFilter
-                    ? $"Showing {filtered} of {total} issues"
-                    : $"Total: {total} issues in {_results.Count} GameObjects";
+                SharedSB.Clear();
+                if (hasFilter)
+                    SharedSB.Append("Showing ").Append(filtered).Append(" of ").Append(total).Append(" issues");
+                else
+                    SharedSB.Append("Total: ").Append(total).Append(" issues in ").Append(_results.Count).Append(" GameObjects");
+                _statusContent.text = SharedSB.ToString();
             }
 
             DrawSeparator();
@@ -337,6 +252,11 @@ namespace Horcrux.Editor.NullRefScanner
                 }
             }
 
+            // Sort by severity — MissingRef/NullManagedRef first (luôn là bug)
+            _results.Sort(CompareBySeverityDesc);
+
+            // Reset scroll + filter
+            _scroll = Vector2.zero;
             _filterDirty = true;
             Repaint();
         }
@@ -345,13 +265,22 @@ namespace Horcrux.Editor.NullRefScanner
 
         private void RebuildFilteredResults()
         {
+            // Cache total issues
+            _cachedTotalIssues = CountTotalIssues(_results);
+
             if (string.IsNullOrEmpty(_filterText))
             {
-                _filteredResults = _results;
+                _filteredResults  = _results;
+                _cachedFilteredIssues = _cachedTotalIssues;
                 return;
             }
 
-            _filteredResults = new List<GameObjectResult>();
+            // Reuse list nếu đã tồn tại
+            if (_filteredResults == null || _filteredResults == _results)
+                _filteredResults = new List<GameObjectResult>();
+            else
+                _filteredResults.Clear();
+
             string filter = _filterText;
 
             for (int i = 0; i < _results.Count; i++)
@@ -366,172 +295,72 @@ namespace Horcrux.Editor.NullRefScanner
                 }
 
                 // Try matching component or field names
-                var matchedComps = new List<ComponentResult>();
+                List<ComponentResult> matchedComps = null;
                 for (int c = 0; c < go.components.Count; c++)
                 {
                     var comp = go.components[c];
                     if (comp.componentName.IndexOf(filter, StringComparison.OrdinalIgnoreCase) >= 0)
                     {
+                        matchedComps ??= new List<ComponentResult>();
                         matchedComps.Add(comp);
                         continue;
                     }
 
-                    // Match field names
-                    var matchedFields = new List<FieldResult>();
+                    // Match field names, type, displayPath, kind tag
+                    List<FieldResult> matchedFields = null;
                     for (int f = 0; f < comp.fields.Count; f++)
                     {
                         var field = comp.fields[f];
                         if (field.fieldName.IndexOf(filter, StringComparison.OrdinalIgnoreCase) >= 0
-                            || field.fieldTypeName.IndexOf(filter, StringComparison.OrdinalIgnoreCase) >= 0)
+                            || field.fieldTypeName.IndexOf(filter, StringComparison.OrdinalIgnoreCase) >= 0
+                            || field.displayPath.IndexOf(filter, StringComparison.OrdinalIgnoreCase) >= 0
+                            || field.kindTag.IndexOf(filter, StringComparison.OrdinalIgnoreCase) >= 0)
                         {
+                            matchedFields ??= new List<FieldResult>();
                             matchedFields.Add(field);
                         }
                     }
 
-                    if (matchedFields.Count > 0)
+                    if (matchedFields != null)
                     {
-                        matchedComps.Add(new ComponentResult
-                        {
-                            component      = comp.component,
-                            componentName  = comp.componentName,
-                            isMissingScript = comp.isMissingScript,
-                            fields         = matchedFields
-                        });
+                        matchedComps ??= new List<ComponentResult>();
+                        matchedComps.Add(new ComponentResult(
+                            comp.component, comp.componentName, comp.isMissingScript,
+                            matchedFields,
+                            go.gameObject != null ? go.gameObject.GetInstanceID() : 0, c));
                     }
                 }
 
-                if (matchedComps.Count > 0)
+                if (matchedComps != null)
                 {
-                    _filteredResults.Add(new GameObjectResult
-                    {
-                        gameObject     = go.gameObject,
-                        gameObjectName = go.gameObjectName,
-                        components     = matchedComps
-                    });
+                    _filteredResults.Add(new GameObjectResult(
+                        go.gameObject, go.gameObjectName, matchedComps));
                 }
             }
+
+            _cachedFilteredIssues = CountTotalIssues(_filteredResults);
         }
 
         // ──────────────── Helpers ────────────────
+
+        /// <summary>Static comparison delegate — tránh lambda allocation mỗi lần sort.</summary>
+        private static int CompareBySeverityDesc(GameObjectResult a, GameObjectResult b)
+        {
+            return b.maxSeverity.CompareTo(a.maxSeverity);
+        }
 
         private static int CountTotalIssues(List<GameObjectResult> results)
         {
             int count = 0;
             for (int i = 0; i < results.Count; i++)
-                count += results[i].TotalIssueCount;
+                count += results[i].totalIssueCount;
             return count;
-        }
-
-        private static void SelectAndPing(GameObject go)
-        {
-            if (IsPrefabAsset(go))
-                OpenPrefabAndSelect(go);
-            else
-            {
-                Selection.activeGameObject = go;
-                EditorGUIUtility.PingObject(go);
-            }
-        }
-
-        /// <summary>
-        /// Select GO, expand đúng component chứa trường null trong Inspector.
-        /// Nếu là prefab asset → mở prefab stage trước.
-        /// </summary>
-        private static void SelectAndPingProperty(GameObject go, Component comp, string propertyPath)
-        {
-            if (IsPrefabAsset(go))
-                OpenPrefabAndSelect(go);
-            else
-            {
-                Selection.activeGameObject = go;
-                EditorGUIUtility.PingObject(go);
-            }
-
-            if (comp == null) return;
-
-            // Delay để đợi prefab stage mở xong / Inspector cập nhật
-            EditorApplication.delayCall += () => ExpandComponent(comp);
-        }
-
-        private static bool IsPrefabAsset(GameObject go)
-        {
-            return go != null && PrefabUtility.IsPartOfPrefabAsset(go);
-        }
-
-        /// <summary>
-        /// Mở prefab stage và select đúng GO bên trong prefab.
-        /// </summary>
-        private static void OpenPrefabAndSelect(GameObject go)
-        {
-            // Tìm prefab root để mở stage
-            GameObject prefabRoot = PrefabUtility.GetOutermostPrefabInstanceRoot(go);
-            if (prefabRoot == null)
-                prefabRoot = go.transform.root.gameObject;
-
-            string assetPath = AssetDatabase.GetAssetPath(prefabRoot);
-            if (string.IsNullOrEmpty(assetPath))
-                assetPath = AssetDatabase.GetAssetPath(go);
-
-            if (!string.IsNullOrEmpty(assetPath))
-            {
-                // Mở prefab stage
-                AssetDatabase.OpenAsset(AssetDatabase.LoadAssetAtPath<GameObject>(assetPath));
-
-                // Delay để prefab stage load xong → tìm và select đúng GO bên trong
-                var targetPath = GetTransformPath(go.transform);
-                EditorApplication.delayCall += () =>
-                {
-                    var stage = PrefabStageUtility.GetCurrentPrefabStage();
-
-                    if (stage != null)
-                    {
-                        // Tìm GO theo path trong prefab stage
-                        Transform found = stage.prefabContentsRoot.transform;
-                        if (!string.IsNullOrEmpty(targetPath))
-                        {
-                            var child = stage.prefabContentsRoot.transform.Find(targetPath);
-                            if (child != null) found = child;
-                        }
-                        Selection.activeGameObject = found.gameObject;
-                        EditorGUIUtility.PingObject(found.gameObject);
-                    }
-                };
-            }
-        }
-
-        /// <summary>Lấy path tương đối từ root đến transform (dùng để tìm lại trong prefab stage).</summary>
-        private static string GetTransformPath(Transform t)
-        {
-            var parts = new List<string>();
-            Transform current = t;
-            while (current.parent != null)
-            {
-                parts.Add(current.name);
-                current = current.parent;
-            }
-            parts.Reverse();
-            return string.Join("/", parts);
-        }
-
-        /// <summary>Expand component trong Inspector thông qua ActiveEditorTracker.</summary>
-        private static void ExpandComponent(Component comp)
-        {
-            var tracker = ActiveEditorTracker.sharedTracker;
-            var editors = tracker.activeEditors;
-            for (int i = 0; i < editors.Length; i++)
-            {
-                if (editors[i].target == comp)
-                {
-                    tracker.SetVisible(i, 1);
-                    break;
-                }
-            }
         }
 
         private static void DrawSeparator()
         {
             Rect r = GUILayoutUtility.GetRect(GUIContent.none, GUIStyle.none, GUILayout.Height(1));
-            EditorGUI.DrawRect(r, new Color(0.5f, 0.5f, 0.5f, 0.3f));
+            EditorGUI.DrawRect(r, StaticColor.SeparatorColor);
         }
 
         private void HandleScrollWheelBoost()
