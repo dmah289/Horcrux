@@ -95,10 +95,14 @@ namespace Horcrux.Runtime.Implementations.RemoteConfigSystem
             }
         }
         
-        #if UNITY_EDITOR
-        
-        [MultiLineProperty, SerializeField] private string valueToImport;
-        
+#if UNITY_EDITOR
+        // NonSerialized + ShowInInspector: hiện trong Inspector nhưng KHÔNG serialize.
+        // Trước đây dùng [SerializeField] bọc trong #if UNITY_EDITOR → Editor serialize field này
+        // vào asset, nhưng build strip field → layout mismatch → crash native:
+        // "Read 19208 bytes but expected 19364 bytes"
+        [NonSerialized, ShowInInspector, MultiLineProperty]
+        private string valueToImport;
+
         [Button]
         private void CopyJsonToClipboard()
         {
@@ -113,7 +117,6 @@ namespace Horcrux.Runtime.Implementations.RemoteConfigSystem
             if(!string.IsNullOrEmpty(valueToImport) && TryParseValueFromString(valueToImport, out T parsed))
                 value = parsed;
         }
-        
-        #endif
+#endif
     }
 }
