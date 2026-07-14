@@ -19,37 +19,7 @@ namespace Horcrux.Runtime.Utilities.ExtensionMethods
             float a = self.a + (target.a - self.a) * ratio;
             return new Color(r, g, b, a);
         }
-
-        /// <summary>
-        /// Clamp each channel of this color to [0,1]
-        /// </summary>
-        public static Color Clamp01(this Color self)
-            => new Color
-            {
-                r = Mathf.Clamp01(self.r),
-                g = Mathf.Clamp01(self.g),
-                b = Mathf.Clamp01(self.b),
-                a = Mathf.Clamp01(self.a)
-            };
         
-        /// <summary>
-        /// Add two colors and clamp each channel to [0,1]
-        /// </summary>
-        public static Color Add(this Color self, Color other)
-            => (self + other).Clamp01();
-
-        /// <summary>
-        /// Subtract two colors and clamp each channel to [0,1]
-        /// </summary>
-        public static Color Subtract(this Color self, Color other)
-            => (self - other).Clamp01();
-
-        public static Color Invert(this Color self)
-            => new(1 - self.r, 1 - self.g, 1 - self.b, self.a);
-
-        /// <summary>
-        /// Convert hex string to Color
-        /// </summary>
         public static Color ToColor(this string hex)
         {
             if (ColorUtility.TryParseHtmlString(hex, out Color result))
@@ -57,11 +27,22 @@ namespace Horcrux.Runtime.Utilities.ExtensionMethods
             
             throw new System.Exception($"Invalid hex color string: {hex}");
         }
-
-        /// <summary>
-        /// Convert Color to hex string
-        /// </summary>
+        
         public static string ToHex(this Color color)
             => $"{ColorUtility.ToHtmlStringRGBA(color)}";
+
+        /// <summary>
+        /// Pack a <see cref="Color"/> into a 32-bit unit.</summary>
+        /// <remarks>
+        /// The color channels are packed in little-endian order: R is the lowest 8 bits (0-7), A is the highest 8 bits (24-31).<br/>
+        /// Unpacking must strictly follow this order to avoid color shifting.<br/>
+        /// Highly optimized for sending color data to GPU buffers.
+        /// </remarks>
+        /// <returns>A 32-bit uint containing the packed Color data</returns>
+        public static uint PackColor(this Color self)
+        {
+            Color32 c = self;
+            return (uint)(c.r | (c.g << 8) | (c.b << 16) | (c.a << 24));
+        }
     }
 }
