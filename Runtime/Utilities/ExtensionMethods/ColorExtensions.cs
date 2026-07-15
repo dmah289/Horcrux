@@ -32,7 +32,8 @@ namespace Horcrux.Runtime.Utilities.ExtensionMethods
             => $"{ColorUtility.ToHtmlStringRGBA(color)}";
 
         /// <summary>
-        /// Pack a <see cref="Color"/> into a 32-bit unit.</summary>
+        /// Pack a <see cref="Color"/> into a 32-bit unit.
+        /// </summary>
         /// <remarks>
         /// The color channels are packed in little-endian order: R is the lowest 8 bits (0-7), A is the highest 8 bits (24-31).<br/>
         /// Unpacking must strictly follow this order to avoid color shifting.<br/>

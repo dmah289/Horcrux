@@ -2,13 +2,12 @@ using UnityEngine;
 
 namespace Horcrux.Runtime.Utilities.PhysXHelper
 {
+    public enum WaveStyle
+    {
+        Sin, Cos
+    }
     public static class HarmonicOscillator
     {
-        public enum WaveStyle
-        {
-            Sin, Cos
-        }
-        
         /// <summary>
         /// Calculates the instantaneous displacement of a simple harmonic oscillation using either Sin or Cos wave function.
         /// <para>Formula (Sin): x = A * sin(ω * t + ϕ) -> Start at 0 (Equilibrium) when t = 0, ϕ = 0 </para>>
