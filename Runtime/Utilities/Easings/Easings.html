@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Easings — Ease Playground</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#0d1117;--bg2:#161b22;--bg3:#1c2333;--bg4:#242d3a;--tx:#e6edf3;--tx2:#8b949e;--tx3:#484f58;--ac:#58a6ff;--ac2:#bc8cff;--gr:#3fb950;--or:#d29922;--rd:#f85149;--bd:#30363d;--r:10px;--mono:'JetBrains Mono','Fira Code','Cascadia Code','SF Mono',monospace;--sans:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif}
+html{scroll-behavior:smooth;background:var(--bg);color:var(--tx);font:17px/1.7 var(--sans)}
+body{overflow-x:hidden}
+a{color:var(--ac);text-decoration:none}a:hover{text-decoration:underline}
+#progress{position:fixed;top:0;left:0;height:3px;background:linear-gradient(90deg,var(--ac),var(--ac2));width:0;z-index:999;transition:width .1s}
+#header{max-width:920px;margin:0 auto;padding:4rem 1.5rem 2rem;border-bottom:1px solid var(--bd)}
+#header h1{font-size:clamp(2rem,5vw,3rem);font-weight:800;letter-spacing:-.03em;background:linear-gradient(135deg,var(--ac),var(--ac2));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+#header .sub{font-size:1.05rem;color:var(--tx2);margin-top:.4rem}
+#header .badge{display:inline-block;margin-top:.8rem;padding:.3em .9em;border:1px solid var(--bd);border-radius:99px;font-family:var(--mono);font-size:.78rem;color:var(--tx2)}
+main{max-width:920px;margin:0 auto;padding:0 1.5rem 6rem}
+section{padding-top:4rem}
+section .reveal{opacity:0;transform:translateY(24px);transition:opacity .6s ease,transform .6s ease}
+section .reveal.visible{opacity:1;transform:none}
+h2{font-size:1.9rem;font-weight:700;letter-spacing:-.02em;margin-bottom:1.5rem;padding-bottom:.5rem;border-bottom:1px solid var(--bd)}
+p,ul,ol{margin-bottom:1rem}ul{padding-left:1.3em}li{margin-bottom:.3rem}
+strong{color:var(--tx);font-weight:600}
+em{color:var(--ac2);font-style:normal}
+code{font-family:var(--mono);font-size:.88em;background:var(--bg3);padding:.15em .4em;border-radius:4px}
+pre{margin:1.2rem 0!important;border-radius:var(--r)!important;border:1px solid var(--bd)!important}
+pre code{background:none!important;padding:0!important;font-size:.85rem!important;line-height:1.6!important}
+.note{border-left:3px solid var(--or);background:var(--bg2);padding:1rem 1.2rem;border-radius:0 var(--r) var(--r) 0;margin:1.5rem 0;font-size:.92rem;color:var(--tx2)}
+.note strong{color:var(--or)}
+.demo{background:var(--bg2);border:1px solid var(--bd);border-radius:var(--r);padding:1.5rem;margin:2rem 0}
+.demo-title{font-family:var(--mono);font-size:.8rem;color:var(--ac2);text-transform:uppercase;letter-spacing:.08em;margin-bottom:1rem}
+.demo canvas{display:block;border-radius:8px;cursor:crosshair;background:#0d1117;max-width:100%;margin:0 auto}
+footer{text-align:center;padding:3rem 1rem;color:var(--tx3);font-size:.85rem;border-top:1px solid var(--bd)}
+
+/* ── Playground controls ───────────────────────────────── */
+.controls{display:flex;gap:1.2rem;flex-wrap:wrap;margin-bottom:.5rem}
+.ctrl{display:flex;flex-direction:column;gap:.35rem;flex:1;min-width:190px}
+.ctrl label{font-family:var(--mono);font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:var(--tx2)}
+.ctrl select{appearance:none;background:var(--bg3);color:var(--tx);border:1px solid var(--bd);border-radius:8px;padding:.6rem .8rem;font:inherit;font-size:.95rem;cursor:pointer;transition:border-color .15s}
+.ctrl select:hover{border-color:var(--ac)}
+.ctrl select:focus{outline:none;border-color:var(--ac)}
+.hint{color:var(--tx3);text-align:center;padding:3rem 1rem;font-style:italic}
+.hidden{display:none!important}
+.formula-box{background:var(--bg3);border-radius:var(--r);padding:1.4rem;margin:1rem 0;overflow-x:auto;text-align:center}
+.katex{font-size:1.15rem!important;color:var(--tx)}
+.const-box{text-align:center;color:var(--tx2);margin:.4rem 0 0;font-size:.9rem}
+/* preview */
+.pv-panel{margin-top:1.8rem;padding-top:1.5rem;border-top:1px solid var(--bd)}
+.pv-desc{font-size:.9rem;color:var(--tx2);margin-bottom:1.2rem}
+.pv-stage{display:flex;align-items:center;gap:1.1rem}
+.pv-track{position:relative;flex:1;height:52px;border-radius:99px;background:var(--bg3);box-shadow:inset 0 1px 3px rgba(0,0,0,.35)}
+.pv-dot{position:absolute;top:50%;width:26px;height:26px;border-radius:50%;transform:translate(-50%,-50%);will-change:left}
+.pv-dot.eased{background:linear-gradient(135deg,var(--ac),var(--ac2));box-shadow:0 0 12px rgba(88,166,255,.5);z-index:2}
+.pv-dot.ghost{background:transparent;border:2px dashed var(--tx3)}
+.pv-btn{flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;width:52px;height:52px;background:var(--bg3);border:1px solid var(--bd);color:var(--ac);border-radius:50%;font:inherit;font-size:1.1rem;cursor:pointer;transition:all .15s}
+.pv-btn:hover:not(:disabled){border-color:var(--ac);background:var(--bg4);transform:scale(1.06)}
+.pv-btn:active:not(:disabled){transform:scale(.96)}
+.pv-btn:disabled{opacity:.4;cursor:not-allowed}
+.pv-btn.playing{border-color:var(--ac);background:var(--bg4);color:var(--ac2)}
+.pv-btn .pv-icon{line-height:1;transform:translateX(1px);font-size:.8em;letter-spacing:1px}
+.pv-btn.playing .pv-icon{transform:none}
+.pv-legend{font-size:.82rem;color:var(--tx2);margin-top:1rem;display:flex;gap:1.6rem;flex-wrap:wrap;padding-left:calc(52px + 1.1rem)}
+.pv-legend span::before{content:'';display:inline-block;width:12px;height:12px;border-radius:50%;margin-right:.4em;vertical-align:-1px}
+.pv-legend .l-eased::before{background:linear-gradient(135deg,#58a6ff,#bc8cff)}
+.pv-legend .l-ghost::before{border:2px dashed #484f58;background:transparent}
+@media(max-width:520px){.pv-legend{padding-left:0}}
+</style>
+</head>
+<body>
+<div id="progress"></div>
+<header id="header">
+  <h1>Easings</h1>
+  <p class="sub">Mô phỏng tương tác các họ Easing Curve — chọn direction &amp; kiểu ease để xem hàm toán học và đồ thị.</p>
+  <span class="badge">Horcrux.Runtime.Tweening.Easing</span>
+</header>
+
+<main>
+
+<!-- ═══════════════ PLAYGROUND ═══════════════ -->
+<section id="playground">
+  <h2 class="reveal">Ease Playground</h2>
+
+  <div class="demo reveal">
+    <div class="controls">
+      <div class="ctrl">
+        <label for="dirSel">Direction</label>
+        <select id="dirSel">
+          <option value="None">— None —</option>
+          <option value="In">In</option>
+          <option value="Out">Out</option>
+          <option value="InOut">InOut</option>
+        </select>
+      </div>
+      <div class="ctrl">
+        <label for="easeSel">Kiểu ease</label>
+        <select id="easeSel">
+          <option value="None">— None —</option>
+          <option value="Linear">Linear</option>
+          <option value="Quad">Quad</option>
+          <option value="Cubic">Cubic</option>
+          <option value="Quart">Quart</option>
+          <option value="Quint">Quint</option>
+          <option value="Sine">Sine</option>
+          <option value="Expo">Expo</option>
+          <option value="Circ">Circ</option>
+          <option value="Back">Back</option>
+          <option value="Elastic">Elastic</option>
+          <option value="Bounce">Bounce</option>
+        </select>
+      </div>
+    </div>
+
+    <p id="pgHint" class="hint">Chọn cả hai dropdown để bắt đầu.</p>
+
+    <div id="pgResult" class="hidden">
+      <div style="margin-bottom:1.8rem">
+        <div class="demo-title">Hàm toán học</div>
+        <div class="formula-box"><div id="formula"></div></div>
+        <div class="const-box" id="constBox"></div>
+        <div id="boundaryNote"></div>
+      </div>
+      <div>
+        <canvas id="graph" width="480" height="440"></canvas>
+      </div>
+
+      <div class="pv-panel">
+        <div class="demo-title">Xem trước chuyển động</div>
+        <p class="pv-desc">Chấm <em>eased</em> di theo curve đang chọn, chấm <em>ghost</em> di đều (Linear) để đối chiếu.</p>
+        <div class="pv-stage">
+          <button class="pv-btn" id="pvPlay"><span class="pv-icon">▶</span></button>
+          <div class="pv-track">
+            <div class="pv-dot ghost" id="pvGhost"></div>
+            <div class="pv-dot eased" id="pvEased"></div>
+          </div>
+        </div>
+        <div class="pv-legend">
+          <span class="l-eased">Eased (ease đang chọn)</span>
+          <span class="l-ghost">Ghost (Linear)</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ API ═══════════════ -->
+<section id="api">
+  <h2 class="reveal">Cách dùng — Easer</h2>
+  <p class="reveal">Điểm vào duy nhất là <code>Easer.Evaluate(EaseType, t)</code>. Nó clamp <code>t</code> về <code>[0,1]</code> một lần rồi dispatch sang curve tương ứng.</p>
+  <pre class="reveal"><code class="language-csharp">float t = elapsed * inverseDuration;        // tránh phép chia trong hot path
+float k = Easer.Evaluate(EaseType.OutBack, t);
+transform.position = Vector3.LerpUnclamped(from, to, k);  // LerpUnclamped vì Back/Elastic overshoot</code></pre>
+  <div class="note reveal">
+    <strong>Lưu ý.</strong> Kết quả <code>k</code> có thể <strong>vượt <code>[0,1]</code></strong> (Back/Elastic overshoot) → luôn dùng các hàm <em>unclamped</em> khi nội suy. Khuyến nghị xử lý điều kiện <code>t >= 1</code> trước khi gọi để chốt đúng giá trị cuối.
+  </div>
+</section>
+
+</main>
+
+<footer>Horcrux · Easings · <code>Horcrux.Runtime.Tweening.Easing</code></footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-csharp.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+
+/* ── Reveal + progress bar ─────────────────────────────── */
+const io = new IntersectionObserver(e => {
+  e.forEach(x => { if (x.isIntersecting) x.target.classList.add('visible'); });
+}, { threshold: .08 });
+document.querySelectorAll('.reveal').forEach(el => io.observe(el));
+const pbar = document.getElementById('progress');
+window.addEventListener('scroll', () => {
+  const h = document.documentElement;
+  pbar.style.width = (h.scrollTop / (h.scrollHeight - h.clientHeight) * 100) + '%';
+}, { passive: true });
+
+/* ── Ease families: fn (khớp PLAN.md) + tex hiển thị ───── */
+const HALF_PI = Math.PI * 0.5;
+const C1 = 1.70158, C3 = C1 + 1, C2 = C1 * 1.525;
+const C4 = 2 * Math.PI / 3, C5 = 2 * Math.PI / 4.5;
+const N1 = 7.5625, D1 = 2.75;
+function bounceOut(t) {
+  if (t < 1 / D1) return N1 * t * t;
+  if (t < 2 / D1) { t -= 1.5 / D1; return N1 * t * t + 0.75; }
+  if (t < 2.5 / D1) { t -= 2.25 / D1; return N1 * t * t + 0.9375; }
+  t -= 2.625 / D1; return N1 * t * t + 0.984375;
+}
+
+const R = String.raw; // giữ nguyên backslash cho KaTeX
+
+const FAMILIES = {
+  Linear: {
+    fn: { In: t => t, Out: t => t, InOut: t => t },
+    tex: { In: R`f(t)=t`, Out: R`f(t)=t`, InOut: R`f(t)=t` },
+    boundary: 'Linear không phụ thuộc direction — cả ba biến thể là hàm đồng nhất.'
+  },
+
+  Quad: {
+    fn: {
+      In: t => t * t,
+      Out: t => t * (2 - t),
+      InOut: t => t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t
+    },
+    tex: {
+      In: R`f(t)=t^2`,
+      Out: R`f(t)=t(2-t)`,
+      InOut: R`f(t)=\begin{cases}2t^2 & t<0.5\\[1mm] -1+(4-2t)\,t & t\ge0.5\end{cases}`
+    }
+  },
+
+  Cubic: {
+    fn: {
+      In: t => t * t * t,
+      Out: t => { const f = t - 1; return f * f * f + 1; },
+      InOut: t => { if (t < 0.5) return 4 * t * t * t; const f = -2 * t + 2; return 1 - f * f * f * 0.5; }
+    },
+    tex: {
+      In: R`f(t)=t^3`,
+      Out: R`f(t)=(t-1)^3+1`,
+      InOut: R`f(t)=\begin{cases}4t^3 & t<0.5\\[1mm] 1-\dfrac{(-2t+2)^3}{2} & t\ge0.5\end{cases}`
+    }
+  },
+
+  Quart: {
+    fn: {
+      In: t => t * t * t * t,
+      Out: t => { const f = t - 1; return 1 - f * f * f * f; },
+      InOut: t => { if (t < 0.5) return 8 * t * t * t * t; const f = -2 * t + 2; return 1 - f * f * f * f * 0.5; }
+    },
+    tex: {
+      In: R`f(t)=t^4`,
+      Out: R`f(t)=1-(t-1)^4`,
+      InOut: R`f(t)=\begin{cases}8t^4 & t<0.5\\[1mm] 1-\dfrac{(-2t+2)^4}{2} & t\ge0.5\end{cases}`
+    }
+  },
+
+  Quint: {
+    fn: {
+      In: t => t * t * t * t * t,
+      Out: t => { const f = t - 1; return 1 + f * f * f * f * f; },
+      InOut: t => { if (t < 0.5) return 16 * t * t * t * t * t; const f = -2 * t + 2; return 1 - f * f * f * f * f * 0.5; }
+    },
+    tex: {
+      In: R`f(t)=t^5`,
+      Out: R`f(t)=1+(t-1)^5`,
+      InOut: R`f(t)=\begin{cases}16t^5 & t<0.5\\[1mm] 1-\dfrac{(-2t+2)^5}{2} & t\ge0.5\end{cases}`
+    }
+  },
+
+  Sine: {
+    fn: {
+      In: t => 1 - Math.cos(t * HALF_PI),
+      Out: t => Math.sin(t * HALF_PI),
+      InOut: t => -(Math.cos(Math.PI * t) - 1) * 0.5
+    },
+    tex: {
+      In: R`f(t)=1-\cos\!\left(\dfrac{\pi t}{2}\right)`,
+      Out: R`f(t)=\sin\!\left(\dfrac{\pi t}{2}\right)`,
+      InOut: R`f(t)=-\dfrac{\cos(\pi t)-1}{2}`
+    }
+  },
+
+  Expo: {
+    fn: {
+      In: t => t <= 0 ? 0 : Math.pow(2, 10 * t - 10),
+      Out: t => t >= 1 ? 1 : 1 - Math.pow(2, -10 * t),
+      InOut: t => { if (t <= 0) return 0; if (t >= 1) return 1; return t < 0.5 ? Math.pow(2, 20 * t - 10) * 0.5 : (2 - Math.pow(2, -20 * t + 10)) * 0.5; }
+    },
+    tex: {
+      In: R`f(t)=2^{10t-10}`,
+      Out: R`f(t)=1-2^{-10t}`,
+      InOut: R`f(t)=\begin{cases}\dfrac{2^{20t-10}}{2} & t<0.5\\[1mm] \dfrac{2-2^{-20t+10}}{2} & t\ge0.5\end{cases}`
+    },
+    boundary: 'Xử lý biên riêng: f(0)=0, f(1)=1 (tránh sai số của Mathf.Pow).'
+  },
+
+  Circ: {
+    fn: {
+      In: t => 1 - Math.sqrt(1 - t * t),
+      Out: t => { const f = t - 1; return Math.sqrt(1 - f * f); },
+      InOut: t => { if (t < 0.5) { const x = 2 * t; return (1 - Math.sqrt(1 - x * x)) * 0.5; } const y = -2 * t + 2; return (Math.sqrt(1 - y * y) + 1) * 0.5; }
+    },
+    tex: {
+      In: R`f(t)=1-\sqrt{1-t^2}`,
+      Out: R`f(t)=\sqrt{1-(t-1)^2}`,
+      InOut: R`f(t)=\begin{cases}\dfrac{1-\sqrt{1-(2t)^2}}{2} & t<0.5\\[2mm] \dfrac{\sqrt{1-(-2t+2)^2}+1}{2} & t\ge0.5\end{cases}`
+    }
+  },
+
+  Back: {
+    fn: {
+      In: t => C3 * t * t * t - C1 * t * t,
+      Out: t => { const f = t - 1; return 1 + C3 * f * f * f + C1 * f * f; },
+      InOut: t => { if (t < 0.5) { const x = 2 * t; return x * x * ((C2 + 1) * x - C2) * 0.5; } const y = 2 * t - 2; return (y * y * ((C2 + 1) * y + C2) + 2) * 0.5; }
+    },
+    tex: {
+      In: R`f(t)=c_3\,t^3 - c_1\,t^2`,
+      Out: R`f(t)=1 + c_3\,(t-1)^3 + c_1\,(t-1)^2`,
+      InOut: R`f(t)=\begin{cases}\dfrac{(2t)^2\big((c_2+1)(2t)-c_2\big)}{2} & t<0.5\\[2mm] \dfrac{(2t-2)^2\big((c_2+1)(2t-2)+c_2\big)+2}{2} & t\ge0.5\end{cases}`
+    },
+    constTex: R`c_1=1.70158,\quad c_3=c_1+1,\quad c_2=1.525\,c_1`,
+    boundary: 'Overshoot: curve có thể < 0 hoặc > 1 → dùng LerpUnclamped.'
+  },
+
+  Elastic: {
+    fn: {
+      In: t => { if (t <= 0) return 0; if (t >= 1) return 1; return -Math.pow(2, 10 * t - 10) * Math.sin((10 * t - 10.75) * C4); },
+      Out: t => { if (t <= 0) return 0; if (t >= 1) return 1; return Math.pow(2, -10 * t) * Math.sin((10 * t - 0.75) * C4) + 1; },
+      InOut: t => { if (t <= 0) return 0; if (t >= 1) return 1; return t < 0.5 ? -(Math.pow(2, 20 * t - 10) * Math.sin((20 * t - 11.125) * C5)) * 0.5 : Math.pow(2, -20 * t + 10) * Math.sin((20 * t - 11.125) * C5) * 0.5 + 1; }
+    },
+    tex: {
+      In: R`f(t)=-2^{10t-10}\sin\big((10t-10.75)c_4\big)`,
+      Out: R`f(t)=2^{-10t}\sin\big((10t-0.75)c_4\big)+1`,
+      InOut: R`f(t)=\begin{cases}-\dfrac{2^{20t-10}\sin\big((20t-11.125)c_5\big)}{2} & t<0.5\\[2mm] \dfrac{2^{-20t+10}\sin\big((20t-11.125)c_5\big)}{2}+1 & t\ge0.5\end{cases}`
+    },
+    constTex: R`c_4=\dfrac{2\pi}{3},\quad c_5=\dfrac{2\pi}{4.5}`,
+    boundary: 'Xử lý biên f(0)=0, f(1)=1. Dao động mạnh → dùng LerpUnclamped.'
+  },
+
+  Bounce: {
+    fn: {
+      In: t => 1 - bounceOut(1 - t),
+      Out: t => bounceOut(t),
+      InOut: t => t < 0.5 ? (1 - bounceOut(1 - 2 * t)) * 0.5 : (1 + bounceOut(2 * t - 1)) * 0.5
+    },
+    tex: {
+      In: R`f(t)=1-\mathrm{Out}(1-t)`,
+      Out: R`f(t)=\begin{cases}n_1 t^2 & t<\frac{1}{d_1}\\[1mm] n_1\!\left(t-\frac{1.5}{d_1}\right)^2+0.75 & t<\frac{2}{d_1}\\[1mm] n_1\!\left(t-\frac{2.25}{d_1}\right)^2+0.9375 & t<\frac{2.5}{d_1}\\[1mm] n_1\!\left(t-\frac{2.625}{d_1}\right)^2+0.984375 & \text{khác}\end{cases}`,
+      InOut: R`f(t)=\begin{cases}\dfrac{1-\mathrm{Out}(1-2t)}{2} & t<0.5\\[2mm] \dfrac{1+\mathrm{Out}(2t-1)}{2} & t\ge0.5\end{cases}`
+    },
+    constTex: R`n_1=7.5625,\quad d_1=2.75`
+  }
+};
+
+/* ── DOM refs ──────────────────────────────────────────── */
+const dirSel = document.getElementById('dirSel');
+const easeSel = document.getElementById('easeSel');
+const pgHint = document.getElementById('pgHint');
+const pgResult = document.getElementById('pgResult');
+const formulaEl = document.getElementById('formula');
+const constBox = document.getElementById('constBox');
+const boundaryNote = document.getElementById('boundaryNote');
+const canvas = document.getElementById('graph');
+const ctx = canvas.getContext('2d');
+const pvPlay = document.getElementById('pvPlay');
+
+let currentFn = null; // fn của lựa chọn hiện tại
+
+/* ── Canvas: hệ tọa độ Oxy, max = 2 mỗi trục ───────────── */
+const CSSW = 480, CSSH = 440;
+const dpr = window.devicePixelRatio || 1;
+canvas.width = CSSW * dpr; canvas.height = CSSH * dpr;
+canvas.style.width = CSSW + 'px'; canvas.style.height = CSSH + 'px';
+ctx.scale(dpr, dpr);
+
+// Offscreen: nền tĩnh (grid/trục/curve) vẽ 1 lần mỗi lần đổi ease.
+// Hover chỉ blit nền + vẽ marker → không recompute curve 300 điểm mỗi frame.
+const bg = document.createElement('canvas');
+bg.width = CSSW * dpr; bg.height = CSSH * dpr;
+const bgCtx = bg.getContext('2d');
+bgCtx.scale(dpr, dpr);
+
+const PADL = 40, PADB = 34, PADT = 16, PADR = 16;
+const PLOTW = CSSW - PADL - PADR;
+const PLOTH = CSSH - PADT - PADB;
+const XMIN = 0, XMAX = 2, YMIN = -0.7, YMAX = 2;   // YMIN<0: thấy undershoot Back/Elastic
+const xToPx = x => PADL + (x - XMIN) / (XMAX - XMIN) * PLOTW;
+const yToPx = y => PADT + (1 - (y - YMIN) / (YMAX - YMIN)) * PLOTH;
+const pxToX = px => XMIN + (px - PADL) / PLOTW * (XMAX - XMIN);
+const TAU = Math.PI * 2;
+
+// Toạ độ curve cố định → tạo gradient 1 lần, tái dùng cho mọi lần render.
+const curveGrad = bgCtx.createLinearGradient(xToPx(0), 0, xToPx(1), 0);
+curveGrad.addColorStop(0, '#58a6ff'); curveGrad.addColorStop(1, '#bc8cff');
+
+function fillDot(c, x, y, r) { c.beginPath(); c.arc(x, y, r, 0, TAU); c.fill(); }
+
+// Vẽ nền tĩnh vào offscreen — gọi mỗi lần đổi ease.
+function renderBackground() {
+  const c = bgCtx;
+  c.fillStyle = '#0d1117';
+  c.fillRect(0, 0, CSSW, CSSH);
+
+  // minor grid (bước 0.5)
+  c.strokeStyle = '#1c2333'; c.lineWidth = 1;
+  c.beginPath();
+  for (let x = 0.5; x <= 2; x += 0.5) { const px = xToPx(x); c.moveTo(px, yToPx(YMAX)); c.lineTo(px, yToPx(YMIN)); }
+  for (let y = -0.5; y <= 2; y += 0.5) { const py = yToPx(y); c.moveTo(xToPx(XMIN), py); c.lineTo(xToPx(XMAX), py); }
+  c.stroke();
+
+  // major grid + số (bước 1)
+  c.strokeStyle = '#30363d'; c.fillStyle = '#8b949e'; c.font = '11px monospace';
+  c.beginPath();
+  for (let x = 0; x <= 2; x++) { const px = xToPx(x); c.moveTo(px, yToPx(YMAX)); c.lineTo(px, yToPx(YMIN)); }
+  for (let y = 0; y <= 2; y++) { const py = yToPx(y); c.moveTo(xToPx(XMIN), py); c.lineTo(xToPx(XMAX), py); }
+  c.stroke();
+  c.textAlign = 'center'; c.textBaseline = 'top';
+  for (let x = 0; x <= 2; x++) c.fillText(x, xToPx(x), yToPx(0) + 5);
+  c.textAlign = 'right'; c.textBaseline = 'middle';
+  for (let y = 1; y <= 2; y++) c.fillText(y, xToPx(0) - 6, yToPx(y));
+
+  // trục Ox / Oy đậm
+  c.strokeStyle = '#6e7681'; c.lineWidth = 1.5;
+  c.beginPath();
+  c.moveTo(xToPx(XMIN), yToPx(0)); c.lineTo(xToPx(XMAX), yToPx(0));
+  c.moveTo(xToPx(0), yToPx(YMIN)); c.lineTo(xToPx(0), yToPx(YMAX));
+  c.stroke();
+
+  // nhãn trục
+  c.fillStyle = '#8b949e'; c.font = 'italic 13px monospace';
+  c.textAlign = 'right'; c.textBaseline = 'bottom';
+  c.fillText('t', xToPx(XMAX) - 2, yToPx(0) - 4);
+  c.textAlign = 'left'; c.textBaseline = 'top';
+  c.fillText('f(t)', xToPx(0) + 6, yToPx(YMAX) + 2);
+
+  if (!currentFn) return;
+
+  // đường Linear tham chiếu (0,0)->(1,1)
+  c.strokeStyle = '#484f58'; c.lineWidth = 1;
+  c.setLineDash([4, 4]);
+  c.beginPath(); c.moveTo(xToPx(0), yToPx(0)); c.lineTo(xToPx(1), yToPx(1)); c.stroke();
+  c.setLineDash([]);
+
+  // curve ease (t ∈ [0,1])
+  c.strokeStyle = curveGrad; c.lineWidth = 2.5;
+  c.beginPath();
+  const STEPS = 300;
+  for (let i = 0; i <= STEPS; i++) {
+    const t = i / STEPS;
+    const px = xToPx(t), py = yToPx(currentFn(t));
+    i === 0 ? c.moveTo(px, py) : c.lineTo(px, py);
+  }
+  c.stroke();
+
+  // điểm đầu / cuối
+  c.fillStyle = '#58a6ff'; fillDot(c, xToPx(0), yToPx(currentFn(0)), 3);
+  c.fillStyle = '#bc8cff'; fillDot(c, xToPx(1), yToPx(currentFn(1)), 3);
+}
+
+// Blit nền + overlay marker hover (rẻ, gọi mỗi frame khi di chuột).
+function drawScene(hx) {
+  ctx.clearRect(0, 0, CSSW, CSSH);
+  ctx.drawImage(bg, 0, 0, CSSW, CSSH);
+  if (hx === null || !currentFn) return;
+
+  const y = currentFn(hx);
+  const px = xToPx(hx), py = yToPx(y);
+  ctx.strokeStyle = '#6e7681'; ctx.lineWidth = 1;
+  ctx.setLineDash([3, 3]);
+  ctx.beginPath();
+  ctx.moveTo(px, yToPx(0)); ctx.lineTo(px, py);
+  ctx.moveTo(xToPx(0), py); ctx.lineTo(px, py);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = '#f0f6fc'; fillDot(ctx, px, py, 4.5);
+  ctx.strokeStyle = '#bc8cff'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.arc(px, py, 4.5, 0, TAU); ctx.stroke();
+
+  const label = '(' + hx.toFixed(2) + ', ' + y.toFixed(3) + ')';
+  ctx.font = '12px monospace';
+  ctx.textAlign = 'left'; ctx.textBaseline = 'bottom';
+  const w = ctx.measureText(label).width;
+  const lx = Math.min(px + 8, CSSW - w - 6);
+  ctx.fillStyle = '#0d1117'; ctx.fillRect(lx - 3, py - 20, w + 6, 16);
+  ctx.fillStyle = '#e6edf3'; ctx.fillText(label, lx, py - 6);
+}
+
+/* hover: rAF guard, tọa độ scalar (theo blacklist DOCS_SKILL) */
+let hoverX = null, dirty = false, raf = 0;
+function tick() { raf = 0; if (dirty) { drawScene(hoverX); dirty = false; } }
+canvas.addEventListener('mousemove', e => {
+  if (!currentFn) return;
+  const rect = canvas.getBoundingClientRect();
+  const mx = (e.clientX - rect.left) * CSSW / rect.width;
+  const dx = pxToX(mx);
+  if (dx < -0.02 || dx > 1.02) { if (hoverX !== null) { hoverX = null; dirty = true; if (!raf) raf = requestAnimationFrame(tick); } return; }
+  hoverX = dx < 0 ? 0 : (dx > 1 ? 1 : dx);
+  dirty = true;
+  if (!raf) raf = requestAnimationFrame(tick);
+});
+canvas.addEventListener('mouseleave', () => {
+  hoverX = null; dirty = false;
+  if (raf) { cancelAnimationFrame(raf); raf = 0; }
+  drawScene(null);
+});
+
+/* ── Cập nhật lựa chọn ─────────────────────────────────── */
+function update() {
+  const dir = dirSel.value, fam = easeSel.value;
+  const ready = dir !== 'None' && fam !== 'None';
+  pgHint.classList.toggle('hidden', ready);
+  pgResult.classList.toggle('hidden', !ready);
+  if (!ready) { currentFn = null; return; }
+
+  const F = FAMILIES[fam];
+  currentFn = F.fn[dir];
+
+  // hàm toán học (KaTeX)
+  if (window.katex) katex.render(F.tex[dir], formulaEl, { displayMode: true, throwOnError: false });
+  else formulaEl.textContent = F.tex[dir];
+
+  // hằng số
+  if (F.constTex && window.katex) { constBox.classList.remove('hidden'); katex.render(F.constTex, constBox, { displayMode: false, throwOnError: false }); }
+  else constBox.textContent = '';
+
+  // ghi chú biên
+  boundaryNote.innerHTML = F.boundary ? '<div class="note" style="margin:1rem 0 0">' + F.boundary + '</div>' : '';
+
+  renderBackground();   // curve tĩnh → vẽ 1 lần vào offscreen
+  drawScene(null);
+  pvReset();
+}
+dirSel.addEventListener('change', update);
+easeSel.addEventListener('change', update);
+
+/* ── Preview: chạy khi Play, dừng hẳn (zero idle) ──────── */
+const pvEased = document.getElementById('pvEased');
+const pvGhost = document.getElementById('pvGhost');
+const pvIcon = pvPlay.querySelector('.pv-icon');
+const PV_DUR = 1400;
+const DOT = 26; // px — khớp .pv-dot; chừa lề để dot không tràn mép track
+let pvRaf = 0, pvStart = 0;
+const trackPos = v => 'calc(' + (DOT / 2) + 'px + ' + v + ' * (100% - ' + DOT + 'px))';
+function pvReset() {
+  if (pvRaf) { cancelAnimationFrame(pvRaf); pvRaf = 0; }
+  pvStart = 0; pvIcon.textContent = '▶'; pvPlay.classList.remove('playing');
+  pvGhost.style.left = trackPos(0);
+  pvEased.style.left = trackPos(0);
+}
+function pvFrame(now) {
+  if (!pvStart) pvStart = now;
+  let t = (now - pvStart) / PV_DUR;
+  if (t >= 1) t = 1;
+  pvGhost.style.left = trackPos(t);
+  pvEased.style.left = trackPos(currentFn(t));
+  if (t < 1) { pvRaf = requestAnimationFrame(pvFrame); }
+  else { pvRaf = 0; pvStart = 0; pvIcon.textContent = '▶'; pvPlay.classList.remove('playing'); }
+}
+pvPlay.addEventListener('click', () => {
+  if (!currentFn || pvRaf) return;
+  pvStart = 0; pvIcon.textContent = '❚❚'; pvPlay.classList.add('playing');
+  pvRaf = requestAnimationFrame(pvFrame);
+});
+
+});
+</script>
+</body>
+</html>

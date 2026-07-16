@@ -4,6 +4,20 @@ Danh sách các tool đang chờ thiết kế chi tiết và triển khai.
 
 ---
 
+## ✅ Đã hoàn thành — Usage Finder (reverse lookup "dùng ở đâu")
+
+Bộ tool trả lời "GameObject / Component / Asset / Material này đang được dùng ở đâu?". Thiết kế tổng thể: `UsageFinderPlan.md`.
+
+| Tool | Trả lời | Tài liệu |
+|------|---------|----------|
+| **Usage Finder** (Tab Asset) | Asset nào trực tiếp tham chiếu asset này (hard dependency) | `UsageFinder/UsageFinder.md` |
+| **Usage Finder** (Tab Addressable) | `AssetReference` (Addressables) nào trỏ tới asset này | `UsageFinder/UsageFinder.md` |
+| **Scene Reference Finder** | Xóa GameObject/Component này có gây null ref trong scene/prefab không | `SceneReferenceFinder/SceneReferenceFinder.md` |
+
+**Foundation dùng chung** (`Common/`): `AssetReferenceIndex` (reverse dependency index, xem `AssetReferenceIndex.md`), `SerializedPropertyWalker` (traversal + visitor), `NavigationHelper` (select/ping/prefab-stage).
+
+---
+
 ## 1. Event Debugger
 
 **Mục đích:** Debug realtime hệ thống `EventBus<T>` — biến event flow từ black box thành transparent.

@@ -1,4 +1,4 @@
-﻿namespace Horcrux.Runtime.Utilities.AnimationHelper
+﻿namespace Horcrux.Runtime.Tweening.Easing
 {
     public enum EaseType
     {

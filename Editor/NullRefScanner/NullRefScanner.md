@@ -114,8 +114,9 @@ Zero allocation trong OnGUI — tất cả display strings cached theo 3 giai đ
 |------|---------|
 | `NullRefScannerWindow.cs` | EditorWindow — orchestration: toolbar, filter, scroll, status bar |
 | `NullRefResultDrawer.cs` | Vẽ cây kết quả 3 tầng (GO → Component → Field) với reusable GUIContent |
-| `NullRefNavigationHelper.cs` | Static utility — selection, ping, prefab-stage navigation |
 | `NullRefKindDisplay.cs` | Static lookup table — icon, tag, color, severity cho mỗi NullRefKind |
-| `NullRefScannerCore.cs` | Logic quét — static class, không phụ thuộc UI |
+| `NullRefScannerCore.cs` | Logic quét — static class, không phụ thuộc UI. Ủy quyền traversal cho `Common/SerializedPropertyWalker`, chỉ giữ `NullCheckVisitor` (quyết định reference nào null) |
 | `NullRefScanResult.cs` | Data model: `NullRefKind`, `FieldResult`, `ComponentResult`, `GameObjectResult` — immutable, cached display data |
 | `NullRefScanner.md` | Tài liệu thiết kế (file này) |
+
+> **Dùng chung từ `Common/`:** traversal `SerializedProperty` (`SerializedPropertyWalker`) và điều hướng selection/ping/prefab-stage (`NavigationHelper`) — tách ra để UsageFinder và SceneReferenceFinder tái sử dụng.

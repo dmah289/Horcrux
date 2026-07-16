@@ -79,7 +79,7 @@ namespace Horcrux.Editor.NullRefScanner
             if (GUILayout.Button(_goLabelContent, StaticStyles.AssetButton))
             {
                 if (goResult.gameObject != null)
-                    NullRefNavigationHelper.SelectAndPing(goResult.gameObject);
+                    NavigationHelper.SelectAndPing(goResult.gameObject);
             }
 
             EditorGUILayout.EndHorizontal();
@@ -148,7 +148,7 @@ namespace Horcrux.Editor.NullRefScanner
             if (GUILayout.Button(_fieldLabelContent, EditorStyles.label))
             {
                 if (go != null)
-                    NullRefNavigationHelper.SelectAndPingProperty(go, comp, field.propertyPath);
+                    NavigationHelper.SelectAndPingProperty(go, comp, field.propertyPath);
             }
 
             // Separator + type + kind tag

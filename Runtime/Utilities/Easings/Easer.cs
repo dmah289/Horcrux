@@ -1,6 +1,6 @@
-namespace Horcrux.Runtime.Utilities.AnimationHelper
+namespace Horcrux.Runtime.Tweening.Easing
 {
-    public static class EaseInterpolator
+    public static class Easer
     {
         /// <summary>
         /// Compute the interpolation coefficient.
@@ -12,7 +12,7 @@ namespace Horcrux.Runtime.Utilities.AnimationHelper
         /// </remarks>
         /// <param name="t">The normalized time progression.</param>
         /// <returns>The interpolated value may exceed the [0,1] range, must use unclamped interpolation methods.</returns>
-        public static float GetEaseValue(EaseType easeType, float t)
+        public static float Evaluate(EaseType easeType, float t)
         {
             if (t < 0f) t = 0f;
             if (t > 1f) t = 1f;

@@ -3,13 +3,14 @@ using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 
-namespace Horcrux.Editor.NullRefScanner
+namespace Horcrux.Editor.Common
 {
     /// <summary>
-    /// Static utility — selection, ping, prefab-stage navigation cho NullRefScanner.
-    /// Tách khỏi Window để tuân thủ SRP.
+    /// Static utility dùng chung — selection, ping, prefab-stage navigation.
+    /// Tách khỏi tool cụ thể để mọi Editor tool (NullRefScanner, UsageFinder, SceneReferenceFinder)
+    /// đều điều hướng nhất quán tới scene object lẫn prefab asset.
     /// </summary>
-    public static class NullRefNavigationHelper
+    public static class NavigationHelper
     {
         /// <summary>Select và ping GameObject — hỗ trợ cả scene object và prefab asset.</summary>
         public static void SelectAndPing(GameObject go)
@@ -24,7 +25,7 @@ namespace Horcrux.Editor.NullRefScanner
         }
 
         /// <summary>
-        /// Select GO, expand đúng component chứa trường null trong Inspector.
+        /// Select GO, expand đúng component chứa trường quan tâm trong Inspector.
         /// Nếu là prefab asset → mở prefab stage trước.
         /// </summary>
         public static void SelectAndPingProperty(GameObject go, Component comp, string propertyPath)
