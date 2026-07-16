@@ -22,6 +22,8 @@ namespace Horcrux.Runtime.Utilities.AnimationHelper
                 EaseType.Linear => t,
                 
                 EaseType.InQuad => QuadEase.In(t),
+                EaseType.OutQuad => QuadEase.Out(t),
+                EaseType.InOutQuad => QuadEase.InOut(t),
                 
                 _ => t
             };
