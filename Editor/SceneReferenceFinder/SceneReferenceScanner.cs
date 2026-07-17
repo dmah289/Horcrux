@@ -123,8 +123,14 @@ namespace Horcrux.Editor.SceneReferenceFinder
             for (int i = 0; i < CompBuffer.Count; i++)
             {
                 Component c = CompBuffer[i];
-                if (c == null || c is not MonoBehaviour)
-                    continue; // chỉ user scripts mới chứa reference cần kiểm
+                if (c == null)
+                    continue; // missing script
+
+                // Quét cả native component (vd Joint.connectedBody, các PPtr serialized built-in) —
+                // không chỉ MonoBehaviour. Bỏ Transform/RectTransform: luôn có mặt, không mang
+                // reference người dùng cần kiểm trước khi xóa, quét chỉ tốn công.
+                if (c is Transform)
+                    continue;
 
                 string componentName = c.GetType().Name;
 

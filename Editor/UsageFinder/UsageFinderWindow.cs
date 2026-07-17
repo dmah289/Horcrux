@@ -41,7 +41,7 @@ namespace Horcrux.Editor.UsageFinder
         private List<UsageEntry> _results;         // null cho tới scan/query đầu tiên
         private List<UsageEntry> _filteredResults;
         private bool _filterDirty = true;
-        private Tab  _resultsTab;                    // tab đã tạo ra _results (để đổi thông điệp đúng)
+        private bool _resultsComplete;              // false nếu index chưa build xong / scan bị hủy → KHÔNG khẳng định "safe"
 
         private UsageResultDrawer _drawer;
 
@@ -101,7 +101,8 @@ namespace Horcrux.Editor.UsageFinder
             DrawSeparator();
 
             _scroll = GUILayout.BeginScrollView(_scroll);
-            _drawer.Draw(_results, _filteredResults ?? _results, _resultsTab == Tab.AddressableUsages);
+            _drawer.Draw(_results, _filteredResults ?? _results,
+                _tab == Tab.AddressableUsages, _resultsComplete, _target != null);
             GUILayout.EndScrollView();
 
             DrawStatusBar();
@@ -133,6 +134,7 @@ namespace Horcrux.Editor.UsageFinder
                 // Đổi tab → kết quả cũ không còn hợp lệ; Asset tab query lại ngay, Addr tab cần bấm Scan
                 _results = null;
                 _filteredResults = null;
+                _resultsComplete = true; // reset: chưa scan lần nào ≠ scan dở dang
                 if (_tab == Tab.AssetUsages)
                     RunActiveTab();
             }
@@ -150,9 +152,14 @@ namespace Horcrux.Editor.UsageFinder
             {
                 _target = newTarget;
                 if (_tab == Tab.AssetUsages)
+                {
                     RunActiveTab();   // Asset tab: query tức thì
+                }
                 else
-                    _results = null;   // Addr tab: chờ user bấm Scan
+                {
+                    _results = null;         // Addr tab: chờ user bấm Scan
+                    _resultsComplete = true; // đổi target ≠ scan dở dang
+                }
             }
 
             EditorGUILayout.EndHorizontal();
@@ -165,8 +172,18 @@ namespace Horcrux.Editor.UsageFinder
 
                 if (GUILayout.Button(RebuildLabel, StaticGUILayout.ScanFullWidth))
                 {
-                    AssetReferenceIndex.Rebuild(true);
-                    RunActiveTab();
+                    if (AssetReferenceIndex.Rebuild(true))
+                    {
+                        RunActiveTab();          // build xong → query lại
+                    }
+                    else
+                    {
+                        // Build bị hủy → index rỗng, không đáng tin. Đánh dấu incomplete + xóa kết quả cũ.
+                        // KHÔNG query lại (sẽ kích hoạt EnsureBuilt build lần nữa qua GetReferencers).
+                        _results = null;
+                        _filteredResults = null;
+                        _resultsComplete = false;
+                    }
                 }
             }
             else
@@ -240,11 +257,18 @@ namespace Horcrux.Editor.UsageFinder
                 return;
             }
 
-            _results = _tab == Tab.AssetUsages
-                ? AssetUsageScanner.Scan(_target)
-                : AddressableUsageScanner.Scan(_target);
+            if (_tab == Tab.AssetUsages)
+            {
+                // Đảm bảo index sẵn sàng TRƯỚC khi query. Nếu build bị hủy → kết quả rỗng không đáng tin.
+                _resultsComplete = AssetReferenceIndex.EnsureBuilt();
+                _results = AssetUsageScanner.Scan(_target);
+            }
+            else
+            {
+                _results = AddressableUsageScanner.Scan(_target, out bool cancelled);
+                _resultsComplete = !cancelled;
+            }
 
-            _resultsTab = _tab;
             _scroll = Vector2.zero;
             _filterDirty = true;
             Repaint();

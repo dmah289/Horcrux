@@ -17,10 +17,16 @@ namespace Horcrux.Editor.UsageFinder
         private static readonly Color RowEvenColor = new(0f, 0f, 0f, 0.06f);
         private static readonly Color RowOddColor  = new(0f, 0f, 0f, 0.12f);
 
-        private static readonly GUIContent NoTargetMsg   = new("Select or drop an asset to find its usages.");
-        private static readonly GUIContent NoResultAsset = new("✅ No other asset references this — safe to edit/delete.");
-        private static readonly GUIContent NoResultAddr  = new("✅ No AssetReference points to this asset.");
-        private static readonly GUIContent NoMatchMsg    = new("No results match the filter.");
+        private static readonly GUIContent NoTargetMsg    = new("Select or drop an asset to find its usages.");
+        private static readonly GUIContent AwaitScanMsg   = new("Bấm \"🔍 Scan Addressable Usages\" để quét AssetReference trỏ tới target.");
+        private static readonly GUIContent NoResultAsset  = new("✅ No other asset references this — safe to edit/delete.");
+        private static readonly GUIContent NoResultAddr   = new("✅ No AssetReference points to this asset.");
+        private static readonly GUIContent NoMatchMsg     = new("No results match the filter.");
+
+        // Khi scan/build chưa hoàn tất (index build bị hủy, hoặc scan Addressable bị Cancel) → KHÔNG được
+        // khẳng định "safe". 0 kết quả lúc này chỉ nghĩa "chưa quét xong", không phải "không ai dùng".
+        private static readonly GUIContent IncompleteAsset = new("⚠️ Index chưa build xong (đã hủy). Kết quả không đầy đủ — bấm \"↻ Rebuild Index\" rồi thử lại trước khi kết luận.");
+        private static readonly GUIContent IncompleteAddr  = new("⚠️ Scan đã bị hủy giữa chừng. Kết quả không đầy đủ — bấm Scan lại trước khi kết luận không có AssetReference nào trỏ tới.");
 
         // ──────────────── Reusable GUIContent ────────────────
 
@@ -31,16 +37,39 @@ namespace Horcrux.Editor.UsageFinder
         // ──────────────── Public API ────────────────
 
         /// <param name="isAddressableTab">Đổi thông điệp "không có kết quả" cho đúng ngữ cảnh tab.</param>
-        public void Draw(List<UsageEntry> results, List<UsageEntry> displayList, bool isAddressableTab)
+        /// <param name="complete">
+        /// false nếu build index bị hủy / scan Addressable bị Cancel → 0 kết quả KHÔNG đồng nghĩa
+        /// "không ai dùng"; hiện cảnh báo thay vì khẳng định "safe".
+        /// </param>
+        public void Draw(List<UsageEntry> results, List<UsageEntry> displayList,
+                         bool isAddressableTab, bool complete, bool hasTarget)
         {
             if (results == null)
             {
-                EditorGUILayout.HelpBox(NoTargetMsg.text, MessageType.Info);
+                if (!complete)
+                {
+                    // Scan/build bị hủy để lại _results=null → cảnh báo, không im lặng.
+                    EditorGUILayout.HelpBox(
+                        (isAddressableTab ? IncompleteAddr : IncompleteAsset).text, MessageType.Warning);
+                    return;
+                }
+
+                // Có target nhưng chưa scan (Addressable tab chờ bấm Scan) ≠ chưa chọn target.
+                GUIContent msg = (hasTarget && isAddressableTab) ? AwaitScanMsg : NoTargetMsg;
+                EditorGUILayout.HelpBox(msg.text, MessageType.Info);
                 return;
             }
 
             if (displayList.Count == 0)
             {
+                if (results.Count == 0 && !complete)
+                {
+                    // Chưa quét xong → tuyệt đối không nói "safe to edit/delete".
+                    EditorGUILayout.HelpBox(
+                        (isAddressableTab ? IncompleteAddr : IncompleteAsset).text, MessageType.Warning);
+                    return;
+                }
+
                 string msg = results.Count == 0
                     ? (isAddressableTab ? NoResultAddr.text : NoResultAsset.text)
                     : NoMatchMsg.text;
@@ -98,7 +127,7 @@ namespace Horcrux.Editor.UsageFinder
 
             if (!hasDetails || !expanded) return;
 
-            EditorGUI.indentLevel++;
+            // Thụt lề do GUILayout.Space(30) — detail rows dùng GUILayout.Label (không chịu indentLevel).
             for (int d = 0; d < entry.detailLabels.Count; d++)
             {
                 EditorGUILayout.BeginHorizontal();
@@ -108,7 +137,6 @@ namespace Horcrux.Editor.UsageFinder
                 GUILayout.FlexibleSpace();
                 EditorGUILayout.EndHorizontal();
             }
-            EditorGUI.indentLevel--;
         }
     }
 }

@@ -65,22 +65,37 @@ namespace Horcrux.Editor.Common
 
         public static bool IsBuilt => _built;
 
-        /// <summary>Build nếu chưa sẵn sàng; no-op nếu đã built.</summary>
-        public static void EnsureBuilt()
+        /// <summary>
+        /// Build nếu chưa sẵn sàng; no-op nếu đã built.
+        /// Trả <c>true</c> nếu index sẵn sàng dùng, <c>false</c> nếu build bị user hủy giữa chừng
+        /// (khi đó index rỗng — caller KHÔNG được diễn giải query rỗng là "không ai tham chiếu").
+        /// </summary>
+        public static bool EnsureBuilt()
         {
-            if (!_built)
-                BuildFull(showProgress: true);
+            if (_built)
+                return true;
+            return BuildFull(showProgress: true);
         }
 
-        /// <summary>Force full rebuild (nút "Rebuild Index" trên UI, hoặc khi cache stale).</summary>
-        public static void Rebuild(bool showProgress = true)
+        /// <summary>
+        /// Force full rebuild (nút "Rebuild Index" trên UI, hoặc khi cache stale).
+        /// Trả <c>true</c> nếu hoàn tất, <c>false</c> nếu user hủy.
+        /// </summary>
+        public static bool Rebuild(bool showProgress = true)
         {
-            BuildFull(showProgress);
+            return BuildFull(showProgress);
         }
 
         /// <summary>
         /// Core query — referencer paths của <paramref name="targetGuid"/>.
-        /// Trả list rỗng (không alloc) nếu không ai tham chiếu. KHÔNG copy — trả trực tiếp list nội bộ.
+        /// Trả list rỗng (không alloc) nếu không ai tham chiếu.
+        ///
+        /// ⚠️ Rỗng CHỈ đáng tin khi <see cref="IsBuilt"/> == true. Nếu build bị hủy giữa chừng,
+        /// query cũng trả rỗng — kiểm <see cref="IsBuilt"/> (hoặc dùng giá trị trả về của
+        /// <see cref="EnsureBuilt"/>) trước khi kết luận "không ai dùng".
+        ///
+        /// ⚠️ Trả trực tiếp list nội bộ (không copy) để zero-alloc. Caller CHỈ được đọc, không sửa,
+        /// và không giữ tham chiếu qua nhiều frame — postprocessor có thể mutate list này khi asset đổi.
         /// </summary>
         public static IReadOnlyList<string> GetReferencers(string targetGuid)
         {
@@ -100,7 +115,8 @@ namespace Horcrux.Editor.Common
 
         // ──────────────── Full build ────────────────
 
-        private static void BuildFull(bool showProgress)
+        /// <summary>Trả <c>true</c> nếu build xong, <c>false</c> nếu user hủy (index để rỗng, _built=false).</summary>
+        private static bool BuildFull(bool showProgress)
         {
             _forward.Clear();
             _reverse.Clear();
@@ -125,7 +141,7 @@ namespace Horcrux.Editor.Common
                             _forward.Clear();
                             _reverse.Clear();
                             _built = false;
-                            return;
+                            return false;
                         }
                     }
 
@@ -140,6 +156,7 @@ namespace Horcrux.Editor.Common
 
             _built = true;
             MarkCacheDirty();
+            return true;
         }
 
         /// <summary>
@@ -365,8 +382,11 @@ namespace Horcrux.Editor.Common
             for (int i = 0; i < deletedAssets.Length; i++)
             {
                 string path = deletedAssets[i];
-                // Asset đã xóa → path không còn GUID; dùng path để gỡ khỏi vai trò referencer.
-                // Vai trò target: GUID đã mất nên không lookup được → dựa vào việc referencer tự refresh.
+                // Asset đã xóa → path không còn GUID nên AssetPathToGUID trả "" (không lookup được).
+                // Vai trò referencer: gỡ ngay qua path (chính xác). Vai trò target: entry _reverse[guidCũ]
+                // không xóa được ở đây, để lại như rác — NHƯNG tự lành: khi từng referencer của asset
+                // đã xóa được reimport, RefreshReferencer gỡ path đó khỏi list, list rỗng → _reverse.Remove.
+                // Không sai kết quả query (không ai còn query được guid đã mất). Chấp nhận có chủ đích.
                 AssetReferenceIndex.RemoveAsset(path, AssetDatabase.AssetPathToGUID(path));
             }
 

@@ -16,12 +16,12 @@ namespace Horcrux.Editor.SceneReferenceFinder
     /// </summary>
     public sealed class SceneReferenceFinderWindow : EditorWindow
     {
-        private enum Scope { ActiveScene, PrefabStage }
+        private enum Scope { LoadedScenes, PrefabStage }
 
         // ──────────────── Static eager cache ────────────────
 
         private static readonly GUIContent ClearBtnLabel = new("✕");
-        private static readonly GUIContent ScopeScene     = new("Active Scene", "Scan the active scene (including children)");
+        private static readonly GUIContent ScopeScene     = new("Loaded Scenes", "Scan every loaded scene (including additively-loaded ones), children included");
         private static readonly GUIContent ScopePrefab    = new("Prefab Stage", "Scan the prefab currently open in Prefab Mode");
         private static readonly GUIContent TargetLabel    = new("Target", "GameObject hoặc Component cần kiểm tra — ai đang trỏ tới nó trong scope này. Kéo vào đây hoặc bấm \"Use Selected\"");
         private static readonly GUIContent UseSelected    = new("Use Selected", "Set target from the current Hierarchy selection");
@@ -31,7 +31,7 @@ namespace Horcrux.Editor.SceneReferenceFinder
 
         // ──────────────── Per-instance state ────────────────
 
-        private Scope    _scope = Scope.ActiveScene;
+        private Scope    _scope = Scope.LoadedScenes;
         private Object   _target;
         private string   _filterText = "";
         private Vector2  _scroll;
@@ -108,7 +108,7 @@ namespace Horcrux.Editor.SceneReferenceFinder
         private void DrawScopeBar()
         {
             EditorGUILayout.BeginHorizontal(EditorStyles.toolbar);
-            DrawScopeToggle(Scope.ActiveScene, ScopeScene);
+            DrawScopeToggle(Scope.LoadedScenes, ScopeScene);
             DrawScopeToggle(Scope.PrefabStage, ScopePrefab);
             EditorGUILayout.EndHorizontal();
         }
@@ -220,7 +220,7 @@ namespace Horcrux.Editor.SceneReferenceFinder
                 EditorUtility.DisplayDialog("Scene Reference Finder",
                     _scope == Scope.PrefabStage
                         ? "No Prefab Stage open.\nOpen a prefab in Prefab Mode first."
-                        : "Active scene has no root GameObjects.", "OK");
+                        : "No loaded scene has root GameObjects.", "OK");
                 return;
             }
 
@@ -229,6 +229,9 @@ namespace Horcrux.Editor.SceneReferenceFinder
             _filterDirty = true;
             Repaint();
         }
+
+        // Reusable buffer — gom root của mọi scene loaded (grow-only, tránh alloc mỗi lần scan).
+        private readonly List<GameObject> _scopeRoots = new(64);
 
         /// <summary>Root GameObjects theo scope hiện tại.</summary>
         private IList<GameObject> GetScopeRoots()
@@ -239,8 +242,16 @@ namespace Horcrux.Editor.SceneReferenceFinder
                 return stage != null ? new[] { stage.prefabContentsRoot } : null;
             }
 
-            Scene scene = SceneManager.GetActiveScene();
-            return scene.IsValid() ? scene.GetRootGameObjects() : null;
+            // Mọi scene đang loaded (kể cả additive) — không chỉ active scene, để không bỏ sót
+            // referencer ở scene phụ rồi báo nhầm "safe to delete".
+            _scopeRoots.Clear();
+            for (int s = 0; s < SceneManager.sceneCount; s++)
+            {
+                Scene scene = SceneManager.GetSceneAt(s);
+                if (!scene.IsValid() || !scene.isLoaded) continue;
+                _scopeRoots.AddRange(scene.GetRootGameObjects());
+            }
+            return _scopeRoots;
         }
 
         /// <summary>Đặt scope khớp nơi target đang sống (prefab stage vs scene).</summary>
@@ -253,7 +264,7 @@ namespace Horcrux.Editor.SceneReferenceFinder
             var stage = PrefabStageUtility.GetCurrentPrefabStage();
             _scope = stage != null && stage.IsPartOfPrefabContents(go)
                 ? Scope.PrefabStage
-                : Scope.ActiveScene;
+                : Scope.LoadedScenes;
         }
 
         // ──────────────── Filter ────────────────
@@ -271,43 +282,37 @@ namespace Horcrux.Editor.SceneReferenceFinder
             else
                 _filteredResults.Clear();
 
+            // Zero-alloc: thêm thẳng GO result gốc khi bất kỳ phần nào match (name / component / field).
+            // Không tạo SceneRefObjectResult/List mới cho mỗi ký tự gõ — filter chỉ thu hẹp danh sách GO,
+            // trong 1 GO đã match vẫn hiện đủ component (đồng nhất với cách filter của UsageFinder).
             string filter = _filterText;
             for (int i = 0; i < _results.Count; i++)
             {
-                SceneRefObjectResult go = _results[i];
-                if (go.gameObject != null
-                    && go.gameObject.name.IndexOf(filter, StringComparison.OrdinalIgnoreCase) >= 0)
-                {
-                    _filteredResults.Add(go);
-                    continue;
-                }
-
-                // Match component / field
-                List<SceneRefComponentResult> matched = null;
-                for (int c = 0; c < go.components.Count; c++)
-                {
-                    SceneRefComponentResult comp = go.components[c];
-                    bool compMatch = comp.componentName.IndexOf(filter, StringComparison.OrdinalIgnoreCase) >= 0;
-                    if (compMatch)
-                    {
-                        matched ??= new List<SceneRefComponentResult>();
-                        matched.Add(comp);
-                        continue;
-                    }
-                    for (int f = 0; f < comp.fields.Count; f++)
-                    {
-                        if (comp.fields[f].displayLabel.IndexOf(filter, StringComparison.OrdinalIgnoreCase) >= 0)
-                        {
-                            matched ??= new List<SceneRefComponentResult>();
-                            matched.Add(comp);
-                            break;
-                        }
-                    }
-                }
-
-                if (matched != null)
-                    _filteredResults.Add(new SceneRefObjectResult(go.gameObject, matched));
+                if (MatchesFilter(_results[i], filter))
+                    _filteredResults.Add(_results[i]);
             }
+        }
+
+        /// <summary>True nếu GO name, tên component, hoặc field label bất kỳ chứa <paramref name="filter"/>.</summary>
+        private static bool MatchesFilter(SceneRefObjectResult go, string filter)
+        {
+            if (go.gameObject != null
+                && go.gameObject.name.IndexOf(filter, StringComparison.OrdinalIgnoreCase) >= 0)
+                return true;
+
+            for (int c = 0; c < go.components.Count; c++)
+            {
+                SceneRefComponentResult comp = go.components[c];
+                if (comp.componentName.IndexOf(filter, StringComparison.OrdinalIgnoreCase) >= 0)
+                    return true;
+
+                for (int f = 0; f < comp.fields.Count; f++)
+                {
+                    if (comp.fields[f].displayLabel.IndexOf(filter, StringComparison.OrdinalIgnoreCase) >= 0)
+                        return true;
+                }
+            }
+            return false;
         }
 
         // ──────────────── Helpers ────────────────

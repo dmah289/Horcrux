@@ -44,12 +44,11 @@ namespace Horcrux.Editor.UsageFinder
             displayLabel = System.IO.Path.GetFileName(assetPath);
 
             // Thư mục chứa, bỏ tiền tố "Assets/" cho gọn (dòng nào cũng có nên vô nghĩa khi lặp).
-            string dir = System.IO.Path.GetDirectoryName(assetPath);
-            folderLabel = string.IsNullOrEmpty(dir)
-                ? ""
-                : (dir.StartsWith("Assets", System.StringComparison.Ordinal) && dir.Length > 7
-                    ? dir.Substring(7).Replace('\\', '/')
-                    : dir.Replace('\\', '/'));
+            const string assetsPrefix = "Assets/";
+            string dir = (System.IO.Path.GetDirectoryName(assetPath) ?? "").Replace('\\', '/');
+            folderLabel = dir.StartsWith(assetsPrefix, System.StringComparison.Ordinal)
+                ? dir.Substring(assetsPrefix.Length)
+                : dir;
 
             pathLabel = assetPath;
 

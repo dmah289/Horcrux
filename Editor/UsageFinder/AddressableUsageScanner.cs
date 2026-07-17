@@ -58,9 +58,14 @@ namespace Horcrux.Editor.UsageFinder
 
         // ──────────────── Public entry ────────────────
 
-        /// <summary>Tìm mọi asset/scene chứa AssetReference trỏ tới <paramref name="target"/>.</summary>
-        public static List<UsageEntry> Scan(Object target)
+        /// <summary>
+        /// Tìm mọi asset/scene chứa AssetReference trỏ tới <paramref name="target"/>.
+        /// <paramref name="cancelled"/> = true nếu user hủy giữa chừng → <paramref name="results"/>
+        /// chỉ là một phần; caller KHÔNG được kết luận "không ai dùng" khi cancelled.
+        /// </summary>
+        public static List<UsageEntry> Scan(Object target, out bool cancelled)
         {
+            cancelled = false;
             var results = new List<UsageEntry>();
             if (target == null)
                 return results;
@@ -75,9 +80,11 @@ namespace Horcrux.Editor.UsageFinder
 
             try
             {
-                ScanPrefabs(targetGuid, results);
-                ScanAssetFiles(targetGuid, results);
-                ScanOpenScenes(targetGuid, results);
+                // Short-circuit: hủy ở phase nào thì dừng luôn, không chạy phase sau (ScanAssetFiles
+                // là phase nặng nhất — user bấm Cancel phải dừng thật, không chờ nốt).
+                if (ScanPrefabs(targetGuid, results))    { cancelled = true; return results; }
+                if (ScanAssetFiles(targetGuid, results)) { cancelled = true; return results; }
+                if (ScanOpenScenes(targetGuid, results)) { cancelled = true; return results; }
             }
             finally
             {
@@ -89,14 +96,15 @@ namespace Horcrux.Editor.UsageFinder
 
         // ──────────────── Prefabs ────────────────
 
-        private static void ScanPrefabs(string targetGuid, List<UsageEntry> results)
+        /// <summary>Trả true nếu user hủy.</summary>
+        private static bool ScanPrefabs(string targetGuid, List<UsageEntry> results)
         {
             string[] guids = AssetDatabase.FindAssets("t:Prefab");
             for (int i = 0; i < guids.Length; i++)
             {
                 string assetPath = AssetDatabase.GUIDToAssetPath(guids[i]);
                 if (ReportProgress("Scanning prefabs", assetPath, i, guids.Length))
-                    return;
+                    return true;
 
                 var go = AssetDatabase.LoadAssetAtPath<GameObject>(assetPath);
                 if (go == null) continue;
@@ -105,6 +113,7 @@ namespace Horcrux.Editor.UsageFinder
                 if (matches != null)
                     results.Add(new UsageEntry(assetPath, go, matches));
             }
+            return false;
         }
 
         // ──────────────── Asset files (.asset — main + sub-asset) ────────────────
@@ -116,7 +125,8 @@ namespace Horcrux.Editor.UsageFinder
         /// nhưng chứa sub-asset SO). AssetReference (Addressables) chỉ khai báo trong class C# →
         /// chỉ nằm trong Object managed (SO/MonoBehaviour), nên bỏ qua asset không load được là an toàn.
         /// </summary>
-        private static void ScanAssetFiles(string targetGuid, List<UsageEntry> results)
+        /// <summary>Trả true nếu user hủy.</summary>
+        private static bool ScanAssetFiles(string targetGuid, List<UsageEntry> results)
         {
             AssetPathSet.Clear();
             CollectByType("t:ScriptableObject", AssetPathSet);  // SO subclass ở mọi extension
@@ -127,7 +137,7 @@ namespace Horcrux.Editor.UsageFinder
             foreach (string assetPath in AssetPathSet)
             {
                 if (ReportProgress("Scanning assets", assetPath, i++, total))
-                    return;
+                    return true;
 
                 // Load tất cả object trong file (main + sub-asset) — một lần I/O cho cả file.
                 Object[] all = AssetDatabase.LoadAllAssetsAtPath(assetPath);
@@ -149,6 +159,7 @@ namespace Horcrux.Editor.UsageFinder
                     results.Add(new UsageEntry(assetPath, main, matches));
                 }
             }
+            return false;
         }
 
         /// <summary>Chuyển kết quả FindAssets(filter) thành path, gộp vào set (dedupe).</summary>
@@ -193,7 +204,8 @@ namespace Horcrux.Editor.UsageFinder
 
         // ──────────────── Open scenes ────────────────
 
-        private static void ScanOpenScenes(string targetGuid, List<UsageEntry> results)
+        /// <summary>Không có progress/cancel (thao tác nhanh trên scene đã load) → luôn trả false.</summary>
+        private static bool ScanOpenScenes(string targetGuid, List<UsageEntry> results)
         {
             for (int s = 0; s < SceneManager.sceneCount; s++)
             {
@@ -222,6 +234,7 @@ namespace Horcrux.Editor.UsageFinder
                     results.Add(new UsageEntry(scenePath, sceneAsset, sceneMatches));
                 }
             }
+            return false;
         }
 
         // ──────────────── Traversal helpers ────────────────

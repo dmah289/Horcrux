@@ -17,7 +17,7 @@ namespace Horcrux.Editor.SceneReferenceFinder
         private static readonly GUIContent EmptyLabel     = new();
         private static readonly GUIContent SeparatorLabel = new("——");
         private static readonly GUIContent NoTargetMsg    = new("Select a GameObject/Component, then Scan to find what references it.");
-        private static readonly GUIContent NoResultMsg    = new("✅ Nothing in scope references this — safe to delete.");
+        private static readonly GUIContent NoResultMsg    = new("✅ Không component nào trong scope (scene đang load / prefab stage) trỏ tới đối tượng này. Lưu ý: scene chưa mở và asset khác chưa được quét.");
         private static readonly GUIContent NoMatchMsg     = new("No results match the filter.");
 
         private readonly GUIContent _goLabel    = new();
