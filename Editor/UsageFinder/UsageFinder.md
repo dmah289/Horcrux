@@ -1,57 +1,68 @@
 # Usage Finder
 
-Trả lời câu hỏi **reverse lookup** ở mức asset: *"Asset / Material / ScriptableObject / prefab này đang được **dùng ở đâu**?"* — để biết sửa nó có ảnh hưởng chỗ khác không, hoặc xóa có an toàn không.
-
-Gộp 2 tab cùng làm việc trên **một asset nguồn**, nhưng dùng **2 cơ chế khác nhau** (bắt buộc tách vì bản chất kỹ thuật khác nhau).
+Trả lời **reverse lookup** đầy đủ: *"Chọn 1 GameObject/asset → **MỌI** field nào đang trỏ tới nó?"* — không sót case nào (list, object nested trong list, `AssetReference`, `ObjectReference`, `ExposedReference`, `[SerializeReference]`). Click 1 field → **điều hướng tới nơi chứa reference** + highlight field trong Inspector.
 
 ## Mở cửa sổ
 
 - Menu: **Horcrux > Usage Finder**
 - Context menu: right-click asset trong Project → **Find Usages (Horcrux)**
+- Kéo bất kỳ GameObject/asset vào ô **Target** → bấm **🔍 Find All Usages**
 
 ---
 
-## Hai tab
+## Một lệnh — tự nhận diện target
 
-| Tab | Trả lời | Cơ chế | Tốc độ |
-|-----|---------|--------|--------|
-| **Asset Usages** | Asset nào **trực tiếp** tham chiếu target (hard dependency) | Query `AssetReferenceIndex` (reverse dependency index) | Nhanh — O(1), tự động khi đổi target |
-| **Addressable Usages** | `AssetReference` (Addressables) nào trỏ tới target | Quét `m_AssetGUID` toàn project qua `SerializedPropertyWalker` | Chậm — cần bấm **Scan** |
+Không còn tab. Window tự chọn cơ chế theo loại target:
 
-> **Vì sao 2 cơ chế?** `AssetReference` lưu qua `m_AssetGUID` và **KHÔNG** phải hard dependency → không nằm trong dependency graph của Unity. Tab "Asset Usages" (dựa dependency index) sẽ **bỏ sót** hoàn toàn Addressable usage. Muốn tìm chúng phải quét thẳng serialized data — đó là tab riêng.
+| Loại target | Cơ chế | Phạm vi |
+|-------------|--------|---------|
+| **Asset** (có GUID: prefab/.asset/.mat/SO/texture...) | `AssetReferenceScanner` — grep-GUID 2 pha | Toàn project + scene đang mở + scene file trên disk |
+| **Scene object** (GameObject/Component đang sống trong scene) | `SceneReferenceScanner` — match instanceID | Mọi scene đang loaded |
+
+Kết quả cả 2 đường gộp về **cùng một danh sách** `UsageEntry` → cùng drawer, cùng filter.
 
 ---
 
-## Tab 1 — Asset Usages
+## Cơ chế "cách B" — grep GUID trong text (không sót)
 
-| Bước | Hành vi |
-|------|---------|
-| Đổi Target | Query lại **tức thì** (không cần bấm nút) |
-| Kết quả | Danh sách asset đang trực tiếp trỏ tới target — click để ping trong Project |
-| `↻ Rebuild Index` | Full rebuild index — dùng sau thay đổi ngoài Unity (git checkout, sửa file tay) mà postprocessor không bắt được |
-| "No other asset references this" | An toàn để sửa/xóa mà không ảnh hưởng asset khác |
+Unity serialize **ForceText** (`m_SerializationMode: 2`) → mọi asset là YAML text. Mọi reference — hard-dependency (`guid:`), `AssetReference` (`m_AssetGUID:`), từng phần tử list, object nested — đều ghi **chuỗi GUID target dạng text**.
 
-- Index build **lazy** ở query đầu tiên (progress bar), sau đó tự cập nhật incremental qua `AssetPostprocessor`. Xem `Common/AssetReferenceIndex.md`.
+**Pha 1 — candidate discovery (nhanh, chỉ đọc text):**
+Quét text mọi file có đuôi mang-reference trong `Assets/`, tìm substring `targetGuid`. File khớp → **candidate**. Vì đọc text thô, pha 1 **độc lập** với việc walker có nhận diện đúng kind hay không → đây là **lưới an toàn** chống sót. Đặc biệt bắt cả `AssetReference` mà `AssetDatabase.GetDependencies` (và index cũ) **bỏ sót hoàn toàn**.
 
-## Tab 2 — Addressable Usages
+**Pha 2 — detail extraction (chỉ candidate):**
+Load candidate → `SerializedPropertyWalker` tìm field cụ thể trỏ tới target → build field path clickable + navigation context. Nếu candidate khớp pha 1 nhưng pha 2 **không** map được ra field (kind lạ / GUID nằm ngoài field walk tới) → tạo **fallback hit mức-file** để không bao giờ mất một hit của pha 1.
 
-| Bước | Hành vi |
-|------|---------|
-| Đổi Target | Xóa kết quả cũ, **chờ** bấm Scan (quét nặng) |
-| `🔍 Scan Addressable Usages` | Quét Prefab + mọi file `.asset` (main **và** sub-asset) toàn project + Scene đang mở |
-| Kết quả | Cây 2 tầng: `Asset chứa AssetReference → field path` (foldout để xem chi tiết field) |
-| Progress bar | Cancelable — project lớn quét lâu |
+> **Vì sao không dùng dependency index?** Index (reverse `GetDependencies`) nhanh nhưng **sót AssetReference**. Yêu cầu "kể cả AssetReference" loại bỏ nó khỏi vai trò nguồn chính. `Common/AssetReferenceIndex` vẫn còn cho mục đích khác, không dùng ở tab này.
 
-**Phạm vi quét `.asset`:** gộp 2 nguồn để không lọt AssetReference:
+---
 
-| Nguồn | Bắt được gì |
-|-------|-------------|
-| `FindAssets("t:ScriptableObject")` | SO subclass ở **mọi extension** (kể cả `.asset` đổi tên) |
-| Mọi file `*.asset` qua `GetAllAssetPaths()` | **Container**: file mà main asset không phải SO nhưng chứa **sub-asset** SO nested — kiểu collection gom AssetReference để load Addressable |
+## Điều hướng khi click field
 
-Mỗi file được `LoadAllAssetsAtPath` → walk **cả main asset lẫn từng sub-asset**. Chỉ Object managed (`ScriptableObject`/`MonoBehaviour`) mới có thể khai báo `AssetReference` field nên loại còn lại được bỏ qua an toàn. Path từ 2 nguồn được **dedupe** qua `HashSet` (không quét trùng).
+| Nguồn reference | Click field làm gì |
+|-----------------|--------------------|
+| Asset (SO/material/prefab) | Select asset chứa + expand đúng component/property (prefab → mở prefab stage) |
+| Scene đang mở | Select GameObject + expand component chứa field |
+| Scene file **trên disk** (chưa mở) | Hỏi lưu scene hiện tại → **mở scene** → walk định vị GameObject trỏ tới target → select + expand |
 
-**Scene:** chỉ các **Scene đang mở**. Scene chưa mở không được quét (phải load/unload — destructive). Muốn phủ hết → mở scene đó rồi Scan lại.
+---
+
+## Phạm vi quét (target là asset)
+
+| Nguồn | Xử lý |
+|-------|-------|
+| Prefab | `LoadAsset` → walk mọi component (kể cả native: `MeshRenderer.sharedMaterial`,...) + con cháu |
+| File `.asset` (main + sub-asset) | `LoadAllAssetsAtPath` → walk mọi Object managed (SO, Material, AnimationClip,...) trừ GameObject/Component (đã qua đường prefab) |
+| Scene đang mở | Walk live hierarchy — chính xác cả khi có thay đổi chưa lưu |
+| Scene file trên disk | Pha 1 grep text bắt → hit mức-file; mở scene khi click |
+
+Đuôi file quét: `.prefab .unity .asset .mat .anim .controller .playable .preset .mask .spriteatlas .terrainlayer .rendertexture ...` (danh sách `ReferenceCarryingExtensions`).
+
+---
+
+## An toàn khi hủy (không khẳng định sai)
+
+Cả 2 pha có **progress bar cancelable**. Hủy giữa chừng → kết quả một phần → window đánh dấu `incomplete` → drawer hiện **cảnh báo vàng** "quét bị hủy, kết quả không đầy đủ", **KHÔNG** hiện "không có tham chiếu nào". Chỉ khi quét hoàn tất mà 0 kết quả mới báo "✅ không tìm thấy field nào trỏ tới".
 
 ---
 
@@ -59,16 +70,17 @@ Mỗi file được `LoadAllAssetsAtPath` → walk **cả main asset lẫn từn
 
 ```
 ┌────────────────────────────────────────────┐
-│ [ Asset Usages ] [ Addressable Usages ]     │ ← tab (active = xanh)
 │ Target: [ ObjectField                    ]   │
-│ [ ↻ Rebuild Index ] / [ 🔍 Scan ... ]        │ ← đổi theo tab
+│ [        🔍 Find All Usages              ]   │
 │ [ 🔍 filter                            ] [✕] │
 │ ──────────────────────────────────────────  │
-│ 📄 Foo.prefab            Assets/.../Foo.prefab│
-│ ▼ 📄 Bar.asset           Assets/.../Bar.asset │ ← foldout khi có detail
-│      Bar (Enemy) > Spawn Ref                 │
+│ ▼ 📄 Bar.asset            .../Bar.asset      │ ← referencer (click → ping asset)
+│      Bar (Enemy) > Spawn Ref                 │ ← field hit (click → điều hướng + highlight)
+│      Bar (Enemy) > Waves[2] > Prefab         │ ← bắt cả trong list/nested
+│ ▼ 🎮 Player               MainScene          │ ← scene object referencer
+│      Health > Target                         │
 │ ──────────────────────────────────────────  │
-│ Found 2 referencers                          │ ← status bar
+│ 3 fields in 2 referencers                    │ ← status bar
 └────────────────────────────────────────────┘
 ```
 
@@ -78,8 +90,8 @@ Mỗi file được `LoadAllAssetsAtPath` → walk **cả main asset lẫn từn
 
 | Giai đoạn | Khi nào | Cache gì |
 |-----------|---------|----------|
-| Scan/query time | Đổi target / bấm Scan | `displayLabel`, `pathLabel`, `typeName`, `foldoutKey`, `icon` trên mỗi `UsageEntry` |
-| Filter rebuild | Layout phase khi `_filterDirty` | `_filteredResults` |
+| Scan time | Bấm Find All Usages | `displayLabel`, `pathLabel`, `typeName`, `foldoutKey`, `icon` trên `UsageEntry`; `displayLabel` trên `UsageFieldHit` |
+| Filter rebuild | Layout phase khi `_filterDirty` | `_filteredResults` (thêm thẳng entry gốc, không tạo object mới) |
 | Draw time | Mỗi OnGUI | Chỉ update `.text`/`.image` trên reusable GUIContent |
 
 ---
@@ -88,8 +100,8 @@ Mỗi file được `LoadAllAssetsAtPath` → walk **cả main asset lẫn từn
 
 | Thành phần | Dùng để |
 |-----------|---------|
-| `AssetReferenceIndex` | Tab 1 — reverse dependency index |
-| `SerializedPropertyWalker` | Tab 2 — traversal + `AssetRefMatchVisitor` đọc `m_AssetGUID` |
+| `SerializedPropertyWalker` | Pha 2 — traversal + `FieldHitVisitor` so từng kind |
+| `NavigationHelper` | Điều hướng: `SelectAndExpandAsset`, `SelectAndPingProperty` |
 | `Static*` (Color, GUILayout, Styles) | Toolbar, nút, row styling |
 
 ---
@@ -98,19 +110,18 @@ Mỗi file được `LoadAllAssetsAtPath` → walk **cả main asset lẫn từn
 
 | File | Vai trò |
 |------|---------|
-| `UsageFinderWindow.cs` | EditorWindow — 2 tab, target field, filter, status, rebuild/scan, context MenuItem |
-| `UsageResultDrawer.cs` | Vẽ danh sách referencer (asset → detail lines) với reusable GUIContent |
-| `AssetUsageScanner.cs` | Tab 1 logic — query `AssetReferenceIndex` (static) |
-| `AddressableUsageScanner.cs` | Tab 2 logic — GUID scan `m_AssetGUID` qua walker; quét prefab + `.asset` (main + sub-asset) + open scenes (static) |
-| `UsageResult.cs` | Data model `UsageEntry` — immutable, cached display data |
+| `UsageFinderWindow.cs` | EditorWindow — 1 lệnh, tự nhận diện target, gộp scene-object về `UsageEntry`, filter, status |
+| `AssetReferenceScanner.cs` | Cơ chế cách B — grep-GUID 2 pha; walk prefab/.asset/open-scene; mở scene disk khi click |
+| `UsageResultDrawer.cs` | Vẽ referencer → field hit clickable; điều hướng khi click |
+| `UsageResult.cs` | Data model `UsageEntry` + `UsageFieldHit` (immutable, cached, navigation context) |
 | `UsageFinder.md` | Tài liệu thiết kế (file này) |
 
 ---
 
 ## Lưu ý
 
-- **Tab 1 không bắt AssetReference** (Addressables) — luôn kiểm tra Tab 2 cho asset addressable.
-- **Tab 2 bắt cả sub-asset** — collection SO gom AssetReference vào SO con nested vẫn được phát hiện.
-- **Sub-asset làm target** (sprite trong atlas): Tab 1 theo GUID file cha — độ mịn mức file.
-- **Index stale** khi sửa ngoài Unity → bấm `↻ Rebuild Index`.
-- **Scene chưa mở** không nằm trong phạm vi Tab 2.
+- **Không sót** là mục tiêu số 1: pha 1 (text grep) là lưới an toàn; pha 2 chỉ làm đẹp + clickable, không thêm/bớt nguồn.
+- **Fallback file-level**: nếu pha 2 không xác định field, vẫn giữ hit "⚠️ chứa reference" — thà thừa còn hơn sót.
+- **Scene chưa mở** vẫn được bắt (qua text grep), click → tự mở scene rồi định vị.
+- **Sub-asset làm target** (sprite trong atlas): pha 1 theo GUID file cha.
+- Cơ chế phụ thuộc **ForceText serialization**. Nếu project đổi sang binary → pha 1 không grep được (hiện project đang ForceText ✓).

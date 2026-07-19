@@ -15,7 +15,7 @@ Khác với **Usage Finder** (làm ở mức asset/GUID), tool này làm trên *
 
 ```
 ┌────────────────────────────────────────────┐
-│ [ Active Scene ] [ Prefab Stage ]           │ ← scope (active = xanh)
+│ [ Loaded Scenes ] [ Prefab Stage ]          │ ← scope (active = xanh)
 │ Target: [ ObjectField        ] [Use Selected]│
 │ [ 🔍 Find References                        ] │
 │ [ 🔍 filter                            ] [✕] │
@@ -34,10 +34,10 @@ Khác với **Usage Finder** (làm ở mức asset/GUID), tool này làm trên *
 
 | Scope | Quét |
 |-------|------|
-| **Active Scene** | Scene đang active + toàn bộ con cháu |
+| **Loaded Scenes** | **Mọi** scene đang loaded (kể cả additive) + toàn bộ con cháu |
 | **Prefab Stage** | Prefab đang mở trong Prefab Mode (nếu có) |
 
-- `Use Selected` tự **đồng bộ scope** với nơi target đang sống: target trong prefab stage → chọn Prefab Stage; ngược lại → Active Scene.
+- `Use Selected` tự **đồng bộ scope** với nơi target đang sống: target trong prefab stage → chọn Prefab Stage; ngược lại → Loaded Scenes.
 
 ---
 
@@ -46,12 +46,12 @@ Khác với **Usage Finder** (làm ở mức asset/GUID), tool này làm trên *
 | Bước | Chi tiết |
 |------|----------|
 | Target set | GameObject **hoặc** Component. GO → match cả reference tới GO lẫn tới **mọi Component** của nó (xóa GO là xóa hết) |
-| Match | Duyệt mọi MonoBehaviour trong scope qua `SerializedPropertyWalker`; so `objectReferenceInstanceIDValue` với set instanceID target |
+| Match | Duyệt mọi Component (kể cả native, trừ Transform) trong scope qua `SerializedPropertyWalker`; so `objectReferenceInstanceIDValue` với set instanceID target |
 | Vì sao match theo instanceID | Không cần load object; đúng cả khi field trỏ tới Component (không chỉ GO) |
 | Kết quả | Cây 3 tầng `GO → Component → field`. Click field → select + ping + expand đúng component trong Inspector (`NavigationHelper`) |
-| "Nothing references this" | An toàn để xóa — không tạo null ref trong scope này |
+| "Nothing references this" | Không component nào **trong scope** trỏ tới — lưu ý scene chưa mở & asset khác chưa quét |
 
-> **Chỉ quét user scripts (MonoBehaviour).** Built-in Unity component không phải nơi user vô tình tạo dangling reference.
+> **Quét cả native component** (vd `Joint.connectedBody`, PPtr built-in) — chỉ bỏ `Transform`/`RectTransform` (luôn có mặt, không mang reference cần kiểm). Trước đây chỉ quét MonoBehaviour nên sót các reference native.
 
 ---
 
@@ -91,7 +91,7 @@ Khác với **Usage Finder** (làm ở mức asset/GUID), tool này làm trên *
 
 ## Lưu ý
 
-- **Chỉ trong scope hiện tại** — reference từ scene khác / prefab khác không được quét. Muốn kiểm asset-level (prefab nào trên disk trỏ tới) → dùng **Usage Finder**.
+- **Chỉ trong scope hiện tại** — reference từ scene chưa mở / prefab asset khác không được quét. Muốn phủ toàn project (kể cả scene trên disk & AssetReference) → dùng **Usage Finder** (chọn asset làm target).
 - **Không tự động quét** — chỉ khi bấm Find. Thay đổi scene/selection không tự cập nhật.
 - **Component target:** kéo thẳng một Component vào ObjectField, hoặc `Use Selected` (lấy GameObject đang chọn).
 - **Không bắt `[SerializeReference]` / AssetReference** — tool này chỉ tìm `ObjectReference` trực tiếp (nguồn gây null ref khi xóa instance).

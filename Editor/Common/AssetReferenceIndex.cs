@@ -15,7 +15,7 @@ namespace Horcrux.Editor.Common
     /// bằng incremental update qua <see cref="AssetRefIndexPostprocessor"/> — không full rebuild mỗi lần save.
     ///
     /// SRP: chỉ duy trì reverse map GUID → referencers. Không biết UI, không xử lý AssetReference
-    /// (Addressables không nằm trong dependency graph — đó là việc của AddressableUsageScanner).
+    /// (Addressables không nằm trong dependency graph — đó là việc của AssetReferenceScanner, Usage Finder).
     ///
     /// ⚠️ Chỉ index reference dạng hard-dependency (direct, recursive:false). AssetReference
     /// (m_AssetGUID) KHÔNG xuất hiện ở đây.

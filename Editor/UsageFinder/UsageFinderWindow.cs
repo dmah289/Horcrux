@@ -2,50 +2,45 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 using Horcrux.Editor.Common;
+using Horcrux.Editor.SceneReferenceFinder;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using Object = UnityEngine.Object;
 
 namespace Horcrux.Editor.UsageFinder
 {
     /// <summary>
-    /// Usage Finder — trả lời "asset này đang được dùng ở đâu?".
-    /// Gộp 2 tab cùng làm việc trên 1 asset nguồn:
-    ///  • Asset Usages       — hard dependency, qua AssetReferenceIndex (nhanh, O(1) query).
-    ///  • Addressable Usages — AssetReference (m_AssetGUID), quét project (chậm, cần scan).
+    /// Usage Finder — 1 lệnh "Find All Usages": chọn 1 GameObject/asset → tìm MỌI field trỏ tới nó,
+    /// không sót case nào (list, nested, AssetReference, ObjectReference,...). Click field → điều hướng
+    /// tới nơi chứa reference + highlight.
+    ///
+    /// Tự nhận diện loại target:
+    ///  • Asset (có GUID)     → <see cref="AssetReferenceScanner"/> (grep-GUID 2 pha, toàn project + scene mở).
+    ///  • Scene object (no GUID) → <see cref="SceneReferenceScanner"/> (match instanceID trong scene mở).
     /// </summary>
     public sealed class UsageFinderWindow : EditorWindow
     {
-        // ──────────────── Types ────────────────
-
-        private enum Tab { AssetUsages, AddressableUsages }
-
         // ──────────────── Static eager cache ────────────────
 
         private static readonly GUIContent ClearBtnLabel = new("✕");
-        private static readonly GUIContent TabAsset       = new("Asset Usages",       "Hard dependencies — assets referencing the target (via dependency index)");
-        private static readonly GUIContent TabAddr        = new("Addressable Usages", "AssetReference (Addressables) pointing at the target — scans the project");
-        private static readonly GUIContent TargetLabel    = new("Target", "Asset cần tìm usage — chọn trong Project rồi kéo vào đây, hoặc dùng menu chuột phải \"Find Usages (Horcrux)\"");
-        private static readonly GUIContent ScanBtnLabel   = new("🔍 Scan Addressable Usages");
-        private static readonly GUIContent RebuildLabel   = new("↻ Rebuild Index", "Full rebuild the dependency index (use after external changes like git checkout)");
+        private static readonly GUIContent TargetLabel   = new("Target", "GameObject hoặc asset cần tìm usage — kéo vào đây, hoặc dùng menu chuột phải \"Find Usages (Horcrux)\"");
+        private static readonly GUIContent ScanBtnLabel  = new("🔍 Find All Usages");
 
         private static readonly StringBuilder SharedSB = new(64);
 
         // ──────────────── Per-instance state ────────────────
 
-        private Tab      _tab = Tab.AssetUsages;
         private Object   _target;
         private string   _filterText = "";
         private Vector2  _scroll;
 
-        private List<UsageEntry> _results;         // null cho tới scan/query đầu tiên
+        private List<UsageEntry> _results;         // null cho tới scan đầu tiên
         private List<UsageEntry> _filteredResults;
         private bool _filterDirty = true;
-        private bool _resultsComplete;              // false nếu index chưa build xong / scan bị hủy → KHÔNG khẳng định "safe"
+        private bool _resultsComplete = true;      // false nếu scan bị hủy → KHÔNG khẳng định "không ai dùng"
 
         private UsageResultDrawer _drawer;
-
-        // ──────────────── Status cache ────────────────
 
         private readonly GUIContent _statusContent = new();
         private int  _lastStatusCount = -1;
@@ -68,8 +63,7 @@ namespace Horcrux.Editor.UsageFinder
             var window = GetWindow<UsageFinderWindow>();
             window.titleContent = new GUIContent("Usage Finder");
             window._target = Selection.activeObject;
-            window._tab = Tab.AssetUsages;
-            window.RunActiveTab();
+            window.ExecuteScan();
             window.Show();
         }
 
@@ -95,49 +89,15 @@ namespace Horcrux.Editor.UsageFinder
                 _filterDirty = false;
             }
 
-            DrawTabs();
             DrawTargetRow();
             DrawFilterBar();
             DrawSeparator();
 
             _scroll = GUILayout.BeginScrollView(_scroll);
-            _drawer.Draw(_results, _filteredResults ?? _results,
-                _tab == Tab.AddressableUsages, _resultsComplete, _target != null);
+            _drawer.Draw(_results, _filteredResults ?? _results, _resultsComplete);
             GUILayout.EndScrollView();
 
             DrawStatusBar();
-        }
-
-        // ──────────────── Tabs ────────────────
-
-        private void DrawTabs()
-        {
-            EditorGUILayout.BeginHorizontal(EditorStyles.toolbar);
-            DrawTabToggle(Tab.AssetUsages, TabAsset);
-            DrawTabToggle(Tab.AddressableUsages, TabAddr);
-            EditorGUILayout.EndHorizontal();
-        }
-
-        private void DrawTabToggle(Tab tab, GUIContent content)
-        {
-            bool active = _tab == tab;
-            Color saved = GUI.backgroundColor;
-            if (active) GUI.backgroundColor = StaticColor.ScopeActiveColor;
-
-            bool toggled = GUILayout.Toggle(active, content, EditorStyles.toolbarButton, GUILayout.ExpandWidth(true));
-
-            GUI.backgroundColor = saved;
-
-            if (toggled && !active)
-            {
-                _tab = tab;
-                // Đổi tab → kết quả cũ không còn hợp lệ; Asset tab query lại ngay, Addr tab cần bấm Scan
-                _results = null;
-                _filteredResults = null;
-                _resultsComplete = true; // reset: chưa scan lần nào ≠ scan dở dang
-                if (_tab == Tab.AssetUsages)
-                    RunActiveTab();
-            }
         }
 
         // ──────────────── Target row ────────────────
@@ -145,55 +105,14 @@ namespace Horcrux.Editor.UsageFinder
         private void DrawTargetRow()
         {
             EditorGUILayout.BeginHorizontal(EditorStyles.toolbar);
-
-            EditorGUI.BeginChangeCheck();
-            Object newTarget = EditorGUILayout.ObjectField(TargetLabel, _target, typeof(Object), false);
-            if (EditorGUI.EndChangeCheck())
-            {
-                _target = newTarget;
-                if (_tab == Tab.AssetUsages)
-                {
-                    RunActiveTab();   // Asset tab: query tức thì
-                }
-                else
-                {
-                    _results = null;         // Addr tab: chờ user bấm Scan
-                    _resultsComplete = true; // đổi target ≠ scan dở dang
-                }
-            }
-
+            _target = EditorGUILayout.ObjectField(TargetLabel, _target, typeof(Object), true);
             EditorGUILayout.EndHorizontal();
 
-            // Hàng action theo tab
-            if (_tab == Tab.AssetUsages)
-            {
-                if (!AssetReferenceIndex.IsBuilt)
-                    EditorGUILayout.HelpBox("Dependency index not built yet — it builds on first query.", MessageType.Info);
-
-                if (GUILayout.Button(RebuildLabel, StaticGUILayout.ScanFullWidth))
-                {
-                    if (AssetReferenceIndex.Rebuild(true))
-                    {
-                        RunActiveTab();          // build xong → query lại
-                    }
-                    else
-                    {
-                        // Build bị hủy → index rỗng, không đáng tin. Đánh dấu incomplete + xóa kết quả cũ.
-                        // KHÔNG query lại (sẽ kích hoạt EnsureBuilt build lần nữa qua GetReferencers).
-                        _results = null;
-                        _filteredResults = null;
-                        _resultsComplete = false;
-                    }
-                }
-            }
-            else
-            {
-                Color saved = GUI.backgroundColor;
-                GUI.backgroundColor = StaticColor.ScanBtnColor;
-                if (GUILayout.Button(ScanBtnLabel, StaticGUILayout.ScanFullWidth))
-                    RunActiveTab();
-                GUI.backgroundColor = saved;
-            }
+            Color saved = GUI.backgroundColor;
+            GUI.backgroundColor = StaticColor.ScanBtnColor;
+            if (GUILayout.Button(ScanBtnLabel, StaticGUILayout.ScanFullWidth))
+                ExecuteScan();
+            GUI.backgroundColor = saved;
         }
 
         // ──────────────── Filter bar ────────────────
@@ -226,19 +145,20 @@ namespace Horcrux.Editor.UsageFinder
         {
             if (_results == null) return;
 
-            int count = (_filteredResults ?? _results).Count;
+            List<UsageEntry> list = _filteredResults ?? _results;
+            int refCount = CountHits(list);
             bool hasFilter = !string.IsNullOrEmpty(_filterText);
 
-            if (_lastStatusCount != count || _lastStatusHasFilter != hasFilter)
+            if (_lastStatusCount != refCount || _lastStatusHasFilter != hasFilter)
             {
-                _lastStatusCount = count;
+                _lastStatusCount = refCount;
                 _lastStatusHasFilter = hasFilter;
 
                 SharedSB.Clear();
+                SharedSB.Append(refCount).Append(refCount == 1 ? " field" : " fields")
+                        .Append(" in ").Append(list.Count).Append(list.Count == 1 ? " referencer" : " referencers");
                 if (hasFilter)
-                    SharedSB.Append("Showing ").Append(count).Append(" of ").Append(_results.Count).Append(" referencers");
-                else
-                    SharedSB.Append("Found ").Append(count).Append(" referencer").Append(count == 1 ? "" : "s");
+                    SharedSB.Append(" (filtered)");
                 _statusContent.text = SharedSB.ToString();
             }
 
@@ -246,27 +166,30 @@ namespace Horcrux.Editor.UsageFinder
             GUILayout.Label(_statusContent, EditorStyles.centeredGreyMiniLabel);
         }
 
-        // ──────────────── Scan / query execution ────────────────
+        // ──────────────── Scan dispatch ────────────────
 
-        private void RunActiveTab()
+        private void ExecuteScan()
         {
             if (_target == null)
             {
                 _results = null;
                 _filteredResults = null;
+                _resultsComplete = true;
                 return;
             }
 
-            if (_tab == Tab.AssetUsages)
+            bool isAsset = !string.IsNullOrEmpty(AssetDatabase.GetAssetPath(_target))
+                           && !IsSceneInstance(_target);
+
+            if (isAsset)
             {
-                // Đảm bảo index sẵn sàng TRƯỚC khi query. Nếu build bị hủy → kết quả rỗng không đáng tin.
-                _resultsComplete = AssetReferenceIndex.EnsureBuilt();
-                _results = AssetUsageScanner.Scan(_target);
+                _results = AssetReferenceScanner.Scan(_target, out bool cancelled);
+                _resultsComplete = !cancelled;
             }
             else
             {
-                _results = AddressableUsageScanner.Scan(_target, out bool cancelled);
-                _resultsComplete = !cancelled;
+                _results = ScanSceneObject(_target);
+                _resultsComplete = true; // scene scan không có cancel (nhanh)
             }
 
             _scroll = Vector2.zero;
@@ -274,7 +197,60 @@ namespace Horcrux.Editor.UsageFinder
             Repaint();
         }
 
-        // ──────────────── Filter logic ────────────────
+        /// <summary>Target là instance trong scene (GameObject/Component đang sống trong scene mở)?</summary>
+        private static bool IsSceneInstance(Object target)
+        {
+            GameObject go = target as GameObject;
+            if (go == null && target is Component c) go = c.gameObject;
+            return go != null && go.scene.IsValid();
+        }
+
+        /// <summary>
+        /// Quét scene object qua SceneReferenceScanner rồi map về List&lt;UsageEntry&gt; để dùng chung drawer.
+        /// Quét mọi scene đang loaded (không chỉ scene của target).
+        /// </summary>
+        private static List<UsageEntry> ScanSceneObject(Object target)
+        {
+            var roots = new List<GameObject>(64);
+            for (int s = 0; s < SceneManager.sceneCount; s++)
+            {
+                Scene scene = SceneManager.GetSceneAt(s);
+                if (scene.IsValid() && scene.isLoaded)
+                    roots.AddRange(scene.GetRootGameObjects());
+            }
+
+            List<SceneRefObjectResult> sceneResults = SceneReferenceScanner.Scan(target, roots);
+
+            var results = new List<UsageEntry>(sceneResults.Count);
+            for (int i = 0; i < sceneResults.Count; i++)
+            {
+                SceneRefObjectResult go = sceneResults[i];
+                string sceneName = go.gameObject != null ? go.gameObject.scene.name : "";
+
+                var hits = new List<UsageFieldHit>(go.totalRefCount);
+                for (int c = 0; c < go.components.Count; c++)
+                {
+                    SceneRefComponentResult comp = go.components[c];
+                    for (int f = 0; f < comp.fields.Count; f++)
+                    {
+                        SceneRefFieldResult field = comp.fields[f];
+                        hits.Add(new UsageFieldHit(
+                            UsageNavKind.OpenSceneField,
+                            "",                      // ownerLabel để trống — field.displayLabel đã là "ComponentName > path"
+                            field.displayLabel,
+                            field.propertyPath,
+                            go.gameObject,
+                            comp.component));
+                    }
+                }
+
+                results.Add(UsageEntry.ForSceneObject(go.gameObject, sceneName, hits));
+            }
+
+            return results;
+        }
+
+        // ──────────────── Filter ────────────────
 
         private void RebuildFilteredResults()
         {
@@ -292,17 +268,35 @@ namespace Horcrux.Editor.UsageFinder
             string filter = _filterText;
             for (int i = 0; i < _results.Count; i++)
             {
-                UsageEntry e = _results[i];
-                if (e.displayLabel.IndexOf(filter, StringComparison.OrdinalIgnoreCase) >= 0
-                    || e.pathLabel.IndexOf(filter, StringComparison.OrdinalIgnoreCase) >= 0
-                    || e.typeName.IndexOf(filter, StringComparison.OrdinalIgnoreCase) >= 0)
-                {
-                    _filteredResults.Add(e);
-                }
+                if (MatchesFilter(_results[i], filter))
+                    _filteredResults.Add(_results[i]);
             }
         }
 
+        private static bool MatchesFilter(UsageEntry e, string filter)
+        {
+            if (e.displayLabel.IndexOf(filter, StringComparison.OrdinalIgnoreCase) >= 0
+                || e.pathLabel.IndexOf(filter, StringComparison.OrdinalIgnoreCase) >= 0
+                || e.typeName.IndexOf(filter, StringComparison.OrdinalIgnoreCase) >= 0)
+                return true;
+
+            for (int h = 0; h < e.hits.Count; h++)
+            {
+                if (e.hits[h].displayLabel.IndexOf(filter, StringComparison.OrdinalIgnoreCase) >= 0)
+                    return true;
+            }
+            return false;
+        }
+
         // ──────────────── Helpers ────────────────
+
+        private static int CountHits(List<UsageEntry> list)
+        {
+            int count = 0;
+            for (int i = 0; i < list.Count; i++)
+                count += list[i].HitCount;
+            return count;
+        }
 
         private static void DrawSeparator()
         {

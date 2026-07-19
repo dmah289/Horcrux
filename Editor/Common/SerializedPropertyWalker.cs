@@ -32,7 +32,7 @@ namespace Horcrux.Editor.Common
 
     /// <summary>
     /// Traversal SerializedProperty dùng chung — tách từ NullRefScannerCore để tái sử dụng cho
-    /// NullRefScanner, SceneReferenceFinder, AddressableUsageScanner.
+    /// NullRefScanner, SceneReferenceFinder, AssetReferenceScanner (Usage Finder).
     ///
     /// Walker kiểm soát toàn bộ kỷ luật iteration: skip internal Unity property, phân loại
     /// reference kind, và quyết định enterChildren (descend vào managed reference non-null).

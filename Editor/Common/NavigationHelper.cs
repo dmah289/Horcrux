@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
+using Object = UnityEngine.Object;
 
 namespace Horcrux.Editor.Common
 {
@@ -12,6 +13,28 @@ namespace Horcrux.Editor.Common
     /// </summary>
     public static class NavigationHelper
     {
+        /// <summary>
+        /// Select + ping một asset object (SO/material/asset con). Nếu là GameObject (prefab) →
+        /// dùng <see cref="SelectAndPingProperty"/> để mở prefab stage. Với asset thường: select và
+        /// expand đúng property trong Inspector (delay để Inspector cập nhật).
+        /// </summary>
+        public static void SelectAndExpandAsset(Object assetObject, Component component, string propertyPath)
+        {
+            if (assetObject == null) return;
+
+            if (assetObject is GameObject go)
+            {
+                SelectAndPingProperty(go, component, propertyPath);
+                return;
+            }
+
+            Selection.activeObject = assetObject;
+            EditorGUIUtility.PingObject(assetObject);
+
+            if (!string.IsNullOrEmpty(propertyPath))
+                EditorApplication.delayCall += () => ExpandAssetProperty(assetObject, propertyPath);
+        }
+
         /// <summary>Select và ping GameObject — hỗ trợ cả scene object và prefab asset.</summary>
         public static void SelectAndPing(GameObject go)
         {
@@ -45,6 +68,25 @@ namespace Horcrux.Editor.Common
         }
 
         // ──────────────── Internal helpers ────────────────
+
+        /// <summary>Chọn asset và expand đúng property trong Inspector qua ActiveEditorTracker.</summary>
+        private static void ExpandAssetProperty(Object assetObject, string propertyPath)
+        {
+            var tracker = ActiveEditorTracker.sharedTracker;
+            var editors = tracker.activeEditors;
+            for (int i = 0; i < editors.Length; i++)
+            {
+                if (editors[i].target == assetObject)
+                {
+                    tracker.SetVisible(i, 1);
+                    editors[i].serializedObject.Update();
+                    SerializedProperty prop = editors[i].serializedObject.FindProperty(propertyPath);
+                    if (prop != null)
+                        prop.isExpanded = true;
+                    break;
+                }
+            }
+        }
 
         private static bool IsPrefabAsset(GameObject go)
         {
