@@ -145,6 +145,43 @@ footer{text-align:center;padding:3rem 1rem;color:var(--tx3);font-size:.85rem;bor
   </div>
 </section>
 
+<!-- ═══════════════ GENERIC FORMULA ═══════════════ -->
+<section id="generic">
+  <h2 class="reveal">Công thức tổng quát</h2>
+  <p class="reveal">Chỉ cần biết dạng <strong>In</strong> của một họ ease, bạn suy ra được <strong>Out</strong> và <strong>InOut</strong> bằng hai phép biến đổi dưới đây — không phải tự nghĩ lại công thức cho mỗi biến thể.</p>
+
+  <div class="demo reveal">
+    <div class="demo-title">Quy tắc 1 — Out từ In (lật gương)</div>
+    <div class="formula-box gtex" data-tex="\mathrm{Out}(t) = 1 - \mathrm{In}(1-t)"></div>
+    <ul>
+      <li><code>1 - t</code>: chạy ngược thời gian, từ đích về xuất phát.</li>
+      <li><code>1 - (…)</code>: lấy phần bù để lật đồ thị lên trên.</li>
+    </ul>
+    <p style="margin-bottom:.6rem">Ví dụ với <em>Quad</em> (<code>In(t)=t²</code>):</p>
+    <div class="formula-box gtex" data-tex="\mathrm{Out}(t) = 1-(1-t)^2 = t(2-t)"></div>
+    <p style="margin-bottom:0">— trùng đúng công thức nguyên bản của <code>QuadEase.Out</code>.</p>
+  </div>
+
+  <div class="demo reveal">
+    <div class="demo-title">Quy tắc 2 — InOut từ In và Out (nén &amp; ghép)</div>
+    <p>Ép trọn đồ thị <strong>In</strong> vào nửa thời gian đầu, rồi ghép trọn <strong>Out</strong> vào nửa sau:</p>
+    <div class="formula-box gtex" data-tex="\mathrm{InOut}(t)=\begin{cases}\dfrac{\mathrm{In}(2t)}{2} & t<0.5\\[2mm] \dfrac{\mathrm{Out}(2t-1)}{2}+\dfrac{1}{2} & t\ge0.5\end{cases}"></div>
+    <ul>
+      <li><strong>Nửa đầu:</strong> <code>2t</code> ép In chạy hết 100% trong <code>[0, 0.5]</code>; chia đôi kết quả để chỉ đi 50% quãng đường.</li>
+      <li><strong>Nửa sau:</strong> <code>2t-1</code> đưa Out về mốc 0; chia đôi rồi cộng <code>0.5</code> quãng đường đã đi ở nửa đầu.</li>
+    </ul>
+    <p style="margin-bottom:0">Tại <code>t = 0.5</code> hai nhánh gặp nhau ở <code>0.5</code> → curve liên tục.</p>
+  </div>
+
+  <div class="note reveal">
+    <strong>Không phải họ nào cũng suy máy móc.</strong> Hai quy tắc trên đúng về mặt toán học, nhưng ba họ đặc biệt lệch khỏi convention chuẩn (easings.net) — code hiện tại đã theo đúng chuẩn này:
+    <ul style="margin:.7rem 0 0">
+      <li><strong>Back &amp; Elastic:</strong> biến thể <code>InOut</code> dùng <em>hằng số riêng, được khuếch đại</em> — Back đổi <code>c₁ → c₂ = 1.525·c₁</code>, Elastic đổi <code>c₄ = 2π/3 → c₅ = 2π/4.5</code>. Áp Quy tắc 2 với hằng số gốc sẽ <strong>không</strong> ra InOut chuẩn.</li>
+      <li><strong>Bounce:</strong> định nghĩa <code>Out</code> trước (mô phỏng bóng rơi dễ hơn), rồi suy ngược In qua chính Quy tắc 1: <code>In(t) = 1 − Out(1−t)</code>.</li>
+    </ul>
+  </div>
+</section>
+
 <!-- ═══════════════ API ═══════════════ -->
 <section id="api">
   <h2 class="reveal">Cách dùng — Easer</h2>
@@ -177,6 +214,13 @@ window.addEventListener('scroll', () => {
   const h = document.documentElement;
   pbar.style.width = (h.scrollTop / (h.scrollHeight - h.clientHeight) * 100) + '%';
 }, { passive: true });
+
+/* ── Render công thức tĩnh của section "Công thức tổng quát" ── */
+document.querySelectorAll('.gtex').forEach(el => {
+  const tex = el.getAttribute('data-tex');
+  if (window.katex) katex.render(tex, el, { displayMode: true, throwOnError: false });
+  else el.textContent = tex;
+});
 
 /* ── Ease families: fn (khớp PLAN.md) + tex hiển thị ───── */
 const HALF_PI = Math.PI * 0.5;

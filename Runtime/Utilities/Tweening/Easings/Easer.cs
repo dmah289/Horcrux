@@ -25,6 +25,42 @@ namespace Horcrux.Runtime.Tweening.Easing
                 EaseType.OutQuad => QuadEase.Out(t),
                 EaseType.InOutQuad => QuadEase.InOut(t),
                 
+                EaseType.InCubic => CubicEase.In(t),
+                EaseType.OutCubic => CubicEase.Out(t),
+                EaseType.InOutCubic => CubicEase.InOut(t),
+
+                EaseType.InQuart => QuartEase.In(t),
+                EaseType.OutQuart => QuartEase.Out(t),
+                EaseType.InOutQuart => QuartEase.InOut(t),
+
+                EaseType.InQuint => QuintEase.In(t),
+                EaseType.OutQuint => QuintEase.Out(t),
+                EaseType.InOutQuint => QuintEase.InOut(t),
+
+                EaseType.InSine => SineEase.In(t),
+                EaseType.OutSine => SineEase.Out(t),
+                EaseType.InOutSine => SineEase.InOut(t),
+
+                EaseType.InExpo => ExpoEase.In(t),
+                EaseType.OutExpo => ExpoEase.Out(t),
+                EaseType.InOutExpo => ExpoEase.InOut(t),
+
+                EaseType.InCirc => CircEase.In(t),
+                EaseType.OutCirc => CircEase.Out(t),
+                EaseType.InOutCirc => CircEase.InOut(t),
+
+                EaseType.InBack => BackEase.In(t),
+                EaseType.OutBack => BackEase.Out(t),
+                EaseType.InOutBack => BackEase.InOut(t),
+
+                EaseType.InElastic => ElasticEase.In(t),
+                EaseType.OutElastic => ElasticEase.Out(t),
+                EaseType.InOutElastic => ElasticEase.InOut(t),
+
+                EaseType.InBounce => BounceEase.In(t),
+                EaseType.OutBounce => BounceEase.Out(t),
+                EaseType.InOutBounce => BounceEase.InOut(t),
+
                 _ => t
             };
         }
