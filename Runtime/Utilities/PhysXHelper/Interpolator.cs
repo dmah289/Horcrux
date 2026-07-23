@@ -95,5 +95,38 @@ namespace Horcrux.Runtime.Utilities.PhysXHelper
             if(decay <= 0f) return 0f; // No decay, no movement
             return 1 - math.exp(-decay * dt);
         }
+
+        /// <summary>
+        /// Framerate-independent exponential move of a toward b.
+        /// </summary>
+        /// <remarks>
+        /// Formula : x(t) = b + (a - b) * 2^(-dt * invHalfLife)
+        /// </remarks>
+        /// <param name="a">Current value.</param>
+        /// <param name="b">Target value.</param>
+        /// <param name="halfLife">Time to cover half the gap</param>
+        /// <param name="dt">Elapsed time in seconds</param>
+        /// <returns>Value moved toward b; never overshoots.</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static float ExpDecayHalfLife(float a, float b, float halfLife, float dt)
+        {
+            if(halfLife <= 0f) return a;
+            return b + (a - b) * math.exp2(-dt / halfLife);
+        }
+
+        /// <summary>
+        /// Framerate-independent exponential move of a toward b.
+        /// </summary>
+        /// <remarks>
+        /// Formula : x(t) = b + (a - b) * 2^(-dt * invHalfLife)
+        /// </remarks>
+        /// <param name="a">Current value.</param>
+        /// <param name="b">Target value.</param>
+        /// <param name="invHalfLife">Inverse of time to cover half the gap</param>
+        /// <param name="dt">Elapsed time in seconds</param>
+        /// <returns>Value moved toward b; never overshoots.</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static float ExpDecayHalfLifePrecomputed(float a, float b, float invHalfLife, float dt)
+            => b + (a - b) * math.exp2(-dt * invHalfLife);
     }
 }
