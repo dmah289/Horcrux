@@ -1,19 +1,23 @@
 ﻿#if UNITY_EDITOR
 using UnityEngine;
 using System.IO;
+using Cysharp.Threading.Tasks;
+using Horcrux.Runtime.Abstractions;
+using Horcrux.Runtime.Abstractions.Composites;
 using Horcrux.Runtime.Abstractions.Singleton;
 using Sirenix.OdinInspector;
+using Sisus.Init;
 
-namespace Horcrux.Runtime.Utilities
+namespace Horcrux.Runtime.Implementations
 {
-    public class ScreenshotTaker : MonoSingleton<ScreenshotTaker>
+    [Service(typeof(IScreenshotTaker), FindFromScene = true)]
+    public class ScreenshotTaker : MonoBehaviour<ILevelManager, ILevelCheater>, IScreenshotTaker
     {
         [SerializeField] private Camera myCamera;
         [SerializeField] private int resolutionWidth = 1080;
         [SerializeField] private int resolutionHeight = 1920;
         [SerializeField] private int scale = 1;
         [SerializeField] private bool alphaIncluded;
-        [SerializeField] private KeyCode screenshotKey = KeyCode.S;
         [SerializeField] private int counter;
 
         [SerializeField] private string saveFolderName = "Screenshots";
@@ -21,10 +25,14 @@ namespace Horcrux.Runtime.Utilities
 
         private RenderTexture m_CachedRT;
         private Texture2D m_CachedTex;
+        private bool isInTakingScreenshotProcess;
+        
 
-        protected override void Awake()
+        public bool IsTakingScreenshot => isInTakingScreenshotProcess;
+
+        protected override void OnAwake()
         {
-            base.Awake();
+            base.OnAwake();
             myCamera ??= Camera.main;
 
             savePath = Path.Combine(Application.dataPath, "..", saveFolderName);
@@ -32,13 +40,7 @@ namespace Horcrux.Runtime.Utilities
                 Directory.CreateDirectory(savePath);
         }
 
-        private void Update()
-        {
-            if(Input.GetKeyDown(screenshotKey))
-                TakeScreenshot();
-        }
-
-        public void TakeScreenshot()
+        private void TakeScreenshot()
         {
             int finalWidth = resolutionWidth * scale;
             int finalHeight = resolutionHeight * scale;
@@ -64,6 +66,25 @@ namespace Horcrux.Runtime.Utilities
             File.WriteAllBytes(fileName, ssBytes);
         }
 
+        public async UniTask StartTakingScreenshots(int delayInterval = 1000)
+        {
+            if (isInTakingScreenshotProcess)
+                return;
+            
+            isInTakingScreenshotProcess = true;
+            myCamera ??= Camera.main;
+            
+            while(levelMng.CurrLevelDataIndex < levelMng.LevelDataAmount)
+            {
+                await UniTask.Yield();
+                TakeScreenshot();
+                await UniTask.Delay(delayInterval);
+                levelCheater.NextLevel();
+            }
+            
+            isInTakingScreenshotProcess = false;
+        }
+
         private void OnDestroy()
         {
             if (m_CachedRT != null)
@@ -76,6 +97,14 @@ namespace Horcrux.Runtime.Utilities
         private void OpenSaveFolder()
         {
             Application.OpenURL(Path.Combine(Application.dataPath, "..", saveFolderName));
+        }
+
+        private ILevelManager levelMng;
+        private ILevelCheater levelCheater;
+        protected override void Init(ILevelManager firstArgument, ILevelCheater secondArgument)
+        {
+            levelMng = firstArgument;
+            levelCheater = secondArgument;
         }
     }
 }
