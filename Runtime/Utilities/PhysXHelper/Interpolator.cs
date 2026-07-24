@@ -29,7 +29,7 @@ namespace Horcrux.Runtime.Utilities.PhysXHelper
         /// <param name="v">Value in the source range.</param>
         /// <param name="clamp">Clamp result to target range. Pass a literal so the branch folds away (zero-cost).</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static float Remap(float v, float fromMin, float fromMax, float toMin, float toMax, bool clamp = false)
+        public static float Remap(float v, float fromMin, float fromMax, float toMin, float toMax, bool clamp = true)
         {
             float t = InverseLerpUnclamped(fromMin, fromMax, v);
             if (clamp) t = Mathf.Clamp01(t);
@@ -41,7 +41,7 @@ namespace Horcrux.Runtime.Utilities.PhysXHelper
         /// <param name="clamp">Clamp result to target range. Pass a literal so the branch folds away (zero-cost).</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static float RemapPrecomputed(float v, float fromMin, float invFromRange, float toMin, float toMax,
-            bool clamp = false)
+            bool clamp = true)
         {
             float t = InverseLerpUnclampedPrecomputed(fromMin, invFromRange, v);
             if(clamp) t = Mathf.Clamp01(t);
