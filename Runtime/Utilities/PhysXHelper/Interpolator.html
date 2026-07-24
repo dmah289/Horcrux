@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ExpDecay — Nội suy độc lập framerate</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#0d1117;--bg2:#161b22;--bg3:#1c2333;--bg4:#242d3a;--tx:#e6edf3;--tx2:#8b949e;--tx3:#484f58;--ac:#58a6ff;--ac2:#bc8cff;--gr:#3fb950;--or:#d29922;--rd:#f85149;--bd:#30363d;--r:10px;--mono:'JetBrains Mono','Fira Code','Cascadia Code','SF Mono',monospace;--sans:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif}
+html{scroll-behavior:smooth;background:var(--bg);color:var(--tx);font:17px/1.7 var(--sans)}
+body{overflow-x:hidden}
+a{color:var(--ac);text-decoration:none}a:hover{text-decoration:underline}
+#progress{position:fixed;top:0;left:0;height:3px;background:linear-gradient(90deg,var(--ac),var(--ac2));width:0;z-index:999;transition:width .1s}
+#header{max-width:920px;margin:0 auto;padding:4rem 1.5rem 2rem;border-bottom:1px solid var(--bd)}
+#header h1{font-size:clamp(2rem,5vw,3rem);font-weight:800;letter-spacing:-.03em;background:linear-gradient(135deg,var(--ac),var(--ac2));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+#header .sub{font-size:1.05rem;color:var(--tx2);margin-top:.4rem}
+#header .badge{display:inline-block;margin-top:.8rem;padding:.3em .9em;border:1px solid var(--bd);border-radius:99px;font-family:var(--mono);font-size:.78rem;color:var(--tx2)}
+main{max-width:920px;margin:0 auto;padding:0 1.5rem 6rem}
+section{padding-top:4rem}
+section .reveal{opacity:0;transform:translateY(24px);transition:opacity .6s ease,transform .6s ease}
+section .reveal.visible{opacity:1;transform:none}
+#toc{max-width:920px;margin:3rem auto;padding:0 1.5rem}
+#toc h2{font-size:1.3rem}
+#toc ol{columns:2;column-gap:2rem;padding-left:1.5em}
+#toc li{font-size:.92rem;margin-bottom:.3rem;break-inside:avoid}
+@media(max-width:600px){#toc ol{columns:1}}
+h2{font-size:1.9rem;font-weight:700;letter-spacing:-.02em;margin-bottom:1.5rem;padding-bottom:.5rem;border-bottom:1px solid var(--bd)}
+h3{font-size:1.3rem;font-weight:600;margin:2.5rem 0 1rem;color:var(--ac)}
+h4{font-size:1.05rem;font-weight:600;margin:1.8rem 0 .8rem;color:var(--tx)}
+p,ul,ol{margin-bottom:1rem}ul{padding-left:1.3em}li{margin-bottom:.3rem}
+strong{color:var(--tx);font-weight:600}
+em{color:var(--ac2);font-style:normal}
+code{font-family:var(--mono);font-size:.88em;background:var(--bg3);padding:.15em .4em;border-radius:4px}
+pre{margin:1.2rem 0!important;border-radius:var(--r)!important;border:1px solid var(--bd)!important}
+pre code{background:none!important;padding:0!important;font-size:.85rem!important;line-height:1.6!important}
+.card{background:var(--bg2);border:1px solid var(--bd);border-radius:var(--r);padding:1.5rem;margin:1.5rem 0}
+.card-title{font-weight:600;margin-bottom:.75rem;font-size:1.05rem;color:var(--ac)}
+.note{border-left:3px solid var(--or);background:var(--bg2);padding:1rem 1.2rem;border-radius:0 var(--r) var(--r) 0;margin:1.5rem 0;font-size:.92rem;color:var(--tx2)}
+.note strong{color:var(--or)}
+.note.good{border-left-color:var(--gr)}.note.good strong{color:var(--gr)}
+.note.bad{border-left-color:var(--rd)}.note.bad strong{color:var(--rd)}
+table{width:100%;border-collapse:collapse;margin:1.2rem 0;font-size:.92rem}
+th{text-align:left;padding:.6rem .8rem;border-bottom:2px solid var(--bd);color:var(--ac);font-weight:600}
+td{padding:.5rem .8rem;border-bottom:1px solid var(--bd)}
+tr:last-child td{border:none}
+td code{white-space:nowrap}
+.eq{background:var(--bg3);border:1px solid var(--bd);border-radius:var(--r);padding:1.1rem 1.3rem;margin:1.3rem 0;overflow-x:auto;text-align:center}
+.eq.boxed{border-color:var(--ac);border-width:1px;box-shadow:0 0 0 1px var(--ac) inset}
+.demo{background:var(--bg2);border:1px solid var(--bd);border-radius:var(--r);padding:1.5rem;margin:2rem 0}
+.demo-title{font-family:var(--mono);font-size:.8rem;color:var(--ac2);text-transform:uppercase;letter-spacing:.08em;margin-bottom:1rem}
+.demo canvas{display:block;border-radius:8px;background:var(--bg3);max-width:100%}
+.demo-row{display:flex;gap:1.5rem;align-items:flex-start;flex-wrap:wrap}
+.demo-row>*{flex:1;min-width:250px}
+.ctrl{display:flex;align-items:center;gap:.8rem;margin:.6rem 0;font-size:.9rem;color:var(--tx2)}
+.ctrl label{min-width:90px;font-family:var(--mono);font-size:.82rem;color:var(--ac)}
+.ctrl input[type=range]{flex:1;accent-color:var(--ac)}
+.ctrl output{min-width:70px;font-family:var(--mono);color:var(--tx);text-align:right}
+.btn{background:var(--bg4);border:1px solid var(--bd);color:var(--tx);font-family:var(--mono);font-size:.82rem;padding:.4em .9em;border-radius:6px;cursor:pointer}
+.btn:hover{border-color:var(--ac);color:var(--ac)}
+.legend{display:flex;gap:1.2rem;flex-wrap:wrap;font-size:.82rem;color:var(--tx2);margin-top:.8rem}
+.legend span{display:flex;align-items:center;gap:.4rem}
+.swatch{width:14px;height:3px;border-radius:2px;display:inline-block}
+.arch{font-family:var(--mono);font-size:.82rem;line-height:1.8;white-space:pre;overflow-x:auto;padding:1rem;background:var(--bg3);border-radius:var(--r);color:var(--tx2)}
+.arch em{color:var(--ac);font-style:normal}
+.perf-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem;margin:1.5rem 0}
+.perf-card{background:var(--bg3);border-radius:var(--r);padding:1.2rem;text-align:center}
+.perf-val{font-size:1.8rem;font-weight:800;background:linear-gradient(135deg,var(--ac),var(--ac2));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.perf-label{font-size:.82rem;color:var(--tx2);margin-top:.2rem}
+footer{text-align:center;padding:3rem 1rem;color:var(--tx3);font-size:.85rem;border-top:1px solid var(--bd)}
+</style>
+</head>
+<body>
+<div id="progress"></div>
+<header id="header">
+  <h1>ExpDecay & anh em</h1>
+  <p class="sub">Nội suy độc lập framerate — bản chất toán học, tư duy giải & biến đổi công thức</p>
+  <span class="badge">Horcrux.Runtime.Utilities.PhysXHelper.Interpolator</span>
+</header>
+
+<nav id="toc"><h2>Mục lục</h2><ol>
+  <li><a href="#s1">Vấn đề: Lerp mỗi frame là SAI</a></li>
+  <li><a href="#s2">Lời giải: phân rã mũ</a></li>
+  <li><a href="#s3">DecayFactor — hệ số cho mọi kiểu</a></li>
+  <li><a href="#s4">ExpDecayHalfLife — tham số bằng half-life</a></li>
+  <li><a href="#s5">Biên & tối ưu</a></li>
+  <li><a href="#s6">Tổng kết API</a></li>
+</ol></nav>
+
+<main>
+
+<!-- ============ SECTION 1 ============ -->
+<section id="s1">
+  <h2 class="reveal">1 · Vấn đề: <code>Lerp(current, target, k)</code> mỗi frame là SAI</h2>
+  <p class="reveal">Giải quyết lỗi kinh điển: <strong>lerp mỗi frame cho kết quả khác nhau ở FPS khác nhau.</strong></p>
+
+  <pre class="reveal"><code class="language-csharp">void Update() {
+    current = Mathf.Lerp(current, target, 0.1f);   // ❌ tốc độ hội tụ phụ thuộc FPS
+}</code></pre>
+
+  <p class="reveal">Mỗi frame nhích 10% khoảng cách còn lại → khoảng cách <strong>× 0.9</strong> mỗi frame. Sau <code>n</code> frame còn <code>D × 0.9ⁿ</code>. Mà <code>n</code> = <strong>số frame/giây = tùy máy</strong>:</p>
+
+  <div class="reveal">
+  <table>
+    <thead><tr><th>Trong 1 giây thực</th><th>Số lần Update</th><th>Còn lại</th><th>Đã đi</th></tr></thead>
+    <tbody>
+      <tr><td>60 FPS</td><td>60</td><td><code>0.9⁶⁰ ≈ 0.0018</code></td><td>99.82%</td></tr>
+      <tr><td>30 FPS</td><td>30</td><td><code>0.9³⁰ ≈ 0.042</code></td><td>95.8%</td></tr>
+    </tbody>
+  </table>
+  <p>→ máy 30 FPS còn xa target <strong>gấp ~23 lần</strong>: máy mạnh camera dính sát, máy yếu lờ đờ.</p>
+  </div>
+
+  <div class="demo reveal">
+    <div class="demo-title">Demo · Cùng 1 giây thực, hai FPS hội tụ khác nhau</div>
+    <canvas id="fpsCanvas" width="840" height="280"></canvas>
+    <div class="ctrl"><label for="fpsK">k</label><input type="range" id="fpsK" min="0.02" max="0.30" step="0.01" value="0.10"><output id="fpsKv">0.10</output></div>
+    <div class="legend">
+      <span><i class="swatch" style="background:#3fb950"></i>60 FPS (60 bước)</span>
+      <span><i class="swatch" style="background:#f85149"></i>30 FPS (30 bước)</span>
+      <span><i class="swatch" style="background:#8b949e"></i>target</span>
+    </div>
+  </div>
+
+  <h4 class="reveal">Nhân thêm <code>dt</code> KHÔNG cứu gốc</h4>
+  <p class="reveal"><code>Lerp(current, target, k·Δt)</code> → mỗi frame × <code>(1−k·Δt)</code>, lặp <code>1/Δt</code> lần → sau 1s còn <code>(1−k·Δt)^(1/Δt)</code>. Vẫn phụ thuộc Δt (chỉ nhỏ đi), phình to khi <code>k</code> lớn hoặc FPS dao động (lag spike).</p>
+
+  <div class="note bad reveal"><strong>Gốc rễ:</strong> Lerp mỗi frame là <strong>xấp xỉ rời rạc</strong> — cắt đường cong thành nấc thang, số nấc theo FPS. Cần <strong>nghiệm chính xác của đường cong liên tục</strong>, đánh giá theo đúng <code>Δt</code> đã trôi.</div>
+</section>
+
+<!-- ============ SECTION 2 ============ -->
+<section id="s2">
+  <h2 class="reveal">2 · Lời giải: phân rã mũ</h2>
+
+  <h3 class="reveal">Cái tên "phương trình vi phân phân rã mũ" nghĩa là gì</h3>
+  <p class="reveal">Ghép nghĩa 3 mảnh, đọc như một câu:</p>
+  <div class="reveal">
+  <table>
+    <thead><tr><th>Mảnh</th><th>Nghĩa</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Phương trình vi phân</strong></td><td>ràng buộc đặt trên <em>đạo hàm</em> (tốc độ đổi) của một hàm chưa biết <code>x(t)</code>; giải ra được chính hàm đó</td></tr>
+      <tr><td><strong>Phân rã</strong></td><td>đại lượng giảm dần <strong>về 0</strong> — ở đây là <strong>khoảng cách còn lại</strong> <code>x − target</code></td></tr>
+      <tr><td><strong>Mũ</strong></td><td>mỗi giây <strong>nhân</strong> với một tỉ lệ cố định (không trừ lượng cố định) → đường cong <code>e^(−λt)</code></td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p class="reveal"><strong>Cả cụm</strong> = <em>một quy luật nói khoảng-cách-còn-lại co lại với tốc độ tỉ lệ thuận chính nó, nên nó tan về 0 theo hàm mũ.</em> Cùng khuôn toán với chất phóng xạ (bán rã), cà phê nguội (định luật Newton), tụ điện xả.</p>
+
+  <h3 class="reveal">Bước 1 — Dịch câu mô tả thành phương trình</h3>
+  <p class="reveal">Hành vi muốn có: <strong>càng xa đi càng nhanh, càng gần đi càng chậm.</strong> Câu cần dịch:</p>
+  <div class="note reveal"><em>"Tốc độ thay đổi của <code>x</code> tỉ lệ thuận với khoảng cách còn lại, và hướng về target."</em></div>
+  <p class="reveal">Dịch từng vế:</p>
+  <div class="reveal">
+  <table>
+    <thead><tr><th>Lời</th><th>Toán</th></tr></thead>
+    <tbody>
+      <tr><td>tốc độ thay đổi của <code>x</code></td><td><code>dx/dt</code></td></tr>
+      <tr><td>tỉ lệ thuận (hằng số λ)</td><td><code>= λ · …</code></td></tr>
+      <tr><td>khoảng cách còn lại</td><td><code>(x − target)</code></td></tr>
+      <tr><td><em>hướng về</em> target (ngược dấu độ lệch)</td><td>thêm dấu <code>−</code></td></tr>
+    </tbody>
+  </table>
+  </div>
+  <div class="eq reveal" data-tex="\frac{dx}{dt} = -\lambda\,(x - target)"></div>
+  <p class="reveal">Dấu trừ là cơ chế <strong>tự hiệu chỉnh</strong>: <code>x</code> ở trên target → <code>dx/dt &lt; 0</code>, đi xuống; ở dưới → đi lên. Luôn kéo <code>x</code> về target. <code>λ &gt; 0</code> = "độ hung hăng".</p>
+
+  <h3 class="reveal">Bước 2 — Giải phương trình ra nghiệm</h3>
+  <p class="reveal"><strong>① Đổi biến</strong> về khoảng cách còn lại <code>y = x − target</code> (target là hằng nên <code>dy/dt = dx/dt</code>):</p>
+  <div class="eq reveal" data-tex="\frac{dy}{dt} = -\lambda y"></div>
+  <p class="reveal"><strong>② Tách biến</strong> — dồn <code>y</code> một bên, <code>t</code> một bên — rồi lấy tích phân 2 vế:</p>
+  <div class="eq reveal" data-tex="\frac{dy}{y} = -\lambda\,dt \;\Rightarrow\; \ln|y| = -\lambda t + C \;\Rightarrow\; y = y_0\,e^{-\lambda t}"></div>
+  <p class="reveal">(<code>y₀</code> = khoảng cách lúc <code>t = 0</code>; <code>e^C</code> gộp vào <code>y₀</code>.)</p>
+  <p class="reveal"><strong>③ Đổi biến ngược</strong> <code>y = x − target</code>:</p>
+  <div class="eq boxed reveal" data-tex="x(t) = target + (x_0 - target)\,e^{-\lambda t}"></div>
+  <p class="reveal">Vì sao lại ra <code>e</code>? Bước ② thực chất đi tìm hàm mà <strong>đạo hàm bằng chính nó nhân hằng số</strong> — hàm <strong>duy nhất</strong> có tính chất đó là hàm mũ. Kiểm mốc:</p>
+  <div class="reveal">
+  <table>
+    <thead><tr><th>t</th><th>e^(−λt)</th><th>x(t)</th></tr></thead>
+    <tbody>
+      <tr><td>0</td><td>1</td><td><code>x₀</code> ✅ bắt đầu đúng chỗ</td></tr>
+      <tr><td>→∞</td><td>0</td><td><code>target</code> ✅ chạm đích</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p class="reveal"><code>e^(−λt)</code> = <strong>tỉ lệ khoảng cách còn sót lại</strong>, chạy 1 → 0. Đó là ý nghĩa của "exponential decay".</p>
+
+  <h3 class="reveal">Bước 3 — Rời rạc hóa để chạy trong game</h3>
+  <p class="reveal">Nghiệm đúng với <em>mọi</em> <code>t</code>. Mỗi frame: coi vị trí cũ <code>a</code> là điểm xuất phát mới, áp công thức cho đúng 1 bước <code>Δt</code>:</p>
+  <div class="eq reveal" data-tex="x_{new} = b + (a - b)\,e^{-\lambda\,\Delta t}"></div>
+  <pre class="reveal"><code class="language-csharp">b + (a - b) * math.exp(-decay * dt)   // a = cũ, b = target, decay = λ, dt = Δt</code></pre>
+
+  <h3 class="reveal">Bước 4 — Vì sao độc lập framerate (điểm then chốt)</h3>
+  <p class="reveal">Mỗi frame chỉ <strong>nhân</strong> khoảng cách với hệ số <code>e^(−λΔt)</code>. Chạy nhiều frame = nhân dồn các hệ số. Tính chất vàng của hàm mũ biến <strong>tích các hệ số</strong> thành <strong>một hệ số duy nhất của tổng thời gian</strong>:</p>
+  <div class="eq reveal" data-tex="\prod_i e^{-\lambda \Delta t_i} = e^{-\lambda \sum_i \Delta t_i} = e^{-\lambda T}"></div>
+  <p class="reveal"><strong>Vì sao 2 bước nhỏ = 1 bước lớn:</strong> hệ số mỗi bước <code>e^(−λΔtᵢ)</code> <strong>đã mang sẵn <code>Δtᵢ</code> của nó trong số mũ</strong>. Khi nhân dồn, quy tắc <code>eˣ·eʸ = eˣ⁺ʸ</code> <strong>cộng các số mũ lại</strong>, cho đúng <code>−λ·(tổng Δt) = −λT</code>. Nên chia <code>T</code> thành 2 hay 200 frame đều cho <strong>cùng một <code>e^(−λT)</code></strong> → cùng một vị trí. Kết quả chỉ phụ thuộc <code>T</code> (giây thực), <strong>không</strong> phụ thuộc số frame.</p>
+  <p class="reveal">Đối chiếu §1: Lerp mỗi frame nhân hệ số <code>(1−k)</code> <strong>cố định, không chứa Δt</strong> → dồn thành <code>(1−k)ⁿ</code>, phụ thuộc <code>n</code> = số frame. Chính chỗ "hệ số có mang Δt hay không" là ranh giới giữa nghiệm-giải-tích và xấp-xỉ-rời-rạc.</p>
+
+  <div class="demo reveal">
+    <div class="demo-title">Demo · Đường cong phân rã — số frame không đổi kết quả</div>
+    <canvas id="curveCanvas" width="840" height="300"></canvas>
+    <div class="ctrl"><label for="curveHL">half-life</label><input type="range" id="curveHL" min="0.05" max="1.0" step="0.05" value="0.35"><output id="curveHLv">0.35 s</output></div>
+    <div class="legend">
+      <span><i class="swatch" style="background:#58a6ff"></i>nghiệm liên tục e^(−λt)</span>
+      <span><i class="swatch" style="background:#3fb950"></i>bước 120 FPS</span>
+      <span><i class="swatch" style="background:#d29922"></i>bước 30 FPS</span>
+      <span><i class="swatch" style="background:#8b949e"></i>half-life (½ quãng)</span>
+    </div>
+  </div>
+
+  <h3 class="reveal">Half-life: con số dễ tune hơn λ</h3>
+  <p class="reveal"><code>λ</code> trừu tượng. Trực quan hơn: <strong>half-life <code>t½</code></strong> = thời gian đi hết <strong>nửa</strong> quãng còn lại. Tìm nó bằng cách đặt hệ số còn lại <code>= ½</code> rồi giải:</p>
+  <div class="eq boxed reveal" data-tex="e^{-\lambda t_{½}} = \tfrac12 \;\xrightarrow{\ \ln\ }\; -\lambda t_{½} = \ln\tfrac12 = -\ln 2 \;\Rightarrow\; t_{½} = \frac{\ln 2}{\lambda}"></div>
+  <p class="reveal">VD: λ=12 → t½ ≈ 0.058s (rất nhanh); λ=2 → t½ ≈ 0.35s (chậm rãi). Dải λ thực tế <code>[1, 25]</code>.</p>
+</section>
+
+<!-- ============ SECTION 3 ============ -->
+<section id="s3">
+  <h2 class="reveal">3 · <code>DecayFactor</code> — tách hệ số <code>t</code> cho MỌI kiểu dữ liệu</h2>
+  <p class="reveal"><code>ExpDecay</code> chỉ chạy <code>float</code>. Nhưng nếu rút ra <strong>hệ số vô hướng <code>t</code></strong>, ta cắm vào <em>bất kỳ</em> Lerp nào (Vector3, Quaternion, Color).</p>
+
+  <p class="reveal"><strong>Biến đổi <code>ExpDecay</code> về đúng dạng Lerp</strong> <code>a + (b−a)·t</code>. Đặt <code>k = e^(−λΔt)</code>:</p>
+  <div class="eq reveal" data-tex="x_{new} = b + (a-b)k = ak + b(1-k) = a + (b-a)(1-k)"></div>
+  <p class="reveal">So với <code>Lerp(a,b,t) = a + (b−a)t</code> → khớp khi:</p>
+  <div class="eq boxed reveal" data-tex="t = 1 - e^{-\lambda \Delta t} \qquad\text{tức}\quad \text{ExpDecay}(a,b,\lambda,dt) \equiv \text{Lerp}\big(a,\,b,\,\text{DecayFactor}(\lambda,dt)\big)"></div>
+
+  <h3 class="reveal">Vì sao <code>1 − e</code> chứ không phải <code>e</code></h3>
+  <p class="reveal">Hai đại lượng bù nhau, đừng lẫn:</p>
+  <div class="reveal">
+  <table>
+    <thead><tr><th>Biểu thức</th><th>Ý nghĩa</th><th>Nhân với</th><th>Chạy</th></tr></thead>
+    <tbody>
+      <tr><td><code>e^(−λΔt)</code></td><td>phần <strong>còn lại</strong> (chưa đi)</td><td><code>a − b</code></td><td>1 → 0</td></tr>
+      <tr><td><code>1 − e^(−λΔt)</code> = <code>t</code></td><td>phần <strong>đã đi</strong></td><td><code>b − a</code></td><td>0 → 1</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p class="reveal">Dấu trừ đảo <code>(a−b) → (b−a)</code> chính là chỗ <code>e</code> biến thành <code>1−e</code>. Kiểm biên: <code>dt=0 → t=0</code> (giữ <code>a</code>); <code>dt→∞ → t=1</code> (tới <code>b</code>). ✅</p>
+
+  <pre class="reveal"><code class="language-csharp">float t = Interpolator.DecayFactor(12f, Time.deltaTime);  // tính 1 lần, áp cho mọi kiểu
+pos   = Vector3.LerpUnclamped(pos, targetPos, t);
+rot   = Quaternion.SlerpUnclamped(rot, targetRot, t);
+color = Color.LerpUnclamped(color, targetColor, t);</code></pre>
+</section>
+
+<!-- ============ SECTION 4 ============ -->
+<section id="s4">
+  <h2 class="reveal">4 · <code>ExpDecayHalfLife</code> — tham số bằng half-life</h2>
+  <p class="reveal">Cho designer tune trực tiếp "bao lâu đi hết nửa đường". Đổi cơ số <code>e → 2</code> để <code>t½</code> <strong>hiện ra ngay trong công thức</strong>. Từ <code>t½ = ln2/λ</code> ⇒ <code>λ = ln2/t½</code>, thế vào và rút gọn:</p>
+  <div class="eq reveal" data-tex="e^{-\lambda \Delta t} = e^{-\frac{\ln 2}{t_{½}}\Delta t} = \big(e^{\ln 2}\big)^{-\Delta t / t_{½}} = 2^{-\Delta t / t_{½}}"></div>
+  <div class="eq boxed reveal" data-tex="x_{new} = b + (a-b)\,2^{-\Delta t / t_{½}}"></div>
+  <p class="reveal">Ý nghĩa lộ rõ: cứ mỗi <code>t½</code> giây, khoảng cách <strong>giảm đúng một nửa</strong> (<code>Δt = t½ → 2^(−1) = ½</code>). Dùng <code>math.exp2</code> (2^x thuần float, nhanh hơn <code>exp</code>).</p>
+</section>
+
+<!-- ============ SECTION 5 ============ -->
+<section id="s5">
+  <h2 class="reveal">5 · Biên & tối ưu</h2>
+  <ul class="reveal">
+    <li><strong><code>decay ≤ 0</code> / <code>halfLife ≤ 0</code></strong> → không hội tụ; hàm trả <strong><code>a</code></strong> (đứng yên), tránh chia 0 / phân kỳ.</li>
+    <li><strong><code>dt</code> rất lớn</strong> (lag spike): <code>e^(−λΔt) → 0</code> → kéo thẳng về <code>b</code>, <strong>không overshoot</strong> (khác spring). An toàn.</li>
+    <li><strong>Precompute</strong> khi <code>halfLife</code> cố định trên nhiều object: đổi phép chia <code>Δt/halfLife</code> thành nhân bằng <code>invHalfLife = 1/halfLife</code> (tính 1 lần):</li>
+  </ul>
+  <div class="eq reveal" data-tex="x_{new} = b + (a-b)\,2^{-\Delta t \,\cdot\, invHalfLife}"></div>
+  <ul class="reveal">
+    <li><strong><code>math.exp</code> thay <code>Mathf.Exp</code></strong>: bản <code>Unity.Mathematics</code> thuần <code>float</code>, Burst-friendly, không cast qua <code>double</code>.</li>
+  </ul>
+</section>
+
+<!-- ============ SECTION 6 ============ -->
+<section id="s6">
+  <h2 class="reveal">6 · Tổng kết API</h2>
+  <div class="perf-grid reveal">
+    <div class="perf-card"><div class="perf-val">e^(−λΔt)</div><div class="perf-label">ExpDecay · float</div></div>
+    <div class="perf-card"><div class="perf-val">1−e^(−λΔt)</div><div class="perf-label">DecayFactor · mọi kiểu</div></div>
+    <div class="perf-card"><div class="perf-val">2^(−Δt/t½)</div><div class="perf-label">ExpDecayHalfLife</div></div>
+    <div class="perf-card"><div class="perf-val">×invHL</div><div class="perf-label">…Precomputed · hot loop</div></div>
+  </div>
+  <div class="reveal">
+  <table>
+    <thead><tr><th>Hàm</th><th>Công thức</th><th>Dùng khi</th></tr></thead>
+    <tbody>
+      <tr><td><code>ExpDecay(a,b,decay,dt)</code></td><td><code>b + (a−b)·e^(−decay·dt)</code></td><td>ease <code>float</code>, tham số bằng rate λ</td></tr>
+      <tr><td><code>DecayFactor(decay,dt)</code></td><td><code>1 − e^(−decay·dt)</code></td><td>hệ số <code>t</code> cho Vector3/Quaternion/Color</td></tr>
+      <tr><td><code>ExpDecayHalfLife(a,b,hl,dt)</code></td><td><code>b + (a−b)·2^(−dt/hl)</code></td><td>tham số bằng half-life (designer tune)</td></tr>
+      <tr><td><code>…HalfLifePrecomputed(a,b,invHL,dt)</code></td><td><code>b + (a−b)·2^(−dt·invHL)</code></td><td>hot loop, half-life dùng chung</td></tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+</main>
+<footer>Horcrux · ExpDecay · <code>Horcrux.Runtime.Utilities.PhysXHelper.Interpolator</code></footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-csharp.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
+<script>
+// ---- reveal on scroll ----
+const observer=new IntersectionObserver(e=>{e.forEach(e=>{if(e.isIntersecting)e.target.classList.add('visible')})},{threshold:.08});
+document.querySelectorAll('.reveal').forEach(el=>observer.observe(el));
+// ---- progress bar ----
+const pb=document.getElementById('progress');
+window.addEventListener('scroll',()=>{const h=document.documentElement;pb.style.width=(h.scrollTop/(h.scrollHeight-h.clientHeight)*100)+'%'});
+// ---- KaTeX render (static, once) ----
+document.querySelectorAll('.eq[data-tex]').forEach(el=>{
+  try{katex.render(el.getAttribute('data-tex'),el,{displayMode:true,throwOnError:false});}catch(e){el.textContent=el.getAttribute('data-tex');}
+});
+
+// ---- Demo 1: FPS divergence (Pattern C: input -> transform, cheap) ----
+(function(){
+  const cv=document.getElementById('fpsCanvas'); if(!cv)return;
+  const ctx=cv.getContext('2d'), W=cv.width, H=cv.height;
+  const padL=50,padR=20,padT=20,padB=34, gw=W-padL-padR, gh=H-padT-padB;
+  const kIn=document.getElementById('fpsK'), kOut=document.getElementById('fpsKv');
+  const AC='#58a6ff',GR='#3fb950',RD='#f85149',MU='#8b949e',BD='#30363d',TX='#8b949e';
+  // x-axis: 1 second; y-axis: progress 0..1
+  function px(t){return padL+t*gw;}          // t in [0,1] second
+  function py(v){return padT+(1-v)*gh;}      // v progress 0..1
+  function drawSteps(k,steps,color){
+    ctx.strokeStyle=color; ctx.lineWidth=2; ctx.beginPath();
+    let prog=0; ctx.moveTo(px(0),py(0));
+    for(let i=1;i<=steps;i++){
+      prog=prog+(1-prog)*k;                   // Lerp(current,target,k): progress toward 1
+      const t=i/steps;
+      ctx.lineTo(px(t),py(prog));
+    }
+    ctx.stroke();
+    // end dot + label
+    ctx.fillStyle=color; ctx.beginPath(); ctx.arc(px(1),py(prog),4,0,7); ctx.fill();
+    return prog;
+  }
+  function draw(){
+    const k=parseFloat(kIn.value); kOut.textContent=k.toFixed(2);
+    ctx.clearRect(0,0,W,H);
+    // grid + axes
+    ctx.strokeStyle=BD; ctx.lineWidth=1; ctx.fillStyle=TX; ctx.font='11px monospace';
+    for(let v=0;v<=1;v+=0.25){ const y=py(v); ctx.beginPath();ctx.moveTo(padL,y);ctx.lineTo(W-padR,y);ctx.stroke(); ctx.fillText((v*100)+'%',6,y+4);}
+    ctx.fillText('0s',padL-4,H-14); ctx.fillText('1 giây thực',W-padR-70,H-14);
+    // target line 100%
+    ctx.strokeStyle=MU; ctx.setLineDash([5,5]); ctx.lineWidth=1.5;
+    ctx.beginPath();ctx.moveTo(padL,py(1));ctx.lineTo(W-padR,py(1));ctx.stroke(); ctx.setLineDash([]);
+    // two curves
+    const p60=drawSteps(k,60,GR);
+    const p30=drawSteps(k,30,RD);
+    // gap annotation
+    ctx.fillStyle=TX; ctx.font='12px monospace';
+    ctx.fillText('60→'+(p60*100).toFixed(1)+'%',W-padR-150,py(p60)-8);
+    ctx.fillText('30→'+(p30*100).toFixed(1)+'%',W-padR-150,py(p30)+16);
+  }
+  kIn.addEventListener('input',draw);
+  draw();
+})();
+
+// ---- Demo 2: decay curve, frame steps overlay (Pattern C) ----
+(function(){
+  const cv=document.getElementById('curveCanvas'); if(!cv)return;
+  const ctx=cv.getContext('2d'), W=cv.width, H=cv.height;
+  const padL=50,padR=20,padT=20,padB=34, gw=W-padL-padR, gh=H-padT-padB;
+  const hlIn=document.getElementById('curveHL'), hlOut=document.getElementById('curveHLv');
+  const AC='#58a6ff',GR='#3fb950',OR='#d29922',MU='#8b949e',BD='#30363d',TX='#8b949e';
+  const T=1.0; // show 1 second window
+  function px(t){return padL+(t/T)*gw;}
+  function py(v){return padT+(1-v)*gh;}       // v = remaining fraction 1..0
+  function remaining(t,hl){return Math.pow(2,-t/hl);}
+  function drawStepped(hl,fps,color){
+    const dt=1/fps; ctx.strokeStyle=color; ctx.lineWidth=1.5; ctx.globalAlpha=.9; ctx.beginPath();
+    let rem=1, t=0; ctx.moveTo(px(0),py(1));
+    while(t<T){ const step=Math.min(dt,T-t); rem*=Math.pow(2,-step/hl); t+=step; ctx.lineTo(px(t),py(rem)); }
+    ctx.stroke(); ctx.globalAlpha=1;
+  }
+  function draw(){
+    const hl=parseFloat(hlIn.value); hlOut.textContent=hl.toFixed(2)+' s';
+    ctx.clearRect(0,0,W,H);
+    ctx.strokeStyle=BD; ctx.lineWidth=1; ctx.fillStyle=TX; ctx.font='11px monospace';
+    for(let v=0;v<=1;v+=0.25){ const y=py(v); ctx.beginPath();ctx.moveTo(padL,y);ctx.lineTo(W-padR,y);ctx.stroke(); ctx.fillText((v*100)+'%',6,y+4);}
+    ctx.fillText('0s',padL-4,H-14); ctx.fillText('1 giây',W-padR-44,H-14);
+    // stepped overlays first (under the exact curve)
+    drawStepped(hl,120,GR);
+    drawStepped(hl,30,OR);
+    // exact continuous curve
+    ctx.strokeStyle=AC; ctx.lineWidth=2.5; ctx.beginPath();
+    for(let i=0;i<=gw;i++){ const t=(i/gw)*T; const v=remaining(t,hl); if(i===0)ctx.moveTo(px(t),py(v)); else ctx.lineTo(px(t),py(v)); }
+    ctx.stroke();
+    // half-life marker: at t=hl, remaining=0.5
+    if(hl<=T){
+      const x=px(hl),y=py(0.5);
+      ctx.strokeStyle=MU; ctx.setLineDash([4,4]); ctx.lineWidth=1;
+      ctx.beginPath();ctx.moveTo(x,py(1));ctx.lineTo(x,y);ctx.lineTo(padL,y);ctx.stroke(); ctx.setLineDash([]);
+      ctx.fillStyle=MU; ctx.beginPath();ctx.arc(x,y,4,0,7);ctx.fill();
+      ctx.fillText('t½='+hl.toFixed(2)+'s → 50%',x+6,y-6);
+    }
+  }
+  hlIn.addEventListener('input',draw);
+  draw();
+})();
+</script>
+</body>
+</html>
