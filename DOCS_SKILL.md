@@ -19,7 +19,7 @@
 1. **Ít văn** — bảng · công thức · diagram · bullet thay đoạn văn. Mỗi ý 1–2 câu "X → Y", không kể lể.
 2. **Trình tự hợp lý** — dẫn theo mạch **dễ→khó, tổng quan→chi tiết, vấn đề→giải pháp, trực giác→hình thức hóa**. Mỗi bước chỉ dùng khái niệm đã nêu trước; ý phụ thuộc nhau đặt liền kề; đánh số khi là quy trình.
 3. **Giải thích bản chất** — mỗi khái niệm: cơ chế + "tại sao" + trade-off, không chỉ "dùng X".
-4. **Không lặp** — 1 khái niệm giải thích 1 nơi (lần đầu xuất hiện), sau đó `xem §x`. Rà cả 3 loại trước khi chốt. Ngoại lệ: bảng tra cứu tổng kết cuối (metrics/API).
+4. **Không lặp** — 1 khái niệm giải thích 1 nơi (lần đầu xuất hiện), sau đó `xem §x`. Rà cả 3 loại trước khi chốt. **Liên hệ thống:** khái niệm đã dẫn giải ở doc hệ khác → trỏ `xem §… của <hệ>`, không giải lại (vd Euler's formula giải 1 lần ở SpringDamper, DampedOscillator trỏ tới). Ngoại lệ: bảng tra cứu tổng kết cuối (metrics/API).
 5. **Hệ toán/vật lý → dẫn giải sâu** theo mạch riêng ở **Phần A**.
 
 ---
@@ -31,6 +31,8 @@
 **Cấu trúc:** sections theo **data flow** (input→processing→output), KHÔNG "lý thuyết→thiết kế→code". Chọn mục hợp hệ thống: Data structures · Core algorithm · Lifecycle · Implementation details · Framework integration · Design decisions · Safety/error · Platform issues · Architecture (file tree + roles) · Testing (checklist + debug) · Extension · **Performance (bảng metrics — luôn cuối)**.
 
 **Riêng của `.md`** (ngoài nguyên tắc xuyên suốt): so sánh ≥2 lựa chọn → bảng có ✓; data flow → ASCII diagram; code trích nguyên văn, không viết lại; đủ chi tiết để `.html` dựng 100% mà không cần đọc source.
+
+**KaTeX trong `.md`** (lỗi hay tái diễn): bất kỳ lệnh có `\` (`\frac`, `\sqrt`, `\cos`, `\tfrac`…) **bắt buộc** nằm trong `$…$` (inline) hoặc `$$…$$` (block) — viết trong backtick sẽ hiện **raw text**. Backtick chỉ dùng cho ký hiệu Unicode thuần (`ω₀`, `ζ`, `e^{rt}`, `k/m`). Mỗi block `$$…$$` **một dòng** (block trải nhiều dòng vỡ ở một số renderer). Chốt xong quét lại: strip hết `$…$`/backtick còn sót `\[a-zA-Z]` nào là lọt.
 
 ## Hệ toán học / vật lý — mạch dẫn giải
 
@@ -45,7 +47,11 @@ Hệ có lõi toán/vật lý (solver, interpolation, dao động, đạn đạo
 | **Biến đổi/giải nghiệm** | pt gốc → nghiệm dùng trong code, **không nhảy bước** | đánh số ①②③, mỗi bước 1 câu "vì sao" |
 | **Kiểm mốc** | giá trị biên (t=0, t→∞…) xác nhận nghiệm đúng | bảng "mốc → kỳ vọng → ✓" |
 
-Bắt buộc: **mọi công thức chốt phải kiểm mốc**; **trực giác trước, ký hiệu sau** (nêu ý niệm "càng xa đi càng nhanh" rồi mới ra phương trình).
+Bắt buộc:
+- **Mọi công thức chốt phải kiểm mốc**; **trực giác trước, ký hiệu sau** (nêu ý niệm "càng xa đi càng nhanh" rồi mới ra phương trình).
+- **Suy ra, không áp đặt** — công thức chốt phải *dẫn ra* từ nguyên lý gốc, tuyệt đối không "xuất hiện từ hư không" rồi mới giải thích ngược.
+- **Mỗi "tại sao" kèm phép kiểm tái lập được** khi có thể — reader tự kiểm, không phải tin lời (vd "thử `y=cos(ωt)` → `ÿ=−ω²y`, khớp khi `ω²=k/m`").
+- **Nêu rõ lựa chọn mô hình khi code cố ý lệch/đơn giản hóa so với vật lý chuẩn** — vì sao chọn vậy + khi nào dùng bản đầy đủ (vd DampedOscillator tách rời `f`/`λ` cho game feel, ai cần ràng buộc `ω_d=√(ω₀²−λ²)` thì dùng SpringDamper). Tránh reader tra sách rồi bối rối.
 
 ---
 
@@ -234,4 +240,10 @@ Developer tự code lại để học. Plan **tự chứa**: `§0` dẫn giải 
 | **Giảm GC** | `struct` thay `class`; `ref`/`in` thay copy; không `new` ref-type/LINQ/closure/string trong hot path; reuse buffer. |
 | **Self-document** | tên nói rõ mục đích (`SolveAnalytic`≠`Process`); boolean là câu hỏi (`IsActive`); XML doc + công thức + "tại sao" ở API public; comment chỉ nói *tại sao*. |
 
-**Kiểm riêng:** code đủ 4 đảm bảo · đã verify mọi biến đổi/đạo hàm khớp code trước khi chốt. (Ít văn · trình tự · không lặp: theo Nguyên tắc xuyên suốt.)
+**Kiểm riêng:** code đủ 4 đảm bảo. (Ít văn · trình tự · không lặp: theo Nguyên tắc xuyên suốt.)
+
+**Verify công thức ↔ code trước khi chốt** (không khẳng định suông, phải có bằng chứng):
+- **Đối chiếu từng số hạng** — mỗi hộp `$$boxed$$` map thẳng 1 dòng code, kiểm từng hệ số/dấu (vd `ẋ_cos=A·e^(−λt)[−λcos−ωsin]` ↔ `env*(-lambda*c - omega*s)`).
+- **Kiểm mốc chéo** — giá trị biên trong §0 phải khớp bảng kiểm chứng của task (vd `ẋ(0)=−λA` ↔ `GetVelocity(Cos,·,2,0)=−2`).
+- **Đạo hàm số** khi có hàm đạo hàm — `f'(t) ≈ (f(t+h)−f(t−h))/2h`, `h=1e-4`, phải khớp công thức giải tích.
+- **Round-trip** khi có cặp converter/overload — `A→B→A` phải về gần chính nó (vd `*HalfLife` ↔ `decay`).

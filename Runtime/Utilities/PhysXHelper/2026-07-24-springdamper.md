@@ -33,6 +33,15 @@
 
 Ta muốn một giá trị `x` (vị trí camera, scale nút bấm, giá trị UI…) **tự đuổi theo** `target` một cách sống động: có gia tốc, có đà, giảm tốc mượt khi tới nơi. Đúng là hành vi của một **vật gắn lò xo**.
 
+> **Ký hiệu chấm (dot notation) — đọc trước cho quen.** Dấu chấm trên đầu = đạo hàm theo **thời gian** `t`:
+> | Viết | Đọc là | Ý nghĩa vật lý | Đơn vị (nếu `x` là mét) |
+> |---|---|---|---|
+> | `x` | vị trí | đang ở đâu | m |
+> | `ẋ` (x-chấm) | `dx/dt` = **vận tốc** | đổi vị trí nhanh chậm | m/s |
+> | `ẍ` (x-hai-chấm) | `d²x/dt²` = **gia tốc** | đổi vận tốc nhanh chậm | m/s² |
+>
+> Về sau dùng biến `y` thì `ẏ, ÿ` hiểu y hệt. Đây chỉ là cách viết gọn của đạo hàm, không có gì mới.
+
 Hình dung vật khối lượng `m` nối với `target` bằng lò xo, nhúng trong chất lỏng nhớt:
 
 | Thành phần | Vai trò trong game feel |
@@ -48,11 +57,13 @@ Hai lực tác dụng lên vật, theo đúng vật lý phổ thông:
 | **Lò xo (định luật Hooke)** | `F_s = −k·(x − target)` | Lực đàn hồi tỉ lệ **độ biến dạng** `(x−target)`. `x` ở **trên** target (độ lệch dương) → lò xo kéo **xuống** (lực âm) → luôn hướng **về** target. `k` (N/m) = độ cứng. |
 | **Cản nhớt (viscous damping)** | `F_d = −c·ẋ` | Lực cản của chất lỏng tỉ lệ **vận tốc** `ẋ`, luôn **ngược** hướng chuyển động → dấu `−`. `c` (N·s/m) = hệ số giảm chấn. |
 
-Định luật II Newton `m·ẍ = ΣF`:
+Định luật II Newton nói **tổng lực = khối lượng × gia tốc** (`ΣF = m·ẍ`). Cộng hai lực trên lại rồi thay vào:
 
-$$m\ddot{x} = \underbrace{-k(x - target)}_{\text{kéo về}} \;\underbrace{-\,c\dot{x}}_{\text{hãm đà}}$$
+$$m\ddot{x} = \underbrace{-k(x - target)}_{\text{lò xo kéo về}} \;\underbrace{-\,c\dot{x}}_{\text{cản hãm đà}}$$
 
-> **Đây là một phương trình vi phân bậc 2:** ẩn là *hàm* `x(t)`, ràng buộc đặt trên `ẍ` (gia tốc) và `ẋ` (vận tốc). "Bậc 2" vì có đạo hàm cấp cao nhất là `ẍ`. Giải nó = tìm ra `x` biến thiên thế nào theo thời gian.
+**Đọc phương trình này:** vế trái là gia tốc (×`m`), vế phải là hai lực. Nó nói *"tại mỗi thời điểm, gia tốc bị quyết định bởi vị trí hiện tại `x` và vận tốc hiện tại `ẋ`"*. Biết `x, ẋ` lúc này → tính được `ẍ` → biết sẽ tăng tốc thế nào ở khoảnh khắc kế → suy ra cả chuyển động. Đó chính là thứ solver làm.
+
+> **Vì sao gọi là phương trình vi phân bậc 2:** ẩn cần tìm là cả một *hàm* `x(t)` (chứ không phải một con số), và ràng buộc lại đặt lên **đạo hàm** của nó (`ẍ, ẋ`). "Bậc 2" vì đạo hàm cấp cao nhất xuất hiện là `ẍ` (cấp 2). Giải nó = tìm công thức `x(t)` thỏa mãn ràng buộc — đó là việc của §0.3–0.4.
 
 ### 0.2. Chuẩn hóa: 3 tham số vật lý → 2 tham số trực quan
 
@@ -64,14 +75,22 @@ $$\ddot{x} + \tfrac{c}{m}\dot{x} + \tfrac{k}{m}(x - target) = 0$$
 **Bước 2 — đổi biến `y = x − target`** (chuyển gốc tọa độ về target). Vì `target` là **hằng số** nên đạo hàm không đổi: `ẏ = ẋ`, `ÿ = ẍ`. Bài toán "đuổi theo target" thành "đưa `y` về 0":
 $$\ddot{y} + \tfrac{c}{m}\dot{y} + \tfrac{k}{m}\,y = 0$$
 
-**Bước 3 — đặt tên cho 2 tỉ lệ** `k/m` và `c/m`. Chọn cách đặt sao cho **có ý nghĩa vật lý**:
+**Bước 3 — đặt tên cho 2 tỉ lệ** `k/m` và `c/m`. Thay vì dùng số thô, ta đặt tên cho chúng sao cho **mỗi tên nói lên một ý nghĩa vật lý**. Có hai định nghĩa, dẫn giải từng cái:
 
-| Ký hiệu | Định nghĩa | Vì sao đặt thế này | Suy ra |
-|---|---|---|---|
-| `ω₀` (tần số tự nhiên) | `√(k/m)` | Nếu **bỏ cản** (`c=0`), pt thành `ÿ + (k/m)y = 0` — dao động điều hòa thuần với tần số góc đúng bằng `√(k/m)`. Vậy `ω₀` = "tốc độ dao động bẩm sinh". Designer nhập `f` (Hz) → `ω₀ = 2π·f`. | `k/m = ω₀²` |
-| `ζ` (damping ratio) | `c / (2√(km))` | Chọn mẫu `2√(km)` để `ζ` **không thứ nguyên** và mốc `ζ=1` rơi đúng ranh giới "hết nảy" (xem §0.3). Một con số gói trọn "kiểu" chuyển động. | `c/m = 2ζω₀` |
+**① `ω₀` — tần số tự nhiên**, định nghĩa `ω₀ ≡ √(k/m)`, tức `k/m = ω₀²`.
 
-Thay `k/m = ω₀²` và `c/m = 2ζω₀` vào → **dạng chuẩn** (mọi tài liệu điều khiển học đều dùng):
+*Vì sao chính là tần số dao động?* Tưởng tượng **bỏ cản** (`c=0`) — lò xo lý tưởng không ma sát. Phương trình còn:
+$$\ddot{y} + \tfrac{k}{m}\,y = 0 \quad\Longleftrightarrow\quad \ddot{y} = -\tfrac{k}{m}\,y$$
+Đọc lên: *"gia tốc luôn ngược dấu và tỉ lệ với li độ"*. Chỉ có `sin/cos` thỏa tính chất này — thử $y = \cos(\omega t)$ thì $\ddot{y} = -\omega^2\cos(\omega t) = -\omega^2 y$, khớp khi $\omega^2 = k/m$. Vậy vật dao động qua lại với **tần số góc** $\omega = \sqrt{k/m}$. Đó là nhịp lắc "bẩm sinh" khi không ai cản → gọi là *tần số tự nhiên* `ω₀`.
+
+*Vì sao `ω₀ = 2π·f`?* `ω₀` là tần số **góc** (radian/giây); designer lại nghĩ theo tần số **thường** `f` (số lần lắc trọn vẹn mỗi giây, đơn vị Hz). Một vòng lắc trọn = `2π` radian, nên `ω₀ = 2π·f`. Đây chỉ là đổi đơn vị, giống "vòng/phút → radian/giây".
+
+**② `ζ` — tỉ số giảm chấn (damping ratio)**, định nghĩa `ζ ≡ c / (2√(km))`, tức `c/m = 2ζω₀`.
+
+*Vì sao mẫu là `2√(km)`?* Ta muốn một con số **không thứ nguyên** (bỏ được đơn vị, chỉ còn "kiểu" chuyển động). `c` có đơn vị N·s/m; đại lượng `2√(km)` cũng có đúng đơn vị đó (gọi là *cản tới hạn* — mức cản vừa đủ để hết nảy), nên tỉ số `ζ` triệt đơn vị → thuần số. Chọn đúng mẫu này để mốc `ζ=1` rơi trúng ranh giới nảy/không-nảy (chứng minh ở §0.3). *Kiểm nhanh `c/m = 2ζω₀`:*
+$$2\zeta\omega_0 = 2\cdot\frac{c}{2\sqrt{km}}\cdot\sqrt{\frac{k}{m}} = \frac{c}{\sqrt{km}}\cdot\sqrt{\frac{k}{m}} = \frac{c}{m} \;\checkmark$$
+
+Thay `k/m = ω₀²` và `c/m = 2ζω₀` vào phương trình cuối Bước 2 → **dạng chuẩn** (mọi tài liệu điều khiển học đều dùng):
 
 $$\boxed{\;\ddot{y} + 2\zeta\omega_0\,\dot{y} + \omega_0^2\,y = 0\;}$$
 
@@ -86,7 +105,13 @@ Thay vào dạng chuẩn, đặt `e^{rt}` làm nhân tử chung (nó `≠ 0` nê
 $$e^{rt}\big(r^2 + 2\zeta\omega_0 r + \omega_0^2\big) = 0 \;\Rightarrow\; r^2 + 2\zeta\omega_0 r + \omega_0^2 = 0$$
 
 Đây là **phương trình đặc trưng** — một pt bậc 2 theo `r`. Giải bằng công thức nghiệm (`ax²+bx+c` với `a=1, b=2ζω₀, c=ω₀²`):
-$$r = \frac{-2\zeta\omega_0 \pm \sqrt{(2\zeta\omega_0)^2 - 4\omega_0^2}}{2} = -\zeta\omega_0 \pm \omega_0\sqrt{\zeta^2 - 1}$$
+$$r = \frac{-2\zeta\omega_0 \pm \sqrt{(2\zeta\omega_0)^2 - 4\omega_0^2}}{2}$$
+
+**Rút gọn phần dưới căn** (bước hay bị bỏ qua) — rút `4ω₀²` ra ngoài rồi lấy căn:
+$$\sqrt{4\zeta^2\omega_0^2 - 4\omega_0^2} = \sqrt{4\omega_0^2(\zeta^2-1)} = 2\omega_0\sqrt{\zeta^2-1}$$
+
+Thay lại, `2` trên tử triệt với `2` dưới mẫu:
+$$r = -\zeta\omega_0 \pm \omega_0\sqrt{\zeta^2 - 1}$$
 
 **Chìa khóa nằm ở `√(ζ² − 1)`** — biểu thức dưới căn đổi dấu quanh `ζ=1`, chia ra **3 trường hợp** khác nhau về bản chất nghiệm:
 
@@ -108,12 +133,20 @@ $$r = \frac{-2\zeta\omega_0 \pm \sqrt{(2\zeta\omega_0)^2 - 4\omega_0^2}}{2} = -\
 3. **Đạo hàm** `y(t)` ra `v(t) = ẏ(t)`.
 4. **Kiểm mốc** `Δt=0` (phải ra `(y₀,v₀)`) và `Δt→∞` (phải ra `(0,0)`).
 
-Ký hiệu dùng chung: `E = e^{−ζω₀Δt}` (**bao hình phân rã** — mọi chế độ đều có).
+Ký hiệu dùng chung: `E = e^{−ζω₀Δt}`.
+
+> **"Bao hình" (envelope) là gì:** nghiệm luôn có dạng `E(Δt) × [dao động/đa thức]`. Phần trong ngoặc lượn lên xuống (hoặc tăng), còn `E = e^{−ζω₀Δt}` là hàm mũ **giảm dần** bọc lấy nó, ép biên độ co về 0. Vẽ ra: `E` và `−E` là hai đường cong ôm trên–dưới, dao động nằm gọn giữa chúng → gọi là "đường bao". `ζω₀` càng lớn → bao co càng nhanh → tắt càng sớm. **Mọi chế độ đều share chung `E` này** (vì phần thực của `r` luôn là `−ζω₀`), nên ta tính `E` một lần rồi nhân vào.
 
 #### ● Under-damped (`ζ<1`) — trường hợp phổ biến nhất trong game
 
-**① Nghiệm tổng quát.** `r` phức → theo công thức Euler, phần thực `−ζω₀` cho bao hình `e^{−ζω₀t}`, phần ảo `±iω_d` cho `cos/sin`:
-$$y(t) = e^{-\zeta\omega_0 t}\big[A\cos(\omega_d t) + B\sin(\omega_d t)\big]$$
+**① Nghiệm tổng quát.** Với `ζ<1`, `ζ²−1 < 0` nên `√(ζ²−1) = √(−(1−ζ²)) = i√(1−ζ²)`. **Đặt tên** phần thực bên trong là `ω_d ≡ ω₀√(1−ζ²)` (tần số dao động thực). Hai nghiệm:
+$$r = -\zeta\omega_0 \pm i\,\omega_d$$
+
+Nghiệm tổng quát là `y = C₁e^{r₁t} + C₂e^{r₂t}`. Tách phần thực ra khỏi mũ (`e^{a+b}=e^a e^b`):
+$$y = e^{-\zeta\omega_0 t}\big(C_1 e^{i\omega_d t} + C_2 e^{-i\omega_d t}\big)$$
+
+**Vì sao mũ ảo → `cos/sin`:** công thức Euler $e^{i\theta}=\cos\theta + i\sin\theta$. Tổ hợp hai mũ ảo liên hợp (với `C₁,C₂` chọn sao cho `y` thực) rút gọn thành $A\cos(\omega_d t)+B\sin(\omega_d t)$. Đó là lý do cản yếu sinh **dao động** — phần ảo biến thành hàm lượng giác tuần hoàn:
+$$y(t) = \underbrace{e^{-\zeta\omega_0 t}}_{E:\text{ bao hình}}\big[A\cos(\omega_d t) + B\sin(\omega_d t)\big]$$
 
 **② Ghim `A, B`** — thay `t=0`:
 
@@ -122,17 +155,28 @@ $$y(t) = e^{-\zeta\omega_0 t}\big[A\cos(\omega_d t) + B\sin(\omega_d t)\big]$$
 | `y(0) = y₀` | `E=1, cos0=1, sin0=0` → `y(0)=A` | `A = y₀` |
 | `ẏ(0) = v₀` | đạo hàm rồi cho `t=0` (xem ③) → `v₀ = −ζω₀A + ω_d B` | `B = (v₀ + ζω₀y₀)/ω_d` |
 
-**③ Đạo hàm ra `v`.** Dùng quy tắc tích với `f = A cos + B sin`. Mẹo: `(e^{−ζω₀t}·f)' = e^{−ζω₀t}(f' − ζω₀ f)`. Với `f' = −Aω_d sin + Bω_d cos`, gom lại:
+**③ Đạo hàm ra `v = ẏ`.** Viết `y = E·f` với $E = e^{-\zeta\omega_0 t}$, $f = A\cos(\omega_d t)+B\sin(\omega_d t)$. Quy tắc tích $(E f)' = E'f + Ef'$:
+- $E' = -\zeta\omega_0\,E$ (đạo hàm hàm mũ)
+- $f' = -A\omega_d\sin(\omega_d t) + B\omega_d\cos(\omega_d t)$
 
+Gộp `E` ra chung:
+$$v = E\big(f' - \zeta\omega_0 f\big) = E\big[(-A\omega_d\sin + B\omega_d\cos) - \zeta\omega_0(A\cos + B\sin)\big]$$
+
+Nhóm lại theo `cos` và `sin`, rồi thay `A = y₀`:
+$$v = E\big[\underbrace{(B\omega_d - \zeta\omega_0 y_0)}_{\text{hệ số }\cos}\cos(ω_d t) - \underbrace{(y_0\omega_d + \zeta\omega_0 B)}_{\text{hệ số }\sin}\sin(ω_d t)\big]$$
+
+**Kết quả** (đặt `C = cos(ω_dΔt)`, `S = sin(ω_dΔt)`, `B = (v₀+ζω₀y₀)/ω_d`):
 $$\boxed{\;y = E\,(y_0 C + B S)\;}$$
 $$\boxed{\;v = E\big[(-\zeta\omega_0 y_0 + B\omega_d)\,C - (\zeta\omega_0 B + y_0\omega_d)\,S\big]\;}$$
-với `C = cos(ω_dΔt)`, `S = sin(ω_dΔt)`, `B = (v₀+ζω₀y₀)/ω_d`.
 
 **④ Kiểm mốc:** `Δt=0` → `E=C=1, S=0` → `y=y₀`; `v = −ζω₀y₀ + Bω_d = −ζω₀y₀ + (v₀+ζω₀y₀) = v₀` ✓ · `Δt→∞` → `E→0` → `(0,0)` tức `x→target` ✓
 
 #### ● Over-damped (`ζ>1`) — cản mạnh, không nảy
 
-**① Nghiệm tổng quát.** `r` thực → *về nguyên tắc* là tổng 2 mũ `C₁e^{r₁t}+C₂e^{r₂t}`. Nhưng ta viết lại bằng **hàm hyperbolic** (cùng một nghiệm, chỉ đổi cơ sở): tách bao hình chung `e^{−ζω₀t}` rồi phần còn lại là `cosh/sinh(st)`. Đây chính là khuôn under-damped với phép thế **`cos→cosh, sin→sinh, ω_d→s`**:
+**① Nghiệm tổng quát.** Với `ζ>1`, `ζ²−1 > 0` → căn **thực**. **Đặt tên** `s ≡ ω₀√(ζ²−1)` (đối xứng với `ω_d` bên under, nhưng thực). Hai nghiệm thực:
+$$r = -\zeta\omega_0 \pm s$$
+
+*Về nguyên tắc* nghiệm là tổng 2 mũ `C₁e^{r₁t}+C₂e^{r₂t}`. Nhưng ta viết lại bằng **hàm hyperbolic**. Lý do đổi được: theo định nghĩa $\cosh(st)=\tfrac{e^{st}+e^{-st}}{2}$, $\sinh(st)=\tfrac{e^{st}-e^{-st}}{2}$, nên $e^{\pm st}$ là tổ hợp tuyến tính của `cosh/sinh` — cùng một không gian nghiệm, chỉ đổi cơ sở. Tách bao hình chung `e^{−ζω₀t}` (từ phần `−ζω₀` của `r`) ra ngoài, phần `±s` gói vào `cosh/sinh(st)`. Kết quả **giống hệt khuôn under-damped** với phép thế **`cos→cosh, sin→sinh, ω_d→s`**:
 $$y(t) = e^{-\zeta\omega_0 t}\big[y_0\cosh(st) + B\sinh(st)\big],\qquad B = \tfrac{v_0+\zeta\omega_0 y_0}{s}$$
 
 > **Vì sao dùng cosh/sinh thay vì `C₁e^{r₁t}+C₂e^{r₂t}`:** dạng tổng-2-mũ bị **triệt tiêu số học** (catastrophic cancellation) khi `ζ` lớn — hai mũ chênh lệch cực lớn, trừ nhau mất chữ số có nghĩa. Dạng hyperbolic gộp bao hình ra ngoài → ổn định float hơn hẳn. Cùng lý do `DecayFactor` cần cẩn thận với `1−e` ở Interpolator.
@@ -156,7 +200,11 @@ $$y(t) = e^{-\omega_0 t}\,(A + B t)$$
 | Điều kiện | Kết quả |
 |---|---|
 | `y(0) = y₀` | `A = y₀` |
-| `ẏ(0) = v₀`, với `ẏ = e^{−ω₀t}(B − ω₀(A+Bt))` → `v₀ = B − ω₀A` | `B = v₀ + ω₀y₀` |
+| `ẏ(0) = v₀` (xem đạo hàm dưới) → `v₀ = B − ω₀A` | `B = v₀ + ω₀y₀` |
+
+Đạo hàm `y = e^{−ω₀t}(A+Bt)` bằng quy tắc tích, `E' = −ω₀E`:
+$$\dot{y} = -\omega_0 e^{-\omega_0 t}(A+Bt) + e^{-\omega_0 t}\cdot B = e^{-\omega_0 t}\big(B - \omega_0(A+Bt)\big)$$
+Cho `t=0`: `ẏ(0) = B − ω₀A = v₀`.
 
 **③ Kết quả** (đặt `coeff = B = v₀ + ω₀y₀`):
 $$\boxed{\;y = E\,(y_0 + coeff\cdot\Delta t)\;}\qquad \boxed{\;v = E\,(v_0 - \omega_0\,coeff\cdot\Delta t)\;}$$
