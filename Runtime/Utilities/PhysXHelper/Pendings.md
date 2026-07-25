@@ -6,6 +6,7 @@ Tất cả phải tuân thủ: **zero-GC** (thuần tính toán `float`/`struct`
 Đã có:
 - `HarmonicOscillator` (dao động điều hòa đơn giản, Sin/Cos).
 - `Easing` — ✅ **đã triển khai** dưới dạng `Easer` ở namespace riêng `Horcrux.Runtime.Tweening.Easing` (10 họ Quad…Bounce × In/Out/InOut + Linear; entry point `Easer.Evaluate(EaseType, t)`). Mọi tham chiếu `← Easing` phía dưới trỏ tới class này — **không** làm lại trong `PhysXHelper`.
+- `InterpolationHelper` — ✅ **đã triển khai** dưới dạng `Interpolator` (`Horcrux.Runtime.Utilities.PhysXHelper`). Đã có: `InverseLerpUnclamped(+Precomputed)`, `Remap(+Precomputed)`, `SmootherStep` (quintic 6t⁵−15t⁴+10t³), `ExpDecay`/`DecayFactor` (`1−e^(−k·dt)`), `ExpDecayHalfLife(+Precomputed)`. Còn thiếu (bổ sung sau nếu cần): `SmoothStep` cubic (3t²−2t³). Mọi tham chiếu `← InterpolationHelper` phía dưới trỏ tới class này.
 
 ---
 
@@ -40,9 +41,9 @@ Tất cả phải tuân thủ: **zero-GC** (thuần tính toán `float`/`struct`
 - Bộ hàm easing đầy đủ 10 họ (Quad…Bounce × In/Out/InOut) + Linear; đầu vào `t∈[0,1]`, đầu ra đã cong (Back/Elastic có thể overshoot → dùng `LerpUnclamped`).
 - Đã tách file riêng theo họ trong `Tweening/Easings/Curves/`, entry point `Easer.Evaluate(EaseType, t)`. **Không** cần bản sao trong `PhysXHelper`.
 
-### `InterpolationHelper`  ⭐ ưu tiên cao
-- `Remap(value, inMin, inMax, outMin, outMax)`, `SmoothStep`, `SmootherStep`.
-- Spring-lerp, exponential decay lerp độc lập framerate: `1 − e^(−k·dt)`.
+### ~~`InterpolationHelper`~~ — ✅ ĐÃ XONG (xem `Interpolator`)
+- `Remap(+Precomputed)`, `InverseLerpUnclamped(+Precomputed)`, `SmootherStep` (quintic), exp-decay lerp độc lập framerate `1 − e^(−k·dt)` (`ExpDecay`/`DecayFactor`/`ExpDecayHalfLife`).
+- Còn thiếu: `SmoothStep` cubic (`3t²−2t³`) — bổ sung sau nếu cần.
 
 ---
 
@@ -255,8 +256,8 @@ Nguyên tắc: **mỗi tầng chỉ phụ thuộc các tầng dưới nó**. Là
 Làm trước tiên vì mọi thứ khác đều gọi tới. Thuần `float`/`struct`, không phụ thuộc nhau.
 1. `Easing` — ✅ **đã xong** (`Tweening.Easing.Easer`). Nền của mọi animation.
 2. `HarmonicOscillator` — ✅ đã có.
-3. **`InterpolationHelper`** ⭐ — `Remap`, `SmoothStep`, exp-decay lerp độc lập framerate. **Item nền còn lại được dùng nhiều nhất → làm kế tiếp.**
-4. **`RandomHelper`** — gaussian, weighted, jitter, shuffle (dùng cho shake/granular).
+3. `InterpolationHelper` — ✅ **đã xong** (`Interpolator`). `Remap`, `SmootherStep`, exp-decay lerp độc lập framerate.
+4. **`RandomHelper`** — gaussian, weighted, jitter, shuffle (dùng cho shake/granular). **Item nền còn lại → làm kế tiếp.**
 5. **`GeometryHelper`** — khoảng cách, closest-point, giao điểm (dùng cho stagger/snap).
 6. **`AngleHelper`** — chuẩn hóa góc, shortest-delta, xoay vector 2D.
 
