@@ -27,111 +27,176 @@
 
 ## §0. Nền toán học (đọc trước khi code)
 
-### 0.1. Vật lý → ODE
+> Mục tiêu: hiểu **tại sao** từng công thức, không chỉ chép. Đọc xong bạn có thể tự dựng lại solver từ đầu.
 
-Vật khối lượng `m` gắn lò xo + giảm chấn, kéo về `target`. Định luật II Newton `mẍ = ΣF`:
+### 0.1. Bản chất vật lý — vì sao lò xo là mô hình đúng cho "bám mượt"
 
-| Lực | Biểu thức | Dấu — vì sao |
+Ta muốn một giá trị `x` (vị trí camera, scale nút bấm, giá trị UI…) **tự đuổi theo** `target` một cách sống động: có gia tốc, có đà, giảm tốc mượt khi tới nơi. Đúng là hành vi của một **vật gắn lò xo**.
+
+Hình dung vật khối lượng `m` nối với `target` bằng lò xo, nhúng trong chất lỏng nhớt:
+
+| Thành phần | Vai trò trong game feel |
+|---|---|
+| **Lò xo** | càng xa target kéo càng mạnh → tạo lực đưa `x` về, sinh **đà** (overshoot nếu yếu cản) |
+| **Chất lỏng nhớt (damping)** | cản lại tỉ lệ tốc độ → **triệt đà**, quyết định nảy hay không nảy |
+| **Khối lượng** | quán tính → chuyển động liên tục, không giật cục |
+
+Hai lực tác dụng lên vật, theo đúng vật lý phổ thông:
+
+| Lực | Biểu thức | Bản chất & vì sao có dấu `−` |
 |---|---|---|
-| Lò xo (Hooke) | `−k(x − target)` | tỉ lệ độ lệch, luôn kéo **về** target → `−` |
-| Cản nhớt (damping) | `−c·ẋ` | tỉ lệ vận tốc, cản **ngược** hướng đi → `−` |
+| **Lò xo (định luật Hooke)** | `F_s = −k·(x − target)` | Lực đàn hồi tỉ lệ **độ biến dạng** `(x−target)`. `x` ở **trên** target (độ lệch dương) → lò xo kéo **xuống** (lực âm) → luôn hướng **về** target. `k` (N/m) = độ cứng. |
+| **Cản nhớt (viscous damping)** | `F_d = −c·ẋ` | Lực cản của chất lỏng tỉ lệ **vận tốc** `ẋ`, luôn **ngược** hướng chuyển động → dấu `−`. `c` (N·s/m) = hệ số giảm chấn. |
 
-$$m\ddot{x} = -k(x - target) - c\dot{x}$$
+Định luật II Newton `m·ẍ = ΣF`:
+
+$$m\ddot{x} = \underbrace{-k(x - target)}_{\text{kéo về}} \;\underbrace{-\,c\dot{x}}_{\text{hãm đà}}$$
+
+> **Đây là một phương trình vi phân bậc 2:** ẩn là *hàm* `x(t)`, ràng buộc đặt trên `ẍ` (gia tốc) và `ẋ` (vận tốc). "Bậc 2" vì có đạo hàm cấp cao nhất là `ẍ`. Giải nó = tìm ra `x` biến thiên thế nào theo thời gian.
 
 ### 0.2. Chuẩn hóa: 3 tham số vật lý → 2 tham số trực quan
 
-Chia `m`, đổi biến `y = x − target` (target hằng ⇒ `ẏ = ẋ`, `ÿ = ẍ`):
+**Vấn đề với `m, k, c`:** ba số vật lý thô, khó tune và **dư thừa** — hành vi lò xo thực chất chỉ phụ thuộc *hai* tỉ lệ, không phải ba số riêng lẻ. Ta rút gọn.
 
-$$\ddot{y} + \tfrac{c}{m}\dot{y} + \tfrac{k}{m}y = 0$$
+**Bước 1 — chia cho `m`** (đưa hệ số của `ẍ` về 1):
+$$\ddot{x} + \tfrac{c}{m}\dot{x} + \tfrac{k}{m}(x - target) = 0$$
 
-Đặt 2 đại lượng gộp `m,k,c` thành 2 số **có ý nghĩa cảm nhận**:
+**Bước 2 — đổi biến `y = x − target`** (chuyển gốc tọa độ về target). Vì `target` là **hằng số** nên đạo hàm không đổi: `ẏ = ẋ`, `ÿ = ẍ`. Bài toán "đuổi theo target" thành "đưa `y` về 0":
+$$\ddot{y} + \tfrac{c}{m}\dot{y} + \tfrac{k}{m}\,y = 0$$
 
-| Ký hiệu | Định nghĩa | Ý nghĩa | Suy ra |
+**Bước 3 — đặt tên cho 2 tỉ lệ** `k/m` và `c/m`. Chọn cách đặt sao cho **có ý nghĩa vật lý**:
+
+| Ký hiệu | Định nghĩa | Vì sao đặt thế này | Suy ra |
 |---|---|---|---|
-| `ω₀` | `√(k/m)` | tần số tự nhiên; designer nhập `f` (Hz) → `ω₀ = 2π·f` | `k/m = ω₀²` |
-| `ζ` | `c / (2√(km))` | damping ratio (không thứ nguyên) — quyết định "kiểu" chuyển động | `c/m = 2ζω₀` |
+| `ω₀` (tần số tự nhiên) | `√(k/m)` | Nếu **bỏ cản** (`c=0`), pt thành `ÿ + (k/m)y = 0` — dao động điều hòa thuần với tần số góc đúng bằng `√(k/m)`. Vậy `ω₀` = "tốc độ dao động bẩm sinh". Designer nhập `f` (Hz) → `ω₀ = 2π·f`. | `k/m = ω₀²` |
+| `ζ` (damping ratio) | `c / (2√(km))` | Chọn mẫu `2√(km)` để `ζ` **không thứ nguyên** và mốc `ζ=1` rơi đúng ranh giới "hết nảy" (xem §0.3). Một con số gói trọn "kiểu" chuyển động. | `c/m = 2ζω₀` |
 
-$$\boxed{\;\ddot{y} + 2\zeta\omega_0\,\dot{y} + \omega_0^2\,y = 0\;}\qquad\text{(dạng chuẩn)}$$
+Thay `k/m = ω₀²` và `c/m = 2ζω₀` vào → **dạng chuẩn** (mọi tài liệu điều khiển học đều dùng):
 
-→ **Lý do chọn `frequency + dampingRatio`:** tune 2 số ý nghĩa thay vì 3 số vật lý thô. Converter đảo ngược ở Task 1.
+$$\boxed{\;\ddot{y} + 2\zeta\omega_0\,\dot{y} + \omega_0^2\,y = 0\;}$$
 
-### 0.3. Giải ODE → phương trình đặc trưng → 3 chế độ
+> **Lý do chọn API `frequency + dampingRatio`:** designer chỉ cần vặn 2 núm có nghĩa — `f` = "nhanh/chậm & cứng", `ζ` = "nảy nhiều/ít". Không cần biết `m,k,c`. Ai có sẵn số vật lý thì dùng converter (`FromPhysical`, Task 1) đảo ngược 3 bước trên.
 
-Thử `y = e^{rt}` (`ẏ = re^{rt}`, `ÿ = r²e^{rt}`), chia `e^{rt} ≠ 0`:
+### 0.3. Giải ODE → phương trình đặc trưng → vì sao có đúng 3 chế độ
 
-$$r^2 + 2\zeta\omega_0 r + \omega_0^2 = 0 \;\Rightarrow\; r = -\zeta\omega_0 \pm \omega_0\sqrt{\zeta^2 - 1}$$
+**Ý tưởng giải:** ta cần hàm mà đạo hàm của nó lại ra chính nó (để các số hạng `ÿ, ẏ, y` triệt tiêu nhau). Hàm mũ `e^{rt}` là ứng viên **duy nhất** có tính chất đó. Thử `y = e^{rt}`:
+$$\dot{y} = r\,e^{rt},\qquad \ddot{y} = r^2 e^{rt}$$
 
-Dấu `ζ² − 1` (tức `ζ` so 1) chẻ ra 3 chế độ:
+Thay vào dạng chuẩn, đặt `e^{rt}` làm nhân tử chung (nó `≠ 0` nên chia được):
+$$e^{rt}\big(r^2 + 2\zeta\omega_0 r + \omega_0^2\big) = 0 \;\Rightarrow\; r^2 + 2\zeta\omega_0 r + \omega_0^2 = 0$$
 
-| Chế độ | ĐK | Nghiệm `r` | Đại lượng phụ | Hành vi |
-|---|---|---|---|---|
-| **Under-damped** | `ζ<1` | phức `−ζω₀ ± iω_d` | `ω_d = ω₀√(1−ζ²)` | nảy quanh target, tắt dần |
-| **Critically** | `ζ=1` | kép `−ω₀` | — | tới đích **nhanh nhất, KHÔNG nảy** |
-| **Over-damped** | `ζ>1` | 2 thực âm | `s = ω₀√(ζ²−1)` | bò về đích, ì |
+Đây là **phương trình đặc trưng** — một pt bậc 2 theo `r`. Giải bằng công thức nghiệm (`ax²+bx+c` với `a=1, b=2ζω₀, c=ω₀²`):
+$$r = \frac{-2\zeta\omega_0 \pm \sqrt{(2\zeta\omega_0)^2 - 4\omega_0^2}}{2} = -\zeta\omega_0 \pm \omega_0\sqrt{\zeta^2 - 1}$$
+
+**Chìa khóa nằm ở `√(ζ² − 1)`** — biểu thức dưới căn đổi dấu quanh `ζ=1`, chia ra **3 trường hợp** khác nhau về bản chất nghiệm:
+
+| Chế độ | ĐK | `ζ²−1` | Nghiệm `r` | Đại lượng phụ | Hành vi vật lý |
+|---|---|---|---|---|---|
+| **Under-damped** | `ζ<1` | âm → căn ảo | phức `−ζω₀ ± iω_d` | `ω_d = ω₀√(1−ζ²)` | cản yếu → vật **vọt qua** target rồi nảy lui, biên độ tắt dần |
+| **Critically** | `ζ=1` | 0 → căn triệt | kép `−ω₀` | — | cản vừa đủ → về đích **nhanh nhất mà KHÔNG nảy** |
+| **Over-damped** | `ζ>1` | dương → căn thực | 2 thực âm | `s = ω₀√(ζ²−1)` | cản quá mạnh → vật **bò** về đích, ì, chậm |
+
+> **Vì sao `ζ=1` là ranh giới nảy/không nảy:** `ζ<1` cho `r` **phức** → phần ảo `iω_d` sinh ra `sin/cos` → **dao động** (nảy). `ζ≥1` cho `r` **thực** → chỉ còn hàm mũ/hyperbolic → **không dao động**. Đúng chỗ căn đổi từ ảo sang thực. `ω_d` = "tần số dao động thực tế", luôn **nhỏ hơn** `ω₀` vì bị cản làm chậm.
 
 ### 0.4. Nghiệm đóng từng chế độ (lõi solver Analytic)
 
-**Mục tiêu:** từ `(y₀, v₀)` đầu bước → `(y, v)` sau `Δt`. Quy trình mỗi chế độ: **nghiệm tổng quát → ghim `A,B` bằng ĐK đầu → đạo hàm ra `v` → kiểm mốc.**
+**Mục tiêu code:** viết hàm `(y₀, v₀) → (y, v) sau Δt`, tức bước tiến lò xo đúng một khoảng thời gian, **chính xác tuyệt đối** (không xấp xỉ).
 
-#### ● Under-damped (`ζ<1`)
+**Quy trình chung cho cả 3 chế độ** (làm quen 1 lần, áp cho cả 3):
+1. **Nghiệm tổng quát** — từ dạng nghiệm `r`, viết `y(t)` với 2 hằng số tự do `A, B` (pt bậc 2 → 2 hằng số).
+2. **Ghim `A, B`** bằng 2 điều kiện đầu: `y(0) = y₀` và `ẏ(0) = v₀`.
+3. **Đạo hàm** `y(t)` ra `v(t) = ẏ(t)`.
+4. **Kiểm mốc** `Δt=0` (phải ra `(y₀,v₀)`) và `Δt→∞` (phải ra `(0,0)`).
 
-Nghiệm phức → bao hình phân rã × dao động:
-$$y = e^{-\zeta\omega_0 t}\big[A\cos(\omega_d t) + B\sin(\omega_d t)\big]$$
+Ký hiệu dùng chung: `E = e^{−ζω₀Δt}` (**bao hình phân rã** — mọi chế độ đều có).
 
-Ghim hằng số bằng `(y₀, v₀)`:
+#### ● Under-damped (`ζ<1`) — trường hợp phổ biến nhất trong game
 
-| Điều kiện | Cho ra |
+**① Nghiệm tổng quát.** `r` phức → theo công thức Euler, phần thực `−ζω₀` cho bao hình `e^{−ζω₀t}`, phần ảo `±iω_d` cho `cos/sin`:
+$$y(t) = e^{-\zeta\omega_0 t}\big[A\cos(\omega_d t) + B\sin(\omega_d t)\big]$$
+
+**② Ghim `A, B`** — thay `t=0`:
+
+| Điều kiện | Phép tính | Kết quả |
+|---|---|---|
+| `y(0) = y₀` | `E=1, cos0=1, sin0=0` → `y(0)=A` | `A = y₀` |
+| `ẏ(0) = v₀` | đạo hàm rồi cho `t=0` (xem ③) → `v₀ = −ζω₀A + ω_d B` | `B = (v₀ + ζω₀y₀)/ω_d` |
+
+**③ Đạo hàm ra `v`.** Dùng quy tắc tích với `f = A cos + B sin`. Mẹo: `(e^{−ζω₀t}·f)' = e^{−ζω₀t}(f' − ζω₀ f)`. Với `f' = −Aω_d sin + Bω_d cos`, gom lại:
+
+$$\boxed{\;y = E\,(y_0 C + B S)\;}$$
+$$\boxed{\;v = E\big[(-\zeta\omega_0 y_0 + B\omega_d)\,C - (\zeta\omega_0 B + y_0\omega_d)\,S\big]\;}$$
+với `C = cos(ω_dΔt)`, `S = sin(ω_dΔt)`, `B = (v₀+ζω₀y₀)/ω_d`.
+
+**④ Kiểm mốc:** `Δt=0` → `E=C=1, S=0` → `y=y₀`; `v = −ζω₀y₀ + Bω_d = −ζω₀y₀ + (v₀+ζω₀y₀) = v₀` ✓ · `Δt→∞` → `E→0` → `(0,0)` tức `x→target` ✓
+
+#### ● Over-damped (`ζ>1`) — cản mạnh, không nảy
+
+**① Nghiệm tổng quát.** `r` thực → *về nguyên tắc* là tổng 2 mũ `C₁e^{r₁t}+C₂e^{r₂t}`. Nhưng ta viết lại bằng **hàm hyperbolic** (cùng một nghiệm, chỉ đổi cơ sở): tách bao hình chung `e^{−ζω₀t}` rồi phần còn lại là `cosh/sinh(st)`. Đây chính là khuôn under-damped với phép thế **`cos→cosh, sin→sinh, ω_d→s`**:
+$$y(t) = e^{-\zeta\omega_0 t}\big[y_0\cosh(st) + B\sinh(st)\big],\qquad B = \tfrac{v_0+\zeta\omega_0 y_0}{s}$$
+
+> **Vì sao dùng cosh/sinh thay vì `C₁e^{r₁t}+C₂e^{r₂t}`:** dạng tổng-2-mũ bị **triệt tiêu số học** (catastrophic cancellation) khi `ζ` lớn — hai mũ chênh lệch cực lớn, trừ nhau mất chữ số có nghĩa. Dạng hyperbolic gộp bao hình ra ngoài → ổn định float hơn hẳn. Cùng lý do `DecayFactor` cần cẩn thận với `1−e` ở Interpolator.
+
+**② Đạo hàm ra `v`** (`cosh'=s·sinh`, `sinh'=s·cosh`, cùng quy tắc tích như under):
+$$\boxed{\;y = E\,(y_0\,Ch + B\,Sh)\;}$$
+$$\boxed{\;v = E\big[(-\zeta\omega_0 y_0 + B s)\,Ch + (y_0 s - \zeta\omega_0 B)\,Sh\big]\;}$$
+với `Ch = cosh(sΔt)`, `Sh = sinh(sΔt)`.
+
+**③ Kiểm mốc** `Δt=0`: `Ch=1, Sh=0` → `y=y₀`; `v = −ζω₀y₀ + Bs = v₀` ✓
+
+> **Vì sao không nổ dù `cosh/sinh` tăng theo `e^{sΔt}`:** luôn có `ζω₀ > s` vì `ζ > √(ζ²−1)` (bình phương 2 vế: `ζ² > ζ²−1` luôn đúng). Nên bao hình `E=e^{−ζω₀Δt}` co nhanh hơn `cosh/sinh` giãn → **tích vẫn phân rã về 0**. ✓
+
+#### ● Critically damped (`ζ=1`) — về đích nhanh nhất, không nảy
+
+**① Nghiệm tổng quát.** `r=−ω₀` là nghiệm **kép**. Toán ODE: khi nghiệm đặc trưng trùng, nghiệm thứ hai phải nhân thêm `t` (nếu không sẽ thiếu 1 hằng số tự do). Nên dạng là `(A + Bt)e^{−ω₀t}`:
+$$y(t) = e^{-\omega_0 t}\,(A + B t)$$
+
+**② Ghim `A, B`:**
+
+| Điều kiện | Kết quả |
 |---|---|
-| `t=0`: `y=y₀` | `A = y₀` |
-| `v = ẏ` tại `t=0`: `v₀ = −ζω₀A + ω_d B` | `B = (v₀ + ζω₀y₀)/ω_d` |
+| `y(0) = y₀` | `A = y₀` |
+| `ẏ(0) = v₀`, với `ẏ = e^{−ω₀t}(B − ω₀(A+Bt))` → `v₀ = B − ω₀A` | `B = v₀ + ω₀y₀` |
 
-Đạo hàm `ẏ` (quy tắc tích: `(e^{-ζω₀t}f)' = e^{-ζω₀t}(f' − ζω₀f)`):
+**③ Kết quả** (đặt `coeff = B = v₀ + ω₀y₀`):
+$$\boxed{\;y = E\,(y_0 + coeff\cdot\Delta t)\;}\qquad \boxed{\;v = E\,(v_0 - \omega_0\,coeff\cdot\Delta t)\;}$$
+với `E = e^{−ω₀Δt}`. Rút gọn `v`: `ẏ = E(B − ω₀(A+BΔt)) = E(v₀+ω₀y₀ − ω₀y₀ − ω₀·coeff·Δt) = E(v₀ − ω₀·coeff·Δt)`.
 
-$$\boxed{\;y = E\,(y_0 C + B S)\;}\qquad \boxed{\;v = E\big[(-\zeta\omega_0 y_0 + B\omega_d)C - (\zeta\omega_0 B + y_0\omega_d)S\big]\;}$$
-với `E = e^{−ζω₀Δt}`, `C = cos(ω_dΔt)`, `S = sin(ω_dΔt)`, `B = (v₀+ζω₀y₀)/ω_d`.
+**④ Kiểm mốc** `Δt=0`: `E=1` → `y=y₀, v=v₀` ✓
 
-Kiểm mốc: `Δt=0` → `E=C=1, S=0` → `y=y₀`, `v=−ζω₀y₀+Bω_d=v₀` ✓ · `Δt→∞` → `E→0` → `(0,0)` tức `x→target` ✓
-
-#### ● Over-damped (`ζ>1`)
-
-Cùng khuôn under nhưng **cos→cosh, sin→sinh, ω_d→s** (nghiệm thực). Dùng dạng hyperbolic thay vì tổng 2 mũ rời để **ổn định số** hơn:
-$$y = e^{-\zeta\omega_0 t}\big[y_0\cosh(st) + B\sinh(st)\big],\quad B = \tfrac{v_0+\zeta\omega_0 y_0}{s}$$
-
-Đạo hàm (`cosh'=s·sinh`, `sinh'=s·cosh`):
-$$\boxed{\;y = E\,(y_0 Ch + B\,Sh)\;}\qquad \boxed{\;v = E\big[(-\zeta\omega_0 y_0 + Bs)Ch + (y_0 s - \zeta\omega_0 B)Sh\big]\;}$$
-với `E = e^{−ζω₀Δt}`, `Ch = cosh(sΔt)`, `Sh = sinh(sΔt)`.
-
-Kiểm mốc `Δt=0`: `Ch=1, Sh=0` → `y=y₀`, `v=−ζω₀y₀+Bs=v₀` ✓
-> **Vì sao không nổ dù `cosh/sinh` tăng theo `e^{sΔt}`:** luôn `ζω₀ > s` (do `ζ > √(ζ²−1)`), nên bao hình `E=e^{−ζω₀Δt}` **thắng** → tích vẫn phân rã. ✓
-
-#### ● Critically damped (`ζ=1`)
-
-Nghiệm kép `r=−ω₀` → dạng `(A + Bt)e^{−ω₀t}`:
-
-| Điều kiện | Cho ra |
-|---|---|
-| `t=0`: `y=y₀` | `A = y₀` |
-| `v₀ = B − ω₀A` | `B = v₀ + ω₀y₀` |
-
-$$\boxed{\;y = E\,[\,y_0 + (v_0+\omega_0 y_0)\,\Delta t\,]\;}\qquad \boxed{\;v = E\,[\,v_0 - \omega_0(v_0+\omega_0 y_0)\,\Delta t\,]\;}$$
-với `E = e^{−ω₀Δt}`. Kiểm mốc `Δt=0`: `y=y₀, v=v₀` ✓
-
-> **Vì sao Analytic ổn định vô điều kiện:** mọi số hạng nhân bao hình `e^{−ζω₀Δt}` (giảm khi `ζ>0`), **không có phép lặp tích lũy sai số** → không bao giờ nổ dù `Δt` lớn. Cùng bản chất `Interpolator.ExpDecay` (mũ cộng số mũ → độc lập cách chia thời gian).
+> **Vì sao Analytic ổn định vô điều kiện (không bao giờ nổ):** cả 3 công thức đều là (đa thức/lượng giác bị chặn) × bao hình `E` **giảm** khi `ζ>0`. Không có phép **lặp** tích lũy sai số như Euler — mỗi bước tính thẳng nghiệm đúng tại `Δt`. Dù `Δt` khổng lồ (lag spike 2 giây), kết quả vẫn là điểm đúng trên đường cong. Cùng bản chất `Interpolator.ExpDecay` §Bước 4: hàm mũ **cộng số mũ** → chia thời gian kiểu gì cũng ra cùng một chỗ → **độc lập framerate tuyệt đối**.
 
 ### 0.5. Semi-implicit Euler (đối chiếu, rẻ)
 
-Rời rạc ODE gốc, **velocity trước, position sau**:
-$$a = -\omega_0^2\,y - 2\zeta\omega_0\,v \;\to\; v \mathrel{+}= a\,\Delta t \;\to\; y \mathrel{+}= v\,\Delta t$$
+Analytic đẹp nhưng tốn `exp + sin/cos` mỗi bước. Khi cần **rẻ** và `dt` nhỏ-ổn định, có cách xấp xỉ: thay vì giải chính xác, ta **mô phỏng từng bước nhỏ** theo đúng định nghĩa đạo hàm.
 
-| Điểm | Nội dung |
+**Ý tưởng rời rạc hóa:** đạo hàm ≈ "đổi bao nhiêu trong `Δt`". Từ ODE tính gia tốc hiện tại, rồi tiến vận tốc & vị trí:
+$$a = \ddot{y} = -\omega_0^2\,y - 2\zeta\omega_0\,v \quad(\text{rút từ dạng chuẩn})$$
+$$v_{new} = v + a\,\Delta t \qquad y_{new} = y + \mathbf{v_{new}}\,\Delta t$$
+
+**Điểm tinh tế — thứ tự cập nhật:**
+
+| Kiểu | Công thức vị trí | Ổn định |
+|---|---|---|
+| Explicit Euler (SAI) | `y += v·Δt` rồi mới `v += a·Δt` (dùng `v` **cũ**) | dễ nổ, bơm năng lượng |
+| **Semi-implicit** (dùng) | `v += a·Δt` trước, rồi `y += v_new·Δt` (dùng `v` **mới**) | ổn định hơn hẳn |
+
+> **Vì sao "velocity-first" ổn hơn:** dùng vận tốc **đã cập nhật** để dời vị trí = thêm một chút "nhìn trước" (tính ẩn). Nó bảo toàn năng lượng gần đúng cho hệ dao động, thay vì bơm năng lượng lên mỗi bước như explicit. Đây là chuẩn cho physics game (còn gọi symplectic Euler).
+
+| Đặc điểm | Nội dung |
 |---|---|
-| Vì sao "velocity-first" | `y` mới dùng `v` **đã cập nhật** → thêm tính ẩn → ổn định hơn explicit Euler nhiều |
-| Ngưỡng nổ | phân kỳ khi `ω₀·Δt` lớn (bước thô so chu kỳ). An toàn khi `ω₀·Δt` ≲ vài phần mười |
-| Khi nào tránh | `dt` dao động mạnh (lag spike) → dùng Analytic |
+| Ngưỡng nổ | phân kỳ khi `ω₀·Δt` lớn (bước quá thô so chu kỳ dao động). An toàn khi `ω₀·Δt` ≲ vài phần mười |
+| Khi nào tránh | `dt` dao động mạnh (lag spike) hoặc `ω₀` cao → dùng Analytic |
+| Khi nào dùng | `dt` cố định & nhỏ, cần tiết kiệm `exp/sincos`, hệ nhiều vật |
 
-### 0.6. Mở rộng vector
+### 0.6. Mở rộng vector — vì sao chỉ cần chạy lõi scalar per-axis
 
-ODE chuẩn **tuyến tính, không ghép chéo trục** (`x,y,z` không xuất hiện chung số hạng) → mỗi trục là bài scalar **độc lập**, cùng `ω₀,ζ`. Vector = chạy lõi scalar per-axis. **Không toán mới.**
+Với Vector3, mỗi trục `x, y, z` có phương trình lò xo **riêng**:
+$$\ddot{x} + 2\zeta\omega_0\dot{x} + \omega_0^2 x = 0,\quad \ddot{y} + \dots,\quad \ddot{z} + \dots$$
+
+Nhìn kỹ: **không có số hạng nào trộn 2 trục** (không có `x·y`, không `ẋ·z`…). Đây là hệ **tuyến tính, tách biến** (decoupled) — mỗi trục tiến hóa độc lập, chỉ dùng chung `ω₀, ζ` (cùng `SpringConfig`).
+
+> **Hệ quả code:** không cần toán vector mới. Gọi **đúng lõi scalar** `SpringSolver.Solve` cho từng trục rồi ghép lại. DRY tuyệt đối: sửa lõi → mọi kiểu (float/V2/V3) hưởng lợi. (Lưu ý: điều này đúng vì lò xo *tuyến tính*; các hiệu ứng phi tuyến như giới hạn tốc độ theo *độ dài vector* sẽ ghép trục — ngoài phạm vi v1.)
 
 ---
 
