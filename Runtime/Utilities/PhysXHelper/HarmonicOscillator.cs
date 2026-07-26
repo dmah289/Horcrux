@@ -2,10 +2,6 @@ using UnityEngine;
 
 namespace Horcrux.Runtime.Utilities.PhysXHelper
 {
-    public enum WaveStyle
-    {
-        Sin, Cos
-    }
     public static class HarmonicOscillator
     {
         /// <summary>

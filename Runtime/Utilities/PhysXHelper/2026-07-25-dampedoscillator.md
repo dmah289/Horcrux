@@ -4,30 +4,9 @@
 >
 > **Plan này là artifact học tập + triển khai, tự chứa.** Người dùng tự code lại để rèn tư duy → §0 dẫn giải **đầy đủ toán học** (biến đổi + lý do dùng công thức), các task chứa **code hoàn chỉnh** kèm chú thích self-doc & lý do tối ưu. Không code test → mỗi task có **checklist kiểm chứng** (kiểm mốc toán học).
 
-**Goal:** `DampedOscillator` — dao động tắt dần dạng static, stateless, thuần `float`: li độ + vận tốc + bao hình + thời gian ổn định, hai kiểu tham số tắt (`decay λ` / `halfLife`).
-
-**Architecture:** 1 file `DampedOscillator.cs`. Công thức lõi là **HarmonicOscillator × bao mũ `e^(−λt)`** — closed-form, không lặp, không giải ODE nhiều nhánh như SpringDamper. Tái dùng `enum WaveStyle` (Sin/Cos) đã có trong `HarmonicOscillator.cs`.
-
-**Tech Stack:** C# (Unity), `Unity.Mathematics` (`math.exp/sin/cos/log/PI`) — nhất quán với `Interpolator.cs`/`SpringSolver`. Thuần toán — không Addressables/UniTask.
-
-## Global Constraints
-
-| Ràng buộc | Giá trị |
-|---|---|
-| Namespace | `Horcrux.Runtime.Utilities.PhysXHelper` |
-| Tầng phụ thuộc | Tầng 1, `← HarmonicOscillator`. **Không** đụng SpringDamper (`Pendings.md` §Tầng 1) |
-| Zero-GC | thuần `float`; không `new` reference-type, LINQ, closure, string; stateless (không field) |
-| SOLID | 1 class = 1 trách nhiệm (dao động tắt dần); mở rộng qua overload/`WaveStyle`, không sửa hàm cũ |
-| Self-doc | tên nói rõ mục đích (`GetEnvelope`≠`Process`); XML doc kèm công thức + "tại sao" ở mọi hàm public |
-| Tái dùng | `WaveStyle` enum lấy từ `HarmonicOscillator.cs` — **không** định nghĩa lại |
-| Công thức chuẩn | `x(t) = A·e^(−λt)·cos(ωt+φ)` (hoặc sin), `ω = 2π·f` |
-| Guard biên | `decay ≤ 0` → không tắt (suy về HarmonicOscillator); `halfLife ≤ 0` → coi như đã ổn định |
-
 ---
 
 ## §0. Nền toán học (đọc trước khi code)
-
-> Mục tiêu: hiểu **tại sao** từng công thức. Hệ này nhẹ — chỉ **một** công thức đóng + đạo hàm của nó. Đọc xong bạn tự dựng lại được cả file.
 
 ### 0.1. Bản chất — dao động tắt dần là gì
 
@@ -51,21 +30,80 @@ $$\frac{d}{dt}e^{-\lambda t} = -\lambda\,e^{-\lambda t} \quad\Rightarrow\quad \t
 
 Nên biên độ co theo `e^(−λt)`, không theo đường thẳng. `λ` (1/s) = **tốc độ tắt**: lớn → co nhanh. Đây cũng đúng cơ chế `Interpolator.ExpDecay` (`§DecayFactor`) — cùng một họ hàm mũ.
 
+### 0.2b. Phương trình chi phối từ đâu ra — Newton, không phải tiên đề
+
+Trước khi giải, phải biết phương trình **ở đâu chui ra**. Nó không phải định nghĩa áp đặt — nó là **Định luật II Newton** cho vật gắn lò xo có ma sát, viết gọn lại.
+
+Xét vật khối lượng `m` trên lò xo, nhúng trong môi trường nhớt. `x` = độ lệch khỏi cân bằng. Ba lực tác dụng:
+
+| Lực | Biểu thức | Dấu & lý do |
+|---|---|---|
+| **Đàn hồi** (lò xo kéo về) | $F_{\text{lò xo}} = -k\,x$ | Định luật Hooke. Dấu **−**: lệch phải (`x>0`) kéo về trái. `k` = độ cứng (N/m) |
+| **Cản nhớt** (ma sát) | $F_{\text{cản}} = -c\,\dot{x}$ | Tỉ lệ **vận tốc** (đặc trưng cản nhớt). Dấu **−**: luôn ngược chiều chuyển động → hãm. `c` = hệ số cản (N·s/m) |
+| **Quán tính** | $m\,\ddot{x}$ | vế "ma" của Newton |
+
+Định luật II Newton $m\ddot{x} = \sum F$, chuyển hết về một vế:
+
+$$m\ddot{x} = -k\,x - c\,\dot{x} \quad\Rightarrow\quad m\ddot{x} + c\,\dot{x} + k\,x = 0$$
+
+Đây là **phương trình gốc thật** — quán tính + cản + đàn hồi. Chia cho `m` (`>0`) để số hạng $\ddot{x}$ về hệ số 1, rồi **đặt tên** hai cụm hệ số:
+
+$$\ddot{x} + \frac{c}{m}\,\dot{x} + \frac{k}{m}\,x = 0, \qquad \omega_0^2 \equiv \frac{k}{m}, \qquad 2\lambda \equiv \frac{c}{m}$$
+
+→ ra đúng phương trình §0.3. Hai phép đặt tên **không tùy tiện**, mỗi cái làm công thức sau gọn:
+
+- **`ω₀² = k/m`** — bỏ cản (`c=0`) còn $\ddot{x}+\omega_0^2 x=0$, nghiệm $\cos(\omega_0 t)$ (thử: $\ddot{x}=-\omega_0^2 x$ ✓). Vậy $\omega_0=\sqrt{k/m}$ **là** tần số góc khi chưa cản → gọi "tần số tự nhiên". Lò xo cứng (`k↑`) / vật nhẹ (`m↓`) → lắc nhanh, đúng trực giác.
+- **`2λ = c/m`** — số **2** để `λ` sau này trần trụi làm tốc độ tắt. Nghiệm bậc hai $r=\frac{-b\pm\sqrt{b^2-4ac}}{2a}$ với $b=2\lambda$: $\;r=\frac{-2\lambda\pm\sqrt{4\lambda^2-4\omega_0^2}}{2}=-\lambda\pm\sqrt{\lambda^2-\omega_0^2}$ — số 4 và 2 triệt tiêu sạch. Đặt `λ` (không có 2) thì bao phải viết $e^{-(\lambda/2)t}$ khắp nơi, xấu. Con số 2 chỉ để `λ` mang đúng nghĩa "tốc độ tắt của bao $e^{-\lambda t}$" (§0.2).
+
 ### 0.3. Từ phương trình chi phối → nghiệm đóng (suy ra, không áp đặt)
 
-§0.2 mới giải thích phần **bao** `e^(−λt)`. Còn *vì sao li độ = bao × cosin*? Suy ra từ phương trình dao động tắt dần (dao động điều hòa cộng lực cản ∝ vận tốc):
+§0.2 giải thích phần **bao** `e^(−λt)`; §0.2b cho biết phương trình ở đâu ra. Còn *vì sao li độ = bao × cosin*? Suy ra từ chính phương trình đó:
 
 $$\ddot{x} + 2\lambda\,\dot{x} + \omega_0^2\,x = 0$$
 
-trong đó `ω₀` = tần số tự nhiên (khi chưa cản), `2λ` = hệ số cản đã chuẩn hóa. Giải như mọi ODE tuyến tính — thử `x = e^{rt}` → phương trình đặc trưng `r² + 2λr + ω₀² = 0`:
+trong đó `ω₀` = tần số tự nhiên (khi chưa cản), `2λ` = hệ số cản đã chuẩn hóa (§0.2b). Giải theo 4 bước.
 
-$$r = -\lambda \pm \sqrt{\lambda^2 - \omega_0^2}$$
+**Bước 1 — vì sao thử `x = e^{rt}`.** Phương trình tuyến tính, hệ số hằng: đạo hàm `x` không được đẻ ra dạng hàm mới, nếu không ba số hạng $\ddot{x}, \dot{x}, x$ không thể triệt tiêu nhau. Chỉ hàm mũ có tính chất "đạo hàm = chính nó nhân hằng" ($\frac{d}{dt}e^{rt}=r\,e^{rt}$) → mọi số hạng đều thành `(…)·e^{rt}`, giữ nguyên dạng. Nên `e^{rt}` là ứng viên nghiệm tự nhiên, còn `r` là ẩn cần tìm.
 
-**Trường hợp có dao động** (cản yếu, `λ < ω₀`): dưới căn **âm** → nghiệm **phức** `r = −λ ± iω_d`, với **tần số quan sát** `ω_d ≡ √(ω₀² − λ²)`. Qua công thức Euler `e^{iθ}=cosθ+isinθ` (dẫn giải đầy đủ ở §0.4 của plan SpringDamper cùng thư mục), tổ hợp hai mũ phức liên hợp rút gọn thành lượng giác:
+**Bước 2 — thế vào để khử `t`.** Với `x = e^{rt}` thì $\dot{x} = r\,e^{rt}$, $\ddot{x} = r^2 e^{rt}$. Thay cả ba vào phương trình:
 
-$$x(t) = \underbrace{e^{-\lambda t}}_{\text{bao — §0.2}}\big[A_1\cos(\omega_d t) + A_2\sin(\omega_d t)\big] = A\,e^{-\lambda t}\cos(\omega_d t + \varphi)$$
+$$r^2 e^{rt} + 2\lambda\,r\,e^{rt} + \omega_0^2\,e^{rt} = 0 \;\Rightarrow\; \underbrace{e^{rt}}_{\neq\,0}\,(r^2 + 2\lambda r + \omega_0^2) = 0$$
 
-→ **li độ = bao × cosin** giờ được *suy ra*: phần bao `e^(−λt)` đúng như §0.2, phần lắc là cosin ở tần số `ω_d`. (Chọn `sin` thay `cos` chỉ là đổi mốc pha `φ`.)
+Vì $e^{rt}$ không bao giờ bằng 0, chia đi → còn **phương trình đặc trưng** thuần đại số (biến `t` biến mất):
+
+$$r^2 + 2\lambda r + \omega_0^2 = 0 \;\Rightarrow\; r = \frac{-2\lambda \pm \sqrt{4\lambda^2 - 4\omega_0^2}}{2} = -\lambda \pm \sqrt{\lambda^2 - \omega_0^2}$$
+
+**Bước 3 — dấu biệt thức quyết định 3 chế độ.** Cụm dưới căn $\Delta = \lambda^2 - \omega_0^2$ (so cản `λ` với tần số tự nhiên `ω₀`) chia làm 3 kiểu chuyển động:
+
+| Điều kiện | Δ | Nghiệm `r` | Chuyển động |
+|---|---|---|---|
+| `λ < ω₀` (cản yếu) | `< 0` | phức liên hợp | **dao động tắt dần** ← ta cần |
+| `λ = ω₀` (cản tới hạn) | `= 0` | kép thực `−λ` | về cân bằng nhanh nhất, không lắc |
+| `λ > ω₀` (cản mạnh) | `> 0` | hai thực âm | bò về cân bằng, không lắc |
+
+Hệ chỉ **lắc** khi cản yếu. Ta xét đúng nhánh này.
+
+**Bước 4 — nghiệm phức → lượng giác (qua Euler).** Cản yếu → `Δ<0` → rút `i` ra khỏi căn số âm: $\sqrt{\lambda^2-\omega_0^2}=\sqrt{-(\omega_0^2-\lambda^2)}=i\sqrt{\omega_0^2-\lambda^2}$. Đặt **tần số quan sát** $\omega_d \equiv \sqrt{\omega_0^2-\lambda^2}$ (số thực dương):
+
+$$r = -\lambda \pm i\,\omega_d$$
+
+Nghiệm tổng quát của ODE bậc 2 là tổ hợp hai mũ ứng hai `r`, tách chung $e^{-\lambda t}$ (phần thực) khỏi $e^{\pm i\omega_d t}$ (phần ảo):
+
+$$x(t) = C_1 e^{(-\lambda + i\omega_d)t} + C_2 e^{(-\lambda - i\omega_d)t} = e^{-\lambda t}\big(C_1 e^{i\omega_d t} + C_2 e^{-i\omega_d t}\big)$$
+
+Bung hai mũ ảo bằng **công thức Euler** $e^{\pm i\theta}=\cos\theta \pm i\sin\theta$ (với $\theta=\omega_d t$) rồi gom cos, sin:
+
+$$C_1 e^{i\omega_d t} + C_2 e^{-i\omega_d t} = \underbrace{(C_1+C_2)}_{A_1}\cos\omega_d t + \underbrace{i(C_1-C_2)}_{A_2}\sin\omega_d t$$
+
+`x` là li độ vật lý (số thực) → buộc `A₁, A₂` thực (điều này ép $C_2$ là liên hợp của $C_1$; chi tiết số phức không cần cho code). Vậy:
+
+$$x(t) = \underbrace{e^{-\lambda t}}_{\text{bao — §0.2}}\big[A_1\cos(\omega_d t) + A_2\sin(\omega_d t)\big]$$
+
+**Gộp về một cosin duy nhất.** Tổng "cos + sin cùng tần số" luôn viết lại thành một cosin lệch pha — khai triển $A\cos(\omega_d t+\varphi)=A\cos\varphi\cos\omega_d t - A\sin\varphi\sin\omega_d t$ rồi khớp hệ số: $A_1=A\cos\varphi,\;A_2=-A\sin\varphi$, suy ra $A=\sqrt{A_1^2+A_2^2}$ và $\tan\varphi=-A_2/A_1$. Kết quả:
+
+$$\boxed{\;x(t) = A\,e^{-\lambda t}\cos(\omega_d t + \varphi)\;}$$
+
+→ **li độ = bao × cosin** giờ được *suy ra trọn vẹn*: bao `e^(−λt)` đúng như §0.2, phần lắc là cosin ở tần số `ω_d`, `A` và `φ` do điều kiện đầu (vị trí + vận tốc lúc `t=0`) định. Chọn `sin` thay `cos` chỉ là đổi mốc pha `φ` (vì $\sin\theta=\cos(\theta-\tfrac{\pi}{2})$).
 
 > **Lựa chọn mô hình — vì sao code tách rời `f` và `λ`:** trong ODE thật, `ω_d = √(ω₀²−λ²)` **ràng buộc** tần số theo độ tắt (tắt càng mạnh → lắc càng chậm, và `λ ≥ ω₀` thì hết dao động). Nhưng cho **game feel**, designer muốn vặn *nhịp lắc* và *độ tắt* **độc lập**. Nên ta phơi thẳng tần số **quan sát** `f` (đặt `ω = 2π·f`, đóng vai `ω_d`) và để `λ` là núm riêng — một mô hình **mô tả** (giống `HarmonicOscillator` phơi `f` trực tiếp), không mô phỏng khối lượng–lò xo. Ai cần đúng vật lý ràng buộc `m,k,c` thì dùng `SpringDamper`. Từ đây gọi tần số góc là `ω` cho gọn.
 
@@ -83,7 +121,7 @@ $$\boxed{\;x(t) = A\,e^{-\lambda t}\sin(\omega t + \varphi)\;}\quad(\text{Sin})$
 | `φ` (phi) | pha ban đầu | rad | dịch điểm bắt đầu của sóng |
 | `t` | thời gian | s | kể từ lúc bắt đầu |
 
-**Quy đổi `halfLife` ↔ `decay`.** Designer thường nghĩ "sau bao lâu biên độ còn **một nửa**" (nửa đời `h`) hơn là con số `λ` trừu tượng. Đặt `e^{-\lambda h} = \tfrac{1}{2}` rồi lấy `ln` hai vế:
+**Quy đổi `halfLife` ↔ `decay`.** Designer thường nghĩ "sau bao lâu biên độ còn **một nửa**" (nửa đời `h`) hơn là con số `λ` trừu tượng. Đặt $`e^{-\lambda h} = \frac{1}{2}`$ rồi lấy `ln` hai vế:
 
 $$-\lambda h = \ln\tfrac{1}{2} = -\ln 2 \quad\Rightarrow\quad \boxed{\;\lambda = \frac{\ln 2}{h}\;}$$
 
@@ -448,4 +486,3 @@ git commit -m "feat(physx): DampedOscillator - overload *HalfLife (x4)"
 - **Kiểm chứng:** chạy tay qua script tạm hoặc nhẩm theo kiểm mốc §0.6 — **không** tạo file test. Xóa script tạm trước khi commit.
 - **Muốn test tự động sau này:** dựng NUnit EditMode theo các bảng kiểm chứng mỗi task (đặc biệt: đạo hàm số khớp `GetVelocity`, tương đương `*HalfLife` ↔ `decay`) — ngoài phạm vi plan này.
 - **Cập nhật roadmap:** sau khi xong, đánh dấu `DampedOscillator` ✅ trong `Pendings.md` (Tầng 1, mục 8) — mở khóa `Wobble`/`Jelly` và `GranularSettle`.
-```
