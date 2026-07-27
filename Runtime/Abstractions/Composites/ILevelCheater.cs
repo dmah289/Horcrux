@@ -1,6 +1,6 @@
 namespace Horcrux.Runtime.Abstractions.Composites
 {
-    public interface ILevelCheater
+    public interface ILevelCheater : IService<ILevelCheater>
     {
         public void NextLevel();
         public void PreviousLevel();

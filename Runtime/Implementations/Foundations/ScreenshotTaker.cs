@@ -11,7 +11,7 @@ using Sisus.Init;
 namespace Horcrux.Runtime.Implementations
 {
     [Service(typeof(IScreenshotTaker), FindFromScene = true)]
-    public class ScreenshotTaker : MonoBehaviour<ILevelManager, ILevelCheater>, IScreenshotTaker
+    public class ScreenshotTaker : MonoBehaviour<ILevelManager>, IScreenshotTaker
     {
         [SerializeField] private Camera myCamera;
         [SerializeField] private int resolutionWidth = 1080;
@@ -26,7 +26,16 @@ namespace Horcrux.Runtime.Implementations
         private RenderTexture m_CachedRT;
         private Texture2D m_CachedTex;
         private bool isInTakingScreenshotProcess;
-        
+        private ILevelCheater levelCheater;
+
+        private ILevelCheater LevelCheater
+        {
+            get
+            {
+                levelCheater ??= ILevelCheater.Service;
+                return levelCheater;
+            }
+        }
 
         public bool IsTakingScreenshot => isInTakingScreenshotProcess;
 
@@ -66,7 +75,7 @@ namespace Horcrux.Runtime.Implementations
             File.WriteAllBytes(fileName, ssBytes);
         }
 
-        public async UniTask StartTakingScreenshots(int delayInterval = 1000)
+        public async UniTask StartTakingScreenshots(int delayInterval = 1500)
         {
             if (isInTakingScreenshotProcess)
                 return;
@@ -74,12 +83,12 @@ namespace Horcrux.Runtime.Implementations
             isInTakingScreenshotProcess = true;
             myCamera ??= Camera.main;
             
-            while(levelMng.CurrLevelDataIndex < levelMng.LevelDataAmount)
+            while(levelMng.CurrPlayerLevelIndex < levelMng.LevelDataAmount)
             {
                 await UniTask.Yield();
                 TakeScreenshot();
                 await UniTask.Delay(delayInterval);
-                levelCheater.NextLevel();
+                LevelCheater.NextLevel();
             }
             
             isInTakingScreenshotProcess = false;
@@ -100,11 +109,9 @@ namespace Horcrux.Runtime.Implementations
         }
 
         private ILevelManager levelMng;
-        private ILevelCheater levelCheater;
-        protected override void Init(ILevelManager firstArgument, ILevelCheater secondArgument)
+        protected override void Init(ILevelManager firstArgument)
         {
             levelMng = firstArgument;
-            levelCheater = secondArgument;
         }
     }
 }
