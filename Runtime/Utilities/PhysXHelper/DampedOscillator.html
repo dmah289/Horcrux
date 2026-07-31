@@ -1,0 +1,772 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DampedOscillator — Dao động tắt dần</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#0d1117;--bg2:#161b22;--bg3:#1c2333;--bg4:#242d3a;--tx:#e6edf3;--tx2:#8b949e;--tx3:#484f58;--ac:#58a6ff;--ac2:#bc8cff;--gr:#3fb950;--or:#d29922;--rd:#f85149;--bd:#30363d;--r:10px;--mono:'JetBrains Mono','Fira Code','Cascadia Code','SF Mono',monospace;--sans:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif}
+html{scroll-behavior:smooth;background:var(--bg);color:var(--tx);font:17px/1.7 var(--sans)}
+body{overflow-x:hidden}
+a{color:var(--ac);text-decoration:none}a:hover{text-decoration:underline}
+#progress{position:fixed;top:0;left:0;height:3px;background:linear-gradient(90deg,var(--ac),var(--ac2));width:0;z-index:999;transition:width .1s}
+#header{max-width:920px;margin:0 auto;padding:4rem 1.5rem 2rem;border-bottom:1px solid var(--bd)}
+#header h1{font-size:clamp(2rem,5vw,3rem);font-weight:800;letter-spacing:-.03em;background:linear-gradient(135deg,var(--ac),var(--ac2));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+#header .sub{font-size:1.05rem;color:var(--tx2);margin-top:.4rem}
+#header .badge{display:inline-block;margin-top:.8rem;padding:.3em .9em;border:1px solid var(--bd);border-radius:99px;font-family:var(--mono);font-size:.78rem;color:var(--tx2)}
+main{max-width:920px;margin:0 auto;padding:0 1.5rem 6rem}
+section{padding-top:4rem}
+section .reveal{opacity:0;transform:translateY(24px);transition:opacity .6s ease,transform .6s ease}
+section .reveal.visible{opacity:1;transform:none}
+#toc{max-width:920px;margin:3rem auto;padding:0 1.5rem}
+#toc h2{font-size:1.3rem}
+#toc ol{columns:2;column-gap:2rem;padding-left:1.5em}
+#toc li{font-size:.92rem;margin-bottom:.3rem;break-inside:avoid}
+@media(max-width:600px){#toc ol{columns:1}}
+h2{font-size:1.9rem;font-weight:700;letter-spacing:-.02em;margin-bottom:1.5rem;padding-bottom:.5rem;border-bottom:1px solid var(--bd)}
+h3{font-size:1.3rem;font-weight:600;margin:2.5rem 0 1rem;color:var(--ac)}
+h4{font-size:1.05rem;font-weight:600;margin:1.8rem 0 .8rem;color:var(--tx)}
+p,ul,ol{margin-bottom:1rem}ul{padding-left:1.3em}li{margin-bottom:.3rem}
+strong{color:var(--tx);font-weight:600}
+em{color:var(--ac2);font-style:normal}
+code{font-family:var(--mono);font-size:.88em;background:var(--bg3);padding:.15em .4em;border-radius:4px}
+.card{background:var(--bg2);border:1px solid var(--bd);border-radius:var(--r);padding:1.5rem;margin:1.5rem 0}
+.card-title{font-weight:600;margin-bottom:.75rem;font-size:1.05rem;color:var(--ac)}
+.note{border-left:3px solid var(--or);background:var(--bg2);padding:1rem 1.2rem;border-radius:0 var(--r) var(--r) 0;margin:1.5rem 0;font-size:.92rem;color:var(--tx2)}
+.note strong{color:var(--or)}
+.note.good{border-left-color:var(--gr)}.note.good strong{color:var(--gr)}
+.note.bad{border-left-color:var(--rd)}.note.bad strong{color:var(--rd)}
+.eq{background:var(--bg3);border:1px solid var(--bd);border-radius:var(--r);padding:1.1rem 1.3rem;margin:1.3rem 0;overflow-x:auto;text-align:center}
+.eq.boxed{border-color:var(--ac);border-width:1px;box-shadow:0 0 0 1px var(--ac) inset}
+.steps{counter-reset:step;list-style:none;padding-left:0}
+.steps>li{position:relative;padding:.2rem 0 .2rem 2.6rem;margin-bottom:.6rem}
+.steps>li::before{counter-increment:step;content:counter(step);position:absolute;left:0;top:.1rem;width:1.8rem;height:1.8rem;border-radius:50%;background:var(--bg3);border:1px solid var(--ac);color:var(--ac);font-family:var(--mono);font-size:.85rem;display:flex;align-items:center;justify-content:center}
+table{width:100%;border-collapse:collapse;margin:1.2rem 0;font-size:.92rem}
+th{text-align:left;padding:.6rem .8rem;border-bottom:2px solid var(--bd);color:var(--ac);font-weight:600}
+td{padding:.5rem .8rem;border-bottom:1px solid var(--bd);vertical-align:top}
+tr:last-child td{border:none}
+td code{white-space:nowrap}
+.demo{background:var(--bg2);border:1px solid var(--bd);border-radius:var(--r);padding:1.5rem;margin:2rem 0}
+.demo-title{font-family:var(--mono);font-size:.8rem;color:var(--ac2);text-transform:uppercase;letter-spacing:.08em;margin-bottom:1rem}
+.demo canvas{display:block;border-radius:8px;background:var(--bg3);max-width:100%}
+.ctrl{display:flex;align-items:center;gap:.8rem;margin:.6rem 0;font-size:.9rem;color:var(--tx2)}
+.ctrl label{min-width:96px;font-family:var(--mono);font-size:.82rem;color:var(--ac)}
+.ctrl input[type=range]{flex:1;accent-color:var(--ac)}
+.ctrl output{min-width:74px;font-family:var(--mono);color:var(--tx);text-align:right}
+.seg{display:inline-flex;border:1px solid var(--bd);border-radius:6px;overflow:hidden}
+.seg button{background:var(--bg3);border:none;color:var(--tx2);font-family:var(--mono);font-size:.8rem;padding:.35em .9em;cursor:pointer}
+.seg button.on{background:var(--ac);color:#0d1117;font-weight:600}
+.legend{display:flex;gap:1.2rem;flex-wrap:wrap;font-size:.82rem;color:var(--tx2);margin-top:.8rem}
+.legend span{display:flex;align-items:center;gap:.4rem}
+.swatch{width:14px;height:3px;border-radius:2px;display:inline-block}
+.readout{font-family:var(--mono);font-size:.82rem;color:var(--tx2);margin-top:.6rem}
+.readout b{color:var(--ac)}
+.arch{font-family:var(--mono);font-size:.82rem;line-height:1.8;white-space:pre;overflow-x:auto;padding:1rem;background:var(--bg3);border-radius:var(--r);color:var(--tx2)}
+.arch em{color:var(--ac);font-style:normal}
+.perf-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem;margin:1.5rem 0}
+.perf-card{background:var(--bg3);border-radius:var(--r);padding:1.2rem;text-align:center}
+.perf-val{font-size:1.35rem;font-weight:800;background:linear-gradient(135deg,var(--ac),var(--ac2));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.perf-label{font-size:.82rem;color:var(--tx2);margin-top:.3rem}
+footer{text-align:center;padding:3rem 1rem;color:var(--tx3);font-size:.85rem;border-top:1px solid var(--bd)}
+</style>
+</head>
+<body>
+<div id="progress"></div>
+<header id="header">
+  <h1>DampedOscillator</h1>
+  <p class="sub">Dao động tắt dần — dẫn giải toán học đầy đủ: từ Định luật Newton đến nghiệm đóng, vận tốc & thời gian ổn định</p>
+  <span class="badge">Horcrux.Runtime.Utilities.PhysXHelper.DampedOscillator</span>
+</header>
+
+<nav id="toc"><h2>Mục lục</h2><ol>
+  <li><a href="#s1">Bản chất — tắt dần = điều hòa × bao mũ</a></li>
+  <li><a href="#s2">Vì sao bao tắt theo hàm mũ</a></li>
+  <li><a href="#s3">Phương trình chi phối — từ Newton ⭐</a></li>
+  <li><a href="#s4">Giải phương trình → nghiệm đóng</a></li>
+  <li><a href="#s5">Mô hình game: tách <code>f</code> và <code>λ</code></a></li>
+  <li><a href="#s6">Quy đổi half-life ↔ decay</a></li>
+  <li><a href="#s7">Vận tốc — đạo hàm li độ</a></li>
+  <li><a href="#s8">Bao hình & thời gian ổn định</a></li>
+  <li><a href="#s9">Kiểm mốc</a></li>
+  <li><a href="#s10">Tổng kết công thức</a></li>
+</ol></nav>
+
+<main>
+
+<!-- ============ SECTION 1 · Bản chất ============ -->
+<section id="s1">
+  <h2 class="reveal">1 · Bản chất — tắt dần = dao động điều hòa × bao mũ</h2>
+  <p class="reveal">Dao động điều hòa thường lắc <strong>mãi mãi</strong> với biên độ không đổi <code>A</code>. Thực tế luôn có ma sát → biên độ <strong>rũ nhỏ dần</strong> rồi tắt: dây đàn gảy rồi im, jelly rung sau va chạm, UI nảy vào rồi đứng yên.</p>
+
+  <div class="reveal">
+  <table>
+    <thead><tr><th>Thành phần</th><th>Vai trò</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Dao động</strong> <span data-tex="\cos(\omega t+\varphi)"></span></td><td>phần lắc qua lại — quyết định "nhịp" (tần số <code>f</code>)</td></tr>
+      <tr><td><strong>Bao hình</strong> <span data-tex="e^{-\lambda t}"></span></td><td>phần <strong>co biên độ</strong> theo thời gian — quyết định "tắt nhanh/chậm" (<code>λ</code>)</td></tr>
+      <tr><td><strong>Biên độ đầu</strong> <span data-tex="A"></span></td><td>độ lớn lúc <code>t = 0</code></td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <p class="reveal"><strong>Điểm cốt lõi:</strong> li độ = <em>dao động điều hòa</em> nhân với <em>bao</em> <span data-tex="e^{-\lambda t}"></span>:</p>
+  <div class="eq boxed reveal" data-tex="x(t) = \underbrace{A\cos(\omega t+\varphi)}_{\text{điều hòa}}\cdot\underbrace{e^{-\lambda t}}_{\text{bao co}}"></div>
+  <p class="reveal">Bỏ bao (<span data-tex="\lambda=0 \Rightarrow e^0=1"></span>) thì quay về đúng dao động điều hòa. Bao chỉ <strong>ôm lấy</strong> đường lắc, không đổi nhịp.</p>
+
+  <div class="demo reveal">
+    <div class="demo-title">Demo · Bao <span style="text-transform:none">e^(−λt)</span> ôm lấy đường lắc</div>
+    <canvas id="decompCanvas" width="840" height="300"></canvas>
+    <div class="ctrl"><label for="dcF">f (Hz)</label><input type="range" id="dcF" min="0.5" max="6" step="0.1" value="3"><output id="dcFv">3.0</output></div>
+    <div class="ctrl"><label for="dcL">λ (1/s)</label><input type="range" id="dcL" min="0" max="8" step="0.1" value="2"><output id="dcLv">2.0</output></div>
+    <div class="legend">
+      <span><i class="swatch" style="background:#58a6ff"></i>li độ x(t) tắt dần</span>
+      <span><i class="swatch" style="background:#484f58"></i>điều hòa A·cos (không tắt)</span>
+      <span><i class="swatch" style="background:#d29922"></i>bao ±A·e^(−λt)</span>
+    </div>
+  </div>
+</section>
+
+<!-- ============ SECTION 2 · Vì sao mũ ============ -->
+<section id="s2">
+  <h2 class="reveal">2 · Vì sao biên độ tắt theo <strong>hàm mũ</strong>, không tuyến tính</h2>
+  <p class="reveal"><strong>Trực giác trước:</strong> lực cản (ma sát nhớt) tỉ lệ <strong>vận tốc</strong> → mỗi chu kỳ hệ mất đi một <strong>tỉ lệ cố định</strong> của biên độ (vd mất 10% mỗi chu kỳ), <strong>không</strong> phải một lượng cố định.</p>
+  <p class="reveal">"Mất cùng một <strong>tỉ lệ</strong> sau mỗi khoảng thời gian bằng nhau" chính là định nghĩa của <strong>phân rã mũ</strong> — giống lãi kép âm, giống chất phóng xạ. Hàm <strong>duy nhất</strong> có tính "đạo hàm tỉ lệ chính nó" là <span data-tex="e^{-\lambda t}"></span>:</p>
+  <div class="eq reveal" data-tex="\frac{d}{dt}e^{-\lambda t} = -\lambda\,e^{-\lambda t}\quad\Rightarrow\quad \text{tốc độ giảm luôn tỉ lệ giá trị hiện tại}"></div>
+  <p class="reveal">Nên biên độ co theo <span data-tex="e^{-\lambda t}"></span>, không theo đường thẳng. <code>λ</code> (1/s) = <strong>tốc độ tắt</strong>: lớn → co nhanh. Cùng họ hàm mũ với <code>Interpolator.ExpDecay</code> (<em>xem §DecayFactor của Interpolator</em>).</p>
+
+  <div class="demo reveal">
+    <div class="demo-title">Demo · Mỗi nửa đời h, biên độ còn đúng một nửa</div>
+    <canvas id="halfCanvas" width="840" height="280"></canvas>
+    <div class="ctrl"><label for="hlL">λ (1/s)</label><input type="range" id="hlL" min="0.4" max="6" step="0.1" value="2"><output id="hlLv">2.0</output></div>
+    <div class="readout">nửa đời <b id="hlH">0.347</b> s — sau mỗi <code>h</code>, bao rơi ×½ (100% → 50% → 25% → 12.5%)</div>
+    <div class="legend">
+      <span><i class="swatch" style="background:#58a6ff"></i>bao e^(−λt)</span>
+      <span><i class="swatch" style="background:#8b949e"></i>mốc ½ tại t = h, 2h, 3h</span>
+    </div>
+  </div>
+  <p class="reveal">Khoảng cách giữa các mốc ½ <strong>bằng nhau</strong> (mỗi <code>h</code> giây) dù giá trị tuyệt đối giảm dần — dấu hiệu đặc trưng của phân rã mũ.</p>
+</section>
+
+<!-- ============ SECTION 3 · Newton ============ -->
+<section id="s3">
+  <h2 class="reveal">3 · Phương trình chi phối ở đâu ra — Newton, không phải tiên đề ⭐</h2>
+  <p class="reveal">Phương trình dao động tắt dần <strong>không</strong> phải định nghĩa áp đặt — nó là <strong>Định luật II Newton</strong> cho vật gắn lò xo có ma sát, viết gọn lại.</p>
+  <p class="reveal">Xét vật khối lượng <code>m</code> trên lò xo, nhúng trong môi trường nhớt. <code>x</code> = độ lệch khỏi cân bằng. Ba lực:</p>
+
+  <div class="reveal">
+  <table>
+    <thead><tr><th>Lực</th><th>Biểu thức</th><th>Dấu &amp; lý do</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Đàn hồi</strong> (lò xo kéo về)</td><td><span data-tex="F_{k} = -k\,x"></span></td><td>Định luật Hooke. Dấu <strong>−</strong>: lệch phải kéo về trái. <code>k</code> = độ cứng</td></tr>
+      <tr><td><strong>Cản nhớt</strong> (ma sát)</td><td><span data-tex="F_{c} = -c\,\dot{x}"></span></td><td>Tỉ lệ <strong>vận tốc</strong>. Dấu <strong>−</strong>: luôn ngược chiều chuyển động → hãm. <code>c</code> = hệ số cản</td></tr>
+      <tr><td><strong>Quán tính</strong></td><td><span data-tex="m\,\ddot{x}"></span></td><td>vế "ma" của Newton</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <p class="reveal">Định luật II Newton <span data-tex="m\ddot{x} = \sum F"></span>, chuyển hết về một vế:</p>
+  <div class="eq reveal" data-tex="m\ddot{x} = -k\,x - c\,\dot{x} \quad\Rightarrow\quad m\ddot{x} + c\,\dot{x} + k\,x = 0"></div>
+  <p class="reveal">Đây là <strong>phương trình gốc thật</strong> — quán tính + cản + đàn hồi. Chia cho <code>m</code> (<code>>0</code>) rồi <strong>đặt tên</strong> hai cụm hệ số:</p>
+  <div class="eq boxed reveal" data-tex="\ddot{x} + \tfrac{c}{m}\,\dot{x} + \tfrac{k}{m}\,x = 0,\qquad \omega_0^2 \equiv \tfrac{k}{m},\qquad 2\lambda \equiv \tfrac{c}{m}"></div>
+
+  <h3 class="reveal">Hai phép đặt tên — không tùy tiện</h3>
+  <div class="reveal">
+  <table>
+    <thead><tr><th>Đặt</th><th>Vì sao chọn vậy</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><span data-tex="\omega_0^2 = \tfrac{k}{m}"></span></td>
+        <td>Bỏ cản (<code>c=0</code>) còn <span data-tex="\ddot{x}+\omega_0^2 x=0"></span>, nghiệm <span data-tex="\cos(\omega_0 t)"></span> (thử: <span data-tex="\ddot{x}=-\omega_0^2 x"></span> ✓). Vậy <span data-tex="\omega_0=\sqrt{k/m}"></span> <strong>là</strong> tần số góc khi chưa cản → "tần số tự nhiên". Lò xo cứng / vật nhẹ → lắc nhanh.</td>
+      </tr>
+      <tr>
+        <td><span data-tex="2\lambda = \tfrac{c}{m}"></span></td>
+        <td>Số <strong>2</strong> để <code>λ</code> sau này <em>trần trụi</em> làm tốc độ tắt. Nghiệm bậc hai với <span data-tex="b=2\lambda"></span>: <span data-tex="r=-\lambda\pm\sqrt{\lambda^2-\omega_0^2}"></span> — số 4 và 2 triệt tiêu sạch. Đặt <code>λ</code> thiếu số 2 thì bao phải viết <span data-tex="e^{-(\lambda/2)t}"></span> khắp nơi, xấu.</td>
+      </tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<!-- ============ SECTION 4 · Giải nghiệm ============ -->
+<section id="s4">
+  <h2 class="reveal">4 · Từ phương trình → nghiệm đóng (suy ra, không áp đặt)</h2>
+  <p class="reveal">§2 giải thích phần <strong>bao</strong>; §3 cho biết phương trình ở đâu ra. Còn <em>vì sao li độ = bao × cosin</em>? Suy ra từ chính phương trình:</p>
+  <div class="eq reveal" data-tex="\ddot{x} + 2\lambda\,\dot{x} + \omega_0^2\,x = 0"></div>
+
+  <ol class="steps reveal">
+    <li><strong>Vì sao thử <span data-tex="x=e^{rt}"></span>.</strong> Phương trình tuyến tính hệ số hằng: đạo hàm <code>x</code> không được đẻ ra dạng hàm mới, nếu không ba số hạng không triệt tiêu nhau. Chỉ hàm mũ có "đạo hàm = chính nó nhân hằng" (<span data-tex="\tfrac{d}{dt}e^{rt}=r\,e^{rt}"></span>) → mọi số hạng đều thành <span data-tex="(\dots)e^{rt}"></span>, giữ nguyên dạng. <code>r</code> là ẩn cần tìm.</li>
+    <li><strong>Thế vào để khử <code>t</code>.</strong> Với <span data-tex="\dot{x}=r\,e^{rt},\ \ddot{x}=r^2 e^{rt}"></span>, thay cả ba vào và rút <span data-tex="e^{rt}\neq 0"></span> → còn <strong>phương trình đặc trưng</strong> thuần đại số.</li>
+    <li><strong>Dấu biệt thức quyết định chế độ.</strong> Cụm dưới căn <span data-tex="\Delta=\lambda^2-\omega_0^2"></span> (so cản với tần số tự nhiên) chia 3 kiểu chuyển động.</li>
+    <li><strong>Nghiệm phức → lượng giác.</strong> Nhánh cản yếu cho nghiệm phức, dùng công thức Euler bung thành cos/sin.</li>
+  </ol>
+
+  <h3 class="reveal">Bước 2 — phương trình đặc trưng</h3>
+  <div class="eq reveal" data-tex="r^2 e^{rt} + 2\lambda r\,e^{rt} + \omega_0^2 e^{rt} = 0 \;\Rightarrow\; \underbrace{e^{rt}}_{\neq\,0}(r^2 + 2\lambda r + \omega_0^2)=0"></div>
+  <p class="reveal">Vì <span data-tex="e^{rt}"></span> không bao giờ bằng 0, chia đi → biến <code>t</code> biến mất, còn đa thức bậc hai của <code>r</code>:</p>
+  <div class="eq boxed reveal" data-tex="r^2 + 2\lambda r + \omega_0^2 = 0 \;\Rightarrow\; r = \frac{-2\lambda \pm \sqrt{4\lambda^2 - 4\omega_0^2}}{2} = -\lambda \pm \sqrt{\lambda^2 - \omega_0^2}"></div>
+
+  <h3 class="reveal">Bước 3 — biệt thức <span data-tex="\Delta=\lambda^2-\omega_0^2"></span> → 3 chế độ</h3>
+  <div class="reveal">
+  <table>
+    <thead><tr><th>Điều kiện</th><th>Δ</th><th>Nghiệm <code>r</code></th><th>Chuyển động</th></tr></thead>
+    <tbody>
+      <tr><td><code>λ &lt; ω₀</code> (cản yếu)</td><td><span data-tex="<0"></span></td><td>phức liên hợp</td><td><strong>dao động tắt dần</strong> ← ta cần</td></tr>
+      <tr><td><code>λ = ω₀</code> (tới hạn)</td><td><span data-tex="=0"></span></td><td>kép thực <span data-tex="-\lambda"></span></td><td>về cân bằng nhanh nhất, không lắc</td></tr>
+      <tr><td><code>λ &gt; ω₀</code> (cản mạnh)</td><td><span data-tex=">0"></span></td><td>hai thực âm</td><td>bò về cân bằng, không lắc</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p class="reveal">Hệ chỉ <strong>lắc</strong> khi cản yếu. Kéo slider <code>λ</code> qua ngưỡng <span data-tex="\omega_0"></span> để thấy nghiệm đổi chất:</p>
+
+  <div class="demo reveal">
+    <div class="demo-title">Demo · Ba chế độ theo dấu Δ (ω₀ cố định)</div>
+    <canvas id="regimeCanvas" width="840" height="300"></canvas>
+    <div class="ctrl"><label for="rgL">λ (1/s)</label><input type="range" id="rgL" min="0" max="12" step="0.2" value="2"><output id="rgLv">2.0</output></div>
+    <div class="readout">ω₀ = <b>6.0</b> rad/s · Δ = λ²−ω₀² = <b id="rgD">−32.0</b> · ω_d = <b id="rgWd">5.66</b> rad/s · <b id="rgName" style="color:#3fb950">Cản yếu → dao động tắt dần</b></div>
+    <div class="legend">
+      <span><i class="swatch" style="background:#3fb950"></i>cản yếu (lắc)</span>
+      <span><i class="swatch" style="background:#d29922"></i>tới hạn</span>
+      <span><i class="swatch" style="background:#f85149"></i>cản mạnh</span>
+    </div>
+  </div>
+
+  <h3 class="reveal">Bước 4 — nghiệm phức → lượng giác qua Euler</h3>
+  <p class="reveal">Cản yếu → <span data-tex="\Delta<0"></span> → rút <code>i</code> khỏi căn âm. Đặt <strong>tần số quan sát</strong> <span data-tex="\omega_d \equiv \sqrt{\omega_0^2-\lambda^2}"></span> (thực dương):</p>
+  <div class="eq reveal" data-tex="\sqrt{\lambda^2-\omega_0^2}=i\sqrt{\omega_0^2-\lambda^2}=i\,\omega_d \;\Rightarrow\; r = -\lambda \pm i\,\omega_d"></div>
+
+  <h4 class="reveal">Đọc nghiệm <code>r</code> trong mặt phẳng phức</h4>
+  <p class="reveal">Hai phần của <code>r</code> điều khiển hai mặt tách rời của chuyển động — đây là chỗ 3 chế độ (§Bước 3) trở nên trực quan:</p>
+  <div class="reveal">
+  <table>
+    <thead><tr><th>Phần của <code>r</code></th><th>Điều khiển</th></tr></thead>
+    <tbody>
+      <tr><td><span data-tex="\mathrm{Re}(r)=-\lambda"></span></td><td>tốc độ tắt của bao <span data-tex="e^{-\lambda t}"></span> — càng âm càng tắt nhanh</td></tr>
+      <tr><td><span data-tex="\mathrm{Im}(r)=\pm\omega_d"></span></td><td>nhịp lắc; <span data-tex="=0"></span> → hết dao động (không phần ảo)</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p class="reveal">Cản yếu: cặp phức nằm trên <strong>cung tròn bán kính <span data-tex="\omega_0"></span></strong> — vì <span data-tex="|r|^2=\lambda^2+\omega_d^2=\lambda^2+(\omega_0^2-\lambda^2)=\omega_0^2"></span>. Tăng <span data-tex="\lambda"></span> → hai nghiệm trượt trên cung vào trục thực, <strong>gặp nhau tại <span data-tex="-\omega_0"></span></strong> (tới hạn) rồi tách đôi trên trục thực (cản mạnh).</p>
+
+  <div class="demo reveal">
+    <div class="demo-title">Demo · Nghiệm r trong mặt phẳng phức (ω₀ = 6)</div>
+    <canvas id="poleCanvas" width="840" height="340"></canvas>
+    <div class="ctrl"><label for="plL">λ (1/s)</label><input type="range" id="plL" min="0" max="12" step="0.2" value="2"><output id="plLv">2.0</output></div>
+    <div class="readout"><b id="plR">r = −2.0 ± i5.66</b> · Re = tắt · Im = lắc</div>
+    <div class="legend">
+      <span><i class="swatch" style="background:#3fb950"></i>cản yếu (cặp phức trên cung)</span>
+      <span><i class="swatch" style="background:#d29922"></i>tới hạn (nghiệm kép)</span>
+      <span><i class="swatch" style="background:#f85149"></i>cản mạnh (2 thực âm)</span>
+    </div>
+  </div>
+
+  <h4 class="reveal">Từ nghiệm phức về li độ thực</h4>
+  <p class="reveal">Nghiệm tổng quát = tổ hợp hai mũ ứng hai <code>r</code>, tách chung <span data-tex="e^{-\lambda t}"></span> (phần thực) khỏi phần ảo:</p>
+  <div class="eq reveal" data-tex="x(t) = C_1 e^{(-\lambda + i\omega_d)t} + C_2 e^{(-\lambda - i\omega_d)t} = e^{-\lambda t}\big(C_1 e^{i\omega_d t} + C_2 e^{-i\omega_d t}\big)"></div>
+  <p class="reveal">Bung hai mũ ảo bằng <strong>công thức Euler</strong> <span data-tex="e^{\pm i\theta}=\cos\theta\pm i\sin\theta"></span> (<span data-tex="\theta=\omega_d t"></span>) rồi gom cos, sin:</p>
+  <div class="eq reveal" data-tex="C_1 e^{i\omega_d t} + C_2 e^{-i\omega_d t} = \underbrace{(C_1+C_2)}_{A_1}\cos\omega_d t + \underbrace{i(C_1-C_2)}_{A_2}\sin\omega_d t"></div>
+  <p class="reveal"><code>x</code> là li độ thực → buộc <span data-tex="A_1,A_2"></span> thực (ép <span data-tex="C_2=\overline{C_1}"></span>):</p>
+  <div class="eq reveal" data-tex="x(t) = e^{-\lambda t}\big[A_1\cos(\omega_d t) + A_2\sin(\omega_d t)\big]"></div>
+
+  <h3 class="reveal">Gộp về một cosin duy nhất</h3>
+  <p class="reveal">Tổng "cos + sin cùng tần số" luôn viết lại thành một cosin lệch pha. Khai triển <span data-tex="A\cos(\omega_d t+\varphi)=A\cos\varphi\cos\omega_d t - A\sin\varphi\sin\omega_d t"></span> rồi khớp hệ số <span data-tex="A_1=A\cos\varphi,\ A_2=-A\sin\varphi"></span> → <span data-tex="A=\sqrt{A_1^2+A_2^2},\ \tan\varphi=-A_2/A_1"></span>:</p>
+  <div class="eq boxed reveal" data-tex="x(t) = A\,e^{-\lambda t}\cos(\omega_d t + \varphi)"></div>
+  <p class="reveal"><strong>Li độ = bao × cosin</strong> giờ được <em>suy ra trọn vẹn</em>: bao <span data-tex="e^{-\lambda t}"></span> đúng như §2, phần lắc là cosin tại <span data-tex="\omega_d"></span>, <code>A</code> &amp; <code>φ</code> do điều kiện đầu định. Chọn <code>sin</code> thay <code>cos</code> chỉ là đổi mốc pha (<span data-tex="\sin\theta=\cos(\theta-\tfrac{\pi}{2})"></span>).</p>
+</section>
+
+<!-- ============ SECTION 5 · Mô hình game ============ -->
+<section id="s5">
+  <h2 class="reveal">5 · Mô hình game: tách rời <code>f</code> và <code>λ</code></h2>
+  <div class="note reveal"><strong>Lựa chọn mô hình:</strong> trong ODE thật, <span data-tex="\omega_d=\sqrt{\omega_0^2-\lambda^2}"></span> <strong>ràng buộc</strong> tần số theo độ tắt (tắt càng mạnh → lắc càng chậm; <span data-tex="\lambda\ge\omega_0"></span> thì hết dao động). Nhưng cho <em>game feel</em>, designer muốn vặn <strong>nhịp lắc</strong> và <strong>độ tắt</strong> độc lập.</div>
+  <p class="reveal">Nên code phơi thẳng tần số <strong>quan sát</strong> <code>f</code> (đặt <span data-tex="\omega = 2\pi f"></span>, đóng vai <span data-tex="\omega_d"></span>) và để <code>λ</code> là núm riêng — một mô hình <strong>mô tả</strong>, không mô phỏng khối lượng–lò xo. Ai cần đúng vật lý ràng buộc <code>m, k, c</code> thì dùng <code>SpringDamper</code>. Từ đây gọi tần số góc là <code>ω</code> cho gọn.</p>
+
+  <div class="arch reveal">f (Hz) ──<em>ω = 2π·f</em>──▶ ω (rad/s)  ┐
+λ (1/s) ───────────────────────────┼──▶ x(t) = A·e^(−λt)·cos(ωt+φ)
+A, φ ──────────────────────────────┘</div>
+
+  <h3 class="reveal">Công thức chốt (dạng code dùng)</h3>
+  <div class="eq boxed reveal" data-tex="x(t) = A\,e^{-\lambda t}\cos(\omega t + \varphi)\qquad(\text{Cos})"></div>
+  <div class="eq boxed reveal" data-tex="x(t) = A\,e^{-\lambda t}\sin(\omega t + \varphi)\qquad(\text{Sin})"></div>
+
+  <div class="reveal">
+  <table>
+    <thead><tr><th>Ký hiệu</th><th>Tên</th><th>Đơn vị</th><th>Ghi chú</th></tr></thead>
+    <tbody>
+      <tr><td><code>A</code></td><td>biên độ đầu</td><td>—</td><td>độ lớn tại <code>t=0</code> (trước khi bao co)</td></tr>
+      <tr><td><code>λ</code></td><td>hệ số tắt (decay)</td><td>1/s</td><td>lớn → tắt nhanh; <code>λ=0</code> → không tắt</td></tr>
+      <tr><td><code>ω</code></td><td>tần số <strong>góc</strong> quan sát</td><td>rad/s</td><td><span data-tex="\omega=2\pi f"></span>; đóng vai <span data-tex="\omega_d"></span>, tách rời <code>λ</code></td></tr>
+      <tr><td><code>f</code></td><td>tần số thường</td><td>Hz</td><td>số lần lắc trọn mỗi giây — núm designer vặn</td></tr>
+      <tr><td><code>φ</code></td><td>pha ban đầu</td><td>rad</td><td>dịch điểm bắt đầu của sóng</td></tr>
+      <tr><td><code>t</code></td><td>thời gian</td><td>s</td><td>kể từ lúc bắt đầu</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <div class="demo reveal">
+    <div class="demo-title">Demo · Vặn f, λ, φ độc lập — Cos vs Sin</div>
+    <canvas id="mainCanvas" width="840" height="300"></canvas>
+    <div class="ctrl"><label>waveStyle</label>
+      <span class="seg"><button id="wsCos" class="on">Cos</button><button id="wsSin">Sin</button></span>
+    </div>
+    <div class="ctrl"><label for="mF">f (Hz)</label><input type="range" id="mF" min="0.5" max="6" step="0.1" value="2.5"><output id="mFv">2.5</output></div>
+    <div class="ctrl"><label for="mL">λ (1/s)</label><input type="range" id="mL" min="0" max="8" step="0.1" value="1.5"><output id="mLv">1.5</output></div>
+    <div class="ctrl"><label for="mP">φ (rad)</label><input type="range" id="mP" min="0" max="6.28" step="0.05" value="0"><output id="mPv">0.00</output></div>
+    <div class="legend">
+      <span><i class="swatch" style="background:#58a6ff"></i>x(t)</span>
+      <span><i class="swatch" style="background:#d29922"></i>bao ±A·e^(−λt)</span>
+    </div>
+  </div>
+</section>
+
+<!-- ============ SECTION 6 · half-life ============ -->
+<section id="s6">
+  <h2 class="reveal">6 · Quy đổi half-life ↔ decay</h2>
+  <p class="reveal">Designer thường nghĩ "sau bao lâu biên độ còn <strong>một nửa</strong>" (nửa đời <code>h</code>) hơn là con số <code>λ</code> trừu tượng. Đặt <span data-tex="e^{-\lambda h}=\tfrac12"></span> rồi lấy <code>ln</code> hai vế:</p>
+  <div class="eq boxed reveal" data-tex="e^{-\lambda h}=\tfrac12 \;\xrightarrow{\ \ln\ }\; -\lambda h = \ln\tfrac12 = -\ln 2 \;\Rightarrow\; \lambda = \frac{\ln 2}{h}"></div>
+  <p class="reveal">Nhất quán với <code>Interpolator.ExpDecayHalfLife</code> (<em>xem §7 của Interpolator</em>). Vì vậy mỗi hàm có 2 phiên bản: nhận <code>decay</code> trực tiếp, hoặc nhận half-life rồi quy đổi.</p>
+
+  <div class="note good reveal"><strong>Tối ưu — nhận <code>invHalfLife = 1/h</code>:</strong> code phơi bản <code>*HalfLife</code> nhận thẳng <em>nghịch đảo</em> nửa đời để đổi phép <strong>chia</strong> thành <strong>nhân</strong> (caller precompute một lần): <span data-tex="\lambda = \ln 2\cdot invHalfLife"></span>. Biên: <span data-tex="invHalfLife\le 0 \Leftrightarrow \lambda\le 0"></span> → ủy thác cho nhánh "không tắt" của hàm gốc (dao động điều hòa), giữ ngữ nghĩa nhất quán.</div>
+</section>
+
+<!-- ============ SECTION 7 · velocity ============ -->
+<section id="s7">
+  <h2 class="reveal">7 · Vận tốc — đạo hàm li độ (chỗ dễ "nhảy bước" nhất)</h2>
+  <p class="reveal">Vận tốc là đạo hàm li độ theo thời gian <span data-tex="\dot{x}=dx/dt"></span>. Viết <span data-tex="x = A\,E\,f"></span> với <strong>bao</strong> <span data-tex="E=e^{-\lambda t}"></span> và <strong>phần lắc</strong> <code>f</code>. Dùng <strong>quy tắc tích</strong> <span data-tex="(Ef)'=E'f+Ef'"></span>.</p>
+
+  <h4 class="reveal">① Đạo hàm bao hình</h4>
+  <div class="eq reveal" data-tex="E' = \frac{d}{dt}e^{-\lambda t} = -\lambda\,e^{-\lambda t} = -\lambda E"></div>
+
+  <h4 class="reveal">② Đạo hàm phần lắc (hàm hợp, <span data-tex="(\omega t+\varphi)'=\omega"></span>)</h4>
+  <div class="reveal">
+  <table>
+    <thead><tr><th>Kiểu</th><th><code>f</code></th><th><code>f′</code></th></tr></thead>
+    <tbody>
+      <tr><td>Cos</td><td><span data-tex="\cos(\omega t+\varphi)"></span></td><td><span data-tex="-\omega\sin(\omega t+\varphi)"></span></td></tr>
+      <tr><td>Sin</td><td><span data-tex="\sin(\omega t+\varphi)"></span></td><td><span data-tex="+\omega\cos(\omega t+\varphi)"></span></td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h4 class="reveal">③ Ghép lại</h4>
+  <p class="reveal"><span data-tex="(Ef)'=E'f+Ef'=-\lambda Ef+Ef'=E(f'-\lambda f)"></span>, gộp <span data-tex="A\cdot E"></span> ra chung:</p>
+  <div class="eq boxed reveal" data-tex="\dot{x}_{\cos} = A\,e^{-\lambda t}\big[-\lambda\cos(\omega t+\varphi) - \omega\sin(\omega t+\varphi)\big]"></div>
+  <div class="eq boxed reveal" data-tex="\dot{x}_{\sin} = A\,e^{-\lambda t}\big[-\lambda\sin(\omega t+\varphi) + \omega\cos(\omega t+\varphi)\big]"></div>
+  <p class="reveal"><strong>Đọc công thức:</strong> vận tốc = bao × (phần "trôi xuống do tắt" <span data-tex="-\lambda\cdot(\text{phần lắc})"></span> + phần "lắc" <span data-tex="\pm\omega\cdot(\text{phần vuông pha})"></span>). Khi <code>λ=0</code> → chỉ còn phần lắc → đúng vận tốc dao động điều hòa.</p>
+
+  <div class="demo reveal">
+    <div class="demo-title">Demo · Li độ &amp; vận tốc — đỉnh của x ứng với v = 0</div>
+    <canvas id="velCanvas" width="840" height="300"></canvas>
+    <div class="ctrl"><label>waveStyle</label>
+      <span class="seg"><button id="vsCos" class="on">Cos</button><button id="vsSin">Sin</button></span>
+    </div>
+    <div class="ctrl"><label for="vF">f (Hz)</label><input type="range" id="vF" min="0.5" max="5" step="0.1" value="2"><output id="vFv">2.0</output></div>
+    <div class="ctrl"><label for="vL">λ (1/s)</label><input type="range" id="vL" min="0" max="6" step="0.1" value="1"><output id="vLv">1.0</output></div>
+    <div class="legend">
+      <span><i class="swatch" style="background:#58a6ff"></i>li độ x(t)</span>
+      <span><i class="swatch" style="background:#bc8cff"></i>vận tốc ẋ(t) (chuẩn hóa)</span>
+    </div>
+  </div>
+  <div class="note good reveal"><strong>Đọc nhanh:</strong> tại mỗi <strong>đỉnh</strong> của <code>x</code> (biên) → <span data-tex="\dot{x}=0"></span> (đổi chiều); tại mỗi lần <code>x</code> <strong>cắt trục</strong> → <span data-tex="|\dot{x}|"></span> lớn nhất (đi nhanh nhất). Vận tốc luôn "sớm pha" hơn li độ.</div>
+
+  <h3 class="reveal">Chân dung pha — tắt dần = xoáy ốc vào gốc</h3>
+  <p class="reveal">Vẽ quỹ đạo <span data-tex="(x,\dot{x})"></span> theo thời gian thay vì theo trục <code>t</code>. Dao động điều hòa (<code>λ=0</code>) → <strong>ellipse kín</strong> (năng lượng bảo toàn). Có tắt (<code>λ>0</code>) → <strong>xoáy vào gốc</strong> (năng lượng rò rỉ mỗi vòng). Tốc độ co xoáy = <code>λ</code>.</p>
+
+  <div class="demo reveal">
+    <div class="demo-title">Demo · Không gian pha (x, ẋ) — kéo λ để thấy ellipse → xoáy ốc</div>
+    <canvas id="phaseCanvas" width="840" height="360"></canvas>
+    <div class="ctrl"><label for="phL">λ (1/s)</label><input type="range" id="phL" min="0" max="4" step="0.1" value="0.8"><output id="phLv">0.8</output></div>
+    <div class="readout"><span id="phMsg">λ &gt; 0 → xoáy vào gốc (mất năng lượng)</span></div>
+    <div class="legend">
+      <span><i class="swatch" style="background:#58a6ff"></i>quỹ đạo (x, ẋ)</span>
+      <span><i class="swatch" style="background:#8b949e"></i>gốc = trạng thái nghỉ</span>
+    </div>
+  </div>
+</section>
+
+<!-- ============ SECTION 8 · envelope & settling ============ -->
+<section id="s8">
+  <h2 class="reveal">8 · Bao hình &amp; thời gian ổn định</h2>
+  <p class="reveal"><strong>Bao hình</strong> tách riêng (vẽ vùng bao, hoặc chỉnh alpha theo độ tắt):</p>
+  <div class="eq reveal" data-tex="E(t) = A\,e^{-\lambda t}"></div>
+
+  <h3 class="reveal">Thời gian ổn định <span data-tex="t^*"></span> — khi nào coi như "đã dừng"</h3>
+  <p class="reveal">Để tắt update tiết kiệm CPU: bao rơi dưới tỉ lệ <code>threshold</code> so với <code>A</code> (vd 5%). Giải <span data-tex="e^{-\lambda t^*}=threshold"></span>:</p>
+  <div class="eq boxed reveal" data-tex="-\lambda t^* = \ln(threshold) \;\Rightarrow\; t^* = \frac{-\ln(threshold)}{\lambda}"></div>
+  <p class="reveal"><span data-tex="threshold\in(0,1)"></span> → <span data-tex="\ln(threshold)<0"></span> → tử <span data-tex="-\ln(threshold)>0"></span> → <span data-tex="t^*>0"></span> hợp lý. <span data-tex="\lambda\to 0 \Rightarrow t^*\to\infty"></span> (không bao giờ tắt).</p>
+
+  <div class="demo reveal">
+    <div class="demo-title">Demo · Bao, ngưỡng &amp; điểm cắt t*</div>
+    <canvas id="settleCanvas" width="840" height="280"></canvas>
+    <div class="ctrl"><label for="stL">λ (1/s)</label><input type="range" id="stL" min="0.3" max="6" step="0.1" value="2"><output id="stLv">2.0</output></div>
+    <div class="ctrl"><label for="stT">threshold</label><input type="range" id="stT" min="0.01" max="0.5" step="0.01" value="0.05"><output id="stTv">0.05</output></div>
+    <div class="readout">t* = −ln(threshold)/λ = <b id="stStar">1.50</b> s</div>
+    <div class="legend">
+      <span><i class="swatch" style="background:#58a6ff"></i>bao e^(−λt)</span>
+      <span><i class="swatch" style="background:#f85149"></i>ngưỡng threshold</span>
+      <span><i class="swatch" style="background:#3fb950"></i>t* (điểm cắt)</span>
+    </div>
+  </div>
+</section>
+
+<!-- ============ SECTION 9 · kiểm mốc ============ -->
+<section id="s9">
+  <h2 class="reveal">9 · Kiểm mốc — xác nhận công thức đúng</h2>
+  <div class="reveal">
+  <table>
+    <thead><tr><th>Mốc</th><th>Kỳ vọng</th><th></th></tr></thead>
+    <tbody>
+      <tr><td><code>t=0</code>, Cos, <code>φ=0</code></td><td><span data-tex="x = A\cdot 1\cdot\cos 0 = A"></span> (bắt đầu ở đỉnh)</td><td>✓</td></tr>
+      <tr><td><code>t=0</code>, Sin, <code>φ=0</code></td><td><span data-tex="x = A\cdot 1\cdot\sin 0 = 0"></span> (bắt đầu ở cân bằng)</td><td>✓</td></tr>
+      <tr><td><code>t→∞</code>, <code>λ>0</code></td><td><span data-tex="e^{-\lambda t}\to 0 \Rightarrow x\to 0"></span> (tắt hẳn)</td><td>✓</td></tr>
+      <tr><td><code>λ=0</code></td><td><span data-tex="e^0=1 \Rightarrow x = A\cos(\omega t+\varphi)"></span> = HarmonicOscillator</td><td>✓</td></tr>
+      <tr><td><span data-tex="\dot{x}(0)"></span>, Cos, <code>φ=0</code></td><td><span data-tex="A(-\lambda\cdot 1 - \omega\cdot 0) = -\lambda A"></span> (trôi xuống từ đỉnh)</td><td>✓</td></tr>
+      <tr><td><span data-tex="\dot{x}(0)"></span>, Sin, <code>φ=0</code></td><td><span data-tex="A(-\lambda\cdot 0 + \omega\cdot 1) = \omega A"></span> (bật lên từ 0)</td><td>✓</td></tr>
+      <tr><td><span data-tex="E(0)"></span></td><td><span data-tex="A\,e^0 = A"></span></td><td>✓</td></tr>
+      <tr><td><span data-tex="t^*"></span> @ <code>threshold=0.5, λ=ln2</code></td><td><span data-tex="\tfrac{-\ln 0.5}{\ln 2} = \tfrac{\ln 2}{\ln 2} = 1\text{ s}"></span></td><td>✓</td></tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<!-- ============ SECTION 10 · summary ============ -->
+<section id="s10">
+  <h2 class="reveal">10 · Tổng kết công thức</h2>
+  <div class="perf-grid reveal">
+    <div class="perf-card"><div class="perf-val" data-tex="\omega = 2\pi f"></div><div class="perf-label">tần số góc từ Hz</div></div>
+    <div class="perf-card"><div class="perf-val" data-tex="\lambda = \tfrac{\ln 2}{h}"></div><div class="perf-label">decay từ nửa đời</div></div>
+    <div class="perf-card"><div class="perf-val" data-tex="\omega_d = \sqrt{\omega_0^2-\lambda^2}"></div><div class="perf-label">tần số quan sát (ODE thật)</div></div>
+  </div>
+  <div class="reveal">
+  <table>
+    <thead><tr><th>Đại lượng</th><th>Công thức</th><th>Ý nghĩa</th></tr></thead>
+    <tbody>
+      <tr><td>Li độ (Cos)</td><td><span data-tex="A\,e^{-\lambda t}\cos(\omega t+\varphi)"></span></td><td>vị trí tức thời, bắt đầu ở đỉnh</td></tr>
+      <tr><td>Li độ (Sin)</td><td><span data-tex="A\,e^{-\lambda t}\sin(\omega t+\varphi)"></span></td><td>vị trí tức thời, bắt đầu ở cân bằng</td></tr>
+      <tr><td>Vận tốc (Cos)</td><td><span data-tex="A\,e^{-\lambda t}[-\lambda\cos - \omega\sin]"></span></td><td>đạo hàm li độ</td></tr>
+      <tr><td>Vận tốc (Sin)</td><td><span data-tex="A\,e^{-\lambda t}[-\lambda\sin + \omega\cos]"></span></td><td>đạo hàm li độ</td></tr>
+      <tr><td>Bao hình</td><td><span data-tex="A\,e^{-\lambda t}"></span></td><td>đường ôm trên/dưới</td></tr>
+      <tr><td>Thời gian ổn định</td><td><span data-tex="-\ln(threshold)/\lambda"></span></td><td>khi nào tắt update</td></tr>
+      <tr><td>Nửa đời ↔ decay</td><td><span data-tex="\lambda = \ln 2/h"></span></td><td>tune trực quan hơn</td></tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+</main>
+<footer>Horcrux · DampedOscillator · <code>Horcrux.Runtime.Utilities.PhysXHelper.DampedOscillator</code></footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
+<script>
+// ---- reveal on scroll ----
+const observer=new IntersectionObserver(e=>{e.forEach(e=>{if(e.isIntersecting)e.target.classList.add('visible')})},{threshold:.08});
+document.querySelectorAll('.reveal').forEach(el=>observer.observe(el));
+// ---- progress bar ----
+const pb=document.getElementById('progress');
+window.addEventListener('scroll',()=>{const h=document.documentElement;pb.style.width=(h.scrollTop/(h.scrollHeight-h.clientHeight)*100)+'%'});
+// ---- KaTeX render (static, once): block .eq and inline [data-tex] ----
+document.querySelectorAll('.eq[data-tex]').forEach(el=>{
+  try{katex.render(el.getAttribute('data-tex'),el,{displayMode:true,throwOnError:false});}catch(e){el.textContent=el.getAttribute('data-tex');}
+});
+document.querySelectorAll('span[data-tex],.perf-val[data-tex]').forEach(el=>{
+  try{katex.render(el.getAttribute('data-tex'),el,{displayMode:false,throwOnError:false});}catch(e){el.textContent=el.getAttribute('data-tex');}
+});
+
+// shared palette (hex — canvas không parse CSS vars)
+const AC='#58a6ff',AC2='#bc8cff',GR='#3fb950',OR='#d29922',RD='#f85149',MU='#8b949e',DK='#484f58',BD='#30363d',TX='#8b949e';
+
+// ---- Demo 1: decomposition — envelope hugs the wave (Pattern C) ----
+(function(){
+  const cv=document.getElementById('decompCanvas'); if(!cv)return;
+  const ctx=cv.getContext('2d'), W=cv.width, H=cv.height;
+  const padL=40,padR=16,padT=16,padB=26, gw=W-padL-padR, gh=H-padT-padB;
+  const T=1.5, A=1;
+  const fIn=document.getElementById('dcF'),fOut=document.getElementById('dcFv');
+  const lIn=document.getElementById('dcL'),lOut=document.getElementById('dcLv');
+  function X(t){return padL+(t/T)*gw;}
+  function Y(v){return padT+gh/2-(v/(A*1.05))*(gh/2);}   // v∈[-A,A] → giữa canvas
+  function curve(fn,color,w,dash){
+    ctx.strokeStyle=color;ctx.lineWidth=w;ctx.setLineDash(dash||[]);ctx.beginPath();
+    for(let i=0;i<=gw;i++){const t=i/gw*T,v=fn(t);if(i===0)ctx.moveTo(X(t),Y(v));else ctx.lineTo(X(t),Y(v));}
+    ctx.stroke();ctx.setLineDash([]);
+  }
+  function draw(){
+    const f=parseFloat(fIn.value),lam=parseFloat(lIn.value);
+    fOut.textContent=f.toFixed(1);lOut.textContent=lam.toFixed(1);
+    const w=2*Math.PI*f;
+    ctx.clearRect(0,0,W,H);
+    // axis
+    ctx.strokeStyle=BD;ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(padL,Y(0));ctx.lineTo(W-padR,Y(0));ctx.stroke();
+    ctx.fillStyle=TX;ctx.font='11px monospace';ctx.fillText('0',padL-4,Y(0)-4);ctx.fillText('1.5s',W-padR-26,Y(0)+14);
+    // pure harmonic (faint)
+    curve(t=>A*Math.cos(w*t),DK,1.2);
+    // envelope ±
+    curve(t=>A*Math.exp(-lam*t),OR,1.5,[5,4]);
+    curve(t=>-A*Math.exp(-lam*t),OR,1.5,[5,4]);
+    // damped product
+    curve(t=>A*Math.exp(-lam*t)*Math.cos(w*t),AC,2.5);
+  }
+  fIn.addEventListener('input',draw);lIn.addEventListener('input',draw);draw();
+})();
+
+// ---- Demo 2: half-life markers (Pattern C) ----
+(function(){
+  const cv=document.getElementById('halfCanvas'); if(!cv)return;
+  const ctx=cv.getContext('2d'), W=cv.width, H=cv.height;
+  const padL=44,padR=16,padT=16,padB=28, gw=W-padL-padR, gh=H-padT-padB;
+  const T=2.0;
+  const lIn=document.getElementById('hlL'),lOut=document.getElementById('hlLv'),hOut=document.getElementById('hlH');
+  function X(t){return padL+(t/T)*gw;}
+  function Y(v){return padT+(1-v)*gh;}
+  function draw(){
+    const lam=parseFloat(lIn.value);lOut.textContent=lam.toFixed(1);
+    const h=Math.LN2/lam;hOut.textContent=h.toFixed(3);
+    ctx.clearRect(0,0,W,H);
+    // grid y
+    ctx.strokeStyle=BD;ctx.lineWidth=1;ctx.fillStyle=TX;ctx.font='11px monospace';
+    for(let v=0;v<=1;v+=0.25){const y=Y(v);ctx.beginPath();ctx.moveTo(padL,y);ctx.lineTo(W-padR,y);ctx.stroke();ctx.fillText((v*100)+'%',6,y+4);}
+    ctx.fillText('0s',padL-4,H-12);ctx.fillText('2s',W-padR-20,H-12);
+    // curve
+    ctx.strokeStyle=AC;ctx.lineWidth=2.5;ctx.beginPath();
+    for(let i=0;i<=gw;i++){const t=i/gw*T,v=Math.exp(-lam*t);if(i===0)ctx.moveTo(X(t),Y(v));else ctx.lineTo(X(t),Y(v));}
+    ctx.stroke();
+    // half-life markers at h,2h,3h → 0.5,0.25,0.125
+    for(let k=1;k<=3;k++){
+      const t=k*h;if(t>T)break;const v=Math.pow(0.5,k);
+      ctx.strokeStyle=MU;ctx.setLineDash([3,3]);ctx.lineWidth=1;
+      ctx.beginPath();ctx.moveTo(X(t),Y(0));ctx.lineTo(X(t),Y(v));ctx.lineTo(padL,Y(v));ctx.stroke();ctx.setLineDash([]);
+      ctx.fillStyle=MU;ctx.beginPath();ctx.arc(X(t),Y(v),4,0,7);ctx.fill();
+      ctx.fillStyle=TX;ctx.fillText((k===1?'h':k+'h'),X(t)-4,Y(0)-6);
+    }
+  }
+  lIn.addEventListener('input',draw);draw();
+})();
+
+// ---- Demo 3: three damping regimes (true ODE, x(0)=1, ẋ(0)=0) (Pattern C) ----
+(function(){
+  const cv=document.getElementById('regimeCanvas'); if(!cv)return;
+  const ctx=cv.getContext('2d'), W=cv.width, H=cv.height;
+  const padL=40,padR=16,padT=16,padB=26, gw=W-padL-padR, gh=H-padT-padB;
+  const T=2.0, w0=6.0;
+  const lIn=document.getElementById('rgL'),lOut=document.getElementById('rgLv');
+  const dOut=document.getElementById('rgD'),wdOut=document.getElementById('rgWd'),nOut=document.getElementById('rgName');
+  function X(t){return padL+(t/T)*gw;}
+  function Y(v){return padT+gh/2-v*(gh/2*0.92);}
+  function xOf(t,lam){
+    const d=lam*lam-w0*w0;
+    if(Math.abs(d)<1e-3){ return (1+w0*t)*Math.exp(-w0*t); }              // critical
+    if(d<0){ const wd=Math.sqrt(-d); return Math.exp(-lam*t)*(Math.cos(wd*t)+(lam/wd)*Math.sin(wd*t)); } // under
+    const b=Math.sqrt(d); return Math.exp(-lam*t)*(Math.cosh(b*t)+(lam/b)*Math.sinh(b*t));               // over
+  }
+  function draw(){
+    const lam=parseFloat(lIn.value);lOut.textContent=lam.toFixed(1);
+    const d=lam*lam-w0*w0;dOut.textContent=(d>=0?'+':'')+d.toFixed(1);
+    let color,name;
+    if(Math.abs(d)<0.2){color=OR;name='Tới hạn → về nhanh nhất, không lắc';wdOut.textContent='0';}
+    else if(d<0){color=GR;name='Cản yếu → dao động tắt dần';wdOut.textContent=Math.sqrt(-d).toFixed(2);}
+    else{color=RD;name='Cản mạnh → bò về, không lắc';wdOut.textContent='—';}
+    nOut.textContent=name;nOut.style.color=color;
+    ctx.clearRect(0,0,W,H);
+    ctx.strokeStyle=BD;ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(padL,Y(0));ctx.lineTo(W-padR,Y(0));ctx.stroke();
+    ctx.fillStyle=TX;ctx.font='11px monospace';ctx.fillText('0',padL-4,Y(0)-4);ctx.fillText('2s',W-padR-20,Y(0)+14);
+    ctx.strokeStyle=color;ctx.lineWidth=2.5;ctx.beginPath();
+    for(let i=0;i<=gw;i++){const t=i/gw*T,v=xOf(t,lam);if(i===0)ctx.moveTo(X(t),Y(v));else ctx.lineTo(X(t),Y(v));}
+    ctx.stroke();
+  }
+  lIn.addEventListener('input',draw);draw();
+})();
+
+// ---- Demo 4b (§4): pole locations in complex plane (Pattern C) ----
+(function(){
+  const cv=document.getElementById('poleCanvas'); if(!cv)return;
+  const ctx=cv.getContext('2d'), W=cv.width, H=cv.height;
+  const w0=6.0, SC=22;                       // scale: rad/s → px
+  const cx=W*0.62, cy=H/2;                    // origin (shift right: all Re ≤ 0)
+  const lIn=document.getElementById('plL'),lOut=document.getElementById('plLv'),rOut=document.getElementById('plR');
+  function PX(re){return cx+re*SC;}
+  function PY(im){return cy-im*SC;}
+  function draw(){
+    const lam=parseFloat(lIn.value);lOut.textContent=lam.toFixed(1);
+    const d=lam*lam-w0*w0;
+    ctx.clearRect(0,0,W,H);
+    // axes
+    ctx.strokeStyle=BD;ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(0,cy);ctx.lineTo(W,cy);ctx.stroke();          // real axis
+    ctx.beginPath();ctx.moveTo(cx,0);ctx.lineTo(cx,H);ctx.stroke();          // imag axis
+    ctx.fillStyle=TX;ctx.font='11px monospace';
+    ctx.fillText('Re (tắt)',W-70,cy-8);ctx.fillText('Im (lắc)',cx+8,16);
+    // circle radius ω₀ (locus of underdamped poles)
+    ctx.strokeStyle=DK;ctx.setLineDash([4,4]);ctx.lineWidth=1;
+    ctx.beginPath();ctx.arc(cx,cy,w0*SC,0,7);ctx.stroke();ctx.setLineDash([]);
+    ctx.fillStyle=DK;ctx.fillText('|r| = ω₀',PX(-w0*0.72),PY(w0*0.72));
+    // critical point −ω₀
+    ctx.fillStyle=OR;ctx.beginPath();ctx.arc(PX(-w0),PY(0),3,0,7);ctx.fill();
+    ctx.fillText('−ω₀',PX(-w0)-10,PY(0)+18);
+    let color,txt;
+    if(Math.abs(d)<0.3){                       // critical: double real root −λ≈−ω₀
+      color=OR;txt='r = −'+lam.toFixed(1)+' (kép)';
+      ctx.fillStyle=color;ctx.beginPath();ctx.arc(PX(-lam),PY(0),7,0,7);ctx.fill();
+    }else if(d<0){                             // underdamped: −λ ± iω_d on the circle
+      const wd=Math.sqrt(-d);color=GR;txt='r = −'+lam.toFixed(1)+' ± i'+wd.toFixed(2);
+      ctx.strokeStyle=color;ctx.setLineDash([3,3]);ctx.lineWidth=1;
+      ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(PX(-lam),PY(wd));ctx.stroke();
+      ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(PX(-lam),PY(-wd));ctx.stroke();ctx.setLineDash([]);
+      ctx.fillStyle=color;
+      ctx.beginPath();ctx.arc(PX(-lam),PY(wd),6,0,7);ctx.fill();
+      ctx.beginPath();ctx.arc(PX(-lam),PY(-wd),6,0,7);ctx.fill();
+    }else{                                     // overdamped: two real −λ±√d
+      const b=Math.sqrt(d);color=RD;txt='r = '+(-lam+b).toFixed(2)+', '+(-lam-b).toFixed(2);
+      ctx.fillStyle=color;
+      ctx.beginPath();ctx.arc(PX(-lam+b),PY(0),6,0,7);ctx.fill();
+      ctx.beginPath();ctx.arc(PX(-lam-b),PY(0),6,0,7);ctx.fill();
+    }
+    rOut.textContent=txt;rOut.style.color=color;
+  }
+  lIn.addEventListener('input',draw);draw();
+})();
+
+// ---- Demo 5 (§5): main displacement, Cos/Sin, f/λ/φ (Pattern C) ----
+(function(){
+  const cv=document.getElementById('mainCanvas'); if(!cv)return;
+  const ctx=cv.getContext('2d'), W=cv.width, H=cv.height;
+  const padL=40,padR=16,padT=16,padB=26, gw=W-padL-padR, gh=H-padT-padB;
+  const T=2.0, A=1; let useCos=true;
+  const fIn=document.getElementById('mF'),fOut=document.getElementById('mFv');
+  const lIn=document.getElementById('mL'),lOut=document.getElementById('mLv');
+  const pIn=document.getElementById('mP'),pOut=document.getElementById('mPv');
+  const bCos=document.getElementById('wsCos'),bSin=document.getElementById('wsSin');
+  function X(t){return padL+(t/T)*gw;}
+  function Y(v){return padT+gh/2-(v/(A*1.05))*(gh/2);}
+  function draw(){
+    const f=parseFloat(fIn.value),lam=parseFloat(lIn.value),ph=parseFloat(pIn.value);
+    fOut.textContent=f.toFixed(1);lOut.textContent=lam.toFixed(1);pOut.textContent=ph.toFixed(2);
+    const w=2*Math.PI*f;
+    ctx.clearRect(0,0,W,H);
+    ctx.strokeStyle=BD;ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(padL,Y(0));ctx.lineTo(W-padR,Y(0));ctx.stroke();
+    ctx.fillStyle=TX;ctx.font='11px monospace';ctx.fillText('0',padL-4,Y(0)-4);ctx.fillText('2s',W-padR-20,Y(0)+14);
+    // envelope
+    ctx.strokeStyle=OR;ctx.lineWidth=1.5;ctx.setLineDash([5,4]);
+    ctx.beginPath();for(let i=0;i<=gw;i++){const t=i/gw*T,v=A*Math.exp(-lam*t);if(i===0)ctx.moveTo(X(t),Y(v));else ctx.lineTo(X(t),Y(v));}ctx.stroke();
+    ctx.beginPath();for(let i=0;i<=gw;i++){const t=i/gw*T,v=-A*Math.exp(-lam*t);if(i===0)ctx.moveTo(X(t),Y(v));else ctx.lineTo(X(t),Y(v));}ctx.stroke();
+    ctx.setLineDash([]);
+    // wave
+    ctx.strokeStyle=AC;ctx.lineWidth=2.5;ctx.beginPath();
+    for(let i=0;i<=gw;i++){const t=i/gw*T,e=A*Math.exp(-lam*t),ang=w*t+ph,v=e*(useCos?Math.cos(ang):Math.sin(ang));if(i===0)ctx.moveTo(X(t),Y(v));else ctx.lineTo(X(t),Y(v));}
+    ctx.stroke();
+  }
+  function setStyle(c){useCos=c;bCos.classList.toggle('on',c);bSin.classList.toggle('on',!c);draw();}
+  bCos.addEventListener('click',()=>setStyle(true));
+  bSin.addEventListener('click',()=>setStyle(false));
+  fIn.addEventListener('input',draw);lIn.addEventListener('input',draw);pIn.addEventListener('input',draw);draw();
+})();
+
+// ---- Demo 7 (§7): displacement + velocity (Pattern C) ----
+(function(){
+  const cv=document.getElementById('velCanvas'); if(!cv)return;
+  const ctx=cv.getContext('2d'), W=cv.width, H=cv.height;
+  const padL=40,padR=16,padT=16,padB=26, gw=W-padL-padR, gh=H-padT-padB;
+  const T=2.0, A=1; let useCos=true;
+  const fIn=document.getElementById('vF'),fOut=document.getElementById('vFv');
+  const lIn=document.getElementById('vL'),lOut=document.getElementById('vLv');
+  const bCos=document.getElementById('vsCos'),bSin=document.getElementById('vsSin');
+  function X(t){return padL+(t/T)*gw;}
+  function Y(v){return padT+gh/2-v*(gh/2*0.92);}
+  function disp(t,w,lam){const e=A*Math.exp(-lam*t),ang=w*t;return e*(useCos?Math.cos(ang):Math.sin(ang));}
+  function vel(t,w,lam){const e=A*Math.exp(-lam*t),ang=w*t,c=Math.cos(ang),s=Math.sin(ang);return useCos?e*(-lam*c-w*s):e*(-lam*s+w*c);}
+  function draw(){
+    const f=parseFloat(fIn.value),lam=parseFloat(lIn.value);
+    fOut.textContent=f.toFixed(1);lOut.textContent=lam.toFixed(1);
+    const w=2*Math.PI*f;
+    // normalize velocity to fit view
+    let vmax=1e-6;for(let i=0;i<=gw;i++){const t=i/gw*T;vmax=Math.max(vmax,Math.abs(vel(t,w,lam)));}
+    ctx.clearRect(0,0,W,H);
+    ctx.strokeStyle=BD;ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(padL,Y(0));ctx.lineTo(W-padR,Y(0));ctx.stroke();
+    ctx.fillStyle=TX;ctx.font='11px monospace';ctx.fillText('0',padL-4,Y(0)-4);ctx.fillText('2s',W-padR-20,Y(0)+14);
+    // velocity (normalized)
+    ctx.strokeStyle=AC2;ctx.lineWidth=1.8;ctx.beginPath();
+    for(let i=0;i<=gw;i++){const t=i/gw*T,v=vel(t,w,lam)/vmax;if(i===0)ctx.moveTo(X(t),Y(v));else ctx.lineTo(X(t),Y(v));}ctx.stroke();
+    // displacement
+    ctx.strokeStyle=AC;ctx.lineWidth=2.5;ctx.beginPath();
+    for(let i=0;i<=gw;i++){const t=i/gw*T,v=disp(t,w,lam);if(i===0)ctx.moveTo(X(t),Y(v));else ctx.lineTo(X(t),Y(v));}ctx.stroke();
+  }
+  function setStyle(c){useCos=c;bCos.classList.toggle('on',c);bSin.classList.toggle('on',!c);draw();}
+  bCos.addEventListener('click',()=>setStyle(true));
+  bSin.addEventListener('click',()=>setStyle(false));
+  fIn.addEventListener('input',draw);lIn.addEventListener('input',draw);draw();
+})();
+
+// ---- Demo 7b (§7): phase portrait (x, ẋ) → spiral (Pattern C) ----
+(function(){
+  const cv=document.getElementById('phaseCanvas'); if(!cv)return;
+  const ctx=cv.getContext('2d'), W=cv.width, H=cv.height;
+  const cx=W/2, cy=H/2, w=2*Math.PI*1.5, A=1, T=6.0;   // fixed f=1.5Hz, integrate 6s
+  const lIn=document.getElementById('phL'),lOut=document.getElementById('phLv'),msg=document.getElementById('phMsg');
+  // pre-scale so ellipse fits: x∈[-A,A], ẋ∈[-Aω,Aω]
+  const sx=(W*0.42)/A, sy=(H*0.42)/(A*w);
+  function draw(){
+    const lam=parseFloat(lIn.value);lOut.textContent=lam.toFixed(1);
+    msg.textContent = lam<0.05 ? 'λ = 0 → ellipse kín (năng lượng bảo toàn)' : 'λ > 0 → xoáy vào gốc (mất năng lượng)';
+    ctx.clearRect(0,0,W,H);
+    // axes
+    ctx.strokeStyle=BD;ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(0,cy);ctx.lineTo(W,cy);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(cx,0);ctx.lineTo(cx,H);ctx.stroke();
+    ctx.fillStyle=TX;ctx.font='11px monospace';
+    ctx.fillText('x',W-16,cy-6);ctx.fillText('ẋ',cx+8,14);
+    // origin
+    ctx.fillStyle=MU;ctx.beginPath();ctx.arc(cx,cy,3,0,7);ctx.fill();
+    // trajectory: x=A e^(−λt)cos(wt), ẋ = A e^(−λt)(−λcos − w sin)
+    ctx.strokeStyle=AC;ctx.lineWidth=2;ctx.beginPath();
+    const N=1400;
+    for(let i=0;i<=N;i++){
+      const t=i/N*T,e=A*Math.exp(-lam*t),c=Math.cos(w*t),s=Math.sin(w*t);
+      const x=e*c, xd=e*(-lam*c-w*s);
+      const px=cx+x*sx, py=cy-xd*sy;
+      if(i===0)ctx.moveTo(px,py);else ctx.lineTo(px,py);
+    }
+    ctx.stroke();
+    // start dot
+    ctx.fillStyle=GR;ctx.beginPath();ctx.arc(cx+A*sx,cy-(-lam*A)*sy,5,0,7);ctx.fill();
+    ctx.fillStyle=TX;ctx.fillText('t=0',cx+A*sx+6,cy-(-lam*A)*sy-6);
+  }
+  lIn.addEventListener('input',draw);draw();
+})();
+
+// ---- Demo 8 (§8): settling time (Pattern C) ----
+(function(){
+  const cv=document.getElementById('settleCanvas'); if(!cv)return;
+  const ctx=cv.getContext('2d'), W=cv.width, H=cv.height;
+  const padL=44,padR=16,padT=16,padB=28, gw=W-padL-padR, gh=H-padT-padB;
+  const T=3.0;
+  const lIn=document.getElementById('stL'),lOut=document.getElementById('stLv');
+  const tIn=document.getElementById('stT'),tOut=document.getElementById('stTv'),sOut=document.getElementById('stStar');
+  function X(t){return padL+(t/T)*gw;}
+  function Y(v){return padT+(1-v)*gh;}
+  function draw(){
+    const lam=parseFloat(lIn.value),th=parseFloat(tIn.value);
+    lOut.textContent=lam.toFixed(1);tOut.textContent=th.toFixed(2);
+    const star=-Math.log(th)/lam;sOut.textContent=star.toFixed(2);
+    ctx.clearRect(0,0,W,H);
+    ctx.strokeStyle=BD;ctx.lineWidth=1;ctx.fillStyle=TX;ctx.font='11px monospace';
+    for(let v=0;v<=1;v+=0.25){const y=Y(v);ctx.beginPath();ctx.moveTo(padL,y);ctx.lineTo(W-padR,y);ctx.stroke();ctx.fillText((v*100)+'%',6,y+4);}
+    ctx.fillText('0s',padL-4,H-12);ctx.fillText('3s',W-padR-20,H-12);
+    // envelope
+    ctx.strokeStyle=AC;ctx.lineWidth=2.5;ctx.beginPath();
+    for(let i=0;i<=gw;i++){const t=i/gw*T,v=Math.exp(-lam*t);if(i===0)ctx.moveTo(X(t),Y(v));else ctx.lineTo(X(t),Y(v));}ctx.stroke();
+    // threshold line
+    ctx.strokeStyle=RD;ctx.setLineDash([5,4]);ctx.lineWidth=1.5;
+    ctx.beginPath();ctx.moveTo(padL,Y(th));ctx.lineTo(W-padR,Y(th));ctx.stroke();ctx.setLineDash([]);
+    ctx.fillStyle=RD;ctx.fillText('threshold',W-padR-72,Y(th)-6);
+    // t* marker
+    if(star<=T){
+      ctx.strokeStyle=GR;ctx.setLineDash([4,4]);ctx.lineWidth=1.5;
+      ctx.beginPath();ctx.moveTo(X(star),Y(0));ctx.lineTo(X(star),Y(th));ctx.stroke();ctx.setLineDash([]);
+      ctx.fillStyle=GR;ctx.beginPath();ctx.arc(X(star),Y(th),4,0,7);ctx.fill();
+      ctx.fillText('t*='+star.toFixed(2)+'s',X(star)+6,Y(th)+16);
+    }
+  }
+  lIn.addEventListener('input',draw);tIn.addEventListener('input',draw);draw();
+})();
+</script>
+</body>
+</html>

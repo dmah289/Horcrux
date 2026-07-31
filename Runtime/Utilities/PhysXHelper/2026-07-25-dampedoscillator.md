@@ -8,6 +8,14 @@
 
 ## §0. Nền toán học (đọc trước khi code)
 
+**Mạch dẫn giải** (mỗi bước chỉ dùng thứ bước trước đã có):
+
+```
+0.1 hiện tượng  →  0.2 trực giác: vì sao "mũ"  →  0.2b vật lý: Newton dựng phương trình
+                                                          ↓
+0.6 kiểm mốc  ←  0.5 bao & settling  ←  0.4 đạo hàm → vận tốc  ←  0.3 giải phương trình → nghiệm
+```
+
 ### 0.1. Bản chất — dao động tắt dần là gì
 
 Dao động điều hòa thường (`HarmonicOscillator`) lắc **mãi mãi** với biên độ không đổi `A`. Thực tế luôn có ma sát/lực cản → biên độ **rũ nhỏ dần** rồi tắt hẳn. Đó là dao động tắt dần: dây đàn gảy rồi im, jelly rung sau va chạm, UI nảy vào rồi đứng yên.
@@ -28,13 +36,11 @@ Trực giác trước: lực cản (ma sát nhớt) tỉ lệ **vận tốc** �
 
 $$\frac{d}{dt}e^{-\lambda t} = -\lambda\,e^{-\lambda t} \quad\Rightarrow\quad \text{tốc độ giảm luôn tỉ lệ giá trị hiện tại}$$
 
-Nên biên độ co theo `e^(−λt)`, không theo đường thẳng. `λ` (1/s) = **tốc độ tắt**: lớn → co nhanh. Đây cũng đúng cơ chế `Interpolator.ExpDecay` (`§DecayFactor`) — cùng một họ hàm mũ.
+Nên biên độ co theo `e^(−λt)`, không theo đường thẳng. `λ` (1/s) = **tốc độ tắt**: lớn → co nhanh. Cùng họ hàm mũ với `Interpolator.ExpDecay` (xem `§DecayFactor` của Interpolator).
 
 ### 0.2b. Phương trình chi phối từ đâu ra — Newton, không phải tiên đề
 
-Trước khi giải, phải biết phương trình **ở đâu chui ra**. Nó không phải định nghĩa áp đặt — nó là **Định luật II Newton** cho vật gắn lò xo có ma sát, viết gọn lại.
-
-Xét vật khối lượng `m` trên lò xo, nhúng trong môi trường nhớt. `x` = độ lệch khỏi cân bằng. Ba lực tác dụng:
+Phương trình dao động tắt dần **không** áp đặt — nó là **Định luật II Newton** cho vật gắn lò xo có ma sát. Vật khối lượng `m`, `x` = độ lệch khỏi cân bằng, chịu ba lực:
 
 | Lực | Biểu thức | Dấu & lý do |
 |---|---|---|
@@ -46,22 +52,20 @@ Xét vật khối lượng `m` trên lò xo, nhúng trong môi trường nhớt.
 
 $$m\ddot{x} = -k\,x - c\,\dot{x} \quad\Rightarrow\quad m\ddot{x} + c\,\dot{x} + k\,x = 0$$
 
-Đây là **phương trình gốc thật** — quán tính + cản + đàn hồi. Chia cho `m` (`>0`) để số hạng $\ddot{x}$ về hệ số 1, rồi **đặt tên** hai cụm hệ số:
+Chia cho `m` (`>0`) rồi **đặt tên** hai cụm hệ số:
 
 $$\ddot{x} + \frac{c}{m}\,\dot{x} + \frac{k}{m}\,x = 0, \qquad \omega_0^2 \equiv \frac{k}{m}, \qquad 2\lambda \equiv \frac{c}{m}$$
 
-→ ra đúng phương trình §0.3. Hai phép đặt tên **không tùy tiện**, mỗi cái làm công thức sau gọn:
+Hai phép đặt tên **không tùy tiện** — mỗi cái làm nghiệm sau gọn:
 
-- **`ω₀² = k/m`** — bỏ cản (`c=0`) còn $\ddot{x}+\omega_0^2 x=0$, nghiệm $\cos(\omega_0 t)$ (thử: $\ddot{x}=-\omega_0^2 x$ ✓). Vậy $\omega_0=\sqrt{k/m}$ **là** tần số góc khi chưa cản → gọi "tần số tự nhiên". Lò xo cứng (`k↑`) / vật nhẹ (`m↓`) → lắc nhanh, đúng trực giác.
-- **`2λ = c/m`** — số **2** để `λ` sau này trần trụi làm tốc độ tắt. Nghiệm bậc hai $r=\frac{-b\pm\sqrt{b^2-4ac}}{2a}$ với $b=2\lambda$: $\;r=\frac{-2\lambda\pm\sqrt{4\lambda^2-4\omega_0^2}}{2}=-\lambda\pm\sqrt{\lambda^2-\omega_0^2}$ — số 4 và 2 triệt tiêu sạch. Đặt `λ` (không có 2) thì bao phải viết $e^{-(\lambda/2)t}$ khắp nơi, xấu. Con số 2 chỉ để `λ` mang đúng nghĩa "tốc độ tắt của bao $e^{-\lambda t}$" (§0.2).
+- **`ω₀² = k/m`** — bỏ cản (`c=0`) còn $\ddot{x}+\omega_0^2 x=0$, nghiệm $\cos(\omega_0 t)$ (thử $\ddot{x}=-\omega_0^2 x$ ✓). Nên $\omega_0=\sqrt{k/m}$ = tần số góc khi chưa cản → "tần số tự nhiên".
+- **`2λ = c/m`** — số **2** để triệt tiêu số 4 trong căn nghiệm bậc hai: với $b=2\lambda$, $\,r=\frac{-2\lambda\pm\sqrt{4\lambda^2-4\omega_0^2}}{2}=-\lambda\pm\sqrt{\lambda^2-\omega_0^2}$. Nhờ đó `λ` trần trụi mang đúng nghĩa "tốc độ tắt của bao $e^{-\lambda t}$" (§0.2), khỏi viết $e^{-(\lambda/2)t}$ khắp nơi.
 
 ### 0.3. Từ phương trình chi phối → nghiệm đóng (suy ra, không áp đặt)
 
-§0.2 giải thích phần **bao** `e^(−λt)`; §0.2b cho biết phương trình ở đâu ra. Còn *vì sao li độ = bao × cosin*? Suy ra từ chính phương trình đó:
+§0.2 mới cho phần **bao**; giờ suy *vì sao li độ = bao × cosin* từ chính phương trình §0.2b, theo 4 bước:
 
 $$\ddot{x} + 2\lambda\,\dot{x} + \omega_0^2\,x = 0$$
-
-trong đó `ω₀` = tần số tự nhiên (khi chưa cản), `2λ` = hệ số cản đã chuẩn hóa (§0.2b). Giải theo 4 bước.
 
 **Bước 1 — vì sao thử `x = e^{rt}`.** Phương trình tuyến tính, hệ số hằng: đạo hàm `x` không được đẻ ra dạng hàm mới, nếu không ba số hạng $\ddot{x}, \dot{x}, x$ không thể triệt tiêu nhau. Chỉ hàm mũ có tính chất "đạo hàm = chính nó nhân hằng" ($\frac{d}{dt}e^{rt}=r\,e^{rt}$) → mọi số hạng đều thành `(…)·e^{rt}`, giữ nguyên dạng. Nên `e^{rt}` là ứng viên nghiệm tự nhiên, còn `r` là ẩn cần tìm.
 
@@ -103,9 +107,9 @@ $$x(t) = \underbrace{e^{-\lambda t}}_{\text{bao — §0.2}}\big[A_1\cos(\omega_d
 
 $$\boxed{\;x(t) = A\,e^{-\lambda t}\cos(\omega_d t + \varphi)\;}$$
 
-→ **li độ = bao × cosin** giờ được *suy ra trọn vẹn*: bao `e^(−λt)` đúng như §0.2, phần lắc là cosin ở tần số `ω_d`, `A` và `φ` do điều kiện đầu (vị trí + vận tốc lúc `t=0`) định. Chọn `sin` thay `cos` chỉ là đổi mốc pha `φ` (vì $\sin\theta=\cos(\theta-\tfrac{\pi}{2})$).
+→ **li độ = bao × cosin** đã suy trọn vẹn: bao `e^(−λt)`, phần lắc cosin ở tần số `ω_d`, `A`/`φ` do điều kiện đầu định. Chọn `sin` thay `cos` chỉ là đổi mốc pha (vì $\sin\theta=\cos(\theta-\tfrac{\pi}{2})$).
 
-> **Lựa chọn mô hình — vì sao code tách rời `f` và `λ`:** trong ODE thật, `ω_d = √(ω₀²−λ²)` **ràng buộc** tần số theo độ tắt (tắt càng mạnh → lắc càng chậm, và `λ ≥ ω₀` thì hết dao động). Nhưng cho **game feel**, designer muốn vặn *nhịp lắc* và *độ tắt* **độc lập**. Nên ta phơi thẳng tần số **quan sát** `f` (đặt `ω = 2π·f`, đóng vai `ω_d`) và để `λ` là núm riêng — một mô hình **mô tả** (giống `HarmonicOscillator` phơi `f` trực tiếp), không mô phỏng khối lượng–lò xo. Ai cần đúng vật lý ràng buộc `m,k,c` thì dùng `SpringDamper`. Từ đây gọi tần số góc là `ω` cho gọn.
+> **Lựa chọn mô hình — vì sao code tách rời `f` và `λ`:** ODE thật ràng buộc `ω_d = √(ω₀²−λ²)` (tắt mạnh → lắc chậm; `λ ≥ ω₀` thì hết lắc). Game feel cần vặn *nhịp lắc* và *độ tắt* **độc lập**, nên code phơi thẳng tần số **quan sát** `f` (đặt `ω = 2π·f` đóng vai `ω_d`) và để `λ` là núm riêng — mô hình **mô tả**, không mô phỏng `m,k,c`. Cần đúng ràng buộc vật lý thì dùng `SpringDamper`. Từ đây gọi tần số góc là `ω`.
 
 **Công thức chốt** (dạng code dùng — `ω` là tần số góc quan sát):
 
@@ -125,7 +129,13 @@ $$\boxed{\;x(t) = A\,e^{-\lambda t}\sin(\omega t + \varphi)\;}\quad(\text{Sin})$
 
 $$-\lambda h = \ln\tfrac{1}{2} = -\ln 2 \quad\Rightarrow\quad \boxed{\;\lambda = \frac{\ln 2}{h}\;}$$
 
-Nhất quán với `Interpolator.ExpDecayHalfLife`. Vì vậy mỗi hàm có 2 overload: nhận `decay` trực tiếp, hoặc nhận `halfLife` rồi quy đổi.
+Nhất quán với `Interpolator.ExpDecayHalfLife`. Vì vậy mỗi hàm có 2 overload: nhận `decay` trực tiếp, hoặc nhận half-life rồi quy đổi.
+
+**Tối ưu — phơi `invHalfLife = 1/h` thay `halfLife`.** Chia đắt hơn nhân, và cùng một `h` thường dùng lại trên nhiều object/frame → caller precompute `1/h` một lần, wrapper chỉ còn **nhân**:
+
+$$\boxed{\;\lambda = \ln 2 \cdot invHalfLife\;}\qquad(\text{thay } \lambda = \ln 2 / h)$$
+
+Biên hợp nhất với nhánh `decay`: $`invHalfLife \le 0 \Leftrightarrow \lambda \le 0`$ → **không tắt** (dao động điều hòa). Vì vậy wrapper **không guard riêng** mà ủy thác thẳng cho hàm gốc — chính sách `λ ≤ 0` chỉ định nghĩa một nơi (§0.6), tránh lệch ngữ nghĩa giữa hai nhóm.
 
 ### 0.4. Đạo hàm ra vận tốc (chỗ dễ "nhảy bước" nhất — giải kỹ)
 
@@ -153,7 +163,7 @@ $$\boxed{\;\dot{x}_{\sin} = A\,e^{-\lambda t}\big[-\lambda\sin(\omega t+\varphi)
 **Bao hình** tách riêng (dùng để vẽ vùng bao, hoặc điều chỉnh alpha theo độ tắt):
 $$E(t) = A\,e^{-\lambda t}$$
 
-**Thời gian ổn định `t*`** — khi nào coi như "đã dừng" để tắt update (tiết kiệm CPU). Định nghĩa: bao rơi xuống dưới tỉ lệ `threshold` so với `A` (vd 2%). Giải `e^{-\lambda t^*} = threshold`:
+**Thời gian ổn định `t*`** — khi nào coi như "đã dừng" để tắt update (tiết kiệm CPU). Định nghĩa: bao rơi dưới tỉ lệ `threshold` so với `A` (mặc định 5%). Giải `e^{-\lambda t^*} = threshold`:
 
 $$-\lambda t^* = \ln(threshold) \quad\Rightarrow\quad \boxed{\;t^* = \frac{-\ln(threshold)}{\lambda}\;}$$
 
@@ -271,7 +281,7 @@ namespace Horcrux.Runtime.Utilities.PhysXHelper
             WaveStyle waveStyle, float frequency, float decay, float time,
             float amplitude = 1f, float phaseShift = 0f)
         {
-            float lambda = decay > 0f ? decay : 0f;               // λ (khớp guard envelope)
+            float lambda = math.max(decay, 0f);                   // λ (khớp guard envelope)
             float omega = 2f * math.PI * frequency;               // ω = 2π·f
             float envelope = GetEnvelope(decay, time, amplitude); // A·e^(−λt)
             float phase = omega * time + phaseShift;
@@ -289,9 +299,9 @@ namespace Horcrux.Runtime.Utilities.PhysXHelper
         /// </summary>
         /// <remarks>Formula: t* = −ln(threshold)/λ. Giải từ e^(−λt*) = threshold.</remarks>
         /// <param name="decay">Hệ số tắt λ (1/s). ≤ 0 → không bao giờ dừng → +∞.</param>
-        /// <param name="threshold">Ngưỡng tỉ lệ trong (0,1), vd 0.02 = còn 2% biên độ đầu.</param>
+        /// <param name="threshold">Ngưỡng tỉ lệ trong (0,1), vd 0.05 = còn 5% biên độ đầu.</param>
         /// <returns>Thời gian ổn định t* (giây), hoặc +∞ nếu không hội tụ.</returns>
-        public static float GetSettlingTime(float decay, float threshold = 0.02f)
+        public static float GetSettlingTime(float decay, float threshold = 0.05f)
         {
             if (decay <= 0f) return float.PositiveInfinity;    // không tắt
             if (threshold <= 0f) return float.PositiveInfinity; // không bao giờ về 0 tuyệt đối
@@ -311,39 +321,34 @@ namespace Horcrux.Runtime.Utilities.PhysXHelper
 - [ ] **Step 2: Thêm 4 overload `*HalfLife` vào cuối class**
 
 ```csharp
-        // ── Overload theo halfLife (giây): λ = ln2/halfLife (§0.3) ──────────────
-        // halfLife = thời gian biên độ giảm còn một nửa. Trực quan hơn decay khi tune.
-        // halfLife ≤ 0 → tắt tức thì → coi như đã ổn định (trả 0), tránh +∞/NaN.
+        // ── Overload theo invHalfLife = 1/halfLife: λ = ln2·invHalfLife (§0.3) ──────
+        // invHalfLife = nghịch đảo nửa đời; caller precompute 1/h → wrapper chỉ còn nhân.
+        // invHalfLife ≤ 0 ⇔ decay ≤ 0 → ủy thác cho hàm gốc, tự suy về "không tắt"
+        // (dao động điều hòa). Không guard riêng để chính sách λ ≤ 0 chỉ định nghĩa một nơi.
 
-        /// <summary><see cref="GetDisplacement"/> tham số theo nửa đời halfLife thay decay.</summary>
-        /// <param name="halfLife">Thời gian (giây) biên độ giảm còn một nửa. ≤ 0 → coi như đã tắt.</param>
+        /// <summary><see cref="GetDisplacement"/> Pass inverse of half lifetime instead of decay.</summary>
+        /// <param name="invHalfLife">Inverse of the time for amplitude to halve (1/halfLife). ≤ 0 → no decay (harmonic oscillator).</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static float GetDisplacementHalfLife(
-            WaveStyle waveStyle, float frequency, float halfLife, float time,
+        public static float GetDisplacementHalfLife(WaveStyle waveStyle, float frequency, float invHalfLife, float time,
             float amplitude = 1f, float phaseShift = 0f)
-            => halfLife <= 0f
-                ? 0f
-                : GetDisplacement(waveStyle, frequency, Ln2 / halfLife, time, amplitude, phaseShift);
+            => GetDisplacement(waveStyle, frequency, Ln2 * invHalfLife, time, amplitude, phaseShift);
 
-        /// <summary><see cref="GetVelocity"/> tham số theo nửa đời halfLife thay decay.</summary>
-        /// <param name="halfLife">Thời gian (giây) biên độ giảm còn một nửa. ≤ 0 → coi như đã tắt.</param>
+        /// <summary><see cref="GetVelocity"/> Pass inverse of half lifetime instead of decay.</summary>
+        /// <param name="invHalfLife">Inverse of the time for amplitude to halve (1/halfLife). ≤ 0 → no decay (harmonic oscillator).</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static float GetVelocityHalfLife(
-            WaveStyle waveStyle, float frequency, float halfLife, float time,
+        public static float GetVelocityHalfLife(WaveStyle waveStyle, float frequency, float invHalfLife, float time,
             float amplitude = 1f, float phaseShift = 0f)
-            => halfLife <= 0f
-                ? 0f
-                : GetVelocity(waveStyle, frequency, Ln2 / halfLife, time, amplitude, phaseShift);
+            => GetVelocity(waveStyle, frequency, Ln2 * invHalfLife, time, amplitude, phaseShift);
 
-        /// <summary><see cref="GetEnvelope"/> tham số theo nửa đời halfLife thay decay.</summary>
-        /// <param name="halfLife">Thời gian (giây) biên độ giảm còn một nửa. ≤ 0 → coi như đã tắt.</param>
+        /// <summary><see cref="GetEnvelope"/> Pass inverse of half lifetime instead of decay.</summary>
+        /// <param name="invHalfLife">Inverse of the time for amplitude to halve (1/halfLife). ≤ 0 → no decay (returns amplitude).</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static float GetEnvelopeHalfLife(float halfLife, float time, float amplitude = 1f)
-            => halfLife <= 0f ? 0f : GetEnvelope(Ln2 / halfLife, time, amplitude);
+        public static float GetEnvelopeHalfLife(float invHalfLife, float time, float amplitude = 1f)
+            => GetEnvelope(Ln2 * invHalfLife, time, amplitude);
 
-        /// <summary><see cref="GetSettlingTime"/> tham số theo nửa đời halfLife thay decay.</summary>
-        /// <param name="halfLife">Thời gian (giây) biên độ giảm còn một nửa. ≤ 0 → 0 (đã tắt).</param>
+        /// <summary><see cref="GetSettlingTime"/> Pass inverse of half lifetime instead of decay.</summary>
+        /// <param name="invHalfLife">Inverse of the time for amplitude to halve (1/halfLife). ≤ 0 → never settles (+∞).</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static float GetSettlingTimeHalfLife(float halfLife, float threshold = 0.02f)
-            => halfLife <= 0f ? 0f : GetSettlingTime(Ln2 / halfLife, threshold);
+        public static float GetSettlingTimeHalfLife(float invHalfLife, float threshold = 0.05f)
+            => GetSettlingTime(Ln2 * invHalfLife, threshold);
 ```
