@@ -189,28 +189,6 @@ Thứ tự: **1 → 2 → 3**. Task 2 & 3 *modify* file Task 1 tạo (thêm hàm
 
 ### Task 1: `GetDisplacement` + `GetEnvelope` — lõi dao động tắt dần
 
-**Files:**
-- Create: `Assets/Horcrux/Runtime/Utilities/PhysXHelper/DampedOscillator.cs`
-
-**Interfaces:**
-- Consumes: `enum WaveStyle { Sin, Cos }` — đã có sẵn trong `HarmonicOscillator.cs` (cùng namespace).
-- Produces:
-  - `static float GetEnvelope(float decay, float time, float amplitude = 1f)`
-  - `static float GetDisplacement(WaveStyle waveStyle, float frequency, float decay, float time, float amplitude = 1f, float phaseShift = 0f)`
-
-**Bản đồ toán → code:** §0.3 (công thức chốt) · §0.5 (bao hình) · §0.2 (guard `λ≤0` → không tắt).
-
-**Self-doc & tối ưu:**
-
-| Quyết định | Lý do |
-|---|---|
-| `static`, thuần `float`, không field | stateless, zero-GC, thread-safe, dễ test |
-| `GetDisplacement` gọi `GetEnvelope` | DRY — bao hình tính 1 chỗ, dùng lại ở displacement/velocity |
-| guard `decay > 0 ? … : amplitude` trong `GetEnvelope` | `λ≤0` suy về dao động điều hòa (e=1), không gọi `exp` vô ích |
-| guard `time > 0` trong `GetEnvelope` | tránh `exp(−∞·0)=NaN` khi Task 3 truyền `λ` rất lớn; `t≤0` → `e^0=1` |
-| `math.exp/sin/cos/PI` (Unity.Mathematics) | Burst-friendly, thuần `float`, nhất quán `Interpolator`/`SpringSolver` |
-| `WaveStyle` tái dùng | không định nghĩa lại enum đã có |
-
 - [ ] **Step 1: Tạo file với code Task 1**
 
 ```csharp
@@ -269,51 +247,7 @@ namespace Horcrux.Runtime.Utilities.PhysXHelper
 }
 ```
 
-- [ ] **Step 2: Kiểm chứng (chạy tay / nhẩm theo §0.6)**
-
-| Input | Kỳ vọng |
-|---|---|
-| `GetDisplacement(Cos, 1, 1, 0)` | `= 1` (A·cos0) |
-| `GetDisplacement(Sin, 1, 1, 0)` | `= 0` (A·sin0) |
-| `GetDisplacement(Cos, 1, 1, 100)` | `≈ 0` (bao đã tắt) |
-| `GetDisplacement(Cos, 1, 0, t)` | `== HarmonicOscillator.GetHarmonicDisplacement(Cos, 1, t)` (λ=0) |
-| `GetEnvelope(1, 0)` | `= 1` |
-| `GetEnvelope(0.6931472, 1)` | `≈ 0.5` (`e^(−ln2)`) |
-| `GetEnvelope(-5, 3)` | `= 1` (không tắt) |
-
-Unity biên dịch sạch (Console không lỗi).
-
-- [ ] **Step 3: Commit**
-
-```bash
-git add Assets/Horcrux/Runtime/Utilities/PhysXHelper/DampedOscillator.cs
-git commit -m "feat(physx): DampedOscillator - GetDisplacement + GetEnvelope (decay)"
-```
-
----
-
 ### Task 2: `GetVelocity` + `GetSettlingTime` — đạo hàm & ngưỡng dừng
-
-**Files:**
-- Modify: `Assets/Horcrux/Runtime/Utilities/PhysXHelper/DampedOscillator.cs` (thêm 2 hàm vào class, không sửa hàm cũ)
-
-**Interfaces:**
-- Consumes: `GetEnvelope(float, float, float)` — Task 1; `WaveStyle`.
-- Produces:
-  - `static float GetVelocity(WaveStyle waveStyle, float frequency, float decay, float time, float amplitude = 1f, float phaseShift = 0f)`
-  - `static float GetSettlingTime(float decay, float threshold = 0.02f)`
-
-**Bản đồ toán → code:** `GetVelocity` = 2 hộp công thức §0.4 · `GetSettlingTime` = §0.5.
-
-**Self-doc & tối ưu:**
-
-| Quyết định | Lý do |
-|---|---|
-| `GetVelocity` gọi lại `GetEnvelope` | DRY — cùng bao hình với displacement |
-| `lambda = decay > 0 ? decay : 0` | khớp guard envelope: `λ≤0` → mất số hạng `−λ·(lắc)`, còn phần dao động |
-| tính `math.sin/cos(phase)` 1 lần, gán `s,c` | không gọi lượng giác 2 lần |
-| `GetSettlingTime` guard `decay≤0`/`threshold` biên | `λ≤0` → `+∞` (không dừng); `threshold≥1` → 0 (đã dưới ngưỡng) |
-| `math.log` = ln tự nhiên | đúng cơ số của `e^(−λt)` |
 
 - [ ] **Step 1: Thêm code Task 2 vào class `DampedOscillator`** (đặt sau `GetDisplacement`)
 
@@ -366,49 +300,7 @@ git commit -m "feat(physx): DampedOscillator - GetDisplacement + GetEnvelope (de
         }
 ```
 
-- [ ] **Step 2: Kiểm chứng — kiểm mốc & đạo hàm số (§0.6)**
-
-| Input | Kỳ vọng |
-|---|---|
-| `GetVelocity(Cos, 1, 2, 0)` | `= −2` (`−λA`, A=1) |
-| `GetVelocity(Sin, 1, 2, 0)` | `= 2π ≈ 6.283` (`ωA`) |
-| `GetVelocity(Cos, f, decay, t)` | `≈ (GetDisplacement(t+h) − GetDisplacement(t−h)) / 2h`, `h=1e-4` (đạo hàm số khớp) |
-| `GetSettlingTime(0.6931472, 0.5)` | `= 1` (`−ln0.5/ln2`) |
-| `GetSettlingTime(0)` | `= +∞` |
-| `GetSettlingTime(5, 2)` | `= 0` (threshold≥1) |
-
-- [ ] **Step 3: Commit**
-
-```bash
-git add Assets/Horcrux/Runtime/Utilities/PhysXHelper/DampedOscillator.cs
-git commit -m "feat(physx): DampedOscillator - GetVelocity + GetSettlingTime (decay)"
-```
-
----
-
 ### Task 3: overload `*HalfLife` (×4) — tham số hóa theo nửa đời
-
-**Files:**
-- Modify: `Assets/Horcrux/Runtime/Utilities/PhysXHelper/DampedOscillator.cs` (thêm const + 4 overload, không sửa hàm cũ)
-
-**Interfaces:**
-- Consumes: `GetDisplacement`, `GetVelocity`, `GetEnvelope`, `GetSettlingTime` — Task 1–2; `WaveStyle`.
-- Produces:
-  - `static float GetDisplacementHalfLife(WaveStyle waveStyle, float frequency, float halfLife, float time, float amplitude = 1f, float phaseShift = 0f)`
-  - `static float GetVelocityHalfLife(WaveStyle waveStyle, float frequency, float halfLife, float time, float amplitude = 1f, float phaseShift = 0f)`
-  - `static float GetEnvelopeHalfLife(float halfLife, float time, float amplitude = 1f)`
-  - `static float GetSettlingTimeHalfLife(float halfLife, float threshold = 0.02f)`
-
-**Bản đồ toán → code:** §0.3 quy đổi `λ = ln2/halfLife` → tất cả delegate về bản `decay` (Task 1–2). **Không toán mới.**
-
-**Self-doc & tối ưu:**
-
-| Quyết định | Lý do |
-|---|---|
-| overload delegate về bản `decay` | DRY tuyệt đối — 1 chỗ chứa công thức, overload chỉ quy đổi tham số |
-| const `Ln2` (`static readonly`-style `const`) | hằng biết trước → không gọi `math.log(2)` mỗi call |
-| guard `halfLife ≤ 0` → coi như đã ổn định | `h≤0` = tắt tức thì; trả 0 (displacement/velocity/envelope) hoặc 0 (settling) — tránh `+∞`/NaN |
-| `AggressiveInlining` cho wrapper mỏng | overload chỉ 1 phép chia + gọi hàm → nội tuyến khỏi phí gọi |
 
 - [ ] **Step 1: Thêm const `Ln2` đầu class** (ngay sau dòng `public static class DampedOscillator {`)
 
@@ -455,34 +347,3 @@ git commit -m "feat(physx): DampedOscillator - GetVelocity + GetSettlingTime (de
         public static float GetSettlingTimeHalfLife(float halfLife, float threshold = 0.02f)
             => halfLife <= 0f ? 0f : GetSettlingTime(Ln2 / halfLife, threshold);
 ```
-
-- [ ] **Step 3: Kiểm chứng — quy đổi & tương đương bản decay**
-
-| Input | Kỳ vọng |
-|---|---|
-| `GetEnvelopeHalfLife(1, 1)` | `≈ 0.5` (sau đúng 1 nửa đời còn nửa biên độ) |
-| `GetEnvelopeHalfLife(1, 2)` | `≈ 0.25` (2 nửa đời) |
-| `GetDisplacementHalfLife(Cos, 2, 1, t)` | `== GetDisplacement(Cos, 2, 0.6931472, t)` (cùng λ) |
-| `GetSettlingTimeHalfLife(1, 0.5)` | `= 1` (`t*` = 1 nửa đời tại threshold 0.5) |
-| `GetDisplacementHalfLife(Cos, 2, 0, 1)` | `= 0` (halfLife≤0 → đã tắt) |
-| `GetSettlingTimeHalfLife(-1)` | `= 0` |
-
-Unity biên dịch sạch.
-
-- [ ] **Step 4: Commit**
-
-```bash
-git add Assets/Horcrux/Runtime/Utilities/PhysXHelper/DampedOscillator.cs
-git commit -m "feat(physx): DampedOscillator - overload *HalfLife (x4)"
-```
-
----
-
-## Ghi chú thực thi
-
-- **Thứ tự:** 1 → 2 → 3 (mỗi task thêm hàm vào cùng file, không sửa hàm cũ → Open/Closed).
-- **`WaveStyle`:** dùng enum có sẵn trong `HarmonicOscillator.cs` — **không** tạo lại (trùng tên trong cùng namespace sẽ lỗi biên dịch).
-- **File `.meta`:** Unity tự sinh khi import — commit kèm nếu repo giữ GUID ổn định.
-- **Kiểm chứng:** chạy tay qua script tạm hoặc nhẩm theo kiểm mốc §0.6 — **không** tạo file test. Xóa script tạm trước khi commit.
-- **Muốn test tự động sau này:** dựng NUnit EditMode theo các bảng kiểm chứng mỗi task (đặc biệt: đạo hàm số khớp `GetVelocity`, tương đương `*HalfLife` ↔ `decay`) — ngoài phạm vi plan này.
-- **Cập nhật roadmap:** sau khi xong, đánh dấu `DampedOscillator` ✅ trong `Pendings.md` (Tầng 1, mục 8) — mở khóa `Wobble`/`Jelly` và `GranularSettle`.
