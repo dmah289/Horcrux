@@ -11,7 +11,7 @@ namespace Horcrux.Runtime.Tweening.Easing
         /// Use (<c>t = elapsed * inverseDuration</c>) instead of (<c>t = elapsed / duration</c>).
         /// </remarks>
         /// <param name="t">The normalized time progression.</param>
-        /// <returns>The interpolated value may exceed the [0,1] range, must use unclamped interpolation methods.</returns>
+        /// <returns>The interpolated value may exceed the [0,1] range.</returns>
         public static float Evaluate(EaseType easeType, float t)
         {
             if (t < 0f) t = 0f;

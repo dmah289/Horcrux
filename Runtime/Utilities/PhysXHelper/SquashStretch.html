@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SquashStretch — Horcrux SDK</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#0d1117;--bg2:#161b22;--bg3:#1c2333;--bg4:#242d3a;--tx:#e6edf3;--tx2:#8b949e;--tx3:#484f58;--ac:#58a6ff;--ac2:#bc8cff;--gr:#3fb950;--or:#d29922;--rd:#f85149;--bd:#30363d;--r:10px;--mono:'JetBrains Mono','Fira Code','Cascadia Code','SF Mono',monospace;--sans:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif}
+html{scroll-behavior:smooth;background:var(--bg);color:var(--tx);font:17px/1.7 var(--sans)}
+body{overflow-x:hidden}
+a{color:var(--ac);text-decoration:none}a:hover{text-decoration:underline}
+#progress{position:fixed;top:0;left:0;height:3px;background:linear-gradient(90deg,var(--ac),var(--ac2));width:0;z-index:999;transition:width .1s}
+#header{max-width:920px;margin:0 auto;padding:4rem 1.5rem 2rem;border-bottom:1px solid var(--bd)}
+#header h1{font-size:clamp(2rem,5vw,3rem);font-weight:800;letter-spacing:-.03em;background:linear-gradient(135deg,var(--ac),var(--ac2));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+#header .sub{font-size:1.05rem;color:var(--tx2);margin-top:.4rem}
+#header .badge{display:inline-block;margin-top:.8rem;padding:.3em .9em;border:1px solid var(--bd);border-radius:99px;font-family:var(--mono);font-size:.78rem;color:var(--tx2)}
+main{max-width:920px;margin:0 auto;padding:0 1.5rem 6rem}
+section{padding-top:3.5rem}
+section .reveal{opacity:0;transform:translateY(24px);transition:opacity .6s ease,transform .6s ease}
+section .reveal.visible{opacity:1;transform:none}
+#toc{max-width:920px;margin:2.5rem auto;padding:0 1.5rem}
+#toc h2{font-size:1.3rem}
+#toc ol{columns:2;column-gap:2rem;padding-left:1.5em}
+#toc li{font-size:.92rem;margin-bottom:.3rem;break-inside:avoid}
+@media(max-width:600px){#toc ol{columns:1}}
+h2{font-size:1.75rem;font-weight:700;letter-spacing:-.02em;margin-bottom:1.2rem;padding-bottom:.5rem;border-bottom:1px solid var(--bd)}
+.sn{color:var(--tx3);font-weight:600;font-size:.62em;margin-right:.55em;vertical-align:.12em;font-family:var(--mono)}
+h3{font-size:1.15rem;font-weight:600;margin:2rem 0 .7rem;color:var(--ac)}
+p,ul,ol{margin-bottom:.9rem}ul{padding-left:1.3em}li{margin-bottom:.25rem}
+strong{color:var(--tx);font-weight:600}
+em{color:var(--ac2);font-style:normal}
+code{font-family:var(--mono);font-size:.88em;background:var(--bg3);padding:.15em .4em;border-radius:4px}
+.lead{color:var(--tx2);font-size:.95rem}
+.card{background:var(--bg2);border:1px solid var(--bd);border-radius:var(--r);padding:1.3rem;margin:1.3rem 0}
+.note{border-left:3px solid var(--or);background:var(--bg2);padding:.9rem 1.1rem;border-radius:0 var(--r) var(--r) 0;margin:1.3rem 0;font-size:.9rem;color:var(--tx2)}
+.note strong{color:var(--or)}
+.note.good{border-left-color:var(--gr)}.note.good strong{color:var(--gr)}
+.note.bad{border-left-color:var(--rd)}.note.bad strong{color:var(--rd)}
+.eq{background:var(--bg3);border:1px solid var(--bd);border-radius:var(--r);padding:1rem 1.2rem;margin:1.1rem 0;overflow-x:auto;text-align:center}
+.eq.boxed{border-color:var(--ac);box-shadow:0 0 0 1px var(--ac) inset}
+.card .eq{margin:0 0 1rem}
+.tw{overflow-x:auto;margin:1.1rem 0}
+table{width:100%;border-collapse:collapse;margin:1.1rem 0;font-size:.9rem}
+.tw table,.card table{margin:0}
+th{text-align:left;padding:.55rem .8rem;border-bottom:2px solid var(--bd);color:var(--ac);font-weight:600}
+td{padding:.45rem .8rem;border-bottom:1px solid var(--bd);vertical-align:top}
+tr:last-child td{border:none}
+td.st{color:var(--tx3);font-family:var(--mono);white-space:nowrap}
+.demo{background:var(--bg2);border:1px solid var(--bd);border-radius:var(--r);padding:1.3rem;margin:1.8rem 0}
+.demo-title{font-family:var(--mono);font-size:.78rem;color:var(--ac2);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.9rem}
+.demo canvas{display:block;border-radius:8px;max-width:100%;height:auto}
+.demo-row{display:flex;gap:1.5rem;align-items:flex-start;flex-wrap:wrap}
+.demo-row>*{flex:1;min-width:250px}
+.hint{font-size:.83rem;color:var(--tx2);margin:.9rem 0 0}
+.ctl{display:flex;align-items:center;gap:.6rem;margin-bottom:.6rem;font-size:.86rem;color:var(--tx2)}
+.ctl label{min-width:5.2em}
+.ctl input[type=range]{flex:1;accent-color:#58a6ff;min-width:90px}
+.ctl select{background:var(--bg3);color:var(--tx);border:1px solid var(--bd);border-radius:6px;padding:.25em .5em;font-family:var(--mono);font-size:.85rem}
+.ctl .val{font-family:var(--mono);color:var(--ac);min-width:4.2em;text-align:right}
+.out{font-family:var(--mono);font-size:.84rem;line-height:1.85;background:var(--bg3);border-radius:8px;padding:.7rem .9rem;margin-top:.8rem}
+.out b{color:var(--tx2);font-weight:400}
+.out .ok{color:var(--gr)}
+.arch{font-family:var(--mono);font-size:.8rem;line-height:1.75;white-space:pre;overflow-x:auto;padding:1rem;background:var(--bg3);border-radius:var(--r);color:var(--tx2)}
+.arch em{color:var(--ac);font-style:normal}
+footer{text-align:center;padding:3rem 1rem;color:var(--tx3);font-size:.85rem;border-top:1px solid var(--bd)}
+</style>
+</head>
+<body>
+<div id="progress"></div>
+<header id="header">
+  <h1>SquashStretch</h1>
+  <p class="sub">Nén/giãn <strong>bảo toàn thể tích</strong>: một trục biến dạng, trục vuông góc bù lại — tích các hệ số scale luôn bằng 1.</p>
+  <span class="badge">volume-preserving · static · zero-GC · Horcrux.Runtime.Utilities.PhysXHelper</span>
+</header>
+
+<nav id="toc"><h2>Mục lục</h2><ol>
+  <li><a href="#essence">Bản chất &amp; ký hiệu</a></li>
+  <li><a href="#derive">Suy công thức bù</a></li>
+  <li><a href="#count">n = số trục bù → bỏ <code>pow</code></a></li>
+  <li><a href="#map">Trục nào bù · demo lõi</a></li>
+  <li><a href="#gen">Ba cách sinh s</a></li>
+  <li><a href="#overshoot">Vọt lố: ease nào cho stretch?</a></li>
+  <li><a href="#guard">Guard biên — chặn NaN và ∞</a></li>
+  <li><a href="#precision">Sai số float</a></li>
+  <li><a href="#api">API</a></li>
+  <li><a href="#usage">Dùng đúng</a></li>
+</ol></nav>
+
+<main>
+
+<!-- ============ 1 ============ -->
+<section id="essence"><div class="reveal">
+<h2><span class="sn">§1</span>Bản chất &amp; ký hiệu</h2>
+
+<p class="lead">Đáp đất → bẹp, bay nhanh → kéo dài. Mắt thấy "tự nhiên" khi <strong>thể tích giữ nguyên</strong> — như cục bột nặn: ấn dẹt thì phình ngang, lượng bột không đổi.</p>
+
+<div class="arch">      nghỉ                squash (s&lt;1)             stretch (s&gt;1)
+   ┌───────┐         ┌───────────────┐               ┌─────┐
+   │       │         │               │ ← <em>c phình</em>     │     │ ← <em>c co</em>
+   │  1×1  │  ────►  └───────────────┘               │     │
+   │       │                ↑ <em>s nén</em>                 │     │ ← <em>s giãn</em>
+   └───────┘                                         └─────┘
+     ∏ = 1                 ∏ = s·c = 1               ∏ = s·c = 1
+</div>
+
+<div class="note"><strong>Nghịch đảo trực giác.</strong> Muốn <em>nén</em> một trục thì phải <em>phình</em> trục kia đúng lượng để bù. Cả hệ chỉ là giải một bài đó: <strong>phình bao nhiêu cho vừa?</strong></div>
+
+<div class="tw"><table>
+<tr><th>Ký hiệu</th><th>Nghĩa</th><th>Miền</th></tr>
+<tr><td class="st">s</td><td>hệ số scale trục chính — <code>&lt;1</code> nén, <code>&gt;1</code> giãn</td><td>kẹp <code>[1e-4, 1e4]</code> (§7)</td></tr>
+<tr><td class="st">c</td><td>hệ số scale <strong>mỗi</strong> trục bù</td><td>suy từ <code>s</code></td></tr>
+<tr><td class="st">n</td><td>số trục <strong>bù</strong> (không tính trục chính)</td><td><code>{1, 2}</code> (§3)</td></tr>
+<tr><td class="st">σx σy σz</td><td>ba thành phần <code>Vector3</code> trả về</td><td>∏ <code>= 1</code></td></tr>
+<tr><td class="st">m</td><td><code>minScale</code> — <code>s</code> lúc bẹp sâu nhất</td><td><code>&gt; 0.28</code> (§6)</td></tr>
+<tr><td class="st">e</td><td><code>Easer.Evaluate(ease, t)</code></td><td>có thể vượt <code>[0,1]</code></td></tr>
+<tr><td class="st">u · k</td><td><code>saturate(impact/maxImpact)</code> · <code>stretchPerSpeed</code></td><td><code>[0,1]</code> · —</td></tr>
+</table></div>
+</div></section>
+
+<!-- ============ 2 ============ -->
+<section id="derive"><div class="reveal">
+<h2><span class="sn">§2</span>Suy công thức bù</h2>
+
+<div class="card">
+<div class="eq boxed" data-tex="\begin{aligned}(1)\quad \sigma_x\,\sigma_y\,\sigma_z &= 1\\[2pt] (2)\quad s \cdot c^{\,n} &= 1\\[2pt] (3)\quad c^{\,n} &= \frac{1}{s}\\[2pt] (4)\quad c &= \boxed{\,s^{-1/n}\,}\\[2pt] (5)\quad s\cdot\left(s^{-1/n}\right)^{n} &= s^{0} = 1\end{aligned}"></div>
+<table>
+<tr><td class="st">(1)</td><td>Thể tích = tích các hệ số scale = <code>det(S)</code>. Lúc nghỉ mọi hệ số <code>= 1</code> → <code>V₀ = 1</code>.</td></tr>
+<tr><td class="st">(2)</td><td><code>n</code> trục bù, mỗi trục <em>cùng</em> hệ số <code>c</code> → thể tích mới <code>s·cⁿ</code>; đặt bằng <code>V₀</code>.</td></tr>
+<tr><td class="st">(3)</td><td>Chia hai vế cho <code>s</code> — hợp lệ vì guard đảm bảo <code>s &gt; 0</code> (§7).</td></tr>
+<tr><td class="st">(4)</td><td>Căn bậc <code>n</code> hai vế → <strong>công thức chốt của cả hệ</strong>.</td></tr>
+<tr><td class="st">(5)</td><td>Kiểm: thay (4) vào (2), số mũ triệt tiêu → đúng với <strong>mọi</strong> <code>n</code>, không chỉ một trường hợp riêng.</td></tr>
+</table>
+</div>
+
+<h3>Bước (2) đã giả định gì?</h3>
+<p class="lead"><code>n</code> trục bù <em>bằng nhau</em> là <strong>lựa chọn</strong>, không phải hệ quả — ràng buộc gốc chỉ đòi tích các <code>cᵢ</code> bằng <code>1/s</code>, tức vô số nghiệm.</p>
+<div class="tw"><table>
+<tr><th>Cách chia lượng bù</th><th>Hình dáng</th><th></th></tr>
+<tr><td><code>c₁ = … = cₙ</code></td><td>mặt phẳng vuông góc trục chính biến dạng <strong>đẳng hướng</strong>, đối xứng</td><td>✓ <strong>chọn</strong></td></tr>
+<tr><td>thiên vị một trục</td><td>méo lệch; thêm tham số "hướng thiên vị" mà gameplay không cần</td><td>✗</td></tr>
+</table></div>
+<div class="note"><strong>Lựa chọn mô hình, không phải vật lý.</strong> Vật lý không cấm cách thứ hai. Ai cần bù dị hướng có chủ đích thì dùng chế độ mặt phẳng (§3).</div>
+</div></section>
+
+<!-- ============ 3 ============ -->
+<section id="count"><div class="reveal">
+<h2><span class="sn">§3</span>n = số trục bù → bỏ <code>pow</code></h2>
+
+<p class="lead"><code>n</code> <strong>không</strong> phải số chiều không gian, mà là số trục <em>được phép bù</em> — do <code>CoordinateSystem</code> quyết định.</p>
+
+<div class="tw"><table>
+<tr><th>CoordinateSystem</th><th>n</th><th>c = s<sup>−1/n</sup></th><th>Phép thực tế</th><th>Trục ngoài hệ</th></tr>
+<tr><td><code>XY</code> / <code>XZ</code> / <code>YZ</code></td><td>1</td><td><code>s⁻¹</code></td><td><code>1f / s</code></td><td>giữ <code>= 1</code></td></tr>
+<tr><td><code>XYZ</code></td><td>2</td><td><code>s⁻¹ᐟ²</code></td><td><code>math.rsqrt(s)</code></td><td>— (cả 2 trục kia bù)</td></tr>
+</table></div>
+
+<p class="lead"><code>n</code> chỉ nhận <code>{1,2}</code> → không cần hàm lũy thừa tổng quát:</p>
+<div class="tw"><table>
+<tr><th>Cách tính c</th><th>Thực chất</th><th></th></tr>
+<tr><td><code>math.pow(s, -1f/n)</code></td><td><code>exp</code> + <code>log</code> — đắt, lại thừa vì <code>n</code> cố định</td><td>✗</td></tr>
+<tr><td><code>1f / math.sqrt(s)</code></td><td><strong>giống hệt</strong> <code>rsqrt</code>, chỉ dài dòng hơn</td><td>✗</td></tr>
+<tr><td><code>1f / s</code> · <code>math.rsqrt(s)</code></td><td>1 phép, diễn đạt thẳng số mũ <code>−1</code> / <code>−1/2</code></td><td>✓ <strong>chọn</strong></td></tr>
+</table></div>
+
+<div class="note"><strong>Đừng nhầm về <code>rsqrt</code>.</strong> <code>Unity.Mathematics</code> <em>định nghĩa</em> <code>rsqrt(x)</code> = <code>1.0f / sqrt(x)</code> → <strong>không nhanh hơn</strong> <code>1f/math.sqrt</code> ở đường managed. Nó thắng vì diễn đạt trực tiếp số mũ <code>−1/2</code>, và Burst hạ được xuống intrinsic (§8).</div>
+
+<h3>Chế độ mặt phẳng cũng bảo toàn thể tích</h3>
+<p class="lead">Chỗ dễ hiểu sai nhất. Trục ngoài mặt phẳng giữ đúng <code>1</code> → tích <strong>cả ba</strong> thành phần vẫn bằng 1, không phải "chỉ giữ diện tích":</p>
+<div class="eq" data-tex="\sigma_x \sigma_y \sigma_z = s \cdot \tfrac{1}{s} \cdot 1 = 1"></div>
+
+<div class="tw"><table>
+<tr><th>Khác biệt thật = phân bố lượng bù</th><th><code>XYZ</code> (n=2)</th><th>Mặt phẳng (n=1)</th></tr>
+<tr><td>Bù</td><td>chia đều 2 trục, đẳng hướng</td><td>dồn hết 1 trục, dị hướng</td></tr>
+<tr><td><code>s=0.5</code> → <code>c</code></td><td><code>1.414</code> mỗi trục</td><td><code>2.0</code> một trục</td></tr>
+<tr><td>Dùng cho</td><td>mesh 3D</td><td>sprite / gameplay phẳng</td></tr>
+</table></div>
+<p class="lead">→ Chọn theo <strong>look muốn có</strong>, không theo "game 2D hay 3D".</p>
+</div></section>
+
+<!-- ============ 4 ============ -->
+<section id="map"><div class="reveal">
+<h2><span class="sn">§4</span>Trục nào bù · demo lõi</h2>
+
+<p class="lead"><code>coordinateSystem</code> = tập trục được bù · <code>primaryAxis</code> = trục chủ động · trục bù = phần còn lại.</p>
+
+<div class="tw"><table>
+<tr><th>Hệ</th><th>primary = X</th><th>primary = Y</th><th>primary = Z</th></tr>
+<tr><td><code>XY</code></td><td><code>(s, c, 1)</code></td><td><code>(c, s, 1)</code></td><td>thoái hóa</td></tr>
+<tr><td><code>XZ</code></td><td><code>(s, 1, c)</code></td><td>thoái hóa</td><td><code>(c, 1, s)</code></td></tr>
+<tr><td><code>YZ</code></td><td>thoái hóa</td><td><code>(1, s, c)</code></td><td><code>(1, c, s)</code></td></tr>
+<tr><td><code>XYZ</code></td><td><code>(s, c, c)</code></td><td><code>(c, s, c)</code></td><td><code>(c, c, s)</code></td></tr>
+</table></div>
+
+<p class="lead"><strong>Thoái hóa</strong> = trục chính nằm ngoài mặt phẳng (vd <code>XY</code>+<code>Z</code>): không có trục đối tác → <strong>vô định</strong>, không nghiệm nào bảo toàn được.</p>
+<div class="tw"><table>
+<tr><th>Xử lý</th><th>Hệ quả</th><th></th></tr>
+<tr><td>trả <code>Vector3.one</code></td><td>no-op; tích vẫn <code>= 1</code>, không NaN, không hỏng transform</td><td>✓ <strong>chọn</strong></td></tr>
+<tr><td>bù bừa một trục ngoài hệ</td><td>phá ngữ nghĩa <code>CoordinateSystem</code> — sprite bị scale trục depth</td><td>✗</td></tr>
+<tr><td>throw / assert</td><td>trả giá runtime cho lỗi lập trình, ngay trong hot path</td><td>✗</td></tr>
+</table></div>
+<div class="note good"><strong>Fail-safe có chủ đích.</strong> Sai cấu hình thì thấy "không có gì xảy ra" — dễ chẩn đoán hơn thấy một artifact hình học lạ.</div>
+
+<div class="demo">
+  <div class="demo-title">Demo · lõi bảo toàn thể tích</div>
+  <div class="demo-row">
+    <div style="flex:1.25"><canvas id="c1" width="440" height="300"></canvas></div>
+    <div>
+      <div class="ctl"><label>s</label><input type="range" id="s1" min="0.4" max="2" step="0.01" value="0.5"><span class="val" id="s1v">0.50</span></div>
+      <div class="ctl"><label>hệ trục</label>
+        <select id="cs1"><option value="XYZ" selected>XYZ</option><option value="XY">XY</option><option value="XZ">XZ</option><option value="YZ">YZ</option></select>
+      </div>
+      <div class="ctl"><label>trục chính</label>
+        <select id="ax1"><option value="X">X</option><option value="Y" selected>Y</option><option value="Z">Z</option></select>
+      </div>
+      <div class="out">
+        <b>n</b> = <span id="o-n"></span>&nbsp; <b>c</b> = <span id="o-c"></span><br>
+        <b>scale</b> = <span id="o-v"></span><br>
+        <b>σx·σy·σz</b> = <span id="o-p"></span>
+      </div>
+    </div>
+  </div>
+  <p class="hint">Nét đứt = lúc nghỉ (1×1). Kéo <code>s</code> xuống → trục chính bẹp, trục bù phình, tích giữ <code>1</code>. Chọn <code>XY</code> + trục chính <code>Z</code> để thấy nhánh thoái hóa.</p>
+</div>
+</div></section>
+
+<!-- ============ 5 ============ -->
+<section id="gen"><div class="reveal">
+<h2><span class="sn">§5</span>Ba cách sinh s</h2>
+
+<p class="lead">Lõi đã xong. Ba API công khai chỉ khác nhau ở chỗ <strong><code>s</code> từ đâu ra</strong>, rồi cùng đổ về một lõi.</p>
+
+<div class="arch">  impact, maxImpact, minScale ──┐
+                                │
+  speed, k, maxStretch ─────────┼──► <em>s</em> ──► <em>GetVolumePreservingScale</em> ──► Vector3
+                                │      guard §7 → c = s^(-1/n)      (localScale)
+  t, easeType, minScale ────────┘        §2      → trục bù §4
+        └─► Easer.Evaluate
+</div>
+
+<div class="tw"><table>
+<tr><th>Helper</th><th>Sinh s</th><th>Miền s</th></tr>
+<tr><td><strong>Impact</strong></td><td><code>lerp(1, m, saturate(impact/maxImpact))</code></td><td><code>[m, 1]</code></td></tr>
+<tr><td><strong>Directional</strong></td><td><code>1 + clamp(speed·k, 0, maxStretch−1)</code></td><td><code>[1, maxStretch]</code></td></tr>
+<tr><td><strong>Time</strong></td><td><code>lerp(m, 1, Easer.Evaluate(ease, t))</code></td><td><code>[m, s_peak]</code></td></tr>
+</table></div>
+
+<p class="lead"><strong>Vì sao cả ba đều tuyến tính?</strong> Mapping chỉ cần qua đúng 2 mốc đầu–cuối, đơn điệu, và rẻ.</p>
+<div class="tw"><table>
+<tr><th>Dạng mapping</th><th>Hệ quả</th><th></th></tr>
+<tr><td><code>lerp</code> (bậc nhất)</td><td>thỏa cả 3 tiêu chí, gọn trong một phép <code>mad</code></td><td>✓ <strong>chọn</strong></td></tr>
+<tr><td>nhồi phi tuyến vào mapping</td><td>trộn 2 trách nhiệm — độ cong là việc của <code>Easer</code></td><td>✗</td></tr>
+</table></div>
+
+<h3>Guard riêng của từng mapping</h3>
+<div class="tw"><table>
+<tr><th>Guard</th><th>Bỏ thì sao</th></tr>
+<tr><td><code>maxImpact &gt; 0</code> trước phép chia</td><td><code>impact/0</code> → <code>∞</code>/<code>NaN</code>; mà <code>saturate(NaN) = 1</code> → bẹp <strong>sâu nhất</strong> thay vì không bẹp</td></tr>
+<tr><td><code>saturate</code> (không chỉ chia)</td><td><code>impact &gt; maxImpact</code> → bẹp quá sàn; <code>impact &lt; 0</code> → <code>s &gt; 1</code>, <strong>giãn thay vì nén</strong></td></tr>
+<tr><td><code>max(maxStretch−1, 0)</code> <strong>trước</strong> <code>clamp</code></td><td><code>maxStretch &lt; 1</code> → clamp vào <code>[0, số âm]</code> → <code>s &lt; 1</code> = <strong>squash, ngược hẳn ý định</strong></td></tr>
+<tr><td><code>clamp</code> biên dưới <code>0</code></td><td><code>speed &lt; 0</code> hay <code>k &lt; 0</code> → <code>s &lt; 1</code>, nén khi đang bay nhanh</td></tr>
+</table></div>
+
+<div class="note bad"><strong>Điểm mong manh nhất: <code>lerp</code> phải là bản unclamped.</strong>
+<code>math.lerp(a,b,t)</code> = <code>a + t*(b−a)</code>, <em>không kẹp</em> <code>t</code> — còn <code>Mathf.Lerp</code> thì <em>kẹp</em> <code>t ∈ [0,1]</code>. Ở mapping Time, khác biệt này quyết định hệ còn "stretch" hay không:
+<div class="tw"><table>
+<tr><th>eased (OutBack @ t=0.5801)</th><th>math.lerp(0.6, 1, e)</th><th>Mathf.Lerp</th></tr>
+<tr><td><code>1.100004</code></td><td><strong><code>1.040002</code></strong> → <code>s&gt;1</code>, <strong>giãn</strong> ✓</td><td><code>1.0</code> → mất vọt lố ✗</td></tr>
+</table></div>
+Đổi sang <code>Mathf.Lerp</code> sẽ biến animation thành <strong>squash-only</strong>. Đừng "sửa cho đúng".</div>
+</div></section>
+
+<!-- ============ 6 ============ -->
+<section id="overshoot"><div class="reveal">
+<h2><span class="sn">§6</span>Vọt lố: ease nào cho stretch?</h2>
+
+<p class="lead">Mapping Time (§5) là một phép <code>lerp</code> biến giá trị ease <code>e</code> thành <code>s</code>. Nó neo ở hai mốc, và <em>mọi thứ ngoài hai mốc đó</em> mới là chuyện đáng nói:</p>
+
+<div class="arch">   <em>e</em> (ease trả về)   0 ───────────── 1 ─────────────── <em>e_max</em>
+                        │               │                   │
+   <em>s = m + e(1−m)</em>       m ───────────── 1 ───────────── <em>s_peak</em>
+                        └─── squash ────┴──── stretch ───────┘
+                                      nghỉ
+
+   <em>e &lt; 0</em> → <em>s &lt; m</em> : undershoot, bẹp sâu hơn minScale — có thể tụt ≤ 0 (hỏng)
+   <em>e &gt; 1</em> → <em>s &gt; 1</em> : phần vượt trên vạch nghỉ chính là pha <em>stretch</em>
+</div>
+
+<p class="lead">Hai mốc <code>e=0 → s=m</code> và <code>e=1 → s=1</code> là toàn bộ ý nghĩa của <code>lerp(m, 1, e)</code>. Hai câu hỏi còn lại suy trực tiếp ra từ đó:</p>
+
+<div class="card">
+<p style="margin-bottom:.6rem"><strong>Xuất phát</strong> — khai triển <code>lerp</code> của mapping Time:</p>
+<div class="eq" data-tex="s = \operatorname{lerp}(m,\,1,\,e) = m + e\,(1-m)"></div>
+
+<p style="margin:1.1rem 0 .6rem"><strong>Hỏi 1 — giãn cao nhất bao nhiêu?</strong> Thay <code>e</code> bằng đỉnh của curve, rồi tách <code>m</code> để lộ phần vượt trên vạch nghỉ:</p>
+<div class="eq boxed" data-tex="\begin{aligned}s_{\text{peak}} &= m + e_{\max}\,(1-m)\\[2pt] &= \underbrace{1-(1-m)}_{m} + e_{\max}\,(1-m)\\[2pt] &= \boxed{\,1 + (e_{\max}-1)(1-m)\,}\end{aligned}"></div>
+<p class="hint" style="margin-top:.7rem">→ Phần vượt trên <code>1</code> là <strong>tích của hai núm độc lập</strong>: <code>(e_max−1)</code> = ease vọt bao nhiêu, <code>(1−m)</code> = squash sâu bao nhiêu. Squash nhẹ thì stretch yếu, bất kể chọn ease nào.</p>
+
+<p style="margin:1.1rem 0 .6rem"><strong>Hỏi 2 — khi nào <code>s</code> tụt xuống <code>≤ 0</code>?</strong> Giải bất phương trình, đặt <code>a = |e_min|</code>:</p>
+<div class="eq boxed" data-tex="\begin{aligned}m + e\,(1-m) &\le 0\\[2pt] e &\le \frac{-m}{1-m}\\[2pt] a &\ge \frac{m}{1-m}\\[2pt] m &\le \boxed{\,\frac{a}{1+a}\,}\end{aligned}"></div>
+<p class="hint" style="margin-top:.7rem">→ Curve có <code>e_min</code> càng âm thì <code>minScale</code> phải càng lớn. Cột cuối bảng dưới là ngưỡng <code>a/(1+a)</code> tính cho từng curve.</p>
+
+<table style="margin-top:1.1rem">
+<tr><th>Bước</th><th>Vì sao</th></tr>
+<tr><td class="st">khai triển</td><td><code>lerp(m,1,e)</code> theo định nghĩa là <code>m + e·(1−m)</code> — hàm bậc nhất qua 2 mốc ở hình trên</td></tr>
+<tr><td class="st">Hỏi 1</td><td><code>m = 1 − (1−m)</code> là phép tách thuần đại số, chỉ để nhóm được <code>(1−m)</code> ra ngoài</td></tr>
+<tr><td class="st">Hỏi 2 · dòng 2</td><td>chia hai vế cho <code>(1−m)</code>. Vì <code>m &lt; 1</code> nên số chia <strong>dương</strong> → <strong>không</strong> đổi chiều bất phương trình</td></tr>
+<tr><td class="st">Hỏi 2 · dòng 3</td><td>thay <code>e = e_min = −a</code> rồi nhân hai vế với <code>−1</code> → lần này <strong>có</strong> đổi chiều</td></tr>
+<tr><td class="st">Hỏi 2 · dòng 4</td><td>nhân chéo (<code>1−m &gt; 0</code>): <code>a − am ≥ m</code> → <code>a ≥ m(1+a)</code> → chuyển vế</td></tr>
+</table>
+</div>
+
+<div class="tw"><table>
+<tr><th>EaseType</th><th>e<sub>max</sub> @ t</th><th>e<sub>min</sub></th><th>s_peak (m=0.6)</th><th>m tối thiểu để s&gt;0</th></tr>
+<tr><td><code>OutBack</code></td><td><code>1.100004</code> @ <code>0.5801</code></td><td><code>0</code></td><td><code>1.0400</code></td><td>—</td></tr>
+<tr><td><code>InOutBack</code></td><td><code>1.100151</code> @ <code>0.7594</code></td><td><code>−0.100151</code></td><td><code>1.0401</code></td><td><code>0.0910</code></td></tr>
+<tr><td><code>InBack</code></td><td><code>1.000000</code> @ <code>1.0</code></td><td><code>−0.100004</code></td><td><code>1.0000</code></td><td><code>0.0909</code></td></tr>
+<tr><td><code>OutElastic</code></td><td><strong><code>1.373098</code></strong> @ <code>0.1347</code></td><td><code>0</code></td><td><strong><code>1.1492</code></strong></td><td>—</td></tr>
+<tr><td><code>InOutElastic</code></td><td><code>1.118348</code> @ <code>0.5960</code></td><td><code>−0.118348</code></td><td><code>1.0473</code></td><td><code>0.1058</code></td></tr>
+<tr><td><code>InElastic</code></td><td><code>1.000000</code> @ <code>1.0</code></td><td><strong><code>−0.373098</code></strong></td><td><code>1.0000</code></td><td><strong><code>0.2717</code></strong></td></tr>
+<tr><td><code>In/Out/InOutBounce</code></td><td><code>1.000000</code> @ <code>1.0</code></td><td><code>0</code></td><td><code>1.0000</code></td><td>—</td></tr>
+</table></div>
+<p class="hint">Đo 200 001 mẫu mỗi curve, cài lại đúng công thức <code>BackEase</code>/<code>ElasticEase</code>/<code>BounceEase</code> của repo.</p>
+
+<div class="note bad"><strong>Ba điều lật lại trực giác thường gặp:</strong>
+<ul style="margin:.4rem 0 0">
+<li><strong>Bounce KHÔNG vượt <code>[0,1]</code></strong> → chọn Bounce là <em>không có pha stretch</em>.</li>
+<li><strong><code>OutElastic</code> vọt lố mạnh hơn <code>OutBack</code></strong> — <code>1.373</code> vs <code>1.100</code>, gấp ~3.7× phần vượt.</li>
+<li><strong>Họ <code>In*</code> không bao giờ cho <code>s&gt;1</code></strong> — chúng chỉ <em>undershoot</em>, bẹp sâu <em>hơn</em> <code>minScale</code>.</li>
+</ul></div>
+
+<div class="demo">
+  <div class="demo-title">Demo · s(t) — pha stretch nằm trên vạch s = 1</div>
+  <canvas id="c2" width="860" height="330"></canvas>
+  <div class="ctl" style="margin-top:.9rem;max-width:340px"><label>minScale</label><input type="range" id="m2" min="0.3" max="0.9" step="0.01" value="0.6"><span class="val" id="m2v">0.60</span></div>
+  <div class="out" id="o2"></div>
+  <p class="hint">Kéo <code>minScale</code> lên → cả 3 curve dẹt lại đúng theo công thức <code>s_peak</code> ở trên.</p>
+</div>
+
+<h3>Kiểm ngưỡng với curve nguy hiểm nhất</h3>
+<p class="lead"><code>InElastic</code> có <code>a = 0.373098</code> → ngưỡng <code>a/(1+a) = 0.2717</code>. Thử ba giá trị <code>m</code> quanh đó:</p>
+
+<div class="tw"><table>
+<tr><th>m</th><th>s tại e<sub>min</sub> của <code>InElastic</code> (curve nguy hiểm nhất)</th><th></th></tr>
+<tr><td><code>0.60</code></td><td><code>0.450761</code></td><td>✓</td></tr>
+<tr><td><code>0.28</code></td><td><code>0.011369</code></td><td>✓ sát biên</td></tr>
+<tr><td><code>0.20</code></td><td><strong><code>−0.098478</code></strong></td><td>✗ guard §7 kích hoạt → <strong>pop</strong> thành mảnh 1 frame</td></tr>
+</table></div>
+
+<div class="note"><strong>Quy tắc dùng.</strong> Giữ <code>minScale &gt; 0.28</code> thì không curve nào trong <code>Easer</code> đẩy <code>s ≤ 0</code>. Cần nhỏ hơn → tránh họ <code>*Elastic</code>. Guard §7 chặn <code>NaN</code> nhưng <strong>không</strong> chặn được cú pop thị giác — nó là lưới an toàn, không phải giấy phép.</div>
+</div></section>
+
+<!-- ============ 7 ============ -->
+<section id="guard"><div class="reveal">
+<h2><span class="sn">§7</span>Guard biên — chặn NaN và ∞</h2>
+
+<p class="lead">Lõi có phép chia và <code>rsqrt</code> → phải chặn miền vào. Hai hố:</p>
+<div class="tw"><table>
+<tr><th>Input</th><th>Nếu không guard</th><th>Hệ quả</th></tr>
+<tr><td><code>s ≤ 0</code></td><td><code>rsqrt(≤0)</code> → <code>NaN</code>, <code>1/0</code> → <code>∞</code></td><td><code>localScale</code> NaN → Unity reject transform</td></tr>
+<tr><td><code>s = +∞</code></td><td><code>1/∞ = 0</code>, <code>rsqrt(∞) = 0</code></td><td><code>localScale = (0, ∞, 0)</code>, tích <code>= NaN</code></td></tr>
+</table></div>
+
+<p class="lead">Kẹp <strong>hai đầu</strong> về khoảng <strong>nghịch đảo-đối xứng</strong> <code>[1e-4, 1e4]</code> (<code>MaxScale = 1/MinScale</code>) → hệ số bù cũng nằm trong chính khoảng đó, không thể tràn:</p>
+<div class="tw"><table>
+<tr><th>s ∈</th><th>n=1 → c = 1/s</th><th>n=2 → c = 1/√s</th></tr>
+<tr><td><code>[1e-4, 1e4]</code></td><td><code>[1e-4, 1e4]</code> khít biên</td><td><code>[1e-2, 1e2]</code> trong biên</td></tr>
+</table></div>
+
+<h3>Thứ tự min/max là cố ý — không dùng math.clamp</h3>
+<p class="lead"><code>math.min(x,y)</code> = <code>IsNaN(y) || x&lt;y ? x : y</code> — <strong>NaN ở đối số thứ hai bị bỏ qua</strong>. Vì <code>math.clamp(x,lo,hi)</code> = <code>max(lo, min(hi, x))</code>, phép <code>min(hi, NaN)</code> trả <code>hi</code> → NaN leo lên <strong>trần</strong>. Đo thực:</p>
+
+<div class="tw"><table>
+<tr><th>primaryScale</th><th>max(Min, s)</th><th>math.clamp</th><th>min(max(s,Min),Max) ← chọn</th></tr>
+<tr><td><code>+∞</code></td><td><strong><code>∞</code></strong> ✗</td><td><code>1e4</code> ✓</td><td><code>1e4</code> ✓</td></tr>
+<tr><td><code>NaN</code></td><td><code>1e-4</code> ✓</td><td><strong><code>1e4</code></strong> ✗ phình 10⁴×</td><td><code>1e-4</code> ✓</td></tr>
+<tr><td><code>1e9</code></td><td><code>1e9</code> ✗ vô nghĩa</td><td><code>1e4</code> ✓</td><td><code>1e4</code> ✓</td></tr>
+<tr><td><code>−∞</code> / <code>−3</code> / <code>0</code></td><td><code>1e-4</code> ✓</td><td><code>1e-4</code> ✓</td><td><code>1e-4</code> ✓</td></tr>
+</table></div>
+
+<div class="note good"><strong>Chỉ <code>min(max(...))</code> đúng cả hai cực:</strong> chặn <code>+∞</code>, và đẩy <code>NaN</code> về <strong>sàn</strong> — mảnh vô hình, vô hại — thay vì trần, tức vật thể phình 10 000 lần.</div>
+</div></section>
+
+<!-- ============ 8 ============ -->
+<section id="precision"><div class="reveal">
+<h2><span class="sn">§8</span>Sai số float</h2>
+
+<p class="lead"><code>math.rsqrt</code> là <code>1.0f/sqrt(x)</code> ở độ chính xác float đầy đủ (không phải fast-approx kiểu Quake), nhưng hai lần làm tròn vẫn để lại sai số. Quét <code>s</code> trên <code>[1e-4, 1e4]</code>, 120 001 mẫu:</p>
+
+<div class="tw"><table>
+<tr><th>Chế độ</th><th>Tích kiểm</th><th>max |∏ − 1|</th><th>ulp</th><th>s xấu nhất</th></tr>
+<tr><td><code>n=1</code></td><td><code>s·c</code></td><td><code>5.96e-8</code></td><td><strong>0.50</strong></td><td><code>1.000e-4</code></td></tr>
+<tr><td><code>n=2</code></td><td><code>s·c²</code></td><td><code>2.38e-7</code></td><td><strong>2.00</strong></td><td><code>1.42e-4</code></td></tr>
+</table></div>
+<p class="hint">Mẫu <code>n=2</code>: <code>s=0.5</code> → <code>c=1.414214</code>, tích <code>0.9999999</code> (0.50 ulp) · <code>s=1.5</code> → <code>c=0.8164966</code>, tích <code>0.9999999</code> (1.00 ulp) · <code>s ∈ {1, 0.25, 0.6, 1e-4, 1e4}</code> → tích <code>= 1</code> khít.</p>
+
+<div class="note"><strong>Bảo toàn trong 2 ulp</strong>, không phải "tuyệt đối". <code>2.4e-7</code> vô hình về thị giác, nhưng <strong>đừng assert <code>∏ == 1f</code></strong> — so <code>abs(∏ − 1) &lt; 1e-6</code>.</div>
+
+<div class="note bad"><strong>Lưu ý Burst.</strong> Trong job Burst với <code>FloatMode.Fast</code>, <code>rsqrt</code> có thể bị hạ xuống lệnh xấp xỉ <code>rsqrtps</code> (~12 bit) → sai số nhảy lên khoảng <code>1e-3</code>. Bảng trên đúng cho đường managed/IL2CPP; cần chính xác trong Burst → <code>FloatMode.Strict</code>.</div>
+</div></section>
+
+<!-- ============ 9 ============ -->
+<section id="api"><div class="reveal">
+<h2><span class="sn">§9</span>API</h2>
+
+<p class="lead">Static class, 4 hàm, không trạng thái. Cả 4 <strong>bắt buộc</strong> nêu tường minh <code>primaryAxis</code> + <code>coordinateSystem</code> — không có tham số mặc định.</p>
+
+<div class="tw"><table>
+<tr><th>Hàm</th><th>Tham số riêng</th><th>Sinh s</th><th>Dùng khi</th></tr>
+<tr><td><code>GetVolumePreservingScale</code></td><td><code>float primaryScale</code></td><td>caller tự cấp</td><td>tự điều khiển <code>s</code>, hoặc chồng nhiều hiệu ứng</td></tr>
+<tr><td><code>GetSquashFromImpact</code><br><span style="color:var(--tx3);font-size:.85em">inlined</span></td><td><code>impact</code>, <code>maxImpact</code>, <code>minScale</code></td><td><code>lerp(1, m, saturate(impact/maxImpact))</code></td><td>đáp đất, nút bấm, pickup</td></tr>
+<tr><td><code>GetDirectionalStretch</code><br><span style="color:var(--tx3);font-size:.85em">inlined</span></td><td><code>speed</code>, <code>stretchPerSpeed</code>, <code>maxStretch</code></td><td><code>1 + clamp(speed·k, 0, maxStretch−1)</code></td><td>đạn, nhân vật bay nhanh</td></tr>
+<tr><td><code>GetSquashStretch</code><br><span style="color:var(--tx3);font-size:.85em">inlined</span></td><td><code>t</code>, <code>EaseType easeType</code>, <code>minScale</code></td><td><code>lerp(m, 1, Easer.Evaluate(ease, t))</code></td><td>animation squash→stretch→nghỉ</td></tr>
+<tr><td colspan="4" style="color:var(--tx2)"><code>AxisType primaryAxis</code> = trục chủ động · <code>CoordinateSystem coordinateSystem</code> = tập trục được bù (§3–4) · trả <code>Vector3</code> gán thẳng <code>localScale</code></td></tr>
+</table></div>
+
+<div class="note"><strong>Vì sao không có tham số mặc định?</strong> Mặc định <code>(Y, XYZ)</code> sẽ <em>âm thầm</em> scale trục Z của một sprite 2D — lỗi rất khó thấy. Bắt buộc nêu rõ đắt hơn vài ký tự nhưng chặn cả một lớp bug.</div>
+</div></section>
+
+<!-- ============ 10 ============ -->
+<section id="usage"><div class="reveal">
+<h2><span class="sn">§10</span>Dùng đúng</h2>
+
+<div class="tw"><table>
+<tr><th>Chủ đề</th><th>Lưu ý</th></tr>
+<tr><td><strong>Chọn minScale</strong></td><td>time-driven giữ <code>&gt; 0.28</code>; nhỏ hơn thì tránh họ <code>*Elastic</code> (§6)</td></tr>
+<tr><td><strong>Chọn ease</strong></td><td>cần stretch → <code>OutBack</code>/<code>OutElastic</code>. Bounce và họ <code>In*</code> <strong>không</strong> cho <code>s&gt;1</code> (§6)</td></tr>
+<tr><td><strong>Chồng nhiều hiệu ứng</strong></td><td><strong>nhân các <code>s</code></strong> rồi gọi lõi <strong>một lần</strong>: <code>GetVolumePreservingScale(s_impact * s_speed, …)</code>. Cộng hai <code>Vector3</code> kết quả sẽ phá bảo toàn — hợp các phép scale là phép <em>nhân</em></td></tr>
+<tr><td><strong>Directional</strong></td><td>caller phải xoay <code>primaryAxis</code> về hướng vận tốc; hàm chỉ trả độ lớn (SRP)</td></tr>
+<tr><td><strong>So sánh thể tích</strong></td><td><code>abs(x*y*z − 1f) &lt; 1e-6f</code>, không <code>== 1f</code> (§8)</td></tr>
+<tr><td><strong>"Không thấy gì xảy ra"</strong></td><td>kiểm cặp <code>primaryAxis</code>/<code>coordinateSystem</code> trước tiên — trục ngoài mặt phẳng trả <code>Vector3.one</code> âm thầm (§4)</td></tr>
+<tr><td><strong><code>using</code> cần thêm</strong></td><td><code>AxisType</code>/<code>CoordinateSystem</code> nằm ở <code>Horcrux.Runtime.Implementations.Utilities.Common</code> — lệch quy ước <code>Horcrux.Runtime.Utilities.*</code> của SDK; nợ kỹ thuật đã biết</td></tr>
+</table></div>
+
+<div class="note"><strong>Ranh giới trách nhiệm.</strong> Class chỉ <em>tính</em> scale — không xoay object, không ghi <code>transform</code>, không giữ thời gian; cả ba thuộc caller. Nhờ vậy nó stateless, thread-safe, zero-alloc và test được bằng giá trị thuần.</div>
+</div></section>
+
+</main>
+
+<footer>Horcrux SDK · SquashStretch · <code>Horcrux.Runtime.Utilities.PhysXHelper</code></footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
+<script>
+const observer=new IntersectionObserver(e=>{e.forEach(e=>{if(e.isIntersecting)e.target.classList.add('visible')})},{threshold:.08});
+document.querySelectorAll('.reveal').forEach(el=>observer.observe(el));
+const pb=document.getElementById('progress');
+window.addEventListener('scroll',()=>{const h=document.documentElement;pb.style.width=(h.scrollTop/(h.scrollHeight-h.clientHeight)*100)+'%'});
+document.querySelectorAll('.eq[data-tex]').forEach(el=>{
+  try{katex.render(el.getAttribute('data-tex'),el,{displayMode:true,throwOnError:false});}
+  catch(e){el.textContent=el.getAttribute('data-tex');}
+});
+
+/* ---------- Demo 1 : Pattern C (input -> transform, compute rẻ -> handler trực tiếp) ---------- */
+(function(){
+  const cv=document.getElementById('c1'), ctx=cv.getContext('2d');
+  const sS=document.getElementById('s1'), sV=document.getElementById('s1v');
+  const csS=document.getElementById('cs1'), axS=document.getElementById('ax1');
+  const oN=document.getElementById('o-n'), oC=document.getElementById('o-c'),
+        oV=document.getElementById('o-v'), oP=document.getElementById('o-p');
+  const W=cv.width, H=cv.height, CX=W*0.5, CY=H*0.5, U=78;
+  const BG='#1c2333', GRID='#242d3a', GHOST='#484f58', AC='#58a6ff', AC2='#bc8cff', TX2='#8b949e';
+  const IN_PLANE={XY:{X:1,Y:1,Z:0},XZ:{X:1,Y:0,Z:1},YZ:{X:0,Y:1,Z:1},XYZ:{X:1,Y:1,Z:1}};
+
+  function solve(s,ax,cs){
+    const is2D = cs!=='XYZ';
+    if(is2D && !IN_PLANE[cs][ax]) return {n:1, c:null, v:[1,1,1], degen:true};
+    const c = is2D ? 1/s : 1/Math.sqrt(s);
+    let v;
+    if(cs==='XYZ')      v = ax==='X'?[s,c,c] : ax==='Y'?[c,s,c] : [c,c,s];
+    else if(cs==='XY')  v = ax==='X'?[s,c,1] : [c,s,1];
+    else if(cs==='XZ')  v = ax==='X'?[s,1,c] : [c,1,s];
+    else                v = ax==='Y'?[1,s,c] : [1,c,s];
+    return {n:is2D?1:2, c:c, v:v, degen:false};
+  }
+
+  function draw(r){
+    ctx.fillStyle=BG; ctx.fillRect(0,0,W,H);
+    ctx.strokeStyle=GRID; ctx.lineWidth=1;
+    for(let x=CX%39;x<W;x+=39){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
+    for(let y=CY%39;y<H;y+=39){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
+    ctx.setLineDash([5,4]); ctx.strokeStyle=GHOST; ctx.lineWidth=1.5;
+    ctx.strokeRect(CX-U/2,CY-U/2,U,U); ctx.setLineDash([]);
+    const w=r.v[0]*U, h=r.v[1]*U;
+    ctx.fillStyle=r.degen?'rgba(72,79,88,.30)':'rgba(88,166,255,.20)';
+    ctx.strokeStyle=r.degen?GHOST:AC; ctx.lineWidth=2;
+    ctx.fillRect(CX-w/2,CY-h/2,w,h); ctx.strokeRect(CX-w/2,CY-h/2,w,h);
+    ctx.font='12px ui-monospace,monospace'; ctx.textAlign='center';
+    ctx.fillStyle=AC; ctx.fillText('σx '+r.v[0].toFixed(3),CX,CY+h/2+18);
+    ctx.save(); ctx.translate(CX-w/2-14,CY); ctx.rotate(-Math.PI/2);
+    ctx.fillText('σy '+r.v[1].toFixed(3),0,0); ctx.restore();
+    ctx.textAlign='left'; ctx.fillStyle=AC2;
+    ctx.fillText('σz '+r.v[2].toFixed(3),12,20);
+    ctx.fillStyle=GRID; ctx.fillRect(12,28,120,6);
+    ctx.fillStyle=AC2; ctx.fillRect(12,28,Math.min(120,r.v[2]/2.5*120),6);
+    if(r.degen){
+      ctx.fillStyle=TX2; ctx.textAlign='center';
+      ctx.fillText('trục chính ngoài mặt phẳng → Vector3.one',CX,H-14);
+    }
+  }
+
+  function update(){
+    const s=parseFloat(sS.value), r=solve(s,axS.value,csS.value);
+    sV.textContent=s.toFixed(2);
+    oN.textContent=r.degen?'—':r.n;
+    oC.textContent=r.c===null?'—':r.c.toFixed(4);
+    oV.textContent='('+r.v.map(x=>x.toFixed(3)).join(', ')+')';
+    oP.innerHTML='<span class="ok">'+(r.v[0]*r.v[1]*r.v[2]).toFixed(5)+'</span>';
+    draw(r);
+  }
+  sS.addEventListener('input',update);
+  csS.addEventListener('change',update);
+  axS.addEventListener('change',update);
+  update();
+})();
+
+/* ---------- Demo 2 : Pattern C, vẽ lại 3 curve khi kéo minScale (compute rẻ) ---------- */
+(function(){
+  const cv=document.getElementById('c2'), ctx=cv.getContext('2d');
+  const mS=document.getElementById('m2'), mV=document.getElementById('m2v'), out=document.getElementById('o2');
+  const W=cv.width, H=cv.height, L=52, R=W-16, T=16, B=H-30;
+  const BG='#1c2333', GRID='#242d3a', REF='#484f58', TX2='#8b949e', OR='#d29922';
+  const C1=1.70158, C3=C1+1, C4=2*Math.PI/3, N1=7.5625, D1=2.75;
+
+  const CURVES=[
+    {name:'OutBack',    col:'#58a6ff', f:t=>{const f=t-1;return 1+C3*f*f*f+C1*f*f;}},
+    {name:'OutElastic', col:'#bc8cff', f:t=>t<=0?0:t>=1?1:Math.pow(2,-10*t)*Math.sin((10*t-0.75)*C4)+1},
+    {name:'OutBounce',  col:'#3fb950', f:t=>{if(t<1/D1)return N1*t*t;if(t<2/D1){t-=1.5/D1;return N1*t*t+.75;}
+                                             if(t<2.5/D1){t-=2.25/D1;return N1*t*t+.9375;}t-=2.625/D1;return N1*t*t+.984375;}}
+  ];
+  const Y0=0.2, Y1=1.45;
+  const px=t=>L+t*(R-L), py=s=>B-(s-Y0)/(Y1-Y0)*(B-T);
+
+  function draw(m){
+    ctx.fillStyle=BG; ctx.fillRect(0,0,W,H);
+    ctx.fillStyle='rgba(188,140,255,.07)'; ctx.fillRect(L,py(Y1),R-L,py(1)-py(Y1));
+    ctx.font='11px ui-monospace,monospace'; ctx.textAlign='right';
+    for(let s=0.2;s<=1.4001;s+=0.2){
+      const y=py(s);
+      ctx.strokeStyle=GRID; ctx.lineWidth=1;
+      ctx.beginPath();ctx.moveTo(L,y);ctx.lineTo(R,y);ctx.stroke();
+      ctx.fillStyle=TX2; ctx.fillText(s.toFixed(1),L-8,y+4);
+    }
+    ctx.setLineDash([6,4]); ctx.strokeStyle=REF; ctx.lineWidth=1.5;
+    ctx.beginPath();ctx.moveTo(L,py(1));ctx.lineTo(R,py(1));ctx.stroke(); ctx.setLineDash([]);
+    ctx.fillStyle=REF; ctx.textAlign='left'; ctx.fillText('nghỉ  s = 1',L+6,py(1)-7);
+    ctx.setLineDash([2,4]); ctx.strokeStyle=OR; ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(L,py(m));ctx.lineTo(R,py(m));ctx.stroke(); ctx.setLineDash([]);
+    ctx.fillStyle=OR; ctx.fillText('minScale = '+m.toFixed(2),L+6,py(m)+14);
+    ctx.strokeStyle=GRID;ctx.beginPath();ctx.moveTo(L,B);ctx.lineTo(R,B);ctx.stroke();
+    ctx.fillStyle=TX2; ctx.textAlign='center';
+    for(let t=0;t<=1.001;t+=0.25){ctx.fillText('t='+t.toFixed(2),px(t),B+18);}
+    const rows=[];
+    CURVES.forEach(cu=>{
+      ctx.strokeStyle=cu.col; ctx.lineWidth=2.2; ctx.beginPath();
+      let peak=-9, pt=0;
+      for(let i=0;i<=1000;i++){
+        const t=i/1000, s=m+cu.f(t)*(1-m);
+        if(s>peak){peak=s;pt=t;}
+        i?ctx.lineTo(px(t),py(s)):ctx.moveTo(px(t),py(s));
+      }
+      ctx.stroke();
+      if(peak>1.0005){ctx.fillStyle=cu.col;ctx.beginPath();ctx.arc(px(pt),py(peak),4,0,6.284);ctx.fill();}
+      rows.push({name:cu.name,col:cu.col,peak:peak,pt:pt});
+    });
+    ctx.textAlign='left'; ctx.font='12px ui-monospace,monospace';
+    rows.forEach((r,i)=>{
+      const x=L+14, y=T+16+i*18;
+      ctx.fillStyle=r.col; ctx.fillRect(x,y-8,10,3);
+      ctx.fillStyle=TX2; ctx.fillText(r.name,x+16,y);
+    });
+    return rows;
+  }
+
+  function update(){
+    const m=parseFloat(mS.value); mV.textContent=m.toFixed(2);
+    let html='';
+    draw(m).forEach(r=>{
+      html+='<b>'+r.name+'</b> s_peak = '+(r.peak>1.0005
+        ? '<span class="ok">'+r.peak.toFixed(4)+'</span> @ t='+r.pt.toFixed(3)
+        : r.peak.toFixed(4)+' → không có pha stretch')+'<br>';
+    });
+    out.innerHTML=html;
+  }
+  mS.addEventListener('input',update);
+  update();
+})();
+</script>
+</body>
+</html>
