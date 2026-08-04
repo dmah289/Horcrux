@@ -81,7 +81,7 @@ footer{text-align:center;padding:3rem 1rem;color:var(--tx3);font-size:.85rem;bor
   <li><a href="#count">n = số trục bù → bỏ <code>pow</code></a></li>
   <li><a href="#map">Trục nào bù · demo lõi</a></li>
   <li><a href="#gen">Ba cách sinh s</a></li>
-  <li><a href="#overshoot">Vọt lố: ease nào cho stretch?</a></li>
+  <li><a href="#overshoot">Vọt lố &amp; ngưỡng minScale</a></li>
   <li><a href="#guard">Guard biên — chặn NaN và ∞</a></li>
   <li><a href="#precision">Sai số float</a></li>
   <li><a href="#api">API</a></li>
@@ -125,13 +125,13 @@ footer{text-align:center;padding:3rem 1rem;color:var(--tx3);font-size:.85rem;bor
 
 <div class="card">
 <div class="eq boxed" data-tex="\begin{aligned}(1)\quad \sigma_x\,\sigma_y\,\sigma_z &= 1\\[2pt] (2)\quad s \cdot c^{\,n} &= 1\\[2pt] (3)\quad c^{\,n} &= \frac{1}{s}\\[2pt] (4)\quad c &= \boxed{\,s^{-1/n}\,}\\[2pt] (5)\quad s\cdot\left(s^{-1/n}\right)^{n} &= s^{0} = 1\end{aligned}"></div>
-<table>
+<div class="tw"><table>
 <tr><td class="st">(1)</td><td>Thể tích = tích các hệ số scale = <code>det(S)</code>. Lúc nghỉ mọi hệ số <code>= 1</code> → <code>V₀ = 1</code>.</td></tr>
 <tr><td class="st">(2)</td><td><code>n</code> trục bù, mỗi trục <em>cùng</em> hệ số <code>c</code> → thể tích mới <code>s·cⁿ</code>; đặt bằng <code>V₀</code>.</td></tr>
 <tr><td class="st">(3)</td><td>Chia hai vế cho <code>s</code> — hợp lệ vì guard đảm bảo <code>s &gt; 0</code> (§7).</td></tr>
 <tr><td class="st">(4)</td><td>Căn bậc <code>n</code> hai vế → <strong>công thức chốt của cả hệ</strong>.</td></tr>
 <tr><td class="st">(5)</td><td>Kiểm: thay (4) vào (2), số mũ triệt tiêu → đúng với <strong>mọi</strong> <code>n</code>, không chỉ một trường hợp riêng.</td></tr>
-</table>
+</table></div>
 </div>
 
 <h3>Bước (2) đã giả định gì?</h3>
@@ -176,7 +176,7 @@ footer{text-align:center;padding:3rem 1rem;color:var(--tx3);font-size:.85rem;bor
 <tr><td><code>s=0.5</code> → <code>c</code></td><td><code>1.414</code> mỗi trục</td><td><code>2.0</code> một trục</td></tr>
 <tr><td>Dùng cho</td><td>mesh 3D</td><td>sprite / gameplay phẳng</td></tr>
 </table></div>
-<p class="lead">→ Chọn theo <strong>look muốn có</strong>, không theo "game 2D hay 3D".</p>
+<p>→ Chọn theo <strong>look muốn có</strong>, không theo "game 2D hay 3D".</p>
 </div></section>
 
 <!-- ============ 4 ============ -->
@@ -273,7 +273,7 @@ footer{text-align:center;padding:3rem 1rem;color:var(--tx3);font-size:.85rem;bor
 
 <!-- ============ 6 ============ -->
 <section id="overshoot"><div class="reveal">
-<h2><span class="sn">§6</span>Vọt lố: ease nào cho stretch?</h2>
+<h2><span class="sn">§6</span>Vọt lố &amp; ngưỡng minScale</h2>
 
 <p class="lead">Mapping Time (§5) là một phép <code>lerp</code> biến giá trị ease <code>e</code> thành <code>s</code>. Nó neo ở hai mốc, và <em>mọi thứ ngoài hai mốc đó</em> mới là chuyện đáng nói:</p>
 
@@ -301,14 +301,14 @@ footer{text-align:center;padding:3rem 1rem;color:var(--tx3);font-size:.85rem;bor
 <div class="eq boxed" data-tex="\begin{aligned}m + e\,(1-m) &\le 0\\[2pt] e &\le \frac{-m}{1-m}\\[2pt] a &\ge \frac{m}{1-m}\\[2pt] m &\le \boxed{\,\frac{a}{1+a}\,}\end{aligned}"></div>
 <p class="hint" style="margin-top:.7rem">→ Curve có <code>e_min</code> càng âm thì <code>minScale</code> phải càng lớn. Cột cuối bảng dưới là ngưỡng <code>a/(1+a)</code> tính cho từng curve.</p>
 
-<table style="margin-top:1.1rem">
+<div class="tw" style="margin-top:1.1rem"><table>
 <tr><th>Bước</th><th>Vì sao</th></tr>
 <tr><td class="st">khai triển</td><td><code>lerp(m,1,e)</code> theo định nghĩa là <code>m + e·(1−m)</code> — hàm bậc nhất qua 2 mốc ở hình trên</td></tr>
 <tr><td class="st">Hỏi 1</td><td><code>m = 1 − (1−m)</code> là phép tách thuần đại số, chỉ để nhóm được <code>(1−m)</code> ra ngoài</td></tr>
 <tr><td class="st">Hỏi 2 · dòng 2</td><td>chia hai vế cho <code>(1−m)</code>. Vì <code>m &lt; 1</code> nên số chia <strong>dương</strong> → <strong>không</strong> đổi chiều bất phương trình</td></tr>
 <tr><td class="st">Hỏi 2 · dòng 3</td><td>thay <code>e = e_min = −a</code> rồi nhân hai vế với <code>−1</code> → lần này <strong>có</strong> đổi chiều</td></tr>
 <tr><td class="st">Hỏi 2 · dòng 4</td><td>nhân chéo (<code>1−m &gt; 0</code>): <code>a − am ≥ m</code> → <code>a ≥ m(1+a)</code> → chuyển vế</td></tr>
-</table>
+</table></div>
 </div>
 
 <div class="tw"><table>
@@ -332,7 +332,7 @@ footer{text-align:center;padding:3rem 1rem;color:var(--tx3);font-size:.85rem;bor
 
 <div class="demo">
   <div class="demo-title">Demo · s(t) — pha stretch nằm trên vạch s = 1</div>
-  <canvas id="c2" width="860" height="330"></canvas>
+  <canvas id="c2" width="800" height="320"></canvas>
   <div class="ctl" style="margin-top:.9rem;max-width:340px"><label>minScale</label><input type="range" id="m2" min="0.3" max="0.9" step="0.01" value="0.6"><span class="val" id="m2v">0.60</span></div>
   <div class="out" id="o2"></div>
   <p class="hint">Kéo <code>minScale</code> lên → cả 3 curve dẹt lại đúng theo công thức <code>s_peak</code> ở trên.</p>
@@ -386,7 +386,7 @@ footer{text-align:center;padding:3rem 1rem;color:var(--tx3);font-size:.85rem;bor
 <section id="precision"><div class="reveal">
 <h2><span class="sn">§8</span>Sai số float</h2>
 
-<p class="lead"><code>math.rsqrt</code> là <code>1.0f/sqrt(x)</code> ở độ chính xác float đầy đủ (không phải fast-approx kiểu Quake), nhưng hai lần làm tròn vẫn để lại sai số. Quét <code>s</code> trên <code>[1e-4, 1e4]</code>, 120 001 mẫu:</p>
+<p class="lead"><code>rsqrt</code> gồm <code>sqrt</code> rồi một phép chia (§3) → <strong>hai</strong> lần làm tròn, mỗi lần để lại sai số. Quét <code>s</code> trên <code>[1e-4, 1e4]</code>, 120 001 mẫu:</p>
 
 <div class="tw"><table>
 <tr><th>Chế độ</th><th>Tích kiểm</th><th>max |∏ − 1|</th><th>ulp</th><th>s xấu nhất</th></tr>
