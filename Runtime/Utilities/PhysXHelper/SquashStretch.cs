@@ -75,7 +75,7 @@ namespace Horcrux.Runtime.Utilities.PhysXHelper
         /// <param name="impact">Impact intensity.</param>
         /// <param name="maxImpact">Impact intensity threshold for <see cref="minScale"/>>.</param>
         /// <param name="minScale">Min scale factor of primary axis.</param>
-        /// <returns>Volume-reserving scale based on impact intensity.</returns>
+        /// <returns>Volume-preserving scale based on impact intensity.</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static Vector3 GetSquashFromImpact(float impact, float maxImpact, float minScale,
             AxisType primaryAxis, CoordinateSystem coordinateSystem)
@@ -92,7 +92,7 @@ namespace Horcrux.Runtime.Utilities.PhysXHelper
         /// <param name="speed"></param>
         /// <param name="stretchPerSpeed"></param>
         /// <param name="maxStretch"></param>
-        /// <returns>Volume-reserving scale based on speed.</returns>
+        /// <returns>Volume-preserving scale based on speed.</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static Vector3 GetDirectionalStretch(float speed, float stretchPerSpeed, float maxStretch,
             AxisType primaryAxis, CoordinateSystem coordinateSystem)
