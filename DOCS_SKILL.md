@@ -1,12 +1,15 @@
 # DOCS_SKILL — Viết docs hệ thống: .md → .html (+ Plan)
 
-3 loại tài liệu, cùng bộ nguyên tắc dưới đây:
+3 loại đầu ra, cùng một bộ tư tưởng:
 - **`.md`** = nguồn sự thật (agent đọc hiểu + phát triển).
 - **`.html`** = tài liệu **chính** developer đọc, visualize `.md`.
 - **Plan** (tùy chọn) = để developer tự code lại.
 
+> **Đọc theo thứ tự.** §Nguyên tắc xuyên suốt + §Phỏng vấn ngữ cảnh là **tư tưởng chung — bắt buộc nắm, áp cho mọi việc**. Phần A/B/C chỉ là cơ chế riêng của từng loại đầu ra, đều dựa trên tư tưởng đó; nắm tư tưởng rồi thì A/B/C đọc lướt là đủ.
+
 ## Quy trình
 
+0. **Phỏng vấn ngữ cảnh** (§ ngay dưới) — bắt buộc, trước khi viết bất kỳ loại nào.
 1. Đọc **tất cả** source → hiểu 100% data flow, lifecycle, lý do mỗi quyết định.
 2. Viết `.md` cùng thư mục hệ thống (Phần A) — chính xác 100%.
 3. Sinh `.html` từ `.md` (Phần B) — 100% nội dung `.md`.
@@ -20,7 +23,44 @@
 2. **Trình tự hợp lý** — dẫn theo mạch **dễ→khó, tổng quan→chi tiết, vấn đề→giải pháp, trực giác→hình thức hóa**. Mỗi bước chỉ dùng khái niệm đã nêu trước; ý phụ thuộc nhau đặt liền kề; đánh số khi là quy trình.
 3. **Giải thích bản chất** — mỗi khái niệm: cơ chế + "tại sao" + trade-off, không chỉ "dùng X".
 4. **Không lặp** — 1 khái niệm giải thích 1 nơi (lần đầu xuất hiện), sau đó `xem §x`. Rà cả 3 loại trước khi chốt. **Liên hệ thống:** khái niệm đã dẫn giải ở doc hệ khác → trỏ `xem §… của <hệ>`, không giải lại (vd Euler's formula giải 1 lần ở SpringDamper, DampedOscillator trỏ tới). Ngoại lệ: bảng tra cứu tổng kết cuối (metrics/API).
-5. **Hệ toán/vật lý → dẫn giải sâu** theo mạch riêng ở **Phần A**.
+5. **Dẫn giải sâu đúng chỗ** — hệ toán/vật lý phải cho hiểu bản chất, nhưng **độ sâu cân theo độ khó thật của công thức**, không mặc định tối đa: suy ra trong 1–2 bước → công thức + kiểm mốc là đủ; nghiệm vi phân / biến đổi nhiều bước / có chọn lựa mô hình đáng bàn → dẫn giải đầy đủ (mạch Phần A). Dẫn định luật nền để biện minh cho một phép nhân là over-engineering ở tầng tài liệu.
+6. **Vừa đủ, nhưng mở được** — đơn giản nhất mà vẫn phục vụ đủ mục đích ban đầu, đồng thời **không chặn hướng mở rộng về sau**. Đơn giản là **mặc định**; mỗi lớp phức tạp thêm vào phải trả giá bằng **một nhu cầu đang có thật** — "phòng khi cần", "cho đầy đủ", "chuẩn hơn" không phải nhu cầu. Kiểm nhanh: *xóa nó đi thì hỏng ở đâu* — không gọi được tên chỗ hỏng thì bỏ. Hai bờ vực đều sai: **thừa** (đúng, nhưng không ai cần) và **thiếu** (cắt vào mục đích ban đầu — mục đích là **sàn**, không phải chỗ gọt cho ngắn).
+7. **Game feel là tiêu chí nghiệm thu** — hệ này phục vụ **cảm giác chơi**, không phục vụ độ chính xác vật lý. Công thức "sai sách" mà chơi đã tay thì **đúng**; công thức chuẩn sách mà chơi vô hồn thì **sai**. Toán ở đây là *công cụ để đạt cảm giác*, không phải mục tiêu.
+8. **Editor-first** — thứ gì quyết được lúc authoring thì đừng đẩy sang runtime: **code lo *hành vi*, Editor lo *cấu hình & kết nối*** (chi tiết Unity: §C.1).
+9. **Bằng chứng, không khẳng định suông** — mọi "tại sao" kèm phép kiểm **tái lập được**; mọi công thức chốt phải **kiểm mốc**; code phải đối chiếu với công thức trước khi chốt. Không viết "đã đúng", "đã tối ưu" mà thiếu mốc, số đo, hoặc phép thử reader tự chạy lại được.
+10. **Hỏi đúng lúc, không tự bày thêm** — thiếu ngữ cảnh thì **hỏi** (gộp 1–2 lượt, §Phỏng vấn), không tự đoán rồi viết; buộc phải giả định thì ghi rõ `Giả định (cần xác nhận): …`. Ngược lại, **không tự đề xuất** bản phức tạp / chính xác hơn, cũng không hỏi user có muốn không — chỉ khi **user tự nêu** nhu cầu đó mới hỏi lại **một lần** để cân đắt/lợi, rồi theo quyết định của user.
+
+## Phỏng vấn ngữ cảnh & chốt phạm vi (áp cho cả 3 loại)
+
+Agent **không** được suy đoán ngữ cảnh rồi viết. Đoán sai lệch về hai phía, cả hai đều đắt:
+- **Thừa (over-engineering)** — chương không ai đọc, hàm không caller nào gọi, tối ưu chỗ không phải hot path, dẫn giải 100 dòng cho công thức 1 dòng. Trả giá bằng thời gian viết + đọc + bảo trì, vĩnh viễn.
+- **Thiếu (đóng cứng)** — doc bỏ mất thứ người đọc cần; chữ ký/cấu trúc chặn hướng dùng thật, phải đập đi làm lại.
+
+Hỏi **5 nhóm dưới**, gộp thành **1–2 lượt** (không hỏi lắt nhắt từng câu một). Đã biết chắc nhóm nào thì nêu giả định của mình để user xác nhận, thay vì hỏi lại.
+
+| Nhóm | Với `.md` / `.html` | Với Plan / code |
+|---|---|---|
+| **Ai dùng đầu ra** | ai đọc, đọc để làm gì, biết sẵn tới đâu | ai gọi, gọi ở đâu trong game, có caller thật **ngay bây giờ** chưa |
+| **Mục tiêu** | đọc xong phải **làm được gì** | phải đạt **cảm giác/hành vi** gì, nghiệm thu bằng gì |
+| **Ngân sách** | độ sâu & độ dài nào là đủ | bao nhiêu lần/giây, có phải hot path không, platform nào |
+| **Ranh giới** | phần nào giải ở đây, phần nào trỏ sang doc khác | phần nào của class này, phần nào của caller/hệ khác |
+| **Hướng mở rộng thật** | hệ sắp đổi gì khiến doc phải sửa | **chắc chắn** sắp cần thêm gì; cái gì *có thể* cần nhưng chưa chắc |
+
+**Quy tắc chốt phạm vi** — một luật, áp cho mọi thứ định đưa vào (chương doc · demo · hàm · tham số · guard · tối ưu):
+
+| Tình huống | Xử lý |
+|---|---|
+| Có nhu cầu thật, ngay bây giờ | → đưa vào |
+| Chỉ "có thể cần sau", **thêm sau rẻ** (thêm mục mới / hàm mới, không sửa cái cũ) | → **để lại**, ghi 1 dòng ở mục "Mở rộng sau" |
+| Chỉ "có thể cần sau", nhưng **thêm sau đắt** (sửa chữ ký, đập cấu trúc, viết lại cả doc) | → làm ngay; đây là chỗ **duy nhất** đáng phòng xa |
+| Tối ưu (inline, precompute, struct, pooling…) | → chỉ khi tần suất **đã xác nhận** là hot path |
+| Guard / nhánh biên | → chỉ khi input thật chạm được biên đó |
+
+> **Tính mở rộng đến từ Open/Closed** — thêm cái mới mà không sửa cái cũ — **không** đến từ việc viết sẵn thứ chưa ai cần. Một hàm 1 dòng thêm sau tốn 2 phút; giữ nó trong API từ đầu tốn mãi mãi. Ngược lại, chữ ký sai thì sửa sau rất đắt → dồn công sức phòng xa vào **chữ ký và ranh giới trách nhiệm**, không vào số lượng.
+
+**Ghi kết quả phỏng vấn vào đầu output** — Plan: mục **"Ngữ cảnh đã chốt"** trước `§0`; `.md`: nêu ở phần mở. Gồm: người dùng · mục tiêu · ranh giới · **những gì cố ý KHÔNG làm + lý do**. Người đọc sau biết vì sao phạm vi dừng ở đó, không "bổ sung cho đủ".
+
+**Chưa có câu trả lời thì chưa viết.** Nếu buộc phải giả định (user bận, câu hỏi phụ), ghi rõ `Giả định (cần xác nhận): …` tại chỗ dùng — không giấu giả định vào output như thể đã chốt.
 
 ---
 
@@ -36,7 +76,11 @@
 
 ## Hệ toán học / vật lý — mạch dẫn giải
 
-Hệ có lõi toán/vật lý (solver, interpolation, dao động, đạn đạo, hình học…) phải cho developer **hiểu sâu**, không chỉ liệt kê công thức cuối. Trình bày lần lượt:
+Hệ có lõi toán/vật lý (solver, interpolation, dao động, đạn đạo, hình học…) phải cho developer **hiểu sâu**, không chỉ liệt kê công thức cuối.
+
+> **Cân độ sâu trước (Nguyên tắc 5):** mạch 6 bước dưới đây chỉ dành cho công thức **không hiển nhiên**. Suy ra trong 1–2 bước → công thức + kiểm mốc là đủ, không chạy hết mạch.
+
+Trình bày lần lượt:
 
 | Bước | Nội dung | Trình bày |
 |---|---|---|
@@ -49,9 +93,9 @@ Hệ có lõi toán/vật lý (solver, interpolation, dao động, đạn đạo
 
 Bắt buộc:
 - **Mọi công thức chốt phải kiểm mốc**; **trực giác trước, ký hiệu sau** (nêu ý niệm "càng xa đi càng nhanh" rồi mới ra phương trình).
-- **Suy ra, không áp đặt** — công thức chốt phải *dẫn ra* từ nguyên lý gốc, tuyệt đối không "xuất hiện từ hư không" rồi mới giải thích ngược.
-- **Mỗi "tại sao" kèm phép kiểm tái lập được** khi có thể — reader tự kiểm, không phải tin lời (vd "thử `y=cos(ωt)` → `ÿ=−ω²y`, khớp khi `ω²=k/m`").
-- **Nêu rõ lựa chọn mô hình khi code cố ý lệch/đơn giản hóa so với vật lý chuẩn** — vì sao chọn vậy + khi nào dùng bản đầy đủ (vd DampedOscillator tách rời `f`/`λ` cho game feel, ai cần ràng buộc `ω_d=√(ω₀²−λ²)` thì dùng SpringDamper). Tránh reader tra sách rồi bối rối.
+- **Suy ra, không áp đặt** — công thức chốt phải *dẫn ra* từ nguyên lý gốc, tuyệt đối không "xuất hiện từ hư không" rồi mới giải thích ngược. **Ngoại lệ: thứ chọn bằng cảm giác** (hằng số tinh chỉnh, đường cong tự chế cho đã tay) — nói thẳng "chọn bằng tai/mắt, số này cho cảm giác X", **đừng bịa dẫn giải vật lý** cho một giá trị vốn chọn bằng cảm nhận.
+- **Phép kiểm tái lập được** cho mỗi "tại sao" (Nguyên tắc 9) — vd "thử `y=cos(ωt)` → `ÿ=−ω²y`, khớp khi `ω²=k/m`".
+- **Lệch vật lý chuẩn là bình thường, không phải lỗi cần bào chữa** (Nguyên tắc 7). Chỉ cần nêu **lệch ở đâu, vì sao, khi nào mới cần bản đầy đủ** (vd DampedOscillator tách rời `f`/`λ` cho game feel, ai cần ràng buộc `ω_d=√(ω₀²−λ²)` thì dùng SpringDamper). Tránh reader tra sách rồi bối rối.
 
 ---
 
@@ -59,7 +103,7 @@ Bắt buộc:
 
 **Mục đích:** `.html` là **tài liệu CHÍNH** developer đọc. Giữ cấu trúc section của `.md`; trực quan, không dài dòng.
 
-## Tư tưởng (điểm riêng của .html)
+## Điểm riêng của `.html`
 
 - **Hạn chế SHOW CODE** — `.html` để *hiểu*, không chép code. Thay bằng KaTeX/bảng/`.arch`/demo. Chữ ký API → bảng. Chỉ giữ code khi bản thân nó *là* thứ cần minh họa (1 dòng lỗi/pattern then chốt); không dán nguyên class/hàm.
 - **Trực quan hóa theo loại nội dung**: so sánh → bảng · data flow → `.arch` · công thức → KaTeX (`.eq`, chốt → `.eq.boxed`) · giá trị liên tục → Canvas · nhiều bước → step. Demo chỉ khi bảng/text không đủ; hệ toán/vật lý ưu tiên demo Canvas để "thấy" hành vi.
@@ -67,157 +111,36 @@ Bắt buộc:
 - **Thẩm mỹ**: dark theme, `.reveal` fade-in, header tĩnh + TOC, section cuối `.perf-grid`, responsive.
 - **Zero idle cost**: không rAF loop chạy mãi; demo event-driven/static; KaTeX render một lần.
 
-## HTML template
+## Cơ chế
 
-```html
-<!DOCTYPE html>
-<html lang="vi">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>{System} — {Project}</title>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css"><!-- bỏ nếu doc không có công thức -->
-<style>
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-:root{--bg:#0d1117;--bg2:#161b22;--bg3:#1c2333;--bg4:#242d3a;--tx:#e6edf3;--tx2:#8b949e;--tx3:#484f58;--ac:#58a6ff;--ac2:#bc8cff;--gr:#3fb950;--or:#d29922;--rd:#f85149;--bd:#30363d;--r:10px;--mono:'JetBrains Mono','Fira Code','Cascadia Code','SF Mono',monospace;--sans:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif}
-html{scroll-behavior:smooth;background:var(--bg);color:var(--tx);font:17px/1.7 var(--sans)}
-body{overflow-x:hidden}
-a{color:var(--ac);text-decoration:none}a:hover{text-decoration:underline}
-#progress{position:fixed;top:0;left:0;height:3px;background:linear-gradient(90deg,var(--ac),var(--ac2));width:0;z-index:999;transition:width .1s}
-#header{max-width:920px;margin:0 auto;padding:4rem 1.5rem 2rem;border-bottom:1px solid var(--bd)}
-#header h1{font-size:clamp(2rem,5vw,3rem);font-weight:800;letter-spacing:-.03em;background:linear-gradient(135deg,var(--ac),var(--ac2));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
-#header .sub{font-size:1.05rem;color:var(--tx2);margin-top:.4rem}
-#header .badge{display:inline-block;margin-top:.8rem;padding:.3em .9em;border:1px solid var(--bd);border-radius:99px;font-family:var(--mono);font-size:.78rem;color:var(--tx2)}
-main{max-width:920px;margin:0 auto;padding:0 1.5rem 6rem}
-section{padding-top:4rem}
-section .reveal{opacity:0;transform:translateY(24px);transition:opacity .6s ease,transform .6s ease}
-section .reveal.visible{opacity:1;transform:none}
-#toc{max-width:920px;margin:3rem auto;padding:0 1.5rem}
-#toc h2{font-size:1.3rem}
-#toc ol{columns:2;column-gap:2rem;padding-left:1.5em}
-#toc li{font-size:.92rem;margin-bottom:.3rem;break-inside:avoid}
-@media(max-width:600px){#toc ol{columns:1}}
-h2{font-size:1.9rem;font-weight:700;letter-spacing:-.02em;margin-bottom:1.5rem;padding-bottom:.5rem;border-bottom:1px solid var(--bd)}
-h3{font-size:1.3rem;font-weight:600;margin:2.5rem 0 1rem;color:var(--ac)}
-p,ul,ol{margin-bottom:1rem}ul{padding-left:1.3em}li{margin-bottom:.3rem}
-strong{color:var(--tx);font-weight:600}
-em{color:var(--ac2);font-style:normal}
-code{font-family:var(--mono);font-size:.88em;background:var(--bg3);padding:.15em .4em;border-radius:4px}
-pre{margin:1.2rem 0!important;border-radius:var(--r)!important;border:1px solid var(--bd)!important}
-pre code{background:none!important;padding:0!important;font-size:.85rem!important;line-height:1.6!important}
-.card{background:var(--bg2);border:1px solid var(--bd);border-radius:var(--r);padding:1.5rem;margin:1.5rem 0}
-.card-title{font-weight:600;margin-bottom:.75rem;font-size:1.05rem;color:var(--ac)}
-.note{border-left:3px solid var(--or);background:var(--bg2);padding:1rem 1.2rem;border-radius:0 var(--r) var(--r) 0;margin:1.5rem 0;font-size:.92rem;color:var(--tx2)}
-.note strong{color:var(--or)}
-.note.good{border-left-color:var(--gr)}.note.good strong{color:var(--gr)}
-.note.bad{border-left-color:var(--rd)}.note.bad strong{color:var(--rd)}
-.eq{background:var(--bg3);border:1px solid var(--bd);border-radius:var(--r);padding:1.1rem 1.3rem;margin:1.3rem 0;overflow-x:auto;text-align:center}
-.eq.boxed{border-color:var(--ac);box-shadow:0 0 0 1px var(--ac) inset}
-table{width:100%;border-collapse:collapse;margin:1.2rem 0;font-size:.92rem}
-th{text-align:left;padding:.6rem .8rem;border-bottom:2px solid var(--bd);color:var(--ac);font-weight:600}
-td{padding:.5rem .8rem;border-bottom:1px solid var(--bd)}
-tr:last-child td{border:none}
-.demo{background:var(--bg2);border:1px solid var(--bd);border-radius:var(--r);padding:1.5rem;margin:2rem 0}
-.demo-title{font-family:var(--mono);font-size:.8rem;color:var(--ac2);text-transform:uppercase;letter-spacing:.08em;margin-bottom:1rem}
-.demo canvas{display:block;border-radius:8px;cursor:crosshair}
-.demo-row{display:flex;gap:1.5rem;align-items:flex-start;flex-wrap:wrap}
-.demo-row>*{flex:1;min-width:250px}
-.arch{font-family:var(--mono);font-size:.82rem;line-height:1.8;white-space:pre;overflow-x:auto;padding:1rem;background:var(--bg3);border-radius:var(--r);color:var(--tx2)}
-.arch em{color:var(--ac);font-style:normal}
-.perf-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem;margin:1.5rem 0}
-.perf-card{background:var(--bg3);border-radius:var(--r);padding:1.2rem;text-align:center}
-.perf-val{font-size:1.8rem;font-weight:800;background:linear-gradient(135deg,var(--ac),var(--ac2));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
-.perf-label{font-size:.82rem;color:var(--tx2);margin-top:.2rem}
-footer{text-align:center;padding:3rem 1rem;color:var(--tx3);font-size:.85rem;border-top:1px solid var(--bd)}
-</style>
-</head>
-<body>
-<div id="progress"></div>
-<header id="header"><h1>{System}</h1><p class="sub">{mô tả}</p><span class="badge">{keywords}</span></header>
-<nav id="toc"><h2>Mục lục</h2><ol>...</ol></nav>
-<main><!-- sections --></main>
-<footer>{Project} · {System} · <code>{Namespace}</code></footer>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-csharp.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script><!-- bỏ nếu doc không có công thức -->
-<script>
-const observer=new IntersectionObserver(e=>{e.forEach(e=>{if(e.isIntersecting)e.target.classList.add('visible')})},{threshold:.08});
-document.querySelectorAll('.reveal').forEach(el=>observer.observe(el));
-const pb=document.getElementById('progress');
-window.addEventListener('scroll',()=>{const h=document.documentElement;pb.style.width=(h.scrollTop/(h.scrollHeight-h.clientHeight)*100)+'%'});
-// KaTeX: render mỗi .eq[data-tex] một lần lúc load (static). Bỏ block này nếu không dùng KaTeX.
-document.querySelectorAll('.eq[data-tex]').forEach(el=>{
-  try{katex.render(el.getAttribute('data-tex'),el,{displayMode:true,throwOnError:false});}
-  catch(e){el.textContent=el.getAttribute('data-tex');}
-});
-</script>
-</body>
-</html>
-```
+**Skeleton + CSS + demo mẫu:** `DOCS_TEMPLATE.html` (cùng thư mục) — copy nguyên, thay `{System}`/`{Project}`, bỏ KaTeX/Prism nếu không dùng. Thêm Prism component theo nhu cầu: `prism-glsl`, `prism-json`, `prism-python`, …
 
-Thêm Prism components theo nhu cầu: `prism-glsl`, `prism-json`, `prism-python`, ...
-
-## Demo patterns
+**Demo patterns** — mỗi demo: IIFE wrap, cache `getElementById` đầu IIFE, `addEventListener` (không `onclick`). Code mẫu Pattern A ở cuối `DOCS_TEMPLATE.html`.
 
 | Pattern | Khi nào | Perf |
-|---------|---------|------|
-| **A: Canvas + Mouse** | Giá trị thay đổi theo vị trí | Pre-render bg, rAF guard |
-| **B: Step/Auto** | Quá trình rời rạc | DOM-only, `clearInterval` on reset, ≥800ms |
-| **C: Input → Transform** | Chuyển đổi real-time | Compute rẻ → trực tiếp handler |
-| **D: Static Graph** | Hàm toán học | IIFE 1 lần, không listener |
+|---|---|---|
+| **A: Canvas + Mouse** | giá trị đổi theo vị trí | pre-render bg, rAF guard |
+| **B: Step/Auto** | quá trình rời rạc | DOM-only, `clearInterval` on reset, ≥800ms |
+| **C: Input → Transform** | chuyển đổi real-time | compute rẻ → trực tiếp handler |
+| **D: Static Graph** | hàm toán học | IIFE 1 lần, không listener |
 
-Mỗi demo: IIFE wrap, cache `getElementById` đầu IIFE, `addEventListener` (không `onclick`).
+**Blacklist** — cấm trong draw loop / handler:
 
-## Hiệu năng .html — blacklist
-
-| Cấm trong draw loop / handler | Tại sao | Thay bằng |
-|-------------------------------|---------|-----------|
-| `ctx.shadowBlur` | Gaussian blur per draw | Radial gradient |
-| `createImageData()` per event | Alloc W×H×4 bytes | Tạo 1 lần, reuse |
-| Per-pixel math per mousemove | O(W×H) 60+/giây | Pre-render → cached ImageData |
-| `mousemove` → draw trực tiếp | Draw 2–3× giữa 2 frame | rAF guard: scalar coords + dirty flag |
-| `ctx.fillStyle = 'var(--x)'` | Canvas không parse CSS vars | Hex: `'#8b949e'` |
-| `innerHTML` tight loop | Parser + reflow | `textContent` |
-| Quên `cancelAnimationFrame` | rAF chạy sau leave | Cancel trong leave handler |
-
-Pattern A mẫu (pre-render + rAF guard):
-
-```js
-(function() {
-  const canvas = document.getElementById('demoCanvas');
-  const ctx = canvas.getContext('2d');
-  const W = canvas.width, H = canvas.height;
-
-  // Pre-render background ONCE
-  const bg = ctx.createImageData(W, H);
-  for (let y = 0; y < H; y++)
-    for (let x = 0; x < W; x++) {
-      const i = (y * W + x) * 4;
-      bg.data[i]=/*R*/; bg.data[i+1]=/*G*/; bg.data[i+2]=/*B*/; bg.data[i+3]=255;
-    }
-
-  function draw(mx, my) { ctx.putImageData(bg, 0, 0); /* cheap overlay */ }
-  draw(-1, -1);
-
-  let px=-1, py=-1, dirty=false, raf=0;
-  function tick() { raf=0; if(dirty){draw(px,py); dirty=false;} }
-  canvas.addEventListener('mousemove', e => {
-    const r=canvas.getBoundingClientRect();
-    px=(e.clientX-r.left)*W/r.width; py=(e.clientY-r.top)*H/r.height;
-    dirty=true; if(!raf) raf=requestAnimationFrame(tick);
-  });
-  canvas.addEventListener('mouseleave', () => {
-    dirty=false; if(raf){cancelAnimationFrame(raf);raf=0;} draw(-1,-1);
-  });
-})();
-```
+| Cấm | Tại sao | Thay bằng |
+|---|---|---|
+| `ctx.shadowBlur` | Gaussian blur mỗi lần vẽ | radial gradient |
+| `createImageData()` mỗi event | alloc W×H×4 bytes | tạo 1 lần, reuse |
+| Per-pixel math mỗi mousemove | O(W×H) 60+ lần/giây | pre-render → cached ImageData |
+| `mousemove` → vẽ thẳng | vẽ 2–3× giữa 2 frame | rAF guard: scalar coords + dirty flag |
+| `ctx.fillStyle='var(--x)'` | Canvas không parse CSS vars | hex: `'#8b949e'` |
+| `innerHTML` trong vòng lặp | parser + reflow | `textContent` |
+| Quên `cancelAnimationFrame` | rAF chạy tiếp sau khi rời chuột | cancel trong leave handler |
 
 ---
 
-## Checklist
+## Checklist `.md` + `.html`
 
-Ngầm định: mọi item chịu **Nguyên tắc xuyên suốt** (ít văn · trình tự hợp lý · giải thích bản chất · không lặp · mạch toán). Dưới đây chỉ liệt kê điểm kiểm riêng.
+Ngầm định: mọi item chịu **10 Nguyên tắc xuyên suốt** và **§Phỏng vấn ngữ cảnh**. Dưới đây chỉ liệt kê điểm kiểm riêng của từng loại.
 
 **`.md`:** data-flow structure · so sánh→bảng✓ · pipeline→ASCII · metrics bảng cuối · đủ để `.html` dựng 100% không cần source.
 
@@ -229,20 +152,39 @@ Ngầm định: mọi item chịu **Nguyên tắc xuyên suốt** (ít văn · t
 
 Developer tự code lại để học. Plan **tự chứa**: `§0` dẫn giải toán (mạch Phần A, không nhảy sang doc khác) → các task xếp theo thứ tự phụ thuộc (nền trước, dùng lại sau), mỗi task chỉ cần thứ đã có.
 
-**Mỗi task gồm:** Files (path chính xác) · Interfaces (consumes/produces, chữ ký đầy đủ) · bảng "toán→code" (trỏ §0) · bảng "self-doc & tối ưu" (lý do mỗi quyết định) · **code hoàn chỉnh dán-được** (comment trỏ công thức) · kiểm chứng bảng input→kỳ vọng (nêu rõ nếu không kèm code test).
+## C.1 — Editor-first trong Unity
 
-**Code — 4 đảm bảo bắt buộc:**
+Áp **Nguyên tắc 8** vào Unity, khi chạm tới MonoBehaviour / prefab / scene / asset.
+
+Thứ gì gán được lúc authoring thì gán ở Editor — reference kéo thả vào `[SerializeField]`, component add trên prefab, số tinh chỉnh phơi ra Inspector, preset thành ScriptableObject. Đang viết code chỉ để **tìm, nối, hoặc gán** thứ vốn đã tồn tại lúc authoring (`GetComponent`, `Find`, `AddComponent`, `Resources.Load`, hằng số feel hardcode) → đặt sai chỗ.
+
+Lý do gốc: dữ liệu serialize sửa được **không cần compile**, ai cũng chỉnh được, và thiếu thì lộ ra ô trống trong Inspector chứ không nổ giữa gameplay.
+
+Ngoại lệ tự nhiên là thứ chưa tồn tại lúc authoring — object spawn runtime, số lượng động, dữ liệu từ server. Kể cả vậy: wire sẵn trong prefab rồi `Instantiate`, đừng dựng hierarchy bằng code.
+
+Plan chạm scene/prefab thì mô tả thao tác Editor **như một bước thật**, không lặng lẽ thay bằng code cho tiện viết.
+
+## C.2 — Vừa đủ, áp vào code
+
+**Nguyên tắc 6** nói *cái gì mới được thêm*; các dạng hay gặp khi viết code — nhu cầu thật của từng loại: interface cần **implementation thứ hai** · tham số cần **call site truyền khác mặc định** · guard cần **input chạm được biên** · tối ưu cần **hot path đã xác nhận** (§Phỏng vấn) · tách lớp cần **trách nhiệm thật sự khác**, không phải "cho gọn mắt".
+
+`§0` của plan cân độ sâu theo **Nguyên tắc 5** — công thức xấp xỉ đủ dùng cho game feel là mặc định, không tự nâng lên mô hình đầy đủ (Nguyên tắc 10).
+
+**Mỗi task gồm:** Files (path chính xác) · Interfaces (consumes/produces, chữ ký đầy đủ) · bảng "toán→code" (trỏ §0) · bảng "self-doc & tối ưu" (lý do mỗi quyết định) · **code hoàn chỉnh dán-được** (comment trỏ công thức) · **Editor setup** (khi chạm scene/prefab — §C.1) · kiểm chứng bảng input→kỳ vọng (nêu rõ nếu không kèm code test).
+
+**Code — 5 đảm bảo bắt buộc:**
 
 | Đảm bảo | Cụ thể |
 |---|---|
-| **Đúng đắn tuyệt đối** | khớp 100% công thức §0; mỗi nghiệm đã kiểm mốc trước khi vào code; comment trỏ công thức nguồn (`// B = (v₀+ζω₀y₀)/ω_d`). |
-| **Tối ưu CPU** | precompute hằng nặng (exp/sqrt/sincos, chia) 1 lần ngoài hot path; chia→nhân; guard thoát sớm; cache trung gian; `AggressiveInlining` wrapper mỏng. |
-| **Giảm GC** | `struct` thay `class`; `ref`/`in` thay copy; không `new` ref-type/LINQ/closure/string trong hot path; reuse buffer. |
-| **Self-document** | tên nói rõ mục đích (`SolveAnalytic`≠`Process`); boolean là câu hỏi (`IsActive`); XML doc + công thức + "tại sao" ở API public; comment chỉ nói *tại sao*. |
+| **Vừa đủ** (Nguyên tắc 6) | đơn giản nhất trong các cách **cùng đúng**; mỗi hàm · tham số · nhánh · lớp trừu tượng đều gọi được tên chỗ hỏng nếu xóa đi. |
+| **Đúng với công thức đã chốt** | code khớp 100% công thức §0; mỗi nghiệm đã kiểm mốc trước khi vào code; comment trỏ công thức nguồn (`// B = (v₀+ζω₀y₀)/ω_d`). Là "code khớp công thức", **không** phải "công thức phải khớp vật lý" — Nguyên tắc 7. |
+| **Tối ưu CPU** — *chỉ ở hot path đã xác nhận (§Phỏng vấn)* | precompute hằng nặng (exp/sqrt/sincos, chia) 1 lần ngoài hot path; chia→nhân; guard thoát sớm; cache trung gian; `AggressiveInlining` wrapper mỏng. **Ngoài hot path: chọn bản dễ đọc nhất.** |
+| **Giảm GC** — *bắt buộc ở hot path; ngoài đó chỉ khi không đánh đổi độ rõ* | `struct` thay `class`; `ref`/`in` thay copy; không `new` ref-type/LINQ/closure/string trong hot path; reuse buffer. |
+| **Self-document** | tên nói rõ mục đích (`SolveAnalytic`≠`Process`); boolean là câu hỏi (`IsActive`); XML doc ở API public — **`<param>` bắt buộc cho mọi tham số có contract không hiển nhiên** (miền giá trị, đơn vị, ai cấp); comment chỉ nói *tại sao*. |
 
-**Kiểm riêng:** code đủ 4 đảm bảo. (Ít văn · trình tự · không lặp: theo Nguyên tắc xuyên suốt.)
+**Kiểm riêng:** có mục "Ngữ cảnh đã chốt" · **mọi hàm có caller thật hoặc lý do phòng-xa chữ ký** · task chạm scene/prefab có "Editor setup" (§C.1) · code đủ 5 đảm bảo. (Phần còn lại — vừa đủ, độ sâu toán, bằng chứng — theo Nguyên tắc xuyên suốt.)
 
-**Verify công thức ↔ code trước khi chốt** (không khẳng định suông, phải có bằng chứng):
+**Verify công thức ↔ code trước khi chốt** — cách lấy bằng chứng cụ thể cho **Nguyên tắc 9**:
 - **Đối chiếu từng số hạng** — mỗi hộp `$$boxed$$` map thẳng 1 dòng code, kiểm từng hệ số/dấu (vd `ẋ_cos=A·e^(−λt)[−λcos−ωsin]` ↔ `env*(-lambda*c - omega*s)`).
 - **Kiểm mốc chéo** — giá trị biên trong §0 phải khớp bảng kiểm chứng của task (vd `ẋ(0)=−λA` ↔ `GetVelocity(Cos,·,2,0)=−2`).
 - **Đạo hàm số** khi có hàm đạo hàm — `f'(t) ≈ (f(t+h)−f(t−h))/2h`, `h=1e-4`, phải khớp công thức giải tích.

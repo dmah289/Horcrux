@@ -3,8 +3,14 @@
 Danh sách các static utility class dự kiến bổ sung cho `Horcrux.Runtime.Utilities.PhysXHelper`.
 Tất cả phải tuân thủ: **zero-GC** (thuần tính toán `float`/`struct`, không alloc/LINQ/closure trong hot path), self-documenting naming, XML doc đầy đủ, SOLID.
 
+> **Item combo-exclusive đã chuyển đi:** `ComboMeter` · `ChainReaction` · `HapticPattern` (ramp) và 2 hộp công thức "Combo ASMR" → xem `Runtime/Implementations/Composites/Combo/ComboSystem.md` § *Nguyên liệu đã chuyển từ Pendings.md*. Các item **dùng chung** vẫn ở đây, chỉ thêm nhãn trỏ plan.
+
 Đã có:
 - `HarmonicOscillator` (dao động điều hòa đơn giản, Sin/Cos).
+- `SquashStretch` — ✅ **đã triển khai** (`Horcrux.Runtime.Utilities.PhysXHelper.SquashStretch`): `GetVolumePreservingScale`, `GetSquashFromImpact`, `GetDirectionalStretch`, `GetSquashStretch`.
+- `AudioPitchHelper` — ✅ **đã triển khai** (`Horcrux.Runtime.Utilities.AudioHelper`): `SemitonesToRatio`, `GetRampedPitch`, `GetDetunedPitch`.
+- `DampedOscillator` — ✅ **đã triển khai** (envelope · displacement · velocity · settling-time, bản `decay` và bản `halfLife`).
+- `GeometryHelper` — ⚠️ **một phần**: hiện chỉ có `RandomPointInAnnulus`/`RandomPointIn3DAnnulus`. Phần khoảng cách/closest-point (cần cho `StaggerHelper`) **chưa có**.
 - `Easing` — ✅ **đã triển khai** dưới dạng `Easer` ở namespace riêng `Horcrux.Runtime.Tweening.Easing` (10 họ Quad…Bounce × In/Out/InOut + Linear; entry point `Easer.Evaluate(EaseType, t)`). Mọi tham chiếu `← Easing` phía dưới trỏ tới class này — **không** làm lại trong `PhysXHelper`.
 - `InterpolationHelper` — ✅ **đã triển khai** dưới dạng `Interpolator` (`Horcrux.Runtime.Utilities.PhysXHelper`). Đã có: `InverseLerpUnclamped(+Precomputed)`, `Remap(+Precomputed)`, `SmootherStep` (quintic 6t⁵−15t⁴+10t³), `ExpDecay`/`DecayFactor` (`1−e^(−k·dt)`), `ExpDecayHalfLife(+Precomputed)`. Còn thiếu (bổ sung sau nếu cần): `SmoothStep` cubic (3t²−2t³). Mọi tham chiếu `← InterpolationHelper` phía dưới trỏ tới class này.
 
@@ -70,9 +76,10 @@ Mục tiêu: tạo cảm giác "đã tay, đã mắt, đã tai" (satisfying feed
 
 ### A. Juice thị giác
 
-#### `SquashStretch` ⭐ ưu tiên cao — biến dạng nén/giãn
+#### ~~`SquashStretch`~~ — ✅ **ĐÃ XONG** (`PhysXHelper/SquashStretch.cs`)
 - Giữ nguyên thể tích: nén theo Y thì phình theo X (`scaleX = 1/√scaleY`).
 - Ứng dụng: nhân vật nhảy/đáp đất, nút bấm, item pickup. Bí quyết "sống động" như jelly.
+- Đang được dùng bởi: `ComboMeter` (cú nảy mỗi nhịp) — `ComboSystem.md` Task 8.
 
 #### `Wobble` / `Jelly` ⭐ ưu tiên cao — rung rinh như thạch
 - Kết hợp `DampedOscillator` tạo hiệu ứng lắc lư tắt dần sau khi chạm/thả. Rất ASMR.
@@ -94,6 +101,7 @@ Mục tiêu: tạo cảm giác "đã tay, đã mắt, đã tai" (satisfying feed
 #### `Shake` ⭐ ưu tiên cao — rung màn hình / vật thể
 - Rung theo **Perlin noise** (mượt, không giật cục), biên độ tắt dần.
 - **Trauma-based shake** (biên độ = trauma²) — kỹ thuật kinh điển của game feel.
+- 📄 **Đã có plan:** toán ở `TraumaShake.cs`, driver ở `CameraPunchChannel` → `Implementations/Composites/Feedback/FeedbackSystem.md` (Task 1, Task 6).
 
 #### `Anticipation` — lấy đà
 - Lùi nhẹ trước khi bung ra (co người trước khi nhảy). Tạo "trọng lượng".
@@ -102,23 +110,24 @@ Mục tiêu: tạo cảm giác "đã tay, đã mắt, đã tai" (satisfying feed
 
 #### `Hitstop` / `FreezeFrame` ⭐ ưu tiên cao — khựng thời gian khi va chạm
 - Dừng/làm chậm cực ngắn (vài chục ms) lúc đòn trúng. Tạo cảm giác "nặng đô" nhất trong combat.
+- 📄 **Đã có plan:** `HitstopChannel` → `FeedbackSystem.md` Task 5. Lịch `timeScale` 2 pha **inline trong kênh** (chưa tách file — chưa có user thứ hai).
 
 #### `TimeScaleHelper` — slow-mo / ramp
 - Ease timeScale mượt vào/ra slow motion.
+- ⏳ **Chưa làm.** Phần lịch 2 pha đã có sẵn (inline trong `HitstopChannel`); khi làm slow-mo dài thì **tách nó ra đây** rồi cho cả hai dùng chung, cộng API `Begin/End` ref-count (hitstop là cue một-lần, slow-mo là trạng thái có vào/ra).
 
 ### D. Juice âm thanh (ASMR thực thụ)
 
-#### `AudioPitchHelper` ⭐ ưu tiên cao — biến điệu cao độ
-- **Pitch ramp**: chuỗi hành động liên tiếp tăng dần pitch (combo counter, nhặt coin liên hoàn) — gây nghiện.
-- Random pitch nhẹ (±semitone) chống lặp âm nhàm chán.
+#### ~~`AudioPitchHelper`~~ — ✅ **ĐÃ XONG** (`Utilities/AudioHelper/AudioPitchHelper.cs`)
+- **Pitch ramp**: `GetRampedPitch(step, semitonesPerStep, maxSemitones)` — chuỗi hành động liên tiếp tăng dần pitch.
+- Random pitch nhẹ: `GetDetunedPitch(signedUnit, rangeSemitones)` chống lặp âm nhàm chán.
+- Đang được dùng bởi: `AudioPitchRampChannel` (`FeedbackSystem.md` Task 5), là **xương sống thính giác của combo**.
 
 #### `AudioFeedback` — mapping cường độ va chạm → âm lượng/pitch.
+- Một phần đã có: `AudioCatalog` khai `VolumeRange`/`PitchSemitoneRange` per-entry → `Implementations/Foundations/Audio/AudioSystem.md`.
 
-### Combo "ASMR đã nhất"
-Kết hợp 3 thứ cùng lúc trong 1 sự kiện:
-> **SquashStretch + Hitstop + AudioPitchHelper (pitch ramp)**
-
-Ví dụ nhặt coin liên hoàn: coin nảy squash-stretch → khựng 30ms → tiếng "ting" pitch tăng dần. Công thức juice kinh điển.
+### ~~Combo "ASMR đã nhất"~~ — ✅ đã chuyển
+> Công thức **SquashStretch + Hitstop + pitch ramp** đã chuyển sang `Implementations/Composites/Combo/ComboSystem.md` § *Nguyên liệu đã chuyển từ Pendings.md* — nơi nó được hiện thực bằng **một cue duy nhất** có mặt trong 3 bảng cue.
 
 ---
 
@@ -145,8 +154,9 @@ ASMR đặc thù cho game puzzle: đến từ **tactile (chạm), order (trật 
 #### `StaggerHelper` / `RippleDelay` ⭐ ưu tiên cao — làm trễ theo sóng
 - `delay = dist × factor` từ tâm. Hiệu ứng lan tỏa gợn sóng khi clear cụm. Xương sống của mọi cascade satisfying.
 
-#### `ChainReaction` ⭐ ưu tiên cao — combo lan truyền
-- Chuỗi kích hoạt liên tiếp + pitch ramp tăng dần (nối `AudioPitchHelper`). Cảm giác đổ domino gây nghiện.
+#### ~~`ChainReaction`~~ — ✅ **đã chuyển sang `ComboSystem.md`** § *Giai đoạn 2*
+- Chuỗi kích hoạt liên tiếp + pitch ramp tăng dần. Cảm giác đổ domino gây nghiện.
+- Thiết kế đầy đủ (`IStaggerPolicy` + `ChainReactionSequencer`) và **3 lý do hoãn** đã ghi ở đó. Điều kiện bắt đầu: có `StaggerHelper` + một board thật làm caller.
 
 #### `Cascade` / `FallSettle` — rơi & lắng xuống
 - Vật rơi lấp chỗ trống, đáp đất với squash + wobble tắt dần. Rất hợp `falling_sand`.
@@ -178,6 +188,8 @@ ASMR đặc thù cho game puzzle: đến từ **tactile (chạm), order (trật 
 
 ### Combo "ASMR puzzle đã nhất"
 > **MagneticSnap + GridSnapFeedback (tick) + StaggerHelper (clear chuỗi) + pitch ramp**
+>
+> *(Giữ ở đây vì trọng tâm là **snap/đặt piece**, không phải combo. Phần "clear chuỗi + pitch ramp" đi qua `ComboSystem.md` § Giai đoạn 2.)*
 
 Ví dụ đặt piece hoàn thành hàng: piece hút "khục" vào ô → tick → cả hàng pop lan sóng từ điểm đặt → pitch tăng dần → suck-in giải tỏa.
 
@@ -191,6 +203,8 @@ Các mảng bổ sung mở rộng cảm giác ra ngoài đối tượng: camera,
 
 #### `CameraPunch` / `ZoomPunch` ⭐ ưu tiên cao — giật zoom
 - Zoom vào/ra nhanh rồi spring về khi impact. "Đấm" vào cảm giác cực mạnh.
+- 📄 **Phần shake đã có plan:** `CameraShakeChannel` (← `TraumaShake`) + `IFeedbackCamera`/`FeedbackCameraRig` → `FeedbackSystem.md` Task 6.
+- ⏳ **Phần zoom punch chưa làm** (cố ý cắt khỏi bản đầu — shake đã đủ trục thị giác). Nhưng `IFeedbackCamera.ApplyZoom` **đã có sẵn** trong interface, nên thêm driver về sau chỉ là thêm code trong một class, không breaking. Dùng `DampedOscillator` với `WaveStyle.Cos` (biên độ đầy ngay tại `t=0` = cú đấm tức thì).
 
 #### `LookAhead` / `CameraLead` — nhìn trước hướng di chuyển
 - Camera lệch nhẹ theo hướng player đi (spring). Cảm giác "có dự đoán".
@@ -204,9 +218,13 @@ Các mảng bổ sung mở rộng cảm giác ra ngoài đối tượng: camera,
 
 #### `HapticHelper` ⭐ ưu tiên cao — rung theo ngữ cảnh
 - Wrap các pattern rung (light/medium/heavy/success/warning). Đồng bộ haptic + visual + audio = ASMR đa giác quan hoàn chỉnh trên điện thoại. Mảnh còn thiếu quan trọng nhất.
+- 📄 **Đã có plan:** `IHapticService.PlayCustom` + `IHapticBackend` (**rung một nhịp có biên độ điều khiển được**) → `Implementations/Foundations/Haptics/HapticSystem.md`. 4 file, backend 2 member.
+- ⏳ Cố ý cắt khỏi bản đầu, thêm lại đều **additive**: bộ **preset trung tính** (`EHapticPreset` + `Play(preset)`) — đường preset chết trong v1 vì caller duy nhất dùng ramp biên độ; **rung liên tục** (`Begin/End` + ref-count + vòng pulse).
 
-#### `HapticPattern` — chuỗi rung nhịp điệu
+#### ~~`HapticPattern`~~ — ✅ **đã chuyển**, và **đổi tên** thành `HapticRamp`
 - Pitch ramp phiên bản xúc giác: combo rung tăng dần cường độ.
+- Hiện thực: `HapticRampChannel` → `FeedbackSystem.md` Task 5.
+- ⚠️ **Vì sao đổi tên:** `PendingSystems.md` §9 đã dùng tên `HapticPattern` cho *struct mô tả MỘT cú rung*. Hai thứ khác nhau — một cú rung ≠ một chuỗi rung tăng dần.
 
 ### K. VFX động (thuần toán, feed cho shader/particle)
 
@@ -228,7 +246,8 @@ Các mảng bổ sung mở rộng cảm giác ra ngoài đối tượng: camera,
 #### `FloatingText` — số bay lên rồi tan
 - Damage/điểm bật lên với overshoot + fade. Feedback tức thì.
 
-#### `ComboMeter` — thanh combo phồng/co theo streak.
+#### ~~`ComboMeter`~~ — ✅ **đã chuyển sang `ComboSystem.md`** (Task 8)
+- Thanh combo phồng/co theo streak. Bản hiện thực: thanh co theo **cửa sổ combo còn lại** + nảy (`SquashStretch` + `EaseType.OutBack`) mỗi nhịp + đổi màu theo bậc.
 
 ### M. Môi trường sống động (ambient juice — nền ASMR)
 
@@ -241,10 +260,8 @@ Các mảng bổ sung mở rộng cảm giác ra ngoài đối tượng: camera,
 
 #### `AmbientDrift` — trôi lững lờ (mây, bụi, bong bóng) bằng noise 2D.
 
-### Combo "đa giác quan hoàn hảo"
-> **CameraPunch + HapticHelper + RippleEffect + AudioPitchHelper**
-
-Một cú chạm mà màn hình giật zoom + điện thoại rung + sóng lan ra + âm thanh đồng bộ trong ~50ms → đỉnh cao game feel.
+### ~~Combo "đa giác quan hoàn hảo"~~ — ✅ đã chuyển
+> Công thức **CameraPunch + Haptic + Ripple + pitch ramp** đã chuyển sang `ComboSystem.md` § *Nguyên liệu đã chuyển từ Pendings.md* — nơi nó được hiện thực bằng **một cue duy nhất** có mặt trong 4 bảng cue của `FeedbackSystem.md`. Ngưỡng đồng thời ~50ms và lý do kiến trúc dẫn giải ở `FeedbackSystem.md` §0.1. (`RippleEffect` chưa có kênh — mở rộng sau của hệ Feedback.)
 
 ---
 
@@ -258,7 +275,7 @@ Làm trước tiên vì mọi thứ khác đều gọi tới. Thuần `float`/`s
 2. `HarmonicOscillator` — ✅ đã có.
 3. `InterpolationHelper` — ✅ **đã xong** (`Interpolator`). `Remap`, `SmootherStep`, exp-decay lerp độc lập framerate.
 4. **`RandomHelper`** — gaussian, weighted, jitter, shuffle (dùng cho shake/granular). **Item nền còn lại → làm kế tiếp.**
-5. **`GeometryHelper`** — khoảng cách, closest-point, giao điểm (dùng cho stagger/snap).
+5. **`GeometryHelper`** — ⚠️ **một phần**: đã có random-point-in-annulus. Còn thiếu **khoảng cách, closest-point, giao điểm** — là **chặn** của `StaggerHelper` (mục 20) và do đó của `ChainReaction`.
 6. **`AngleHelper`** — chuẩn hóa góc, shortest-delta, xoay vector 2D.
 
 ### Tầng 1 — Nguyên hàm vật lý (chỉ ← Tầng 0)
@@ -270,22 +287,22 @@ Các "động cơ" chuyển động mà lớp juice sẽ nhờ tới.
 
 ### Tầng 2 — Juice nguyên tử (← Tầng 0–1)
 Hiệu ứng đơn lẻ, là "viên gạch" cho các combo tầng trên.
-11. **`SquashStretch`** ⭐ ← `Easing`. Viên gạch thị giác dùng khắp nơi.
-12. **`Overshoot`** ← `Easing` (EaseOutBack). Dùng cho pop/progress/floating text.
+11. `SquashStretch` — ✅ **đã xong**. Viên gạch thị giác dùng khắp nơi (đang dùng ở `ComboMeter`).
+12. **`Overshoot`** ← `Easing` (EaseOutBack). Dùng cho pop/progress/floating text. *(Plan: `PhysXHelper/2026-07-25-overshoot.md`)*
 13. **`Wobble` / `Jelly`** ← `DampedOscillator`.
 14. **`Pulse` / `Breathing`** ← `HarmonicOscillator`.
-15. **`Shake`** ⭐ (trauma-based) ← `RandomHelper`/Perlin + `DampedOscillator`.
-16. **`ColorFlash`** ← `InterpolationHelper`.
-17. **`TimeScaleHelper`** ← `Easing`.
-18. **`AudioPitchHelper`** ⭐ (pitch ramp) ← `InterpolationHelper`.
-19. **`HapticHelper`** ⭐ — wrapper rung (độc lập, mảnh đa giác quan còn thiếu).
+15. **`Shake`** ⭐ (trauma-based) — 📄 plan: `TraumaShake.cs` ở `FeedbackSystem.md` Task 1. Dùng `noise.cnoise`, **không** cần `RandomHelper`.
+16. **`ColorFlash`** ← `InterpolationHelper`. *(Plan: `PhysXHelper/2026-07-25-colorflash.md`)*
+17. **`TimeScaleHelper`** ← `Easing` — 📄 plan (phần hitstop): `FeedbackSystem.md` Task 2.
+18. `AudioPitchHelper` — ✅ **đã xong** (pitch ramp). Xương sống thính giác của combo.
+19. **`HapticHelper`** ⭐ — 📄 plan: `Foundations/Haptics/HapticSystem.md` (`IHapticService` + `IHapticBackend`).
 20. **`StaggerHelper` / `RippleDelay`** ⭐ ← `GeometryHelper` (delay theo khoảng cách).
 
 ### Tầng 3 — Hành vi tổng hợp (← Tầng 0–2)
 Mỗi class ghép vài viên gạch tầng 2 thành một hành vi hoàn chỉnh.
-21. **`Hitstop` / `FreezeFrame`** ⭐ ← `TimeScaleHelper`.
+21. **`Hitstop` / `FreezeFrame`** ⭐ ← `TimeScaleHelper` — 📄 plan: `HitstopChannel` ở `FeedbackSystem.md` Task 6.
 22. **`CameraFollowSmooth`** ← `SpringDamper` (+ deadzone).
-23. **`CameraPunch` / `ZoomPunch`** ⭐ ← `SpringDamper`/`Overshoot`.
+23. **`CameraPunch` / `ZoomPunch`** ⭐ — 📄 plan: `CameraPunchChannel` ở `FeedbackSystem.md` Task 6. Dùng `DampedOscillator` (đã có) thay `SpringDamper`/`Overshoot` (chưa có).
 24. **`LookAhead`** ← `SpringDamper`.
 25. **`MagneticSnap`** ⭐ ← `SpringDamper` + `Easing`.
 26. **`GridSnapFeedback`** ← `SquashStretch` + `Shake` + `AudioPitchHelper`/`HapticHelper` (tick).
@@ -301,17 +318,29 @@ Mỗi class ghép vài viên gạch tầng 2 thành một hành vi hoàn chỉnh
 36. **`SortSettle`** ← `StaggerHelper` + `Easing`.
 37. **`ProceduralSway`** ⭐ ← noise nhiều tần số (Perlin).
 38. **`IdleBreathe`** ← `Pulse`.
-39. **`HapticPattern`** ← `HapticHelper` (chuỗi rung).
-40. Phụ trợ VFX/ambient: `TrailFeedback`, `DissolveFeedback`, `GradientCycle`, `FlowFeedback`, `PileGrowth`, `ParallaxHelper`, `AmbientDrift`, `Anticipation`, `DollyZoom`, `ComboMeter`.
+39. ~~`HapticPattern`~~ → **đổi tên `HapticRamp`**, đã chuyển: `HapticRampChannel` ở `FeedbackSystem.md` Task 5.
+40. Phụ trợ VFX/ambient: `TrailFeedback`, `DissolveFeedback`, `GradientCycle`, `FlowFeedback`, `PileGrowth`, `ParallaxHelper`, `AmbientDrift`, `Anticipation`, `DollyZoom`. *(`ComboMeter` đã chuyển sang `ComboSystem.md` Task 8.)*
 
 ### Tầng 4 — Orchestrator (← mọi tầng dưới)
 Dàn dựng nhiều hiệu ứng thành "sequence" — làm cuối cùng vì cần tất cả nguyên liệu.
-41. **`ChainReaction`** ⭐ ← `StaggerHelper` + `AudioPitchHelper` (+ pitch ramp).
-42. **`SatisfyingClear`** ⭐ ← `ColorFlash` + `StaggerHelper` + suck-in (`Easing`) + burst.
-43. **`CompletionSequence`** ← nhiều class: crescendo âm thanh + particle + camera + haptic.
+
+> ⚠️ **Tầng này giờ có một nhà chung.** Việc "dàn dựng nhiều hiệu ứng cùng lúc" đã được SDK-hoá thành hệ **Feedback Orchestrator** (`Implementations/Composites/Feedback/FeedbackSystem.md`): một *cue* → fan-out 4 kênh (audio · haptic · hitstop · camera). Ba orchestrator dưới đây **không** nên tự gọi service trực tiếp nữa — chúng chỉ nên bắn cue. Hai bộ dàn dựng song song là anti-pattern #4 của `PendingSystems.md`.
+
+41. ~~`ChainReaction`~~ — ✅ đã chuyển sang `ComboSystem.md` § *Giai đoạn 2* (chưa làm: chặn bởi `StaggerHelper` + chưa có board caller).
+42. **`SatisfyingClear`** ⭐ ← `ColorFlash` + `StaggerHelper` + suck-in (`Easing`) + burst. **Nên** bắn cue qua `IFeedbackDispatcher` thay vì gọi audio/haptic trực tiếp.
+43. **`CompletionSequence`** ← crescendo âm thanh + particle + camera + haptic. Cùng ghi chú với mục 42.
 
 ---
 
 ### Đường đi ngắn nhất tới "bản demo ASMR đã tay" cho falling_sand
 Nếu muốn thấy kết quả sớm nhất, làm theo lát cắt dọc này (mỗi bước đều chạy được):
-~~`Easing`~~ ✅ → **`SpringDamper`** (bước kế tiếp) → `SquashStretch` → `Shake` → `AudioPitchHelper` + `HapticHelper` → `StaggerHelper` → `MagneticSnap` → `GranularSettle` → `SatisfyingClear`.
+~~`Easing`~~ ✅ → ~~`SquashStretch`~~ ✅ → ~~`AudioPitchHelper`~~ ✅ → **`SpringDamper`** → `Shake` → `HapticHelper` → `StaggerHelper` → `MagneticSnap` → `GranularSettle` → `SatisfyingClear`.
+
+### Lát cắt dọc thứ hai — đã có plan đầy đủ: "combo đa giác quan"
+Không cần `SpringDamper`, chạy được ngay và cho ra thứ **cảm được bằng 3 giác quan**. 5 plan, làm theo đúng thứ tự:
+
+1. `Implementations/Foundations/Ticker/TickerSystem.md` — 1 nguồn tick + `IOptionalService` + `DeferredList`
+2. `Implementations/Foundations/Haptics/HapticSystem.md` — rung có biên độ (điều kiện của haptic ramp)
+3. `Implementations/Foundations/Audio/AudioSystem.md` — SFX + **pitch** (điều kiện của pitch ramp)
+4. `Implementations/Composites/Feedback/FeedbackSystem.md` — cue → 4 kênh; **kèm** hiện thực `TraumaShake` + `TimeScaleHelper`
+5. `Implementations/Composites/Combo/ComboSystem.md` — lõi combo + `ComboMeter` + demo nghiệm thu

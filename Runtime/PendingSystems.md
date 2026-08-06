@@ -63,6 +63,7 @@ namespace Horcrux.Runtime.Abstractions
     }
 
     // Thêm mới: service TUỲ CHỌN — cố tình KHÔNG có `Service`.
+    // 📄 Đã có plan: TickerSystem.md Task 1 (file Abstractions/Foundations/IOptionalService.cs).
     public interface IOptionalService<out T>
     {
         public static bool TryGet(out T service) => Sisus.Init.Service.TryGet(out service);
@@ -150,8 +151,26 @@ Mỗi hệ chỉ coi là xong khi đủ 5 điều: ① contract tách khỏi imp
 | 19 | 💎 Adaptive Difficulty (Glicko-2) | Foundation *(lõi toán)* + Composite *(áp dụng)* | Thấp — **IP cao** | 4 | §2, §4, §15 |
 | 20 | 💎 LiveOps Module Host | Composite | Bắt buộc | 4 | §2, §4, §7, §12, §13, §14 |
 | 21 | 💎 Ads Pacing & Monetization Scenario | Composite | Thấp — **port dễ** | 4 | §13, §4, RemoteConfig |
+| 22 | **Feedback Orchestrator** (cue → đa giác quan) 📄 | Composite | Cao | 3 | §4, §8, §9 *(2 sau là optional)* |
+| 23 | **Combo** (streak · tier · multiplier) 📄 | Composite | Trung bình | 4 | §4 · §22 *(optional)* |
 
-💎 = giá trị IP cao, đáng nhân rộng dù ít nơi dùng.
+💎 = giá trị IP cao, đáng nhân rộng dù ít nơi dùng. 📄 = **đã có plan triển khai chi tiết**, xem bảng dưới.
+
+## Hệ đã có plan chi tiết
+
+Năm hệ dưới đây đã được viết plan theo `DOCS_SKILL` Phần C (tự chứa, có code dán-được). Plan cố ý **thu hẹp phạm vi chỉ đủ cho Combo** — phần còn lại của mục tương ứng trong tài liệu này **vẫn còn hiệu lực** và chưa được lên plan.
+
+| Hệ | File plan | Trong plan | **Ngoài** plan (vẫn ở tài liệu này) |
+|---|---|---|---|
+| §4 Time & Ticker | `Implementations/Foundations/Ticker/TickerSystem.md` | `ITicker` + **2 nhịp** (`ITickable`, `IPauseAware`) + 1 `Update` duy nhất, `IOptionalService<T>` (§0.2), `DeferredList<T>`. 6 file | **nhịp 1 Hz** (`ISecondTickable`), `Destroyed` event, `ITimeService`, chống tua giờ, `Countdown`, `TimeFormatter` |
+| §9 Haptics | `Implementations/Foundations/Haptics/HapticSystem.md` | `PlayCustom(HapticPattern)` + `IHapticBackend` (**2 member**) + backend Android có **biên độ**. 6 file | **bộ preset** (`EHapticPreset` + `Play(preset)`), rung liên tục (`Begin/End` + ref-count), waveform, impl vendor, `IHapticSettings` |
+| §8 Audio | `Implementations/Foundations/Audio/AudioSystem.md` | ⚠️ **SFX 2D + `pitchScale`** (xem cảnh báo ở §8), catalog SO, throttle theo clip, voice gán ở Inspector. 6 file | **SFX 3D** (`PlaySfxAt`), music + crossfade, `PauseAll/ResumeAll`, `EAudioSelectMode`, `IAudioSettings`, mixer group |
+| §22 Feedback | `Implementations/Composites/Feedback/FeedbackSystem.md` | `FeedbackCue {Id, Step}` + dispatcher + 4 kênh (audio · haptic · hitstop · **shake**); **kèm** `TraumaShake`. Tham số cue serialize **trên chính kênh** — không asset trung gian. 12 file | zoom punch (thêm `IFeedbackCameraZoom` **riêng** theo ISP — không sửa interface cũ), `FeedbackCue.Intensity`, bảng cue dạng SO, kênh particle/text/ripple, slow-mo dài, kênh thêm lúc runtime |
+| §23 Combo | `Implementations/Composites/Combo/ComboSystem.md` | `ComboTracker` (C# thuần), 3 window policy, hệ số nhân Linear, bậc = `int[]` trên Inspector, bridge, `ComboMeter`, demo driver. 11 file | nhãn/hệ số/cue riêng theo bậc (thay `int[]` bằng SO + interface), đường nhân điểm khác, multi-track, lưu kỷ lục, telemetry, `ChainReaction` |
+
+> **Nguyên tắc phạm vi của 5 plan này** — luật `DOCS_SKILL` NT 6 *"xóa nó đi thì hỏng ở đâu"*: mọi mục ở cột "ngoài plan" đều **không gọi được tên chỗ hỏng** ở bản đầu, và thêm lại đều **additive** (thêm file / method / interface mới, hoặc đổi ctor nội bộ). Không mục nào đòi đổi chữ ký **public** đang có.
+>
+> Chỉ **một** chỗ cố ý phòng xa vì sửa sau là breaking thật: `PlaySfx(…, pitchScale)` — thêm tham số sau nghĩa là sửa mọi call-site. Hai chỗ từng phòng xa nhưng đã bỏ vì tìm được cách tốt hơn: `FeedbackCue.Intensity` (`Step` đã đủ) và `IFeedbackCamera.ApplyZoom` (dùng interface thứ hai theo ISP thì không breaking implementer nào).
 
 ## Thứ tự phụ thuộc
 
@@ -163,9 +182,18 @@ TẦNG 2  ┌─ 7 UI Navigator ◄── 8 Audio ── 9 Haptics ── 12 Ana
         │        └─► 10 Button ── 11 Toast/Badge
         ▼
 TẦNG 3  ┌─ 14 Economy ── 15 Level Library ── 16 Tutorial ── 17 TabNav ── 18 Rating
+        │  └─ 22 Feedback Orchestrator ◄── §4 (bắt buộc) + §8, §9 (optional)
         ▼
 TẦNG 4  └─ 19 Adaptive Difficulty ── 20 LiveOps Host ── 21 Ads Pacing
-              (tiêu thụ hầu hết tầng dưới qua interface → làm cuối)
+        │  (tiêu thụ hầu hết tầng dưới qua interface → làm cuối)
+        └─ 23 Combo ◄── §4 (bắt buộc) + §22 (optional)
+```
+
+**Lát cắt dọc "combo đa giác quan"** — 5 hệ đã có plan, chạy được độc lập với 21 hệ còn lại:
+
+```
+§4 Ticker ──┬─► §9 Haptics ─┐
+            └─► §8 Audio ───┴─► §22 Feedback ──► §23 Combo
 ```
 
 **Đọc bảng này trước khi bắt đầu bất kỳ hệ nào.** Làm ngược thứ tự = phải quay lại sửa nền.
@@ -462,6 +490,9 @@ LoadAsync(sceneRef)
 ---
 
 ## 4. Time & Ticker — `Foundation`
+
+> 📄 **Đã có plan (phần Ticker):** `Implementations/Foundations/Ticker/TickerSystem.md` — `ITicker` + `ITickable`/`ISecondTickable`/`IPauseAware`, một `Update` duy nhất, và hai nền dùng chung `IOptionalService<T>` (§0.2 của tài liệu này) + `DeferredList<T>`.
+> **Chưa lên plan, vẫn ở mục này:** `ITimeService`, `IServerTimeProvider`, chống tua giờ, `Countdown` struct, `TimeFormatter`.
 
 **Bài toán.** Hai nhu cầu khác nhau nhưng cùng gốc "thời gian":
 1. **Nguồn thời gian tin được** — chống người chơi tua đồng hồ máy để nhận thưởng sớm.
@@ -877,6 +908,13 @@ PushAsync<TPopup, TData>(data)
 
 ## 8. Audio (music / SFX) — `Composite`
 
+> 📄 **Đã có plan (phần SFX):** `Implementations/Foundations/Audio/AudioSystem.md`. Ba điểm **lệch có chủ ý** so với contract dưới đây, mỗi điểm có lý do ghi rõ trong plan:
+> 1. ⚠️ **`PlaySfx` có thêm tham số `pitchScale`.** Contract dưới đây **không** có nó ⇒ *pitch ramp* — xương sống thính giác của combo (§22, §23) — không gọi được. Thêm sau là đổi chữ ký ở mọi call-site, nên nó phải có ngay từ đầu.
+> 2. **Không dùng Object Pooling của SDK** cho `AudioSource`. `IPoolManager.Get<T>` **throw** khi pool chưa cấu hình, và pool đó là pool *prefab Addressables* — quá nặng cho một `AudioSource` trần. Thay bằng **vòng voice cấp phát sẵn** (mảng cố định, không `Get/Return`, không prefab).
+> 3. Vì (2) + settings đi qua `IOptionalService`, bản thu hẹp **không phụ thuộc hệ nào trong SDK** ⇒ **phân loại lại thành `Foundation`** và đặt ở `Foundations/Audio/`. Khi bổ sung music + pooling thì phân loại lại thành Composite.
+>
+> **Chưa lên plan, vẫn ở mục này:** music + crossfade, `PauseAll`/`ResumeAll`, **SFX 3D** (`PlaySfxAt`/`PlaySfxAttached` + `spatialBlend`), `RandomWeighted`. Bản thu hẹp chỉ phát **2D** — nhờ đó voice không cần GameObject riêng, bớt được cả một class.
+
 **Bài toán.** Nhạc nền cần crossfade và **một** source; SFX cần **nhiều** source đồng thời (pool) và **giới hạn tần suất** cùng một clip (10 item nổ cùng lúc phát 10 lần cùng clip = chói + clip qua nhau). Hai nhu cầu ngược nhau → hai controller.
 
 **Use case**
@@ -971,6 +1009,10 @@ PlaySfx(id):
 ---
 
 ## 9. Haptics — `Foundation`
+
+> 📄 **Đã có plan:** `Implementations/Foundations/Haptics/HapticSystem.md` — thu hẹp còn `Play(preset)` + `PlayCustom(pattern)`, cộng `IHapticBackend` (seam nền tảng) + `NullHapticBackend` + `AndroidHapticBackend` có **điều khiển biên độ** (điều kiện bắt buộc để haptic ramp cảm nhận được).
+> **Ngoài plan:** `BeginContinuous`/`EndContinuous`/`StopAll` + ref-count + vòng pulse (contract dưới đây có, plan cắt đi vì combo không cần — thêm sau chỉ là thêm 2 method); `HapticPattern.Frequency`/`PauseSeconds`; impl vendor.
+> ⚠️ **Xung đột tên đã giải:** `HapticPattern` (struct dưới đây) = **một** cú rung. Thứ mà `Pendings.md` Nhóm 8-J gọi là `HapticPattern` (*chuỗi* rung tăng dần theo combo) đã đổi tên thành `HapticRampChannel`, thuộc §22.
 
 **Bài toán.** Rung là phản hồi xúc giác quan trọng trên mobile, nhưng API là **vendor-specific** (Taptic iOS ≠ Android VibrationEffect ≠ lib bên thứ 3). Nếu call-site gọi trực tiếp API vendor thì đổi lib = sửa cả trăm chỗ. Và **quan trọng hơn**: nếu enum preset mang ngữ nghĩa game (`PickBox`, `OrderCompleted`) thì hệ này không port sang game khác được.
 
