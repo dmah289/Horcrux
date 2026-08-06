@@ -1,4 +1,4 @@
-using Horcrux.Runtime.Implementations.Utilities;
+using Horcrux.Runtime.Utilities;
 using UnityEditor;
 using UnityEngine;
 

@@ -1,7 +1,7 @@
 using System;
 using UnityEngine;
 
-namespace Horcrux.Runtime.Implementations.Utilities
+namespace Horcrux.Runtime.Utilities
 {
     [AttributeUsage(AttributeTargets.Field, AllowMultiple = true)]
     public sealed class SplitterAttribute : PropertyAttribute
