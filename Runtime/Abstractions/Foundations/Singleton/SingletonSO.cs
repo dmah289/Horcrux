@@ -36,14 +36,5 @@ namespace Horcrux.Runtime.Abstractions.Singleton
                 return _instance;
             }
         }
-
-#if UNITY_EDITOR
-        protected static void PingSO()
-        {
-            EditorUtility.FocusProjectWindow();
-            Selection.activeObject = Instance;
-            EditorGUIUtility.PingObject(Instance);
-        }
-#endif
     }
 }

@@ -11,8 +11,5 @@
         public static string RichStrikethrough(this string text) => $"<s>{text}</s>";
         public static string RichFont(this string text, string font) => $"<font={font}>{text}</font>";
         public static string RichAlign(this string text, string align) => $"<align={align}>{text}</align>";
-        public static string RichGradient(this string text, string color1, string color2) => $"<gradient={color1},{color2}>{text}</gradient>";
-        public static string RichRotation(this string text, float angle) => $"<rotate={angle}>{text}</rotate>";
-        public static string RichSpace(this string text, float space) => $"<space={space}>{text}</space>";
     }
 }

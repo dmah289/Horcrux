@@ -5,7 +5,7 @@ using UnityEngine.AddressableAssets;
 namespace Horcrux.Runtime.Implementations.Pooling
 {
     [Serializable]
-    public struct PoolConfig
+    public class PoolConfig
     {
         public AssetReference prefab;
         public int initialPoolSize;
