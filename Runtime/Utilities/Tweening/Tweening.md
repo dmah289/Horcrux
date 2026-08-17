@@ -18,7 +18,7 @@ Mọi task đều ngầm chịu các ràng buộc sau (copy nguyên văn từ qu
 - **OOP/SOLID:** mỗi file 1 trách nhiệm; mở rộng qua applier mới (không sửa `TweenRunner`); phụ thuộc abstraction (`ITweenRunner`) qua InitArgs.
 - **Self-document:** tên nói rõ mục đích (`TweenPosition` ≠ `DoMove`); boolean là câu hỏi (`IsActive`); XML doc + "tại sao" ở API public; comment chỉ nói *tại sao*.
 - **Try/catch per callback:** 1 listener lỗi không kill listener khác, không kill vòng tick.
-- **Verify style (DOCS_SKILL Phần C):** mỗi task kết bằng **bảng kiểm chứng input→kỳ vọng** để tự đối chiếu khi triển khai; **không** kèm code test (dự án chưa có Unity Test Framework).
+- **Verify style (MY_SKILL §5.3):** mỗi task kết bằng **bảng kiểm chứng input→kỳ vọng** để tự đối chiếu khi triển khai; **không** kèm code test (dự án chưa có Unity Test Framework).
 
 **Phạm vi v1 (chốt):** value types {float, Vector2, Vector3, Color, Quaternion}; adapter {position, localPosition, anchoredPosition, scale, localEuler, rotation(quat), spriteColor, graphicColor, canvasGroupAlpha, fillAmount}; jump parabol + **đích động** (follow Transform); ease = `EaseType`; loop {Yoyo, Restart, Incremental} hữu hạn & vô hạn; delay + relative; timescale scaled/unscaled; tick Update/Late/Fixed; await UniTask + `TweenStopBehaviour`; events {Start, Update, Complete, Stop, StepComplete}.
 
@@ -46,7 +46,7 @@ Hệ này không có lõi toán nặng như solver dao động, nhưng có **4 c
 
 $$t = \text{elapsed} \times \text{invDuration}, \quad k = \text{Easer}(t), \quad v = \text{from} + (\text{to} - \text{from}) \times k$$
 
-**Lý do `invDuration` thay vì chia:** chia (`/`) tốn ~20–40 chu kỳ CPU, nhân (`*`) tốn ~4–5. Tween tick mỗi frame × hàng trăm tween → precompute `invDuration = 1/duration` **một lần** lúc `Create()`, hot path chỉ nhân. (SKILL.md: "chia→nhân".)
+**Lý do `invDuration` thay vì chia:** chia (`/`) tốn ~20–40 chu kỳ CPU, nhân (`*`) tốn ~4–5. Tween tick mỗi frame × hàng trăm tween → precompute `invDuration = 1/duration` **một lần** lúc `Create()`, hot path chỉ nhân. (MY_SKILL §3.5: "chia→nhân".)
 
 **Kiểm mốc:**
 
@@ -286,7 +286,7 @@ git commit -m "feat(tween): config enums (LoopMode, TimeMode, TickPhase, StopBeh
   - `struct TweenCallback` — `Set(Action)`, `Set(object,Action<object>)`, `Clear()`, `Invoke()`, `bool HasValue`.
   - `struct TweenUpdateCallback` — `Set(Action<float>)`, `Set(object,Action<object,float>)`, `Clear()`, `Invoke(float t)`, `bool HasValue`.
 
-Giải: hai biến thể ứng với 2 chữ ký sự kiện — không tham số (Start/Complete/Stop/StepComplete) và một `float t` (Update). Mỗi struct giữ **cả** đường `Action` (tiện) lẫn đường `state + static delegate` (zero-GC hot path) — chỉ một trong hai được set. `Invoke` bọc try/catch (SKILL.md: 1 listener lỗi không kill vòng tick).
+Giải: hai biến thể ứng với 2 chữ ký sự kiện — không tham số (Start/Complete/Stop/StepComplete) và một `float t` (Update). Mỗi struct giữ **cả** đường `Action` (tiện) lẫn đường `state + static delegate` (zero-GC hot path) — chỉ một trong hai được set. `Invoke` bọc try/catch (MY_SKILL §3.4: 1 listener lỗi không kill vòng tick).
 
 - [ ] **Step 1: Viết TweenCallback.cs**
 
@@ -2238,9 +2238,9 @@ git commit -m "feat(tween): Tween.To generic gate for arbitrary float values"
 | **TMP color / material property applier** | Thêm applier mới + Register + extension. Open/Closed. |
 | **Tách hot/cold state, dense packing** | Refactor nội bộ runner; API & handle không đổi. |
 | **.From() tường minh** | Thêm overload extension + field `hasExplicitFrom` trong state. |
-| **Tách `TweenAwaitRegistry` (SRP)** | Await hiện nằm trong `TweenRunner` (dict + completion source). Có thể tách thành class riêng để runner chỉ lo pool+tick (đúng "không monolithic" SKILL.md); `Finish` ủy thác signal qua nó. Quyết lúc triển khai — API & handle không đổi. |
+| **Tách `TweenAwaitRegistry` (SRP)** | Await hiện nằm trong `TweenRunner` (dict + completion source). Có thể tách thành class riêng để runner chỉ lo pool+tick (đúng "không monolithic" MY_SKILL §3.2); `Finish` ủy thác signal qua nó. Quyết lúc triển khai — API & handle không đổi. |
 | **Multi-awaiter / tween** | v1 giới hạn 1 awaiter mỗi tween (1 `AutoResetUniTaskCompletionSource`/slot). Cần nhiều nơi await cùng 1 tween: đổi value dict thành list source, hoặc dùng `UniTaskCompletionSource` non-autoreset. |
 
 ---
 
-*Tài liệu này là nguồn sự thật (DOCS_SKILL Phần A/C). Mỗi khi sửa hệ thống phải cập nhật file này.*
+*Tài liệu này là nguồn sự thật (MY_SKILL §5.1/§5.3). Mỗi khi sửa hệ thống phải cập nhật file này.*

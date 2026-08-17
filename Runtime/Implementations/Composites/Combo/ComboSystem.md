@@ -1,6 +1,6 @@
 # Combo System Implementation Plan
 
-> **Loại tài liệu:** Plan (`DOCS_SKILL` Phần C). `.md` thiết kế (Phần A) + `.html` (Phần B) viết **sau** khi có source — lúc đó `SKILL.md` quy tắc 4 mới coi là đủ.
+> **Loại tài liệu:** Plan (`MY_SKILL` §5.3). `.md` thiết kế (§5.1) + `.html` (§5.2) viết **sau** khi có source — lúc đó `MY_SKILL` §5 mới coi là đủ.
 >
 > **For agentic workers:** REQUIRED SUB-SKILL: superpowers:subagent-driven-development hoặc superpowers:executing-plans. Steps dùng checkbox (`- [ ]`).
 
@@ -32,7 +32,7 @@ Ghép **Ticker** (Foundation, **bắt buộc**) + **Feedback** (Composite, **tu�
 | Thời gian | `unscaledDeltaTime` — hitstop đặt `timeScale = 0` nhưng cửa sổ combo **không** đóng băng theo |
 | Pause | App vào background phải **đóng băng** cửa sổ (nếu không: combo chết trong lúc người chơi không hề chơi) |
 | Text/TMP | ⚠️ `com.horcrux.runtime.asmdef` **không** reference TextMeshPro (đã kiểm). Game bind chữ thẳng vào `IComboSystem.Beat`; SDK không chạm chữ |
-| Editor-first (§C.1) | Luật đứt + hệ số nhân + mốc bậc đều là **tham số trong Inspector**; màu/thanh/pop gán ở Inspector. Không hằng số feel nào hardcode (§0.5) |
+| Editor-first (MY_SKILL §3.3) | Luật đứt + hệ số nhân + mốc bậc đều là **tham số trong Inspector**; màu/thanh/pop gán ở Inspector. Không hằng số feel nào hardcode (§0.5) |
 
 ## Ngữ cảnh đã chốt
 
@@ -44,7 +44,7 @@ Ghép **Ticker** (Foundation, **bắt buộc**) + **Feedback** (Composite, **tu�
 | **Ranh giới** | SDK giữ **counter · luật đứt · bậc · hệ số nhân**. SDK **không** giữ: điểm số (chỉ trả `Multiplier`) · kỷ lục · nhãn bậc · asset. |
 | **Cơ chế đứt** | Cả 3 (cửa sổ thời gian · cascade · theo move) gộp về **một** hàm `GetWindowSeconds(count)` (§0.2). |
 | **Số track** | **Một** combo global. Multi-track thêm sau chỉ là `Dictionary<id, ComboTracker>` ở tầng ② — state đã nằm gọn trong tracker. |
-| **Cố ý KHÔNG làm + lý do** (NT 6: *xóa đi thì hỏng ở đâu*) | ① **`ComboTier` + `IComboTierTable` + `ComboTierTableSO`** — `LabelKey`/`Multiplier` của bậc không ai đọc (nhãn là content của game; hệ số nhân dùng đường Linear), nên `ComboTier` co lại thành một `int` ⇒ cả interface + SO vô nghĩa. Bậc combo giờ là **`int[] tierMinCounts`** trên Inspector. ② **`IComboMultiplierCurve` + 2 class multiplier + enum mode** — chỉ còn **một** implementation (Linear); interface cần implementation thứ hai mới đáng tồn tại (§C.2) ⇒ công thức vào thẳng tracker với 2 tham số. ③ **3 hook `protected virtual` của `ComboMeter`** — game bind chữ thẳng vào `IComboSystem.Beat` **đơn giản hơn** kế thừa; cắt xong `ComboMeter` thành `sealed`. ④ **`SetStrategies`** — không caller; enum trong Inspector đã phủ cấu hình. ⑤ **`brokenCueId` ở bridge** — demo để 0; feedback lúc đứt là meter tắt, không cần cue. ⑥ Lưu best-combo + telemetry (cần §2/§12; `ComboSummary` đã mang đủ dữ liệu để game tự lo) · `IComboSystem.Score` (điểm là kinh tế của game) · `ChainReaction` (xem "Giai đoạn 2"). |
+| **Cố ý KHÔNG làm + lý do** (NT 6: *xóa đi thì hỏng ở đâu*) | ① **`ComboTier` + `IComboTierTable` + `ComboTierTableSO`** — `LabelKey`/`Multiplier` của bậc không ai đọc (nhãn là content của game; hệ số nhân dùng đường Linear), nên `ComboTier` co lại thành một `int` ⇒ cả interface + SO vô nghĩa. Bậc combo giờ là **`int[] tierMinCounts`** trên Inspector. ② **`IComboMultiplierCurve` + 2 class multiplier + enum mode** — chỉ còn **một** implementation (Linear); interface cần implementation thứ hai mới đáng tồn tại (MY_SKILL §2.4) ⇒ công thức vào thẳng tracker với 2 tham số. ③ **3 hook `protected virtual` của `ComboMeter`** — game bind chữ thẳng vào `IComboSystem.Beat` **đơn giản hơn** kế thừa; cắt xong `ComboMeter` thành `sealed`. ④ **`SetStrategies`** — không caller; enum trong Inspector đã phủ cấu hình. ⑤ **`brokenCueId` ở bridge** — demo để 0; feedback lúc đứt là meter tắt, không cần cue. ⑥ Lưu best-combo + telemetry (cần §2/§12; `ComboSummary` đã mang đủ dữ liệu để game tự lo) · `IComboSystem.Score` (điểm là kinh tế của game) · `ChainReaction` (xem "Giai đoạn 2"). |
 
 ---
 
@@ -404,7 +404,7 @@ namespace Horcrux.Runtime.Abstractions.Combo
 | Quyết định | Lý do |
 |---|---|
 | 3 class nhỏ thay 1 class có `enum mode` | `switch` trên mode = mỗi luật mới phải sửa file đang chạy ổn (vi phạm O), và class đó dần mang tham số của mọi luật |
-| Giữ `IComboWindowPolicy` dù có thể gộp 3 công thức | Có **3 implementation** ⇒ interface đáng tồn tại (§C.2). Và đây là abstraction duy nhất user chỉ định rõ ("3 cơ chế cắm được") — cắt nó là cắt vào mục đích ban đầu |
+| Giữ `IComboWindowPolicy` dù có thể gộp 3 công thức | Có **3 implementation** ⇒ interface đáng tồn tại (MY_SKILL §2.4). Và đây là abstraction duy nhất user chỉ định rõ ("3 cơ chế cắm được") — cắt nó là cắt vào mục đích ban đầu |
 | Tham số `readonly` gán ở ctor | Policy **bất biến** sau khi dựng ⇒ không thể bị đổi giữa chuỗi combo (nguồn bug: cửa sổ đổi mà `elapsed` không reset) |
 | `ManualComboWindow` là singleton `Instance` | Không state ⇒ một instance dùng chung; tránh alloc ở mọi lần dựng |
 | Precompute `_span = wMin − w0` | Bỏ một phép trừ khỏi mỗi `Push`; biểu thức còn lại là một `mad` |
@@ -546,7 +546,7 @@ namespace Horcrux.Runtime.Implementations.Combo
 | Quyết định | Lý do |
 |---|---|
 | **C# thuần**, không MonoBehaviour | Toàn bộ luật test được không cần scene (cùng khuôn `StackStateMachine` §5). Và multi-track sau này chỉ là `Dictionary<id, ComboTracker>` ở tầng trên |
-| Nhận `int[] tierMinCounts` thay `IComboTierTable` | Interface + SO + struct `ComboTier` đều chỉ để chở **một** `int` mỗi bậc ⇒ không gọi được tên chỗ hỏng nếu xóa (§C.2) |
+| Nhận `int[] tierMinCounts` thay `IComboTierTable` | Interface + SO + struct `ComboTier` đều chỉ để chở **một** `int` mỗi bậc ⇒ không gọi được tên chỗ hỏng nếu xóa (MY_SKILL NT6) |
 | Nhận 2 `float` cho hệ số nhân thay `IComboMultiplierCurve` | Chỉ còn một implementation (Linear) ⇒ interface không đáng tồn tại |
 | Không cờ `_isActive` | `IsActive => _count > 0` — bất biến #1 không thể lệch vì không có bản sao |
 | `_duration` chỉ cộng khi `count > 0` | Thời lượng của "không có combo" là vô nghĩa; nó phải đếm từ nhịp **đầu** |
@@ -803,7 +803,7 @@ namespace Horcrux.Runtime.Implementations.Combo
 | Quyết định | Lý do |
 |---|---|
 | `MonoBehaviour<ITicker>` (InitArgs), không `TryGet` | `ITicker` là **bắt buộc** ⇒ thiếu nó phải throw sớm để lộ lỗi cấu hình. `MonoBehaviour<T>` cho đúng ngữ nghĩa đó tại tầng type |
-| **Enum + tham số** trong Inspector | §C.1: mọi thứ quyết được lúc authoring thì để ở Inspector. `InterfaceReference<T>` chưa tồn tại nên serialize policy trực tiếp là không khả thi |
+| **Enum + tham số** trong Inspector | MY_SKILL §3.3: mọi thứ quyết được lúc authoring thì để ở Inspector. `InterfaceReference<T>` chưa tồn tại nên serialize policy trực tiếp là không khả thi |
 | `tierMinCounts` là `int[]` trên Inspector | Xem §0.4 — không cần `ComboTier`/interface/SO nào |
 | `OnValidate` cảnh báo mốc bậc không tăng dần | Bất biến này là **điều kiện đúng đắn** của quét ngược (§0.4); mảng `{6,3,10}` cho bậc sai mà không có lỗi nào |
 | **Không** tự sắp xếp mảng | Tự sắp làm thứ tự nhảy dưới tay người đang gõ — rất khó chịu và dễ mất dữ liệu vừa nhập |
@@ -812,7 +812,7 @@ namespace Horcrux.Runtime.Implementations.Combo
 | **Không** dùng `offlineSeconds` | Đóng băng nghĩa là *không tính* thời gian đó. Cộng nó vào chính là thứ ta đang tránh |
 | Uỷ quyền add/remove event cho tracker | Handler chuyển tiếp là một delegate được alloc + một lớp phải debug qua |
 
-**Editor setup (§C.1):**
+**Editor setup (MY_SKILL §3.3):**
 
 1. Tạo GameObject `[Combo]` ở scene bootstrap → add `ComboSystem`.
 2. `Window Mode = Shrinking` · `Window Seconds = 1.2` · `Min Window Seconds = 0.4` · `Steps To Min Window = 10`.
@@ -1016,7 +1016,7 @@ namespace Horcrux.Runtime.Implementations.Combo
 | Ẩn cả object khi `Count == 0` | Meter rỗng hút mắt vô ích; `SetActive(false)` cắt luôn chi phí layout/render của cả nhánh |
 | Trả `Vector3.one` **chính xác** khi pop xong | Không có bước này thì scale đọng ở giá trị gần-1 và lệch tích lũy sau nhiều nhịp |
 
-**Editor setup (§C.1):**
+**Editor setup (MY_SKILL §3.3):**
 
 **Bridge** — add `ComboFeedbackBridge` lên GameObject `[Combo]`:
 - `Beat Cue Id = 101` (khớp `AudioPitchRampChannel` + `HapticRampChannel` + `CameraShakeChannel` — `FeedbackSystem.md` Task 4–5).
@@ -1314,13 +1314,13 @@ namespace Horcrux.Runtime.Implementations.Combo
 
 | Quyết định | Lý do |
 |---|---|
-| Tồn tại **vì** chưa có game caller | `DOCS_SKILL` §C.2: mọi hàm phải có caller thật. Không có Task này thì Task 1–5 là code chưa ai gọi |
+| Tồn tại **vì** chưa có game caller | `MY_SKILL` §5.3: mọi hàm phải có caller thật. Không có Task này thì Task 1–5 là code chưa ai gọi |
 | `Button` + `[ContextMenu]`, **không** `Input.GetKeyDown` | Project có `InputSystem_Actions` ⇒ legacy `Input` có thể bị tắt. `Button` và `ContextMenu` **luôn** hoạt động |
 | `[ContextMenu]` để test **không cần dựng UI** | Kiểm ngay trong Play Mode bằng chuột phải vào component |
 | Log ở `Broken` | Đây là code demo nên log là **mục đích**, và bảng nghiệm thu đọc nó |
 | `Demo/` là thư mục riêng | Xoá cả thư mục là xoá sạch phần demo khi game đã có caller thật |
 
-**Editor setup (§C.1):**
+**Editor setup (MY_SKILL §3.3):**
 
 1. Trong Canvas, tạo 4 `Button`: `Push 1` · `Push cascade` · `Break` · `Reset`.
 2. Add `ComboDemoDriver` lên một GameObject trong Canvas, kéo 4 `Button` vào 4 field tương ứng.
@@ -1340,7 +1340,7 @@ namespace Horcrux.Runtime.Implementations.Combo
     /// <summary>Bộ kích tay để kiểm chuỗi combo → cue → 3 giác quan → meter, khi chưa có gameplay.</summary>
     /// <remarks>
     /// Class này tồn tại VÌ hệ combo chưa có caller thật. Không có nó, mọi thứ trong plan là code chưa
-    /// ai gọi — đúng thứ §C.2 của DOCS_SKILL cấm.
+    /// ai gọi — đúng thứ §5.3 của MY_SKILL cấm.
     ///
     /// Không dùng <c>Input.GetKeyDown</c>: project có <c>InputSystem_Actions</c> nên legacy Input có
     /// thể đã bị tắt. <c>Button</c> và <c>[ContextMenu]</c> luôn hoạt động ở mọi cấu hình input.

@@ -37,7 +37,7 @@
 | # | Không làm | Lý do |
 |---|---|---|
 | ① | **`priority`** | Chưa caller nào cần thứ tự. Bỏ luôn được phép chèn có thứ tự O(n). Thêm lại = overload, additive |
-| ② | **`IEventBus<T>`** | Không có implementation thứ hai thật → §C.2 gọi đây là over-engineering. Generics vẫn giữ O/L ở tầng type |
+| ② | **`IEventBus<T>`** | Không có implementation thứ hai thật → MY_SKILL §2.4 gọi đây là over-engineering. Generics vẫn giữ O/L ở tầng type |
 | ③ | **Handler nhận `in T`** | Không hot path; `Action<T>` là thứ dev đoán đúng ngay. `Publish` **vẫn** nhận `in T` vì miễn phí |
 | ④ | **Bus scoped (per-scene/per-match)** | Không nhu cầu |
 | ⑤ | **Thread-safe / lock** | Main-thread only, tài liệu hoá |
@@ -62,7 +62,7 @@
 | Zero-GC | Không alloc trong `Publish`. `Subscription<T>` là `readonly struct`. `Subscribe` alloc đúng 1 delegate (method-group conversion, không tránh được) |
 | An toàn mutate | Xoá listener = **tombstone**, không `RemoveAt` của `List`. `Compact` **chỉ** khi `dispatchDepth == 0` |
 | Hành vi đã chốt | `Publish` chụp `Count` **một lần** → listener đăng ký giữa lúc Publish **không** được gọi ở lần đó |
-| Try/catch | quanh **từng** callback (`SKILL.md:48` yêu cầu) → `Debug.LogException` |
+| Try/catch | quanh **từng** callback (`MY_SKILL` §3.4 yêu cầu) → `Debug.LogException` |
 | Thread | **main-thread only** — không lock |
 | Đường huỷ công khai | **duy nhất** `Subscription<T>.Dispose()`. `Unsubscribe` là `internal`. Không có `Clear()` |
 | Field naming | Không `_` prefix (53/55 file trong `Runtime/` theo lối này) |
@@ -254,7 +254,7 @@ Thứ tự task **1 → 2 → 3**. Task 2 phải xoá bản cũ *trong cùng tas
 | Dup-guard trong `Add` | `TickerSystem.md`: *"chặn bug im lặng tệ nhất của hệ: đăng ký 2 lần"*. `n` nhỏ nên O(n) là vài phép so | Case 3 sai: callback chạy 2 lần mỗi Publish |
 | **`EqualityComparer<T>.Default`, KHÔNG `==`** | Với `T : class`, `==` trong generic sinh `ceq` = **so tham chiếu**, bỏ qua `Delegate.op_Equality`. Mỗi `Subscribe(OnToast)` tạo `Action` instance mới → `==` không khớp → dup-guard **im lặng vô hiệu**. `EqualityComparer` gọi `Delegate.Equals` = so `Target` + `Method`.<br>*(Lưu ý: bẫy này chỉ tồn tại **vì** class này generic trên `T : class`. Nếu inline logic vào thẳng `EventBus<T>` thì `List<Action<T>>` là delegate type cụ thể và `==` chạy đúng — chính việc tách abstraction dùng chung đã đẻ ra nó. Chấp nhận vì Ticker sẽ dùng lại.)* | Case 3 sai, và sai theo cách rất khó thấy |
 | **`RemoveAt(int)` tồn tại song song `Remove(T)`** | Vòng dispatch của `Publish` **đã biết `i`** khi phát hiện owner destroyed. Gọi `Remove(callback)` ở đó là quét lại O(n) với một virtual `Equals` mỗi phần tử — trong khi `RemoveAt(i)` là O(1) | Prune tốn O(n²) khi nhiều listener chết cùng lúc; và call site đọc khó hơn |
-| **`Compact` dùng two-pointer, không `RemoveAt` ngược** | `SKILL.md:42` nêu "duyệt ngược khi xoá" cho việc xoá **một** phần tử. Compact xoá **nhiều**: `k` lần `List.RemoveAt` = `k` lần dồn mảng → O(n·k). Two-pointer là **một** lượt O(n) + **một** `RemoveRange` | Không hỏng, nhưng chậm hơn hẳn khi nhiều tombstone |
+| **`Compact` dùng two-pointer, không `RemoveAt` ngược** | `MY_SKILL` §3.5 nêu "duyệt ngược khi xoá" cho việc xoá **một** phần tử. Compact xoá **nhiều**: `k` lần `List.RemoveAt` = `k` lần dồn mảng → O(n·k). Two-pointer là **một** lượt O(n) + **một** `RemoveRange` | Không hỏng, nhưng chậm hơn hẳn khi nhiều tombstone |
 | `Compact` thoát sớm khi `TombstoneCount == 0` | Publish bình thường = **một** phép so `int` rồi thoát | Không hỏng, chỉ tốn vô ích |
 | `TombstoneCount` phơi ra ngoài | `EventBus<T>.ListenerCount` cần trừ tombstone để báo số đúng; và `Publish` cần nó để quyết có `Compact` không | Không quyết được khi nào Compact → phải quét list |
 | `capacity = 4` mặc định | Pre-alloc theo SKILL; hầu hết event có 1–3 listener. Ticker truyền `new DeferredList<T>(8)` theo spec của nó | Không hỏng, chỉ resize thêm |
@@ -435,7 +435,7 @@ git commit -m "feat(common): DeferredList — tombstone remove an toan khi duyet
 | `owner == null`, KHÔNG `owner is null` | `==` gọi operator overload của `UnityEngine.Object` (bắt được fake-null của object đã destroy); `is null` so tham chiếu thật nên **luôn false** | Case 5c sai |
 | `Publish(in T e = default)` | `in` tiết kiệm một copy struct vào frame `Publish`, miễn phí — rvalue vẫn truyền được. `= default` cho phép `Publish()` với event rỗng | Không hỏng; copy thêm 1 lần |
 | Handler là `Action<T>`, **không** `in T` | Không hot path; `Action<T>` là thứ dev đoán đúng ngay. Thêm overload `in` sau là additive | — |
-| `try/catch` **từng** callback | `SKILL.md:48` yêu cầu: 1 listener lỗi không kill listener khác | Case 8 sai |
+| `try/catch` **từng** callback | `MY_SKILL` §3.4 yêu cầu: 1 listener lỗi không kill listener khác | Case 8 sai |
 | Dup-guard warning chỉ `#if UNITY_EDITOR` | Bug cần lộ lúc dev; build không cần tốn string format. Đây là tín hiệu dev đã viết `Subscribe` ở `OnEnable` mà quên `Dispose` (§1) | Bug trùng đăng ký im lặng như bản cũ |
 | `ListenerCount` trừ tombstone | Script kiểm chứng cần số listener **thật**; `Count` thô tính cả tombstone gây nhầm | Case 2b/3/5c báo số sai |
 
@@ -670,7 +670,7 @@ Thay cho assembly test (đã chốt không tạo). Nằm **ngoài** SDK, ở `co
 - Consumes: `EventBus<T>` · `Subscription<T>` · `IEvent` (Task 2)
 - Produces: `readonly struct DeadOwnerEvent : IEvent` · `sealed class EventBusDeadListener : MonoBehaviour` — `static int Hits` · `void OnEvent(DeadOwnerEvent e)`
 
-**Editor setup (§C.1):** tạo GameObject rỗng `_EventBusVerification` trong scene test, add component `EventBusVerification`, bấm Play, đọc Console. Không cần gán reference nào.
+**Editor setup (MY_SKILL §3.3):** tạo GameObject rỗng `_EventBusVerification` trong scene test, add component `EventBusVerification`, bấm Play, đọc Console. Không cần gán reference nào.
 
 **Ba quyết định về cấu trúc script:**
 
@@ -996,7 +996,7 @@ Repo cha cũng đang giữ con trỏ submodule cũ — commit `Assets/Horcrux` (
 
 | Việc | Ghi chú |
 |---|---|
-| `EventBus.md` mới (DOCS_SKILL Phần A) | Bản cũ xoá ở Task 2. Bản mới lấy nền từ §0.1–§0.3 + hợp đồng dùng đúng §1, **không** lặp lại sai lầm IL/boxing của bản cũ. Bắt buộc có **4 giới hạn** ở cuối §1 (kể cả giới hạn `Compact` chỉ chạy khi có Publish) |
+| `EventBus.md` mới (MY_SKILL §5.1) | Bản cũ xoá ở Task 2. Bản mới lấy nền từ §0.1–§0.3 + hợp đồng dùng đúng §1, **không** lặp lại sai lầm IL/boxing của bản cũ. Bắt buộc có **4 giới hạn** ở cuối §1 (kể cả giới hạn `Compact` chỉ chạy khi có Publish) |
 | Sửa `PendingSystems.md:1206` | Đang viết `EventBus.Publish(new ToastRequest{…})` — không compile vì không có facade non-generic (⑬). Đổi thành `EventBus<ToastRequest>.Publish(new ToastRequest{…})` |
 | Sửa `TickerSystem.md` Task 1 | Bỏ phần tạo `DeferredList.cs` — file đã tồn tại sau Task 1 ở đây. Ticker **dùng lại**, truyền `new DeferredList<T>(8)` cho capacity của nó. Spec Ticker hiện thiếu `RemoveAt(int)` và `TombstoneCount` so với bản này (bản này là **superset**, không phá gì); và đang dùng `_` prefix trong khi 53/55 file `Runtime/` thì không |
 | Mở rộng sau (đừng làm trước khi có caller) | ① `Subscribe(cb, priority)` overload ② `Subscribe(RefHandler<T>)` nhận `in T` cho event hot ③ `SubscriptionBag` nếu xuất hiện nhu cầu huỷ theo nhóm ④ `EventBusRegistry` + `Clear()` khi tick *Disable Domain Reload* (⑪) |

@@ -1,6 +1,6 @@
 # Haptic System Implementation Plan
 
-> **Loại tài liệu:** Plan (`DOCS_SKILL` Phần C). `.md` thiết kế (Phần A) + `.html` (Phần B) viết **sau** khi có source.
+> **Loại tài liệu:** Plan (`MY_SKILL` §5.3). `.md` thiết kế (§5.1) + `.html` (§5.2) viết **sau** khi có source.
 >
 > **For agentic workers:** REQUIRED SUB-SKILL: superpowers:subagent-driven-development hoặc superpowers:executing-plans. Steps dùng checkbox (`- [ ]`).
 
@@ -22,7 +22,7 @@ Backend (IHapticBackend)  2 member: IsSupported + PlayOneShot. Đổi lib = vi�
 | Namespace | `Horcrux.Runtime.Abstractions.Haptics` · `…Implementations.Haptics` |
 | Zero-GC | `HapticPattern` là `readonly struct` truyền `in`; `AndroidJavaObject` cache **một lần** ở ctor |
 | SOLID | Core không biết nền tảng (D) · backend không biết gate (S) · không type nào mang ngữ nghĩa game |
-| Editor-first (§C.1) | Hệ này **không có** số cảm giác nào: mọi biên độ/thời lượng do caller (`HapticRampChannel`) truyền vào, và ở đó chúng đã phơi ra Inspector |
+| Editor-first (MY_SKILL §3.3) | Hệ này **không có** số cảm giác nào: mọi biên độ/thời lượng do caller (`HapticRampChannel`) truyền vào, và ở đó chúng đã phơi ra Inspector |
 | An toàn | Không hỗ trợ → **no-op**, không throw. Mọi lệnh JNI bọc `try/catch` |
 | Rung là **sự kiện** | Không có API rung-mỗi-frame |
 
@@ -218,7 +218,7 @@ namespace Horcrux.Runtime.Abstractions.Haptics
 | `SetBackend` public | Đây là **cách duy nhất** game cắm NiceVibrations mà không sửa file SDK — xoá nó là xoá mục tiêu "đổi lib sửa 1 file". `null` → rơi về no-op |
 | **Không** `LazyInit` | Khởi tạo JNI lúc cần rung lần đầu sẽ hitch đúng khoảnh khắc cần mượt |
 
-**Editor setup (§C.1) — bước thật:**
+**Editor setup (MY_SKILL §3.3) — bước thật:**
 
 1. Tạo GameObject `[Haptic]` ở scene bootstrap → add `HapticService`.
 2. Không có field nào cần gán — hệ này không có số cảm giác (chúng ở `HapticCueTable` bên `FeedbackSystem.md`).
