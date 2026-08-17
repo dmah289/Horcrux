@@ -1,39 +1,86 @@
 <!DOCTYPE html>
+<!-- ============================================================================
+     DOCS_TEMPLATE.html — khung tài liệu hệ thống, dùng chung cho mọi dự án.
+     Đi kèm MY_SKILL.md (§5.2 định nghĩa tiêu chí; file này là cơ chế).
+
+     CÁCH DÙNG
+       1. Copy file này thành <TênHệThống>.html cạnh file .md của hệ thống.
+       2. Thay các chỗ đánh dấu {…}: {System} {Project} {mô tả} {keywords} {Namespace}
+       3. Viết section thật vào <main>, mỗi section có id để mục lục trỏ tới được.
+       4. XOÁ section id="mau" và cả khối <script id="demo-mau">  ← chỉ để trưng bày
+       5. Không dùng công thức thì xoá 2 dòng có chữ KaTeX (1 ở <head>, 1 ở cuối <body>).
+
+     KHỐI XÂY SẴN
+       .card .card-title    khối nội dung có viền
+       .note               ghi chú (mặc định vàng) · .note.good xanh · .note.bad đỏ
+       .eq                 công thức; đặt TeX ở data-tex, KaTeX render 1 lần lúc load
+       .eq.boxed           công thức chốt, viền sáng
+       .arch               sơ đồ ASCII giữ nguyên khoảng trắng; <em> để làm nổi
+       .perf-grid          lưới thẻ số liệu, gồm .perf-card > .perf-val + .perf-label
+       .reveal             fade-in khi cuộn tới. Trang vẫn đọc được nếu JavaScript tắt
+       .demo .demo-title   khung demo; .demo-row để xếp cạnh nhau
+       .demo-ctl           hàng nút bấm trong demo
+       .steps li.on        danh sách bước, thêm class on cho bước đã qua
+       .meter > span       thanh đo, đặt width theo phần trăm
+       .readout            số liệu hiện ra, font mono
+       canvas.pick         canvas có tương tác chuột (đổi con trỏ thành crosshair)
+
+     TỰ ĐỘNG, KHÔNG CẦN LÀM GÌ
+       Bảng          mọi <table> được bọc .tbl để cuộn ngang, không bị cắt trên mobile
+       PALETTE       hằng JavaScript đọc màu từ CSS một lần — Canvas không parse var()
+       setupCanvas() sizing theo devicePixelRatio để Canvas nét; vẽ theo toạ độ logic
+       Mất mạng      KaTeX không tải được thì công thức hiện dạng TeX đọc được, không trống
+
+     KHÔNG LÀM (đã trả giá để biết)
+       Không đặt vòng requestAnimationFrame chạy mãi — demo phải do sự kiện kích hoạt.
+       Không ctx.shadowBlur, không createImageData mỗi sự kiện, không per-pixel math
+       mỗi mousemove, không innerHTML trong vòng lặp, không quên cancelAnimationFrame.
+       Không ctx.fillStyle='var(--ac)' — Canvas không hiểu; dùng PALETTE.ac.
+============================================================================ -->
 <html lang="vi">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>{System} — {Project}</title>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css"><!-- bỏ nếu doc không có công thức -->
+<script>document.documentElement.classList.add('js')</script><!-- phải chạy sớm: xem .js .reveal -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css" crossorigin="anonymous" referrerpolicy="no-referrer"><!-- KaTeX: xoá nếu doc không có công thức -->
 <style>
+/* --- nền tảng --- */
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-:root{--bg:#0d1117;--bg2:#161b22;--bg3:#1c2333;--bg4:#242d3a;--tx:#e6edf3;--tx2:#8b949e;--tx3:#484f58;--ac:#58a6ff;--ac2:#bc8cff;--gr:#3fb950;--or:#d29922;--rd:#f85149;--bd:#30363d;--r:10px;--mono:'JetBrains Mono','Fira Code','Cascadia Code','SF Mono',monospace;--sans:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif}
+:root{color-scheme:dark;--bg:#0d1117;--bg2:#161b22;--bg3:#1c2333;--bg4:#242d3a;--tx:#e6edf3;--tx2:#8b949e;--tx3:#484f58;--ac:#58a6ff;--ac2:#bc8cff;--gr:#3fb950;--or:#d29922;--rd:#f85149;--bd:#30363d;--r:10px;--mono:'JetBrains Mono','Fira Code','Cascadia Code','SF Mono',monospace;--sans:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif}
 html{scroll-behavior:smooth;background:var(--bg);color:var(--tx);font:17px/1.7 var(--sans)}
-body{overflow-x:hidden}
 a{color:var(--ac);text-decoration:none}a:hover{text-decoration:underline}
+
+/* --- bố cục --- */
 #progress{position:fixed;top:0;left:0;height:3px;background:linear-gradient(90deg,var(--ac),var(--ac2));width:0;z-index:999;transition:width .1s}
 #header{max-width:920px;margin:0 auto;padding:4rem 1.5rem 2rem;border-bottom:1px solid var(--bd)}
-#header h1{font-size:clamp(2rem,5vw,3rem);font-weight:800;letter-spacing:-.03em;background:linear-gradient(135deg,var(--ac),var(--ac2));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+#header h1{font-size:clamp(2rem,5vw,3rem);font-weight:800;letter-spacing:-.03em;color:var(--ac);background:linear-gradient(135deg,var(--ac),var(--ac2));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
 #header .sub{font-size:1.05rem;color:var(--tx2);margin-top:.4rem}
 #header .badge{display:inline-block;margin-top:.8rem;padding:.3em .9em;border:1px solid var(--bd);border-radius:99px;font-family:var(--mono);font-size:.78rem;color:var(--tx2)}
 main{max-width:920px;margin:0 auto;padding:0 1.5rem 6rem}
 section{padding-top:4rem}
-section .reveal{opacity:0;transform:translateY(24px);transition:opacity .6s ease,transform .6s ease}
-section .reveal.visible{opacity:1;transform:none}
 #toc{max-width:920px;margin:3rem auto;padding:0 1.5rem}
 #toc h2{font-size:1.3rem}
 #toc ol{columns:2;column-gap:2rem;padding-left:1.5em}
 #toc li{font-size:.92rem;margin-bottom:.3rem;break-inside:avoid}
 @media(max-width:600px){#toc ol{columns:1}}
+footer{text-align:center;padding:3rem 1rem;color:var(--tx3);font-size:.85rem;border-top:1px solid var(--bd)}
+
+/* --- fade-in: chỉ ẩn khi JavaScript xác nhận chạy được, tránh mất nội dung --- */
+.js section .reveal{opacity:0;transform:translateY(24px);transition:opacity .6s ease,transform .6s ease}
+.js section .reveal.visible{opacity:1;transform:none}
+
+/* --- chữ --- */
 h2{font-size:1.9rem;font-weight:700;letter-spacing:-.02em;margin-bottom:1.5rem;padding-bottom:.5rem;border-bottom:1px solid var(--bd)}
 h3{font-size:1.3rem;font-weight:600;margin:2.5rem 0 1rem;color:var(--ac)}
 p,ul,ol{margin-bottom:1rem}ul{padding-left:1.3em}li{margin-bottom:.3rem}
 strong{color:var(--tx);font-weight:600}
 em{color:var(--ac2);font-style:normal}
-code{font-family:var(--mono);font-size:.88em;background:var(--bg3);padding:.15em .4em;border-radius:4px}
-pre{margin:1.2rem 0!important;border-radius:var(--r)!important;border:1px solid var(--bd)!important}
-pre code{background:none!important;padding:0!important;font-size:.85rem!important;line-height:1.6!important}
+code{font-family:var(--mono);font-size:.88em;background:var(--bg3);padding:.15em .4em;border-radius:4px;overflow-wrap:anywhere}
+pre{background:var(--bg3);border:1px solid var(--bd);border-radius:var(--r);padding:1rem 1.2rem;margin:1.2rem 0;overflow-x:auto}
+pre code{display:block;background:none;padding:0;font-size:.85rem;line-height:1.6;overflow-wrap:normal}
+
+/* --- khối nội dung --- */
 .card{background:var(--bg2);border:1px solid var(--bd);border-radius:var(--r);padding:1.5rem;margin:1.5rem 0}
 .card-title{font-weight:600;margin-bottom:.75rem;font-size:1.05rem;color:var(--ac)}
 .note{border-left:3px solid var(--or);background:var(--bg2);padding:1rem 1.2rem;border-radius:0 var(--r) var(--r) 0;margin:1.5rem 0;font-size:.92rem;color:var(--tx2)}
@@ -42,76 +89,313 @@ pre code{background:none!important;padding:0!important;font-size:.85rem!importan
 .note.bad{border-left-color:var(--rd)}.note.bad strong{color:var(--rd)}
 .eq{background:var(--bg3);border:1px solid var(--bd);border-radius:var(--r);padding:1.1rem 1.3rem;margin:1.3rem 0;overflow-x:auto;text-align:center}
 .eq.boxed{border-color:var(--ac);box-shadow:0 0 0 1px var(--ac) inset}
-table{width:100%;border-collapse:collapse;margin:1.2rem 0;font-size:.92rem}
-th{text-align:left;padding:.6rem .8rem;border-bottom:2px solid var(--bd);color:var(--ac);font-weight:600}
-td{padding:.5rem .8rem;border-bottom:1px solid var(--bd)}
-tr:last-child td{border:none}
-.demo{background:var(--bg2);border:1px solid var(--bd);border-radius:var(--r);padding:1.5rem;margin:2rem 0}
-.demo-title{font-family:var(--mono);font-size:.8rem;color:var(--ac2);text-transform:uppercase;letter-spacing:.08em;margin-bottom:1rem}
-.demo canvas{display:block;border-radius:8px;cursor:crosshair}
-.demo-row{display:flex;gap:1.5rem;align-items:flex-start;flex-wrap:wrap}
-.demo-row>*{flex:1;min-width:250px}
+.eq-raw{font-family:var(--mono);font-size:.9rem;color:var(--tx2);text-align:left;white-space:pre-wrap}
 .arch{font-family:var(--mono);font-size:.82rem;line-height:1.8;white-space:pre;overflow-x:auto;padding:1rem;background:var(--bg3);border-radius:var(--r);color:var(--tx2)}
 .arch em{color:var(--ac);font-style:normal}
+
+/* --- bảng: .tbl là khung cuộn, script tự bọc nếu tác giả quên --- */
+.tbl{overflow-x:auto;margin:1.2rem 0}
+.tbl table{margin:0}
+table{width:100%;border-collapse:collapse;font-size:.92rem}
+th{text-align:left;padding:.6rem .8rem;border-bottom:2px solid var(--bd);color:var(--ac);font-weight:600;white-space:nowrap}
+td{padding:.5rem .8rem;border-bottom:1px solid var(--bd)}
+tr:last-child td{border:none}
+
+/* --- số liệu --- */
 .perf-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem;margin:1.5rem 0}
 .perf-card{background:var(--bg3);border-radius:var(--r);padding:1.2rem;text-align:center}
-.perf-val{font-size:1.8rem;font-weight:800;background:linear-gradient(135deg,var(--ac),var(--ac2));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.perf-val{font-size:1.8rem;font-weight:800;color:var(--ac);background:linear-gradient(135deg,var(--ac),var(--ac2));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
 .perf-label{font-size:.82rem;color:var(--tx2);margin-top:.2rem}
-footer{text-align:center;padding:3rem 1rem;color:var(--tx3);font-size:.85rem;border-top:1px solid var(--bd)}
+
+/* --- demo --- */
+.demo{background:var(--bg2);border:1px solid var(--bd);border-radius:var(--r);padding:1.5rem;margin:2rem 0}
+.demo-title{font-family:var(--mono);font-size:.8rem;color:var(--ac2);text-transform:uppercase;letter-spacing:.08em;margin-bottom:1rem}
+.demo canvas{display:block;border-radius:8px;max-width:100%}
+.demo canvas.pick{cursor:crosshair}
+.demo-row{display:flex;gap:1.5rem;align-items:flex-start;flex-wrap:wrap}
+.demo-row>*{flex:1;min-width:250px}
+.demo-ctl{display:flex;gap:.6rem;flex-wrap:wrap;margin-bottom:1rem}
+.demo button{font:inherit;font-size:.88rem;padding:.4em 1em;background:var(--bg4);color:var(--tx);border:1px solid var(--bd);border-radius:6px;cursor:pointer}
+.demo button:hover{border-color:var(--ac);color:var(--ac)}
+.demo input[type=range]{width:100%;accent-color:var(--ac)}
+.readout{font-family:var(--mono);color:var(--ac2)}
+.steps{list-style:none;padding:0}
+.steps li{padding:.5rem .8rem;margin-bottom:.4rem;border-left:3px solid var(--bd);background:var(--bg3);border-radius:0 6px 6px 0;color:var(--tx3);transition:color .25s,border-color .25s}
+.steps li.on{color:var(--tx);border-left-color:var(--gr)}
+.meter{height:10px;background:var(--bg3);border-radius:99px;overflow:hidden;margin-top:.8rem}
+.meter>span{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--ac),var(--ac2))}
+
+/* --- tôn trọng thiết lập giảm chuyển động của người đọc --- */
+@media(prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  .js section .reveal{opacity:1;transform:none;transition:none}
+  #progress{transition:none}
+}
+
+/* --- in ra giấy: IntersectionObserver không chạy cho phần ngoài màn hình --- */
+@media print{
+  #progress,#toc{display:none}
+  .js section .reveal{opacity:1!important;transform:none!important}
+  .card,.demo,.tbl{break-inside:avoid}
+}
 </style>
 </head>
 <body>
 <div id="progress"></div>
-<header id="header"><h1>{System}</h1><p class="sub">{mô tả}</p><span class="badge">{keywords}</span></header>
-<nav id="toc"><h2>Mục lục</h2><ol>...</ol></nav>
-<main><!-- sections --></main>
+
+<header id="header">
+  <h1>{System}</h1>
+  <p class="sub">{mô tả}</p>
+  <span class="badge">{keywords}</span>
+</header>
+
+<nav id="toc">
+  <h2>Mục lục</h2>
+  <ol>
+    <li><a href="#mau">Khối xây sẵn (xoá khi dùng thật)</a></li>
+  </ol>
+</nav>
+
+<main>
+
+<!-- ==== XOÁ TỪ ĐÂY khi viết tài liệu thật. Section này chỉ để xem khối nào có sẵn. ==== -->
+<section id="mau">
+  <h2>Khối xây sẵn</h2>
+
+  <div class="reveal">
+    <h3>Bảng, ghi chú, sơ đồ</h3>
+    <table>
+      <thead><tr><th>Khối</th><th>Dùng khi</th><th>Ghi chú</th></tr></thead>
+      <tbody>
+        <tr><td><code>table</code></td><td>so sánh nhiều lựa chọn</td><td>tự có khung cuộn ngang</td></tr>
+        <tr><td><code>.arch</code></td><td>luồng dữ liệu, cây thư mục</td><td>giữ nguyên khoảng trắng</td></tr>
+        <tr><td><code>.eq</code></td><td>quan hệ định lượng</td><td>TeX ở <code>data-tex</code></td></tr>
+      </tbody>
+    </table>
+
+    <div class="note"><strong>Ghi chú.</strong> Mặc định màu vàng. Thêm <code>.good</code> cho kết luận tốt, <code>.bad</code> cho cạm bẫy.</div>
+
+    <div class="arch">Input  ──►  <em>Xử lý</em>  ──►  Output
+                │
+                └──►  Cache</div>
+  </div>
+
+  <div class="reveal">
+    <h3>Công thức</h3>
+    <div class="eq" data-tex="v(t) = v_0 + a\,t"></div>
+    <div class="eq boxed" data-tex="s(t) = s_0 + v_0 t + \tfrac{1}{2} a t^2"></div>
+  </div>
+
+  <div class="reveal">
+    <h3>Bốn dạng demo</h3>
+
+    <div class="demo">
+      <div class="demo-title">Dạng 1 — Canvas theo chuột</div>
+      <canvas id="demoField" class="pick"></canvas>
+      <p style="margin-top:.8rem">Giá trị tại con trỏ: <span class="readout" id="demoFieldOut">—</span></p>
+    </div>
+
+    <div class="demo">
+      <div class="demo-title">Dạng 2 — quá trình nhiều bước</div>
+      <div class="demo-ctl">
+        <button id="demoStepsNext">Bước tiếp</button>
+        <button id="demoStepsPlay">Chạy</button>
+        <button id="demoStepsReset">Đặt lại</button>
+      </div>
+      <ol class="steps" id="demoSteps">
+        <li>Nhận input</li><li>Kiểm tra hợp lệ</li><li>Tính toán</li><li>Ghi kết quả</li><li>Phát sự kiện</li>
+      </ol>
+    </div>
+
+    <div class="demo">
+      <div class="demo-title">Dạng 3 — input đổi thành kết quả</div>
+      <input type="range" id="demoEase" min="0" max="100" value="35">
+      <p style="margin-top:.6rem">t = <span class="readout" id="demoEaseT">—</span> · kết quả = <span class="readout" id="demoEaseV">—</span></p>
+      <div class="meter"><span id="demoEaseBar"></span></div>
+    </div>
+
+    <div class="demo">
+      <div class="demo-title">Dạng 4 — đồ thị tĩnh</div>
+      <canvas id="demoGraph"></canvas>
+    </div>
+  </div>
+
+  <div class="reveal">
+    <h3>Số liệu tổng kết — luôn đặt cuối tài liệu</h3>
+    <div class="perf-grid">
+      <div class="perf-card"><div class="perf-val">0 B</div><div class="perf-label">cấp phát mỗi frame</div></div>
+      <div class="perf-card"><div class="perf-val">1×</div><div class="perf-label">số lần tính lại</div></div>
+      <div class="perf-card"><div class="perf-val">0.4 ms</div><div class="perf-label">thời gian mỗi lần gọi</div></div>
+    </div>
+  </div>
+</section>
+<!-- ==== XOÁ ĐẾN ĐÂY ==== -->
+
+</main>
+
 <footer>{Project} · {System} · <code>{Namespace}</code></footer>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-csharp.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script><!-- bỏ nếu doc không có công thức -->
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script><!-- KaTeX: xoá nếu doc không có công thức -->
 <script>
-const observer=new IntersectionObserver(e=>{e.forEach(e=>{if(e.isIntersecting)e.target.classList.add('visible')})},{threshold:.08});
-document.querySelectorAll('.reveal').forEach(el=>observer.observe(el));
-const pb=document.getElementById('progress');
-window.addEventListener('scroll',()=>{const h=document.documentElement;pb.style.width=(h.scrollTop/(h.scrollHeight-h.clientHeight)*100)+'%'});
-// KaTeX: render mỗi .eq[data-tex] một lần lúc load (static). Bỏ block này nếu không dùng KaTeX.
-document.querySelectorAll('.eq[data-tex]').forEach(el=>{
-  try{katex.render(el.getAttribute('data-tex'),el,{displayMode:true,throwOnError:false});}
-  catch(e){el.textContent=el.getAttribute('data-tex');}
+/* Bảng màu cho Canvas. Đọc từ CSS một lần — nguồn màu duy nhất vẫn là :root ở trên. */
+const PALETTE = (() => {
+  const s = getComputedStyle(document.documentElement), p = {};
+  for (const k of ['bg','bg2','bg3','bg4','tx','tx2','tx3','ac','ac2','gr','or','rd','bd'])
+    p[k] = s.getPropertyValue('--' + k).trim();
+  return p;
+})();
+
+/* Bọc mọi bảng vào khung cuộn ngang. Chạy một lần, để tác giả không phải nhớ .tbl. */
+document.querySelectorAll('main table').forEach(t => {
+  if (t.parentElement.classList.contains('tbl')) return;
+  const box = document.createElement('div');
+  box.className = 'tbl';
+  t.replaceWith(box);
+  box.appendChild(t);
 });
+
+/* Fade-in. Bỏ theo dõi ngay khi đã hiện, observer không giữ việc gì sau đó. */
+const io = new IntersectionObserver((entries, obs) => {
+  for (const e of entries) if (e.isIntersecting) { e.target.classList.add('visible'); obs.unobserve(e.target); }
+}, { threshold: .08 });
+document.querySelectorAll('.reveal').forEach(el => io.observe(el));
+
+/* Thanh tiến trình. Gom vào rAF: nhiều nhất một lần tính mỗi frame, không phải mỗi sự kiện. */
+const progressBar = document.getElementById('progress');
+let progressRaf = 0;
+function paintProgress() {
+  progressRaf = 0;
+  const h = document.documentElement, max = h.scrollHeight - h.clientHeight;
+  progressBar.style.width = (max > 0 ? h.scrollTop / max * 100 : 0) + '%';
+}
+addEventListener('scroll', () => { if (!progressRaf) progressRaf = requestAnimationFrame(paintProgress); }, { passive: true });
+
+/* Công thức: render một lần lúc load. KaTeX không có hoặc TeX sai thì hiện TeX đọc được. */
+document.querySelectorAll('.eq[data-tex]').forEach(el => {
+  const tex = el.getAttribute('data-tex');
+  if (window.katex) {
+    try { katex.render(tex, el, { displayMode: true, throwOnError: false }); return; }
+    catch (_) { /* rơi xuống bản chữ bên dưới */ }
+  }
+  el.classList.add('eq-raw');
+  el.textContent = tex;
+});
+
+/* Canvas nét trên màn hình mật độ điểm cao. Trả về ctx đã scale — vẽ theo toạ độ logic w×h.
+   Chặn ở 2×: 3× tốn 2.25 lần số pixel mà mắt thường không thấy khác. */
+function setupCanvas(cv, w, h) {
+  const dpr = Math.min(devicePixelRatio || 1, 2);
+  cv.width = w * dpr; cv.height = h * dpr;
+  cv.style.width = w + 'px'; cv.style.height = h + 'px';
+  const ctx = cv.getContext('2d');
+  ctx.scale(dpr, dpr);
+  return ctx;
+}
 </script>
-</body>
-</html>
 
-<!-- ============================================================
-     DEMO PATTERN A tham khao — Canvas + Mouse (pre-render + rAF guard)
-     Copy vao <script>, xoa block nay neu doc khong co demo Canvas.
-     ============================================================
-(function() {
-  const canvas = document.getElementById('demoCanvas');
-  const ctx = canvas.getContext('2d');
-  const W = canvas.width, H = canvas.height;
+<!-- ==== XOÁ CẢ KHỐI NÀY khi viết tài liệu thật. Bốn dạng demo, copy dạng nào cần. ==== -->
+<script id="demo-mau">
+/* Dạng 1 — Canvas theo chuột: nền tính một lần, vẽ gom vào rAF. */
+(function () {
+  const cv = document.getElementById('demoField'); if (!cv) return;
+  const out = document.getElementById('demoFieldOut');
+  const W = 560, H = 180, ctx = setupCanvas(cv, W, H);
 
-  // Pre-render background ONCE
-  const bg = ctx.createImageData(W, H);
-  for (let y = 0; y < H; y++)
-    for (let x = 0; x < W; x++) {
-      const i = (y * W + x) * 4;
-      bg.data[i]=/*R*/; bg.data[i+1]=/*G*/; bg.data[i+2]=/*B*/; bg.data[i+3]=255;
-    }
+  // putImageData KHÔNG chịu ma trận biến đổi, nên nền phải dựng theo pixel thiết bị.
+  const dw = cv.width, dh = cv.height, bg = ctx.createImageData(dw, dh);
+  for (let y = 0; y < dh; y++) for (let x = 0; x < dw; x++) {
+    const i = (y * dw + x) * 4, t = x / dw;
+    bg.data[i] = 22 + t * 40; bg.data[i + 1] = 27 + t * 30; bg.data[i + 2] = 42 + t * 80; bg.data[i + 3] = 255;
+  }
 
-  function draw(mx, my) { ctx.putImageData(bg, 0, 0); /* cheap overlay */ }
-  draw(-1, -1);
+  let mx = -1, my = -1, dirty = true, raf = 0;
+  function draw() {
+    raf = 0; if (!dirty) return; dirty = false;
+    ctx.putImageData(bg, 0, 0);
+    if (mx < 0) { out.textContent = '—'; return; }
+    ctx.strokeStyle = PALETTE.ac; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(mx, 0); ctx.lineTo(mx, H); ctx.stroke();
+    ctx.fillStyle = PALETTE.ac2;
+    ctx.beginPath(); ctx.arc(mx, my, 5, 0, Math.PI * 2); ctx.fill();
+    out.textContent = (mx / W).toFixed(3);
+  }
+  draw();
 
-  let px=-1, py=-1, dirty=false, raf=0;
-  function tick() { raf=0; if(dirty){draw(px,py); dirty=false;} }
-  canvas.addEventListener('mousemove', e => {
-    const r=canvas.getBoundingClientRect();
-    px=(e.clientX-r.left)*W/r.width; py=(e.clientY-r.top)*H/r.height;
-    dirty=true; if(!raf) raf=requestAnimationFrame(tick);
+  cv.addEventListener('mousemove', e => {
+    const r = cv.getBoundingClientRect();
+    mx = (e.clientX - r.left) * W / r.width;
+    my = (e.clientY - r.top) * H / r.height;
+    dirty = true; if (!raf) raf = requestAnimationFrame(draw);
   });
-  canvas.addEventListener('mouseleave', () => {
-    dirty=false; if(raf){cancelAnimationFrame(raf);raf=0;} draw(-1,-1);
+  cv.addEventListener('mouseleave', () => {
+    if (raf) { cancelAnimationFrame(raf); raf = 0; }
+    mx = my = -1; dirty = true; draw();
   });
 })();
--->
+
+/* Dạng 2 — quá trình nhiều bước: chỉ DOM, dừng hẳn interval khi hết hoặc khi đặt lại. */
+(function () {
+  const box = document.getElementById('demoSteps'); if (!box) return;
+  const items = Array.from(box.querySelectorAll('li'));
+  const btnNext = document.getElementById('demoStepsNext');
+  const btnPlay = document.getElementById('demoStepsPlay');
+  const btnReset = document.getElementById('demoStepsReset');
+  let at = -1, timer = 0;
+
+  function paint() { items.forEach((li, i) => li.classList.toggle('on', i <= at)); }
+  function stop() { if (timer) { clearInterval(timer); timer = 0; } btnPlay.textContent = 'Chạy'; }
+  function step() { if (at < items.length - 1) { at++; paint(); } else stop(); }
+
+  btnNext.addEventListener('click', () => { stop(); step(); });
+  btnPlay.addEventListener('click', () => {
+    if (timer) return stop();
+    if (at >= items.length - 1) { at = -1; paint(); }
+    btnPlay.textContent = 'Dừng'; timer = setInterval(step, 900);
+  });
+  btnReset.addEventListener('click', () => { stop(); at = -1; paint(); });
+  paint();
+})();
+
+/* Dạng 3 — input đổi thành kết quả: phép tính rẻ nên tính thẳng trong handler. */
+(function () {
+  const slider = document.getElementById('demoEase'); if (!slider) return;
+  const outT = document.getElementById('demoEaseT');
+  const outV = document.getElementById('demoEaseV');
+  const bar = document.getElementById('demoEaseBar');
+
+  const easeInOutQuad = t => t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+
+  function apply() {
+    const t = +slider.value / 100, v = easeInOutQuad(t);
+    outT.textContent = t.toFixed(2);
+    outV.textContent = v.toFixed(3);
+    bar.style.width = (v * 100).toFixed(1) + '%';
+  }
+  slider.addEventListener('input', apply);
+  apply();
+})();
+
+/* Dạng 4 — đồ thị tĩnh: vẽ một lần, không gắn listener nào. */
+(function () {
+  const cv = document.getElementById('demoGraph'); if (!cv) return;
+  const W = 560, H = 180, pad = 22, ctx = setupCanvas(cv, W, H);
+  const easeInOutQuad = t => t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+
+  ctx.fillStyle = PALETTE.bg3; ctx.fillRect(0, 0, W, H);
+  ctx.strokeStyle = PALETTE.bd; ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(pad, pad); ctx.lineTo(pad, H - pad); ctx.lineTo(W - pad, H - pad);
+  ctx.stroke();
+
+  ctx.strokeStyle = PALETTE.ac; ctx.lineWidth = 2;
+  ctx.beginPath();
+  for (let i = 0; i <= 200; i++) {
+    const t = i / 200, x = pad + t * (W - 2 * pad), y = (H - pad) - easeInOutQuad(t) * (H - 2 * pad);
+    i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+  }
+  ctx.stroke();
+})();
+</script>
+<!-- ==== XOÁ ĐẾN ĐÂY ==== -->
+</body>
+</html>
