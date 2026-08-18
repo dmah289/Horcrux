@@ -455,21 +455,35 @@ Mỗi công thức đã chốt phải map sang code bằng một **phép kiểm 
 # §5 — Tài liệu
 
 Mỗi hệ thống và mỗi tool có tài liệu riêng, đặt cùng thư mục với nó. **Thay đổi hệ thống thì cập nhật
-tài liệu trong cùng lần làm**, không để sau. Các loại đầu ra, cùng một bộ tư tưởng (§1, §2) — mỗi loại
-một người đọc (§5.4):
+tài liệu trong cùng lần làm**, không để sau — riêng `.html` giai đoạn phát triển theo nhịp mốc (đoạn
+Nhịp cập nhật dưới). Các loại đầu ra, cùng một bộ tư tưởng (§1, §2) — mỗi loại một người đọc (§5.4):
 
-| Loại | Vai trò |
-|---|---|
-| **`.md`** | **nguồn sự thật** — agent đọc để hiểu và phát triển tiếp |
-| **`.html`** | tài liệu **chính** developer đọc — visualize `.md` |
-| **Plan** (khi user yêu cầu) | để developer **tự code lại** nhằm học |
-| **Manual** (khi tool có người dùng không phải developer) | người dùng đọc để **thao tác** — luật viết ở §5.4, cập nhật khi thứ họ nhìn thấy hoặc bấm được đổi |
+| Loại | Vai trò | Vòng đời |
+|---|---|---|
+| **`.md`** | tài liệu làm việc của **giai đoạn phát triển** — nguồn sự thật khi hệ còn biến động; agent đọc để hiểu và phát triển tiếp. Cũng dùng khi user yêu cầu | sinh lúc plan / thiết kế; **kết thúc khi hệ ổn định**: gộp vào `.html` rồi xóa |
+| **`.html`** | tài liệu **chính** developer đọc. Giai đoạn phát triển: visualize `.md`. Hệ đã ổn định: **kiêm nguồn sự thật duy nhất** — trực quan cho người, agent hiểu hệ qua code + tài liệu này | sống vĩnh viễn cùng hệ |
+| **Plan** (khi user yêu cầu) | để developer **tự code lại** nhằm học | luôn là `.md` — bản chất là tài liệu giai đoạn |
+| **Manual** (khi tool có người dùng không phải developer) | người dùng đọc để **thao tác** — luật viết ở §5.4, cập nhật khi thứ họ nhìn thấy hoặc bấm được đổi | sống vĩnh viễn cùng tool |
 
 **Quy trình:** phỏng vấn ngữ cảnh (§2.1) và đối chiếu hiểu biết về code với dev (§2.2) → đọc **tất cả**
 source, hiểu 100% data flow, lifecycle, lý do của mỗi quyết định → viết `.md` → sinh `.html` từ `.md` →
 khi được yêu cầu thì viết Plan.
 
-## 5.1 `.md` — nguồn sự thật
+**Nhịp cập nhật khi cả hai cùng sống (giai đoạn phát triển):** `.md` cập nhật **cùng lần làm** với mỗi
+thay đổi hệ; `.html` đồng bộ theo **mốc** — khi user yêu cầu hoặc khi chốt một cụm thay đổi — không
+bắt buộc theo từng lần sửa.
+
+**Khi hệ ổn định tương đối — user chốt thời điểm, agent thấy đủ điều kiện thì đề xuất, không tự làm
+(NT10):** gộp 100% nội dung còn giá trị của `.md` vào `.html` rồi xóa `.md`. Từ đó sửa nhỏ đi **thẳng
+vào `.html`**; thay đổi lớn thì sinh `.md` thiết kế mới cho riêng phần đó, xong lại gộp và xóa —
+`.md` là tài liệu có vòng đời, `.html` là tài liệu vĩnh viễn.
+
+**Sổ tay** — checklist lúc gộp–xóa: nội dung đối chiếu lại với **code** trước khi gộp (không chép
+nguyên đoạn md đã cũ) · phần lịch sử đã hoàn tất (lộ trình, bảng migration) không mang sang — html tả
+hệ *như nó đang là* (§5.4) · grep quét **tham chiếu chết** tới file `.md` vừa xóa trong code comment,
+CLAUDE.md, tài liệu khác — trỏ lại về section tương ứng của `.html`.
+
+## 5.1 `.md` — nguồn sự thật giai đoạn phát triển
 
 Tổ chức theo **đường đi của dữ liệu** (input → processing → output), **không** theo trình tự hàn lâm
 "lý thuyết → thiết kế → code": người đọc cần lần theo được một giá trị từ lúc vào đến lúc ra. Code
@@ -498,9 +512,11 @@ Extension · Performance.
 
 ## 5.2 `.html` — tài liệu chính
 
-Giữ **cấu trúc section của `.md`**. Ba tiêu chí:
+Lúc sinh, giữ **cấu trúc section của `.md`**; sau khi `.md` đã gộp–xóa thì tự chủ cấu trúc. Ba tiêu chí:
 
-1. **Đủ 100% nội dung `.md`** — đây là bản developer thật sự đọc, không phải bản rút gọn.
+1. **Đủ 100% nội dung nguồn** — đây là bản developer thật sự đọc, không phải bản rút gọn. Lúc sinh,
+   nguồn là `.md`; sau khi `.md` đã gộp–xóa thì chính nó **là** nguồn: mọi con số, tên, hành vi (kể cả
+   trong demo/mô phỏng) đối chiếu với **code**, không viết theo trí nhớ (§5.4).
 2. **Để hiểu, không để chép code.** Chữ ký API thì thành bảng. Chỉ giữ code khi bản thân đoạn code *là*
    thứ cần minh họa — một dòng lỗi, một pattern then chốt. Không dán nguyên class hoặc nguyên hàm.
 3. **Zero idle cost** — trang mở ra mà người đọc không tương tác thì không tốn CPU.
@@ -511,7 +527,7 @@ bước thì step. Demo chỉ làm khi bảng và text **không đủ** để th
 vì hành vi phải *thấy* mới hiểu.
 
 **Nghiệm thu:**
-- Đủ 100% nội dung `.md`; single file; TOC khớp với section thật; đọc được trên màn hình nhỏ.
+- Đủ 100% nội dung nguồn (tiêu chí 1); single file; TOC khớp với section thật; đọc được trên màn hình nhỏ.
 - Người đọc *hiểu* được hệ thống mà không cần đọc code — chỗ nào phải dán code mới hiểu là chỗ chưa
   trực quan hóa xong.
 - Mở trang, không tương tác gì: không có tiến trình nào đang chạy.
@@ -567,7 +583,7 @@ chữ ký nói được ra (NT11) · công thức đã đối chiếu với code
 
 | Luật | Nghĩa là |
 |---|---|
-| **Mỗi tài liệu một người đọc** | mỗi loại trả lời đúng câu hỏi của người đọc nó; chép nội dung loại này sang loại kia là sai cả hai. Tool có người dùng không phải developer thì có **Manual riêng**: viết theo **nhãn thật trên UI**, trả lời *"bấm gì ra gì, dùng khi nào"* — không chứa tên class, không lý giải cách cài đặt |
+| **Mỗi tài liệu một người đọc** | mỗi loại trả lời đúng câu hỏi của người đọc nó; chép nội dung loại này sang loại kia là sai cả hai. **Gộp `.md` vào `.html` lúc hệ ổn định (§5) không thuộc lỗi này**: người đọc-agent của `.md` rút về đọc code, `.html` kế thừa vai của nó. Tool có người dùng không phải developer thì có **Manual riêng**: viết theo **nhãn thật trên UI**, trả lời *"bấm gì ra gì, dùng khi nào"* — không chứa tên class, không lý giải cách cài đặt |
 | **Không viết theo trí nhớ** | mọi tên file, signature, hằng số, nhãn UI đều mở code đối chiếu lại trước khi ghi — kể cả khi vừa viết chính dòng code đó (NT9). Đây là nguồn sai nhiều nhất của tài liệu |
 | **Viết cho người đọc lần đầu, ở thì hiện tại** | mô tả hệ *như nó đang là*, không kể *nó đã đổi thế nào* — người mới không có ký ức về bản trước để so. **Ngoại lệ duy nhất:** sổ ghi bẫy *"đã sai một lần"* (§3.8) trong mục quyết định thiết kế — đó là ghi **bài học**, không phải tường thuật thay đổi; và kể cả ở đó cũng không lưu tên cũ (§3.7). **Sổ tay** — tự soát: grep các cụm kể lịch sử ("trước đây", "bản cũ", "giờ đã") |
 | **Câu hỏi của người đọc là bằng chứng tài liệu chưa rõ** | chỗ phải hỏi chính là chỗ hệ thống khó đoán; trả lời xong phải để câu trả lời lại trong tài liệu, không để nó chết trong hội thoại |
