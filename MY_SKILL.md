@@ -37,9 +37,9 @@ Nơi **duy nhất** định nghĩa các nguyên tắc này. Các phần sau ch�
 | 7 | **Game feel là tiêu chí nghiệm thu** | Hệ này phục vụ **cảm giác chơi**, không phục vụ độ chính xác vật lý. Công thức "sai sách" mà chơi đã tay thì **đúng**; công thức chuẩn sách mà chơi vô hồn thì **sai**. Toán là *công cụ để đạt cảm giác*, không phải mục tiêu. |
 | 8 | **Editor-first** | Thứ gì quyết được lúc authoring thì đừng đẩy sang runtime: **code lo *hành vi*, Editor lo *cấu hình và kết nối*** (§3.3). |
 | 9 | **Bằng chứng, không khẳng định suông** | Mọi "tại sao" kèm phép kiểm **tái lập được**; mọi công thức chốt phải **kiểm mốc**; code phải đối chiếu với công thức trước khi chốt. Không viết "đã đúng", "đã tối ưu" mà thiếu mốc, số đo, hoặc phép thử người đọc tự chạy lại được. |
-| 10 | **Hỏi đúng lúc, tự quyết đúng chỗ** | *Khi nào hỏi, khi nào tự đi.* Thiếu ngữ cảnh thì **hỏi** (§2.1), không tự đoán rồi làm; buộc phải giả định thì ghi rõ `Giả định (cần xác nhận): …` **tại chỗ dùng**, không giấu vào output như thể đã chốt. **Được đề xuất mở rộng phạm vi** khi phạm vi hiện tại **chặn khả năng phát triển** — nhưng phải **nêu ra kèm giá phải trả**, không âm thầm làm rộng. Ranh giới: mở rộng vì *sẽ bị chặn* thì nêu; vì "cho đầy đủ, cho chuẩn hơn" thì không (NT6). Với thứ user tự nêu, hỏi lại **một lần** để cân đắt–lợi rồi theo quyết định của user. |
+| 10 | **Hỏi đúng lúc, tự quyết đúng chỗ** | *Khi nào hỏi, khi nào tự đi.* Thiếu ngữ cảnh thì **hỏi** (§2.1), không tự đoán rồi làm; buộc phải giả định thì ghi rõ `Giả định (cần xác nhận): …` **tại chỗ dùng**, không giấu vào output như thể đã chốt. **Giả định chỉ hợp lệ cho khe hở nhỏ phát hiện giữa chừng, trên đầu ra đảo ngược được** (code trong git, tài liệu, plan) — không thay cho phỏng vấn ngữ cảnh (§2.1). **Thao tác khó đảo ngược thì luôn hỏi trước khi chạy, nhãn giả định không thay được xác nhận**: ghi đè hoặc xoá dữ liệu đã author (file level, save, asset), migration đổi schema hoặc wire format, mọi thứ nằm ngoài version control. **Được đề xuất mở rộng phạm vi** khi phạm vi hiện tại **chặn khả năng phát triển** — nhưng phải **nêu ra kèm giá phải trả**, không âm thầm làm rộng. Ranh giới: mở rộng vì *sẽ bị chặn* thì nêu; vì "cho đầy đủ, cho chuẩn hơn" thì không (NT6). Với thứ user tự nêu, hỏi lại **một lần** để cân đắt–lợi rồi theo quyết định của user. |
 | 11 | **Đủ hôm nay, mở đường mai** | *Hình dạng của thứ đã chốt.* Triển khai đúng phạm vi đã chốt, **không code sẵn** thứ chưa ai cần (NT6). Nhưng hình dạng phải để bước phát triển kế tiếp là **thêm vào**, không phải **đập ra làm lại**: chữ ký nhận đủ thông tin nó cần, ranh giới trách nhiệm đặt đúng chỗ, điểm nối để hở. Đây là **cách sắp xếp**, không phải **thêm số lượng** — chi phí hôm nay gần bằng 0. Nghiệm thu: gọi được tên bước kế tiếp, và chỉ ra được nó là "thêm" chứ không phải "sửa". Bản hiện tại sẽ chặn một hướng đáng kể thì nêu ra (NT10). |
-| 12 | **Phạm vi bàn được, cách làm luôn mở** | *Mức tự do khi triển khai.* Tiêu chí đã chốt thì cách đạt là việc của người triển khai. Thấy cách đạt **cùng tiêu chí** mà đơn giản, nhanh, hoặc rõ hơn thì **dùng nó** và nói rõ vì sao kèm phép kiểm (NT9). Đổi **cách làm** không cần hỏi lại; đổi **phạm vi** thì cần (NT10). Im lặng chọn món có sẵn trong sổ tay khi biết có cách tốt hơn là vi phạm nguyên tắc này. |
+| 12 | **Phạm vi bàn được, cách làm luôn mở** | *Mức tự do khi triển khai.* Tiêu chí đã chốt thì cách đạt là việc của người triển khai. Thấy cách đạt **cùng tiêu chí** mà đơn giản, nhanh, hoặc rõ hơn thì **dùng nó** và nói rõ vì sao kèm phép kiểm (NT9). Đổi **cách làm** không cần hỏi lại; đổi **phạm vi** thì cần (NT10). **Ranh giới cứng của "cách làm"** — tự do chỉ khi cả ba thứ này không đổi: **hành vi quan sát được** (kể cả kết quả sinh ngẫu nhiên theo seed) · **dữ liệu ghi ra** (format lẫn giá trị) · **API công khai**. Đụng một trong ba là đổi phạm vi — hỏi, dù thấy "rõ ràng tốt hơn". Im lặng chọn món có sẵn trong sổ tay khi biết có cách tốt hơn là vi phạm nguyên tắc này. |
 
 ---
 
@@ -141,9 +141,36 @@ Plan thì đặt mục **"Ngữ cảnh đã chốt"** trước `§0`; tài liệ
 mục tiêu · ranh giới · **những gì cố ý KHÔNG làm, kèm lý do** · hướng phát triển đã tính tới nhưng chưa
 làm (NT11). Người đọc sau biết vì sao phạm vi dừng ở đó, không "bổ sung cho đủ".
 
+## 2.6 Chưng cất tư tưởng khi brainstorm
+
+Brainstorm là nơi tư tưởng thiết kế của user lộ ra rõ nhất — nhưng lộ dưới dạng **quyết định cụ thể cho
+một bài toán**, và sẽ trôi mất khi bài toán đó xong. File này chỉ lớn lên được bằng cách giữ lại đúng
+những khoảnh khắc đó.
+
+Nên trong brainstorm, **ở từng câu hỏi**, sau khi nhận câu trả lời của user, agent làm thêm ba bước:
+
+1. **Khái quát hóa** — tách phần *tư tưởng* khỏi phần *quyết định riêng của bài toán này*: phát biểu
+   lại thành nguyên tắc mà mang sang bài toán khác vẫn dùng được, kèm cái "vì sao" đằng sau lựa chọn
+   của user, không chỉ ghi lại lựa chọn.
+2. **Đối chiếu với chính file này** (NT4) — đã có rồi thì thôi; là trường hợp riêng của nguyên tắc đã
+   có thì trỏ về nguyên tắc đó; làm rõ thêm hoặc **mâu thuẫn** với nguyên tắc đã có thì nêu thẳng chỗ
+   lệch để user phân xử.
+3. **Hỏi user quyết** (NT10) — nêu bản khái quát và hỏi: có muốn thêm vào MY_SKILL không, và vào
+   **tầng nào** (Luật / Nền tảng / Sổ tay)? User chốt thì mới ghi, ghi đúng cấu trúc và văn phong của
+   file; user từ chối thì bỏ, không ghi tạm đâu khác.
+
+Giới hạn: chỉ khái quát khi câu trả lời **thật sự chứa tư tưởng** — một lựa chọn có "vì sao" mang tính
+nguyên tắc, lặp lại được. Quyết định thuần bài toán (chọn hằng số, đặt tên, phạm vi một task) thì
+không; hỏi máy móc sau mọi câu trả lời là biến brainstorm thành thủ tục và làm loãng chính những lần
+hỏi đáng giá (NT6).
+
 ---
 
 # §3 — Thiết kế code
+
+Tra theo loại việc, không cần đọc tuần tự: **kiến trúc** §3.1 SOLID · §3.2 module — **chỗ đặt logic**
+§3.3 editor-first — **vận hành** §3.4 async và tài nguyên · §3.5 hiệu năng — **tool** §3.6 —
+**luật ngang mọi code** §3.7 naming · §3.8 bất biến · §3.9 dữ liệu import/export.
 
 ## 3.1 SOLID
 
@@ -228,6 +255,10 @@ Ba tiêu chí:
 3. **Chỉ tối ưu chỗ đã xác nhận là hot path** (§2.4). Ngoài hot path thì **chọn bản dễ đọc nhất** — đó
    không phải nhượng bộ, đó là quyết định đúng.
 
+**Mỗi phép tính phải khai được nhịp của nó** — mỗi frame · mỗi tương tác · mỗi lần dữ liệu đổi. Viết một
+hàm chạy trong vòng lặp là phải trả lời được nó thuộc nhịp nào; đặt ở nhịp nhanh hơn mức cần thì không
+có gì báo sai — chỉ có hệ chậm dần, và trả giá gấp nhiều lần con số mình tưởng.
+
 **Cách rẻ nhất thường là làm phép tính biến mất, không phải làm nó chạy nhanh hơn.** Trước khi cache
 hay tối ưu, hỏi: có thể không cần tính nó không · tính một lần lúc authoring được không (§3.3) · đổi
 cấu trúc dữ liệu để câu hỏi tự biến mất được không?
@@ -254,8 +285,8 @@ cấu trúc dữ liệu để câu hỏi tự biến mất được không?
 ## 3.6 Editor tool
 
 Tiêu chí: **một tool là một đơn vị gói kín** (mở thư mục ra là thấy hết thứ nó cần) · **thứ dùng chung
-sống một chỗ** (phát hiện logic tái sử dụng được thì chuyển ra, ví dụ `Common/`) · **thứ không đổi giữa
-các lần vẽ lại phải có sẵn**.
+sống một chỗ** (phát hiện logic tái sử dụng được thì chuyển ra, ví dụ `Common/` — cách nâng và mức cần
+hỏi theo §3.2) · **thứ không đổi giữa các lần vẽ lại phải có sẵn**.
 
 > **Nền tảng** — với IMGUI (`OnGUI`, `EditorWindow`, `PropertyDrawer`): một lần tương tác của người
 > dùng gây ra nhiều lần gọi `OnGUI` cho **cùng một state**, mỗi lần gọi lại chạy lại toàn bộ hàm — nên
@@ -276,6 +307,23 @@ liên tục, không chạy lại mỗi frame) nên bảng này không áp; tiêu
 Cùng nhóm: dynamic `GUIContent` — một instance duy nhất, chỉ cập nhật `.text` khi giá trị thực sự đổi ·
 một `GUIContent` dùng chung để đo `CalcHeight`.
 
+**Tool có người dùng thì UX là một phần của thiết kế**, không phải phần trang trí:
+
+- **Vùng UI phải nói lên ranh giới** — thứ khác vai trò (ghi vào dữ liệu / chỉ đổi cách xem / dùng ở mọi
+  lúc) không nằm chung một vùng. Đặt vùng mới thì hỏi *"người dùng đang nghĩ gì lúc đi tìm nó?"*, không
+  hỏi "chỗ nào còn trống". Ranh giới nào phải giải thích bằng một cột trong hướng dẫn là ranh giới người
+  dùng sẽ nhầm.
+- **Điều kiện vẽ và điều kiện bấm được suy từ một nguồn** — luật ở §3.8; hệ quả UX khi phá: nút đang
+  hiện mà bấm không có gì xảy ra — bug khó báo cáo nhất.
+- **Không giấu thứ có thật**: điều kiện vẽ là *"có dữ liệu"*, không phải *"tra được tài nguyên để vẽ"* —
+  tra thiếu thì vẽ dạng báo lỗi kèm id, đừng để dữ liệu biến mất khỏi màn hình trong khi vẫn được xử lý
+  và ghi ra file. Field chỉ-đọc vẫn phải hiện, khác kiểu với field sửa được — không thấy là người dùng
+  xoá mất mà không biết.
+- **Phép nghiệm thu chạy khi được hỏi**, không chạy nền theo mỗi thay đổi: trong lúc đang dựng thì dữ
+  liệu **luôn** chưa hợp lệ, cảnh báo nền sẽ hiện gần như toàn thời gian vào đúng lúc chưa thể sửa —
+  đúng mà vô ích. Thấy một chỉ báo "luôn cập nhật" hấp dẫn thì hỏi trước: *nó có im lặng trong phần lớn
+  thời gian làm việc không?*
+
 ## 3.7 Naming — self-documenting code
 
 - Tên method nói rõ **mục đích**: `EnsureMaterial()`, `SwapWriteBuffer()`, `SolveAnalytic()`. Tên vô
@@ -284,6 +332,41 @@ một `GUIContent` dùng chung để đo `CalcHeight`.
 - Code tự giải thích được thì comment **chỉ** nói **tại sao**, không nói **cái gì**.
 - API public có XML doc; `<param>` cho mọi tham số có contract không hiển nhiên — miền giá trị, đơn vị,
   ai là người cấp giá trị đó.
+- **Một từ = một nghĩa trong toàn hệ thống** — mỗi khái niệm đúng một từ. Một từ bắt đầu mang hai nghĩa
+  thì đổi tên một bên ngay, đừng để người đọc đoán theo ngữ cảnh. Khái niệm không đặt nổi tên riêng
+  thường là khái niệm chưa rõ.
+- **Đổi tên là đổi cả hệ**: code, comment, chuỗi debug, và mọi tài liệu — cùng một lần làm, không để sót
+  tên cũ ở bất kỳ đâu (kiểm bằng grep). Tên cũ không cần lưu lại — thay là thay hẳn. **Ranh giới:** khoá
+  wire format và dữ liệu đã serialize (key JSON, tên field trong save, schema) là **hợp đồng với hệ
+  khác**, không phải từ vựng của code — không đổi theo, và không bị tính là "tên cũ còn sót".
+
+## 3.8 Bất biến — bảo vệ bằng cấu trúc, không bằng kỷ luật
+
+Bất biến giữ bằng "mọi người nhớ làm đúng" sẽ vỡ ở đúng người thứ hai. Ưu tiên sắp xếp code sao cho cái
+sai **không thể xảy ra**, thay vì dặn đừng sai:
+
+| Luật | Nghĩa là |
+|---|---|
+| **Một sự thật = một chủ sở hữu** | mỗi dữ liệu có đúng một nơi giữ bản gốc; mọi cache phải chỉ ra được **ai dựng lại** và **khi nào** |
+| **Cache mới bám vào bất biến ĐÃ CÓ** | dùng lại dirty flag / version counter đang có, không dựng bất biến thứ hai song song — mỗi bất biến thêm là một điều mọi code sau phải nhớ, quên là cache cũ nằm lại **âm thầm** |
+| **Một cờ chỉ được tiêu thụ ở đúng MỘT nơi** | có nơi thứ hai thì nơi chạy sau không bao giờ thấy cờ bật — cache của nó đứng im, không có gì báo |
+| **Hai phép tính buộc phải khớp thì suy từ MỘT nguồn** | đo–vẽ, vẽ–hit-test, điều kiện ẩn–hiện: cùng một hàm, hoặc cùng một biểu thức copy nguyên — không viết hai bản "giống nhau", kể cả khi công thức hiển nhiên. Hai bản sẽ lệch, và lệch kiểu nhìn-vẫn-đúng-bấm-thì-trượt |
+| **Cửa hẹp là thân chung của cửa rộng** | hai đường làm gần cùng một việc (bản đầy đủ và bản giữ-lại-một-phần) thì bản hẹp gọi vào thân bản rộng — hai bên không thể lệch nhau |
+
+**Bug "sai âm thầm" sửa xong thì chưng cất thành một dòng bất biến trong tài liệu module**, dạng *"đã
+sai một lần: [triệu chứng]"* — đó là loại tri thức đắt nhất và không đọc ra được từ code (NT9, §5.4).
+
+## 3.9 Dữ liệu đi qua tool — import/export
+
+File mà tool đọc–ghi là **của người dùng và của hệ khác**, không phải của tool:
+
+| Luật | Nghĩa là |
+|---|---|
+| **Không bao giờ sửa giá trị dữ liệu import** | ngoài tầm hợp lệ thì **từ chối cả file**, hoặc **bỏ qua entry đó** kèm cảnh báo. Clamp là xuất ra bản lệch — mất dữ liệu thật mà không ai biết |
+| **Bỏ entry hỏng, không bịa entry mới** | chèn dữ liệu để "sửa giúp" là thêm thứ không có trong file — tệ hơn thiếu |
+| **Chỉ sở hữu phần mình hiểu** | export clone dữ liệu gốc rồi ghi đè đúng những khoá tool sở hữu; mọi khoá lạ **đi qua nguyên vẹn** — đó là dữ liệu của hệ khác mà tool chưa hỗ trợ, không phải rác |
+| **Dữ liệu gốc đi theo đối tượng** | giữ tham chiếu bản gốc trên chính đối tượng, không tra lại theo toạ độ hay vị trí mảng lúc export — hai thứ đó đổi theo thao tác, tra theo chúng là gán dữ liệu của đối tượng này cho đối tượng **khác**, sai âm thầm |
+| **Import và Export sống cạnh nhau** | hai chiều của cùng một cụm dữ liệu nằm trong một file — nằm cạnh nhau thì không trôi lệch nhau; nghiệm thu bằng round-trip (§4.3) |
 
 ---
 
@@ -372,13 +455,15 @@ Mỗi công thức đã chốt phải map sang code bằng một **phép kiểm 
 # §5 — Tài liệu
 
 Mỗi hệ thống và mỗi tool có tài liệu riêng, đặt cùng thư mục với nó. **Thay đổi hệ thống thì cập nhật
-tài liệu trong cùng lần làm**, không để sau. Ba loại đầu ra, cùng một bộ tư tưởng (§1, §2):
+tài liệu trong cùng lần làm**, không để sau. Các loại đầu ra, cùng một bộ tư tưởng (§1, §2) — mỗi loại
+một người đọc (§5.4):
 
 | Loại | Vai trò |
 |---|---|
 | **`.md`** | **nguồn sự thật** — agent đọc để hiểu và phát triển tiếp |
 | **`.html`** | tài liệu **chính** developer đọc — visualize `.md` |
 | **Plan** (khi user yêu cầu) | để developer **tự code lại** nhằm học |
+| **Manual** (khi tool có người dùng không phải developer) | người dùng đọc để **thao tác** — luật viết ở §5.4, cập nhật khi thứ họ nhìn thấy hoặc bấm được đổi |
 
 **Quy trình:** phỏng vấn ngữ cảnh (§2.1) và đối chiếu hiểu biết về code với dev (§2.2) → đọc **tất cả**
 source, hiểu 100% data flow, lifecycle, lý do của mỗi quyết định → viết `.md` → sinh `.html` từ `.md` →
@@ -477,3 +562,15 @@ prefab (§3.3) · bảng kiểm chứng input → kỳ vọng, nói rõ nếu kh
 
 **Nghiệm thu riêng:** có mục "Ngữ cảnh đã chốt" (§2.5) · mọi hàm có caller thật, hoặc có lý do phòng xa
 chữ ký nói được ra (NT11) · công thức đã đối chiếu với code (§4.3).
+
+## 5.4 Kỷ luật viết và bảo trì — áp cho mọi loại tài liệu
+
+| Luật | Nghĩa là |
+|---|---|
+| **Mỗi tài liệu một người đọc** | mỗi loại trả lời đúng câu hỏi của người đọc nó; chép nội dung loại này sang loại kia là sai cả hai. Tool có người dùng không phải developer thì có **Manual riêng**: viết theo **nhãn thật trên UI**, trả lời *"bấm gì ra gì, dùng khi nào"* — không chứa tên class, không lý giải cách cài đặt |
+| **Không viết theo trí nhớ** | mọi tên file, signature, hằng số, nhãn UI đều mở code đối chiếu lại trước khi ghi — kể cả khi vừa viết chính dòng code đó (NT9). Đây là nguồn sai nhiều nhất của tài liệu |
+| **Viết cho người đọc lần đầu, ở thì hiện tại** | mô tả hệ *như nó đang là*, không kể *nó đã đổi thế nào* — người mới không có ký ức về bản trước để so. **Ngoại lệ duy nhất:** sổ ghi bẫy *"đã sai một lần"* (§3.8) trong mục quyết định thiết kế — đó là ghi **bài học**, không phải tường thuật thay đổi; và kể cả ở đó cũng không lưu tên cũ (§3.7). **Sổ tay** — tự soát: grep các cụm kể lịch sử ("trước đây", "bản cũ", "giờ đã") |
+| **Câu hỏi của người đọc là bằng chứng tài liệu chưa rõ** | chỗ phải hỏi chính là chỗ hệ thống khó đoán; trả lời xong phải để câu trả lời lại trong tài liệu, không để nó chết trong hội thoại |
+| **Mâu thuẫn thì SỬA dòng cũ** | không thêm dòng thứ hai nói ngược — hai dòng đá nhau tệ hơn không có dòng nào. **Riêng dòng cũ ghi quyết định hoặc ranh giới do user đặt thì không tự sửa** — quyết định của user chỉ user đổi được: nêu chỗ lệch để user phân xử (NT10) |
+| **Quyết định trái trực giác gom về một mục riêng** | chỗ cố ý trông "kém tối ưu" phải có lý do viết sẵn ở một nơi biết trước; người tối ưu sau đọc mục đó **trước khi đụng** (cùng họ với "những gì cố ý KHÔNG làm" của §2.5) |
+| **Tư tưởng mới chưng cất ngay trong task** | task, câu hỏi, phản hồi nào xác lập **quy ước còn đúng ở lần sửa sau** thì ghi vào tài liệu module **trước khi báo hoàn thành** — quyết định chỉ sống trong hội thoại thì chết cùng hội thoại. Ghi *quy ước ở thì hiện tại*, không tường thuật task (việc của git log). **Và liệt kê nguyên văn các dòng đã ghi trong báo cáo hoàn thành** — quy ước là bản khái quát của agent, user phải thấy để veto được bản khái quát sai trước khi nó thành luật cho agent sau. Riêng thêm vào chính MY_SKILL thì theo §2.6 — hỏi user trước |
