@@ -100,8 +100,9 @@ là chỗ **NT1 không áp** — nén thông tin trong đối thoại chỉ tạ
 
 ## 2.4 Tái sử dụng, rồi chốt phạm vi
 
-**Trước câu hỏi "có cần không" là câu hỏi "đã có chưa"** (NT4). Khảo sát project, submodule, package, và
-Utilities của SDK trước khi viết dòng đầu tiên. Ba kết cục:
+**Trước câu hỏi "có cần không" là câu hỏi "đã có chưa"** (NT4). Khảo sát **trong phạm vi logic liên quan
+đến task**: hệ đang chạm, module nó gọi tới, Utilities khi nghi có helper sẵn — không quét toàn project
+cho một thay đổi cục bộ; phạm vi khảo sát tương xứng phạm vi thay đổi. Ba kết cục:
 
 | Cái có sẵn | Xử lý |
 |---|---|
@@ -164,6 +165,19 @@ Giới hạn: chỉ khái quát khi câu trả lời **thật sự chứa tư t�
 nguyên tắc, lặp lại được. Quyết định thuần bài toán (chọn hằng số, đặt tên, phạm vi một task) thì
 không; hỏi máy móc sau mọi câu trả lời là biến brainstorm thành thủ tục và làm loãng chính những lần
 hỏi đáng giá (NT6).
+
+## 2.7 Subagent — ngữ cảnh bơm từ orchestrator, không tự đọc lại
+
+Mỗi subagent là một ngữ cảnh trắng: để nó "tự tìm hiểu" là nó đọc lại từ đầu MY_SKILL và tài liệu hệ,
+và thuế đọc đó **nhân theo số subagent**. Nên **orchestrator (main agent) đọc tài liệu nền một lần, bơm
+đúng phần liên quan vào prompt của từng subagent** — đã sai một lần: 108 subagent tự đọc lại tài liệu
+nền đốt ~94M token ngữ cảnh trong một ngày, gấp ~14 lần nhịp thường.
+
+- Prompt cho subagent **tự chứa như một task của Plan** (§5.3): trích đoạn tài liệu cần cho task, đường
+  dẫn file sẽ chạm, tiêu chí nghiệm thu — subagent làm được mà không phải đoán và không phải tự quét.
+  Thiếu ngữ cảnh thì subagent báo về để orchestrator bổ sung, không tự đi đọc tài liệu nền.
+- Ngoại lệ là **code**: subagent tự đọc code nó sẽ sửa — code đổi liên tục, trích đoạn code trong prompt
+  là bản chết (§5.4 "không viết theo trí nhớ" áp cho cả prompt).
 
 ---
 
@@ -458,35 +472,35 @@ Mỗi công thức đã chốt phải map sang code bằng một **phép kiểm 
 # §5 — Tài liệu
 
 Mỗi hệ thống và mỗi tool có tài liệu riêng, đặt cùng thư mục với nó. **Thay đổi hệ thống thì cập nhật
-tài liệu trong cùng lần làm**, không để sau — riêng `.html` giai đoạn phát triển theo nhịp mốc (đoạn
-Nhịp cập nhật dưới). Các loại đầu ra, cùng một bộ tư tưởng (§1, §2) — mỗi loại một người đọc (§5.4):
+tài liệu trong cùng lần làm**, không để sau — riêng `.html` theo nhịp mốc (đoạn Nhịp cập nhật dưới).
+Các loại đầu ra, cùng một bộ tư tưởng (§1, §2) — mỗi loại một người đọc (§5.4):
 
 | Loại | Vai trò | Vòng đời |
 |---|---|---|
-| **`.md`** | tài liệu làm việc của **giai đoạn phát triển** — nguồn sự thật khi hệ còn biến động; agent đọc để hiểu và phát triển tiếp. Cũng dùng khi user yêu cầu | sinh lúc plan / thiết kế; **kết thúc khi hệ ổn định**: gộp vào `.html` rồi xóa |
-| **`.html`** | tài liệu **chính** developer đọc. Giai đoạn phát triển: visualize `.md`. Hệ đã ổn định: **kiêm nguồn sự thật duy nhất** — trực quan cho người, agent hiểu hệ qua code + tài liệu này | sống vĩnh viễn cùng hệ |
-| **Plan** (khi user yêu cầu) | để developer **tự code lại** nhằm học | luôn là `.md` — bản chất là tài liệu giai đoạn |
+| **`.md`** | tài liệu **agent đọc** để hiểu và phát triển hệ — bản đặc, plain text, rẻ token; đồng thời là nguồn nội dung sinh `.html` | sống vĩnh viễn cùng hệ; cập nhật **cùng lần làm** với mỗi thay đổi |
+| **`.html`** | tài liệu **developer và game designer đọc** — trực quan hóa 100% nội dung `.md`; agent không đọc bản này khi hệ đã có `.md` | sống vĩnh viễn cùng hệ; đồng bộ từ `.md` theo mốc |
+| **Plan** (khi user yêu cầu) | để developer **tự code lại** nhằm học | luôn là `.md`; vòng đời theo task — xong task là xong vai |
 | **Manual** (khi tool có người dùng không phải developer) | người dùng đọc để **thao tác** — luật viết ở §5.4, cập nhật khi thứ họ nhìn thấy hoặc bấm được đổi | sống vĩnh viễn cùng tool |
 
 **Quy trình:** phỏng vấn ngữ cảnh (§2.1) và đối chiếu hiểu biết về code với dev (§2.2) → đọc **tất cả**
 source, hiểu 100% data flow, lifecycle, lý do của mỗi quyết định → viết `.md` → sinh `.html` từ `.md` →
 khi được yêu cầu thì viết Plan.
 
-**Nhịp cập nhật khi cả hai cùng sống (giai đoạn phát triển):** `.md` cập nhật **cùng lần làm** với mỗi
-thay đổi hệ; `.html` đồng bộ theo **mốc** — khi user yêu cầu hoặc khi chốt một cụm thay đổi — không
-bắt buộc theo từng lần sửa.
+**Nhịp cập nhật:** `.md` cập nhật **cùng lần làm** với mỗi thay đổi hệ; `.html` đồng bộ theo **mốc** —
+khi user yêu cầu hoặc khi chốt một cụm thay đổi — không bắt buộc theo từng lần sửa.
 
-**Khi hệ ổn định tương đối — user chốt thời điểm, agent thấy đủ điều kiện thì đề xuất, không tự làm
-(NT10):** gộp 100% nội dung còn giá trị của `.md` vào `.html` rồi xóa `.md`. Từ đó sửa nhỏ đi **thẳng
-vào `.html`**; thay đổi lớn thì sinh `.md` thiết kế mới cho riêng phần đó, xong lại gộp và xóa —
-`.md` là tài liệu có vòng đời, `.html` là tài liệu vĩnh viễn.
+**Chuỗi sự thật một chiều `code → .md → .html`** (một dạng của §3.8 "hai bản buộc khớp thì suy từ một
+nguồn"): code là chuẩn — cả hai tài liệu phản ánh **100% thiết kế đang chạy trong code**; `.md` đối
+chiếu trực tiếp với code, `.html` sinh và đồng bộ từ `.md`. Cả hai **sống vĩnh viễn cùng hệ — không
+gộp, không xóa**. Phát hiện lệch ở đâu thì sửa xuôi theo chuỗi: `.html` lệch → đối chiếu `.md` với code
+trước, rồi đồng bộ `.html` từ `.md`; không sửa ngược `.html` rồi để `.md` trôi.
 
-**Sổ tay** — checklist lúc gộp–xóa: nội dung đối chiếu lại với **code** trước khi gộp (không chép
-nguyên đoạn md đã cũ) · phần lịch sử đã hoàn tất (lộ trình, bảng migration) không mang sang — html tả
-hệ *như nó đang là* (§5.4) · grep quét **tham chiếu chết** tới file `.md` vừa xóa trong code comment,
-CLAUDE.md, tài liệu khác — trỏ lại về section tương ứng của `.html`.
+**Sổ tay** — checklist mỗi lần đồng bộ: mọi tên, số, hành vi đối chiếu lại với **code**, không chép
+theo trí nhớ (§5.4) · phần lịch sử đã hoàn tất (lộ trình, bảng migration) không giữ lại — tài liệu tả
+hệ *như nó đang là* (§5.4) · đổi tên hay xóa file tài liệu thì grep quét **tham chiếu chết** trong code
+comment, CLAUDE.md, tài liệu khác.
 
-## 5.1 `.md` — nguồn sự thật giai đoạn phát triển
+## 5.1 `.md` — tài liệu cho agent
 
 Tổ chức theo **đường đi của dữ liệu** (input → processing → output), **không** theo trình tự hàn lâm
 "lý thuyết → thiết kế → code": người đọc cần lần theo được một giá trị từ lúc vào đến lúc ra. Code
@@ -515,11 +529,11 @@ Extension · Performance.
 
 ## 5.2 `.html` — tài liệu chính
 
-Lúc sinh, giữ **cấu trúc section của `.md`**; sau khi `.md` đã gộp–xóa thì tự chủ cấu trúc. Ba tiêu chí:
+Giữ **cấu trúc section của `.md`** để hai bản đối chiếu được với nhau. Ba tiêu chí:
 
-1. **Đủ 100% nội dung nguồn** — đây là bản developer thật sự đọc, không phải bản rút gọn. Lúc sinh,
-   nguồn là `.md`; sau khi `.md` đã gộp–xóa thì chính nó **là** nguồn: mọi con số, tên, hành vi (kể cả
-   trong demo/mô phỏng) đối chiếu với **code**, không viết theo trí nhớ (§5.4).
+1. **Đủ 100% nội dung `.md`** — đây là bản developer và game designer thật sự đọc, không phải bản rút
+   gọn. Mọi con số, tên, hành vi (kể cả trong demo/mô phỏng) đối chiếu với **code**, không viết theo
+   trí nhớ (§5.4).
 2. **Để hiểu, không để chép code.** Chữ ký API thì thành bảng. Chỉ giữ code khi bản thân đoạn code *là*
    thứ cần minh họa — một dòng lỗi, một pattern then chốt. Không dán nguyên class hoặc nguyên hàm.
 3. **Zero idle cost** — trang mở ra mà người đọc không tương tác thì không tốn CPU.
@@ -586,7 +600,7 @@ chữ ký nói được ra (NT11) · công thức đã đối chiếu với code
 
 | Luật | Nghĩa là |
 |---|---|
-| **Mỗi tài liệu một người đọc** | mỗi loại trả lời đúng câu hỏi của người đọc nó; chép nội dung loại này sang loại kia là sai cả hai. **Gộp `.md` vào `.html` lúc hệ ổn định (§5) không thuộc lỗi này**: người đọc-agent của `.md` rút về đọc code, `.html` kế thừa vai của nó. Tool có người dùng không phải developer thì có **Manual riêng**: viết theo **nhãn thật trên UI**, trả lời *"bấm gì ra gì, dùng khi nào"* — không chứa tên class, không lý giải cách cài đặt |
+| **Mỗi tài liệu một người đọc** | mỗi loại trả lời đúng câu hỏi của người đọc nó; chép nội dung loại này sang loại kia là sai cả hai. **Cặp `.md`–`.html` của một hệ (§5) không thuộc lỗi này**: cùng nội dung, hai người đọc — `.md` cho agent, `.html` cho người; giữ khớp bằng chuỗi `code → .md → .html`. Tool có người dùng không phải developer thì có **Manual riêng**: viết theo **nhãn thật trên UI**, trả lời *"bấm gì ra gì, dùng khi nào"* — không chứa tên class, không lý giải cách cài đặt |
 | **Không viết theo trí nhớ** | mọi tên file, signature, hằng số, nhãn UI đều mở code đối chiếu lại trước khi ghi — kể cả khi vừa viết chính dòng code đó (NT9). Đây là nguồn sai nhiều nhất của tài liệu |
 | **Viết cho người đọc lần đầu, ở thì hiện tại** | mô tả hệ *như nó đang là*, không kể *nó đã đổi thế nào* — người mới không có ký ức về bản trước để so. **Ngoại lệ duy nhất:** sổ ghi bẫy *"đã sai một lần"* (§3.8) trong mục quyết định thiết kế — đó là ghi **bài học**, không phải tường thuật thay đổi; và kể cả ở đó cũng không lưu tên cũ (§3.7). **Sổ tay** — tự soát: grep các cụm kể lịch sử ("trước đây", "bản cũ", "giờ đã") |
 | **Câu hỏi của người đọc là bằng chứng tài liệu chưa rõ** | chỗ phải hỏi chính là chỗ hệ thống khó đoán; trả lời xong phải để câu trả lời lại trong tài liệu, không để nó chết trong hội thoại |
