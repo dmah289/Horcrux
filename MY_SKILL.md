@@ -246,7 +246,7 @@ sức đắt nhất trong nghiệm thu là công sức của developer**.
 
 # §3 — Thiết kế code
 
-Tra theo loại việc, không cần đọc tuần tự: **kiến trúc** §3.1 SOLID · §3.2 module — **chỗ đặt logic**
+Tra theo loại việc, không cần đọc tuần tự: **kiến trúc** §3.1 SOLID và mức cấu trúc · §3.2 module — **chỗ đặt logic**
 §3.3 editor-first — **vận hành** §3.4 async và tài nguyên · §3.5 hiệu năng — **tool** §3.6 —
 **luật ngang mọi code** §3.7 naming · §3.8 bất biến · §3.9 dữ liệu import/export.
 
@@ -263,6 +263,32 @@ Tra theo loại việc, không cần đọc tuần tự: **kiến trúc** §3.1 
 > **Nền tảng** — DI runtime mặc định là InitArgs (`Sisus.Init`): `[Service(typeof(T))]` để đăng ký,
 > `MonoBehaviour<TDep>` + `Init(TDep)` để nhận. Editor và tooling không bắt buộc dùng InitArgs —
 > constructor injection hoặc static factory ở đó là hợp lệ.
+
+**Mức cấu trúc chọn theo phạm vi bài toán.** SOLID phục vụ **người đọc sau**, không phải một hình thức
+phải đạt cho đủ. Chia thiếu và chia thừa đều sai, và sai ở cùng một chỗ: **chi phí đọc**. Chia thừa thì
+một luồng nhỏ nằm rải qua nhiều file và nhiều lớp — người đọc phải ghép lại thứ vốn đọc một mạch là
+xong, mà không có gì bù lại. Đây là hai bờ vực của NT6 áp cho cấu trúc code, và là NT13 áp cho **hình
+dạng**, không chỉ cho thuật toán.
+
+**Bậc cấu trúc leo từ dưới lên, mỗi bậc chỉ leo khi bậc dưới không còn đạt:**
+
+| Bậc | Đủ dùng khi | Leo lên bậc trên khi |
+|---|---|---|
+| **Logic tại chỗ** | chỉ chạy ở một nơi, đọc một mạch là hiểu hết | có **người gọi thứ hai**, hoặc một ý không còn nhìn hết trong một màn hình |
+| **Hàm tách riêng** | đặt được tên nói đúng mục đích (§3.7); không giữ state giữa các lần gọi | phát sinh **state phải giữ**, hoặc một cụm hàm cùng thao tác trên một nhóm dữ liệu |
+| **Class hoặc struct** | có **trách nhiệm gọi được tên** và state của riêng nó (`S` ở bảng trên); chọn `struct` hay `class` theo §3.5 | có **implementation thứ hai** (§2.4) |
+| **Interface hoặc abstract** | §2.4 — implementation thứ hai **đang có thật**, không phải sắp có | — |
+
+Ba hệ quả hay bị bỏ qua:
+
+- **`D` không đòi interface.** Nhận vào một class cụ thể vẫn là "nhận vào"; thứ `D` cấm là consumer tự
+  `new` thứ nó phụ thuộc, không phải việc phụ thuộc vào một kiểu cụ thể.
+- **Thước đo là phạm vi bài toán, không phải số khái niệm nghĩ ra được.** Cùng một cách chia có thể đúng
+  ở hệ nhiều người chạm và còn mở rộng, mà thừa ở một tính năng cục bộ. Hỏi *"người đọc sau phải mở bao
+  nhiêu file để lần hết một luồng?"* trước khi tách.
+- **Kiểm nhanh khi phân vân:** gộp bậc này vào bậc dưới thì **hỏng ở đâu** — không gọi được tên chỗ hỏng
+  thì đang đứng cao hơn một bậc (NT6). Đứng đúng bậc rồi mà về sau phát sinh người dùng thứ hai thì nâng
+  theo §3.2, không dựng sẵn từ đầu (NT11).
 
 ## 3.2 Module — không monolithic
 
