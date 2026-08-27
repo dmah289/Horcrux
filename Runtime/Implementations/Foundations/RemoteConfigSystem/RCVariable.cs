@@ -112,10 +112,37 @@ namespace Horcrux.Runtime.Implementations.RemoteConfigSystem
         }
 
         [Button]
-        private void ImportValue()
+        private void ImportJson()
         {
             if(!string.IsNullOrEmpty(valueToImport) && TryParseValueFromString(valueToImport, out T parsed))
                 value = parsed;
+        }
+
+        /// <summary>Copies the value out as CSV, so an edited sheet can come straight back in.</summary>
+        [Button]
+        private void CopyCsvToClipboard()
+        {
+            if (!RCVariableCsv.TryFormat(typeof(T), value, out string csv, out string error))
+            {
+                Debug.LogError($"RCVariable {firebaseKey} has no CSV form: {error}");
+                return;
+            }
+            GUIUtility.systemCopyBuffer = csv;
+            Debug.Log($"Copied RCVariable with key {firebaseKey} to clipboard as CSV:\n{csv}");
+        }
+
+        /// <summary>Reads the import box as CSV instead of JSON.</summary>
+        /// <remarks>All-or-nothing: a rejected sheet leaves the current value alone.</remarks>
+        [Button]
+        private void ImportCsv()
+        {
+            if (!RCVariableCsv.TryParse(typeof(T), valueToImport, out object parsed, out string report))
+            {
+                Debug.LogError($"RCVariable {firebaseKey} CSV import aborted, nothing written: {report}");
+                return;
+            }
+            value = (T)parsed;
+            Debug.Log($"Imported {report} into RCVariable with key {firebaseKey} from CSV");
         }
 #endif
     }
