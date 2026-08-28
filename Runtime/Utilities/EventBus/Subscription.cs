@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Horcrux.Runtime.Utilities.NewEventBus
+namespace Horcrux.Runtime.Utilities.EventBus
 {
     public readonly struct Subscription<T> : IDisposable where T : struct, IEvent
     {

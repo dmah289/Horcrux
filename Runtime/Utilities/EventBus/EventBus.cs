@@ -1,23 +1,79 @@
-using System;
+﻿using System;
+using Horcrux.Runtime.Implementations.Utilities.Common;
+using UnityEngine;
+using Object = UnityEngine.Object;
+
 namespace Horcrux.Runtime.Utilities.EventBus
 {
-    public interface IEventDTO { }
+    public interface IEvent {}
     
-    public static class EventBus<T> where T : struct, IEventDTO
+    public static class EventBus<T> where T : struct, IEvent
     {
-        static readonly EventBinding<T> Binding = new();
+        private static readonly DeferredList<Action<T>> Listeners = new();
+        private static int dispatchDepth;
 
-        // Lower priority values are called first
-        public static void Register(Action<T> callback, int priority = 0)
-            => Binding.AddCallback(callback, priority);
+        public static int ActiveListenerCount => Listeners.Count - Listeners.TombstoneCount;
 
-        public static void Deregister(Action<T> callback)
-            => Binding.RemoveCallback(callback);
+        // not included lambda
+        private static bool IsOwnerDestroyed(Action<T> callback) => callback.Target is Object owner && !owner;
 
-        public static void Raise(T eventDTO = default)
-            => Binding.Raise(eventDTO);
+        public static Subscription<T> Subscribe(Action<T> callback)
+        {
+            if (callback == null)
+                return default;
 
-        public static void Clear()
-            => Binding.Clear();
+            if (!Listeners.Add(callback))
+            {
+#if UNITY_EDITOR
+                Debug.LogError($"[EventBus<{typeof(T).Name}>] : Ignore duplicate subscription for" + 
+                               $"{callback.Method.Name} in {callback.Method.DeclaringType?.Name}");
+#endif
+                return default;
+            }
+            
+            return new Subscription<T>(callback);
+        }
+        
+        internal static void Unsubscribe(Action<T> callback) => Listeners.Remove(callback);
+
+        public static void Publish(in T e = default)
+        {
+            dispatchDepth++;
+
+            try
+            {
+                int cnt = Listeners.Count;
+                for (int i = 0; i < cnt; i++)
+                {
+                    Action<T> callback = Listeners[i];
+
+                    if (callback == null)
+                        continue;
+
+                    if (IsOwnerDestroyed(callback))
+                    {
+                        Listeners.RemoveAt(i);
+                        continue;
+                    }
+
+                    try
+                    {
+                        callback(e);
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.LogException(ex);
+                    }
+                }
+            }
+            finally
+            {
+                dispatchDepth--;
+                
+                // only outer compact, inner not allowed to compact, avoid index out of range.
+                if(dispatchDepth == 0)
+                    Listeners.Compact();
+            }
+        }
     }
 }
