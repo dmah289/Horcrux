@@ -9,10 +9,10 @@ namespace Horcrux.Runtime.Utilities.EventBus
     
     public static class EventBus<T> where T : struct, IEvent
     {
-        private static readonly DeferredList<Action<T>> Listeners = new();
+        private static readonly DeferredSet<Action<T>> Listeners = new();
         private static int dispatchDepth;
 
-        public static int ActiveListenerCount => Listeners.Count - Listeners.TombstoneCount;
+        public static int ActiveListenerCount => Listeners.ActiveCount;
 
         // not included lambda
         private static bool IsOwnerDestroyed(Action<T> callback) => callback.Target is Object owner && !owner;

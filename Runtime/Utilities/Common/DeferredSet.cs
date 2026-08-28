@@ -3,22 +3,24 @@
 namespace Horcrux.Runtime.Implementations.Utilities.Common
 {
     /// <summary>
-    /// Safe list that allows adding and removing items while iterating over it.
-    /// Compact before traversing this.
+    /// Unique-entry set with stable indices: adding or removing while iterating never shifts anyone.
     /// </summary>
-    public class DeferredList<T> where T : class
+    public class DeferredSet<T> where T : class
     {
         static readonly EqualityComparer<T> Comparer = EqualityComparer<T>.Default;
         
         private readonly List<T> items;
-        public T this[int index] => items[index];
-        public int Count => items.Count;
-        public int TombstoneCount { get; private set; }
+        private int tombstoneCount;
         
-        public DeferredList(int capacity = 4)
+        public DeferredSet(int capacity = 4)
         {
             items = new List<T>(capacity);
         }
+        
+        public T this[int index] => items[index];
+        public int Count => items.Count;
+        public int ActiveCount => items.Count - tombstoneCount;
+        
 
         public bool Add(T item)
         {
@@ -48,13 +50,13 @@ namespace Horcrux.Runtime.Implementations.Utilities.Common
                 return false;
 
             items[index] = null;
-            TombstoneCount++;
+            tombstoneCount++;
             return true;
         }
 
         public void Compact()
         {
-            if (TombstoneCount <= 0)
+            if (tombstoneCount <= 0)
                 return;
         
             int cnt = items.Count;
@@ -71,7 +73,7 @@ namespace Horcrux.Runtime.Implementations.Utilities.Common
             }
         
             items.RemoveRange(write, cnt - write);
-            TombstoneCount = 0;
+            tombstoneCount = 0;
         }
 
         private int IndexOf(T item)
@@ -88,7 +90,7 @@ namespace Horcrux.Runtime.Implementations.Utilities.Common
         public void Clear()
         {
             items.Clear();
-            TombstoneCount = 0;
+            tombstoneCount = 0;
         }
     }
 }

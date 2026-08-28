@@ -981,7 +981,7 @@ namespace Horcrux.Runtime.Implementations.Combo
 | 3 | `Shrinking(1.2/0.4/10)`, `Push`, chờ 1.5s | `Broken` phát |
 | 4 | `tierMinCounts` rỗng | `TierIndex == -1`, không NRE |
 | 5 | `tierMinCounts = {6, 3, 10}` | warning **ngay lúc chỉnh Inspector** |
-| 6 | Disable rồi enable component | tick vẫn đúng, không đăng ký trùng (dup-guard của `DeferredList`) |
+| 6 | Disable rồi enable component | tick vẫn đúng, không đăng ký trùng (dup-guard của `DeferredSet`) |
 | 7 | App background 60s giữa combo | combo **còn**, `WindowProgress` như trước khi pause |
 | 8 | `timeScale = 0` rồi chờ 1s | cửa sổ **vẫn** cạn 1s |
 

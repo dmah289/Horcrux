@@ -339,7 +339,7 @@ Nếu muốn thấy kết quả sớm nhất, làm theo lát cắt dọc này (m
 ### Lát cắt dọc thứ hai — đã có plan đầy đủ: "combo đa giác quan"
 Không cần `SpringDamper`, chạy được ngay và cho ra thứ **cảm được bằng 3 giác quan**. 5 plan, làm theo đúng thứ tự:
 
-1. `Implementations/Foundations/Ticker/TickerSystem.md` — 1 nguồn tick + `IOptionalService` + `DeferredList`
+1. `Implementations/Foundations/Ticker/TickerSystem.md` — 1 nguồn tick + `IOptionalService` + `DeferredSet`
 2. `Implementations/Foundations/Haptics/HapticSystem.md` — rung có biên độ (điều kiện của haptic ramp)
 3. `Implementations/Foundations/Audio/AudioSystem.md` — SFX + **pitch** (điều kiện của pitch ramp)
 4. `Implementations/Composites/Feedback/FeedbackSystem.md` — cue → 4 kênh; **kèm** hiện thực `TraumaShake` + `TimeScaleHelper`
