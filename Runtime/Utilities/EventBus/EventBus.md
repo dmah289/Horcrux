@@ -1,12 +1,10 @@
 # EventBus — publish/subscribe theo type
 
-Gửi event tới listener **tức thì**, theo **thứ tự đăng ký**, không cấp phát heap khi publish.
+Gửi event tới listener **tức thì**, theo **thứ tự đăng ký**, không cấp phát heap khi publish. Danh sách
+listener sửa được ngay giữa lúc đang dispatch mà không ai bị bỏ sót hay bị gọi hai lần.
 
 Mỗi kiểu event là một bus độc lập ở tầng type: `EventBus<ToastRequest>` và `EventBus<PlayerDied>` không
-dùng chung state, không ảnh hưởng nhau ở bất kỳ điều gì tài liệu này nói.
-
-Danh sách listener sửa được **ngay giữa lúc đang dispatch** — đăng ký thêm, huỷ chính mình, huỷ người
-khác — không ai bị bỏ sót, không ai bị gọi hai lần.
+dùng chung state.
 
 ---
 
@@ -15,9 +13,9 @@ khác — không ai bị bỏ sót, không ai bị gọi hai lần.
 | Thành phần | Chữ ký | Vai trò |
 |---|---|---|
 | `IEvent` | `interface IEvent { }` | Marker. Mọi event DTO implement nó |
-| `EventBus<T>.Subscribe` | `static Subscription<T> Subscribe(Action<T> callback)` | Đăng ký. Trả handle để huỷ |
+| `EventBus<T>.Subscribe` | `static Subscription<T> Subscribe(Action<T> callback)` | Đăng ký, trả handle để huỷ |
 | `EventBus<T>.Publish` | `static void Publish(in T e = default)` | Bắn event, gọi hết listener ngay trong lời gọi này |
-| `EventBus<T>.ActiveListenerCount` | `static int` | Số listener đang hoạt động thật |
+| `EventBus<T>.ActiveListenerCount` | `static int` | Số listener sống |
 | `Subscription<T>.Dispose` | `void Dispose()` | Huỷ đăng ký. **Đường huỷ duy nhất** |
 
 `T` bị ràng `where T : struct, IEvent`.
@@ -37,18 +35,11 @@ khác — không ai bị bỏ sót, không ai bị gọi hai lần.
 | **Nghe suốt đời object** — thường gặp nhất | `Subscribe` ở `Awake` | **Không.** Entry tự rụng khi object bị destroy |
 | **Nghe theo bật/tắt** — object pool, popup | `Subscribe` ở `OnEnable`, `Dispose` ở `OnDisable` | **Có** |
 | **Nghe một lần rồi thôi** | `Dispose` handle ngay trong callback | **Có** |
-| **Lambda có capture** | `Dispose` khi hết cần | **Có, bắt buộc** |
-| **Listener là method `static`** | `Dispose` khi hết cần | **Có, bắt buộc** |
+| Lambda có capture · method `static` · method của object không phải `UnityEngine.Object` | `Dispose` khi hết cần | **Có, bắt buộc** |
 
-**Cái bẫy duy nhất đáng nhớ:** entry tự rụng khi owner bị **destroy**, không rụng khi owner bị
-**disable**. `Subscribe` ở `OnEnable` mà quên `Dispose` ở `OnDisable` cho hai hậu quả cùng lúc — object
-đang tắt vẫn nhận event, và lần bật lại bị chặn vì trùng đăng ký.
-
-Ba loại listener **không** tự rụng: lambda có capture, method `static`, và method của object không phải
-`UnityEngine.Object`. Cả ba đều buộc giữ handle.
-
-Dòng `LogError` về trùng đăng ký trong Editor là tín hiệu call site đã rơi vào bẫy trên. Sửa call site,
-đừng tắt log.
+**Bẫy đáng nhớ nhất:** `Subscribe` ở `OnEnable` mà quên `Dispose` ở `OnDisable` — object đang tắt vẫn
+nhận event, và lần bật lại bị chặn vì trùng đăng ký. Dòng `LogError` trong Editor là tín hiệu của đúng
+lỗi này; sửa call site, đừng tắt log.
 
 ---
 
@@ -58,25 +49,27 @@ Dòng `LogError` về trùng đăng ký trong Editor là tín hiệu call site �
 |---|---|
 | **`readonly struct`**, implement `IEvent` | Listener nhận một bản copy. Field mutable tạo ảo giác sửa được payload cho listener sau — thực tế không, và sai im lặng |
 | Không dùng class | Constraint chặn ở compile time. Đây là chỗ giữ cho publish không alloc: call site **không thể** `new` một event object mỗi lần bắn |
-| Chịu được payload rỗng | `Publish()` không tham số là hợp lệ và gửi struct zero-init: số về 0, field kiểu ref về `null` |
+| Chịu được payload rỗng | `Publish()` gửi struct zero-init: số về 0, field kiểu ref về `null` |
 
 ---
 
-## §4. Bảo đảm — dựa vào được
+## §4. Bảo đảm
 
-| Hành vi | Chi tiết |
+Tra cứu nhanh. §7 nói mỗi dòng ở đây ảnh hưởng call site thế nào.
+
+| Bảo đảm | Nội dung |
 |---|---|
-| **Thứ tự dispatch** | Đúng thứ tự `Subscribe`. Không có cơ chế ưu tiên |
-| **Dispatch đồng bộ** | `Publish` trả về khi listener cuối đã chạy xong. Không hàng đợi, không hoãn sang frame sau |
-| **Listener đăng ký giữa lúc publish** | **Không** nhận event lần đó. Nhận từ lần `Publish` kế tiếp |
-| **Huỷ chính mình trong callback** | Được. Các listener sau vẫn nhận đủ event lần đó |
-| **Huỷ người khác trong callback** | Được. Người đã chạy thì đã chạy; người chưa tới lượt sẽ bị bỏ qua ngay lần đó |
-| **Listener ném exception** | Bị log, **không** thoát ra `Publish`. Các listener khác vẫn chạy đủ |
-| **Owner bị destroy** | Entry rụng ở lần `Publish` kế. Callback **không** bị gọi lần nào, không exception nào |
-| **Owner còn sống** | Luôn nhận event, kể cả khi cùng bus có entry khác đang bị dọn |
-| **Đăng ký trùng** | Lần thứ hai bị **bỏ qua**, không cộng dồn. Callback vẫn chạy đúng một lần mỗi `Publish` |
-| **Handle rỗng** | `Subscribe` trả handle rỗng khi callback `null` hoặc trùng. `Dispose` handle rỗng không làm gì — **không** huỷ oan bản đã đăng ký |
-| **`ActiveListenerCount`** | Số thật, đã trừ entry chờ dọn |
+| Thứ tự | Đúng thứ tự `Subscribe`. Không có ưu tiên |
+| Đồng bộ | `Publish` trả về sau khi listener cuối chạy xong. Không hàng đợi, không hoãn frame |
+| Sửa danh sách giữa lúc dispatch | Đăng ký thêm, huỷ chính mình, huỷ người khác — đều hợp lệ |
+| Listener đăng ký giữa lúc dispatch | Chờ `Publish` kế tiếp |
+| Listener bị huỷ giữa lúc dispatch | Bỏ qua ngay lượt đó nếu chưa tới lượt; đã chạy rồi thì vẫn đã chạy |
+| Exception của listener | Bị log, không thoát ra `Publish`. Các listener khác chạy đủ |
+| Owner bị destroy | Rụng ở `Publish` kế. Callback không bị gọi lần nào, không exception nào |
+| Owner còn sống | Luôn nhận event, không ngoại lệ |
+| Đăng ký trùng | Bị bỏ qua, không cộng dồn. Callback vẫn chạy đúng một lần mỗi `Publish` |
+| Handle rỗng | `Dispose` không làm gì, không huỷ oan bản đã đăng ký |
+| `ActiveListenerCount` | Số listener sống, đã trừ entry chờ dọn |
 
 ---
 
@@ -85,21 +78,17 @@ Dòng `LogError` về trùng đăng ký trong Editor là tín hiệu call site �
 | Giới hạn | Hệ quả |
 |---|---|
 | **Main-thread only** | Không lock. `Publish` hoặc `Subscribe` từ thread khác làm hỏng danh sách listener |
-| **Tự rụng chỉ phủ destroy** | Không phủ disable, không phủ lambda có capture, không phủ method `static` |
-| **Dọn chỉ chạy khi có `Publish`** | Event không bao giờ bắn nữa thì entry chết còn nằm lại. Vô hại ở cỡ UI, nhưng **không** được nói "không bao giờ leak" |
-| **Danh sách phình khi không ai publish** | Mỗi cặp `Subscribe`/`Dispose` để lại một ô chờ dọn, và việc dọn cũng chỉ xảy ra trong `Publish`. Bus theo nhịp bật/tắt liên tục mà **hiếm** bắn event thì danh sách nội bộ phình đơn điệu: `ActiveListenerCount` vẫn đúng, nhưng mỗi `Subscribe` phải quét qua toàn bộ ô chết. Một lần `Publish` là dọn sạch |
-| **Không chặn đệ quy vô hạn** | Listener publish lại chính kiểu nó vô điều kiện thì `StackOverflowException`. Xem §6 |
-| **Không có bus scoped** | Không có bản per-scene hay per-match. Bus sống theo domain |
+| **Tự rụng chỉ phủ destroy** | Disable, lambda có capture, method `static` đều phải tự `Dispose` (§2) |
+| **Dọn danh sách chỉ xảy ra trong `Publish`** | Bus **hiếm** bắn event mà call site `Subscribe`/`Dispose` liên tục thì danh sách nội bộ phình đơn điệu: `ActiveListenerCount` vẫn đúng, nhưng mỗi `Subscribe` phải quét qua cả ô chết. Một lần `Publish` là dọn sạch. Kèm theo: event không bao giờ bắn nữa thì entry chết nằm lại — **không** được nói "không bao giờ leak" |
+| **Không chặn đệ quy vô hạn** | `StackOverflowException`. Xem §6 |
 
 ---
 
 ## §6. Publish lồng nhau
 
-Listener publish thêm event **ngay trong callback** là hợp lệ, không sót không lặp. Lồng **khác kiểu**
-thì hoàn toàn không có tương tác gì. Lồng **cùng kiểu** cũng an toàn, nhưng là chỗ duy nhất cần biết
-mình đang làm gì.
-
-Lồng cùng kiểu thường không do ai cố ý viết ra:
+Listener publish thêm event ngay trong callback là hợp lệ, không sót không lặp. Lồng **khác kiểu** thì
+không có tương tác gì. Lồng **cùng kiểu** cũng an toàn, nhưng là chỗ duy nhất cần biết mình đang làm gì —
+và nó thường không do ai cố ý viết ra:
 
 | Dạng | Ví dụ tình huống |
 |---|---|
@@ -162,31 +151,25 @@ Không có ưu tiên. Hai listener mà kết quả phụ thuộc thứ tự gi�
 
 ---
 
-## §8. Quyết định thiết kế
+## §8. Cố ý không có
 
-### 8.1 Trông như thiếu sót — cố ý như vậy
+Bốn mục đầu thêm lại được bằng overload mới, không phải sửa chữ ký cũ.
 
-| Trông như | Thực ra |
-|---|---|
-| Không có `Clear()` để reset bus | Bỏ đi được một cái bẫy: gọi giữa lúc dispatch sẽ làm vòng dispatch đang chạy đọc ra ngoài biên. Static state tự reset mỗi lần vào Play Mode nhờ domain reload |
-| Không cap độ sâu đệ quy | `StackOverflowException` là triệu chứng dễ lần hơn một cap im lặng chặn cascade hợp lệ (§6) |
-| Không có `IEventBus<T>` để inject | Không có implementation thứ hai. Generic đã giữ được Open/Closed và Liskov ở tầng type |
-| Không có facade cho phép suy luận `T` từ tham số | Sẽ thành hai đường làm cùng một việc, và tạo một tên trùng với namespace. Giữ một đường `EventBus<T>.Publish` |
-| Dọn danh sách chỉ xảy ra trong `Publish`, không xảy ra lúc `Dispose` | Việc dọn dồn lại chỉ số, nên chỉ an toàn khi không có vòng dispatch nào đang chạy. `Publish` là chỗ duy nhất biết chắc điều đó. Đánh đổi là giới hạn thứ tư ở §5 |
-
-### 8.2 Cố ý không làm
-
-| Không làm | Lý do |
-|---|---|
-| `priority` cho listener | Chưa call site nào cần thứ tự khác thứ tự đăng ký |
-| Handler nhận `in T` | Không phải hot path. `Action<T>` là thứ dev đoán đúng ngay |
-| Bus scoped per-scene / per-match | Không có nhu cầu |
-| Thread-safe | Main-thread only (§5) |
-| Deferred / queued dispatch | Bus chỉ dispatch tức thì. Gộp cuối frame là việc của consumer |
-| API liệt kê mọi bus đang tồn tại | Không có consumer |
-| Base class cho listener | Loại trừ nhau với base class DI của InitArgs — service cần DI thì không kế thừa được. Cơ chế tự rụng phủ đúng ca đó mà không chiếm chỗ kế thừa |
-
-Bốn mục đầu là **thêm được sau** bằng overload mới, không phải sửa chữ ký cũ (§10).
+| Không có | Lý do | Thêm lại khi |
+|---|---|---|
+| `priority` cho listener | Chưa call site nào cần thứ tự khác thứ tự đăng ký | Xuất hiện hai listener mà thứ tự giữa chúng ảnh hưởng kết quả |
+| Handler nhận `in T` | Không phải hot path. `Action<T>` là thứ dev đoán đúng ngay | Profiler chỉ ra việc copy payload trong dispatch là chi phí thật |
+| Huỷ theo nhóm — một túi gom nhiều handle | Chưa class nào giữ nhiều handle | Một class giữ từ ba handle trở lên |
+| `Clear()` / reset state tường minh | Domain reload tự reset static mỗi lần vào Play Mode. Và `Clear()` gọi giữa lúc dispatch sẽ làm vòng đang chạy đọc ra ngoài biên | Tick *Disable Domain Reload* — lúc đó listener `static` và lambda có capture sống sót qua các lần chạy |
+| Cap độ sâu đệ quy | `StackOverflowException` là triệu chứng dễ lần hơn một cap im lặng chặn cascade hợp lệ (§6) | — |
+| `IEventBus<T>` để inject | Không có implementation thứ hai. Generic đã giữ Open/Closed và Liskov ở tầng type | — |
+| Facade cho phép suy luận `T` từ tham số | Thành hai đường làm cùng một việc, và tạo một tên trùng với namespace | — |
+| Bus scoped per-scene / per-match | Không có nhu cầu | — |
+| Thread-safe | Main-thread only (§5) | — |
+| Deferred / queued dispatch | Bus chỉ dispatch tức thì. Gộp cuối frame là việc của consumer | — |
+| API liệt kê mọi bus đang tồn tại | Không có consumer | — |
+| Base class cho listener | Loại trừ nhau với base class DI của InitArgs — service cần DI thì không kế thừa được. Cơ chế tự rụng phủ đúng ca đó mà không chiếm chỗ kế thừa | — |
+| Dọn danh sách lúc `Dispose` | Việc dọn dồn lại chỉ số, nên chỉ an toàn khi không có vòng dispatch nào đang chạy — `Publish` là chỗ duy nhất biết chắc điều đó. Đánh đổi ở §5 | — |
 
 ---
 
@@ -194,32 +177,19 @@ Bốn mục đầu là **thêm được sau** bằng overload mới, không ph�
 
 | Triệu chứng | Nguyên nhân thường gặp |
 |---|---|
-| Listener không nhận event, dù đã `Subscribe` | Đăng ký xảy ra **trong** một callback của cùng bus ⇒ hoãn một nhịp (§4) · hoặc đăng ký bị chặn vì trùng ⇒ có `LogError` trong Console · hoặc owner đã bị destroy |
+| Listener không nhận event dù đã `Subscribe` | Đăng ký xảy ra **trong** một callback của cùng bus ⇒ hoãn một nhịp (§4) · hoặc bị chặn vì trùng ⇒ có `LogError` trong Console · hoặc owner đã bị destroy |
 | Callback chạy hai lần mỗi `Publish` | Hai `Subscribe` từ hai object khác nhau, hoặc hai lambda khác nhau trỏ cùng một hàm. Dup-guard chỉ chặn cùng cặp *object chủ* + *method* |
 | `LogError` trùng đăng ký lặp lại mỗi lần bật object | `Subscribe` ở `OnEnable` mà thiếu `Dispose` ở `OnDisable` (§2) |
-| Object đã tắt vẫn phản ứng với event | Cùng nguyên nhân trên. Tự rụng không phủ disable |
-| Lambda vẫn chạy sau khi object chủ bị destroy | Lambda có capture không tự rụng. Phải giữ handle và `Dispose` (§2) |
+| Object đã tắt vẫn phản ứng với event | Cùng nguyên nhân trên — tự rụng không phủ disable |
+| Lambda vẫn chạy sau khi object chủ bị destroy | Lambda có capture không tự rụng, phải giữ handle (§2) |
 | `ActiveListenerCount` khác số `Subscribe` đã gọi | Có lần đăng ký bị chặn vì trùng, hoặc có entry đã bị dọn |
 | `StackOverflowException` trong `Publish` | Đệ quy publish cùng kiểu không có điều kiện dừng (§6) |
-| Listener khác im lặng không chạy sau khi một listener lỗi | Không phải hành vi của bus — exception được log và bỏ qua, các listener sau vẫn chạy. Tìm nguyên nhân ở chính listener đó |
-| Danh sách nội bộ phình dần dù `ActiveListenerCount` đúng | Bus hiếm bắn event, trong khi call site `Subscribe`/`Dispose` liên tục (§5) |
+| Listener khác im lặng không chạy sau khi một listener lỗi | Không phải hành vi của bus — exception được log và bỏ qua. Tìm nguyên nhân ở chính listener đó |
+| Danh sách nội bộ phình dần dù `ActiveListenerCount` đúng | Bus hiếm bắn event trong khi call site `Subscribe`/`Dispose` liên tục (§5) |
 
 ---
 
-## §10. Mở rộng
-
-Cả bốn hướng là **thêm**, không sửa: chữ ký hiện tại không phải đổi.
-
-| Hướng | Chờ tín hiệu nào |
-|---|---|
-| Thứ tự dispatch tuỳ biến (`priority`) | Xuất hiện hai listener mà thứ tự giữa chúng ảnh hưởng kết quả |
-| Handler nhận `in T` | Profiler chỉ ra việc copy payload trong dispatch là chi phí thật |
-| Huỷ theo nhóm (một túi gom nhiều handle) | Một class giữ từ ba handle trở lên |
-| Reset state tường minh | Tick *Disable Domain Reload*. Lúc đó static không còn tự reset mỗi lần Play, và listener `static` cùng lambda có capture sẽ sống sót qua các lần chạy |
-
----
-
-## §11. Bảng metrics
+## §10. Bảng metrics
 
 | Phép đo | Giá trị | Ghi chú |
 |---|---|---|
