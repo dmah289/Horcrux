@@ -6,9 +6,7 @@ namespace Horcrux.Runtime.Utilities.NewEventBus
     {
         private readonly Action<T> callback;
         public Subscription(Action<T> callback) => this.callback = callback;
-        
-        public void Dispose()
-        {
-        }
+
+        public void Dispose() => EventBus<T>.Unsubscribe(callback);
     }
 }
