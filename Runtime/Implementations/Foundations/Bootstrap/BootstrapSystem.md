@@ -1,6 +1,6 @@
 # Bootstrap & Lifecycle Implementation Plan
 
-> **Loại tài liệu:** Plan (`MY_SKILL` §5.3) — developer tự code lại để nắm logic. `.md` thiết kế (§5.1) + `.html` (§5.2) viết **sau** khi có source.
+> **Loại tài liệu:** Plan — developer tự code lại để nắm logic. `.md` thiết kế + `.html` viết **sau** khi có source.
 >
 > **For agentic workers:** REQUIRED SUB-SKILL: superpowers:subagent-driven-development hoặc superpowers:executing-plans. Steps dùng checkbox (`- [ ]`).
 
@@ -21,11 +21,11 @@ Game     (các bước cụ thể)               kế thừa BootStep, wire vào
 | Ràng buộc | Giá trị |
 |---|---|
 | Namespace | `Horcrux.Runtime.Abstractions.Bootstrap` · `…Implementations.Bootstrap` (riêng `IOptionalService`: `Horcrux.Runtime.Abstractions` — cạnh `IService`) |
-| Hiệu năng | Boot chạy **một lần**, reinit chạy **mỗi lần load level** — không hot path ⇒ chọn bản dễ đọc nhất (MY_SKILL §3.5). `BootProgress` là `readonly struct`; `ProgressChanged` là `event Action<T>` — hợp lệ vì thưa (SystemPlan §0.4b) |
+| Hiệu năng | Boot chạy **một lần**, reinit chạy **mỗi lần load level** — không hot path ⇒ chọn bản dễ đọc nhất. `BootProgress` là `readonly struct`; `ProgressChanged` là `event Action<T>` — hợp lệ vì thưa (SystemPlan §0.4b) |
 | SOLID | Runner chỉ biết contract `BootStep`, không biết bước làm gì (D) · bước không biết nhau và không biết runner (S) · không type nào mang ngữ nghĩa game (SystemPlan §0.1) |
-| Editor-first (MY_SKILL §3.3) | Danh sách bước + giá trị `Order` là **cấu hình**, gán trong Inspector; code chỉ lo hành vi chạy |
+| Editor-first | Danh sách bước + giá trị `Order` là **cấu hình**, gán trong Inspector; code chỉ lo hành vi chạy |
 | An toàn | Fail-open từng bước · try/catch quanh **từng** callback (SystemPlan §0.4a) · `CancellationToken` propagate xuống mọi bước · `OnDestroy` huỷ token + nhả consumer đang await |
-| Bất biến (MY_SKILL §3.8) | ① chiều ưu tiên khai ở **đúng một chỗ** (`BootStep.Order`: **số nhỏ chạy trước**) ② trùng `Order` ⇒ thứ tự **xác định** (sort ổn định theo index gốc) ③ hai vòng init/reinit **không bao giờ chạy chồng** |
+| Bất biến | ① chiều ưu tiên khai ở **đúng một chỗ** (`BootStep.Order`: **số nhỏ chạy trước**) ② trùng `Order` ⇒ thứ tự **xác định** (sort ổn định theo index gốc) ③ hai vòng init/reinit **không bao giờ chạy chồng** |
 
 ## Ngữ cảnh đã chốt
 
@@ -38,14 +38,14 @@ Nguồn thiết kế: `SystemPlan.md` mục 1 (đã duyệt 2026-08-29). Nguồn
 | **Ngân sách** | Cold start 1 lần + reinit mỗi level. Không hot path — không tối ưu gì, ưu tiên đọc hiểu |
 | **Ranh giới** | SDK: contract + runner (sort, await, token, progress, hook). Game: các bước cụ thể, giá trị `Order`, thời điểm gọi 2 vòng. Runner **không tự chạy** trong `Start()` — game quyết thời điểm (phải phối hợp với splash/ATT prompt) |
 | **Hướng mở rộng thật** (đều additive) | Manifest SO (overload nhận config asset) · chạy song song bước cùng pha (cờ trên contract + `WhenAll`) · nhóm bước theo scene |
-| **Cố ý KHÔNG làm + lý do** (NT6: *xoá đi thì hỏng ở đâu*) | ① **Manifest data-driven (SO)** — chưa ai cần đổi thứ tự bước mà không compile. ② **Parallel-in-phase** — cold start chưa đo được là chậm (NT9). ③ **Auto-discovery** (quét scene/reflection tìm bước) — magic khó debug; danh sách trong Inspector lộ đủ. ④ **Expose token ra property public** — v1 mọi bước nhận token qua tham số 2 nhịp; hệ ngoài chưa ai cần. ⑤ **Reset `IsInitialized` khi reinit** — nó là latch "cold boot xong" một chiều; LiveOps cần đúng nghĩa đó |
+| **Cố ý KHÔNG làm + lý do** (*xoá đi thì hỏng ở đâu*) | ① **Manifest data-driven (SO)** — chưa ai cần đổi thứ tự bước mà không compile. ② **Parallel-in-phase** — cold start chưa đo được là chậm. ③ **Auto-discovery** (quét scene/reflection tìm bước) — magic khó debug; danh sách trong Inspector lộ đủ. ④ **Expose token ra property public** — v1 mọi bước nhận token qua tham số 2 nhịp; hệ ngoài chưa ai cần. ⑤ **Reset `IsInitialized` khi reinit** — nó là latch "cold boot xong" một chiều; LiveOps cần đúng nghĩa đó |
 
 **Hai quyết định user đã chốt (2026-08-29, đã đồng bộ vào SystemPlan mục 1):**
 
-1. Phase event hiện thực bằng **`BootProgress` theo bước** (index + count + tên bước), **không** enum phase cứng. Lý do: tên phase là nội dung riêng từng game; bước đã tự mang tên hiển thị được; enum cứng bắt mọi game map bước→phase — một tri thức trùng phải giữ khớp (MY_SKILL §3.8). Splash vẫn đủ hiển thị (ratio + label). Cần enum phase thật thì thêm sau là additive.
+1. Phase event hiện thực bằng **`BootProgress` theo bước** (index + count + tên bước), **không** enum phase cứng. Lý do: tên phase là nội dung riêng từng game; bước đã tự mang tên hiển thị được; enum cứng bắt mọi game map bước→phase — một tri thức trùng phải giữ khớp ở hai nơi. Splash vẫn đủ hiển thị (ratio + label). Cần enum phase thật thì thêm sau là additive.
 2. Hook pause: `isPaused == true` đi **ngược** (pause là "quit không hẹn trước" trên Android — hệ trên ghi vào hệ nền xong, hệ nền mới chốt sổ), `isPaused == false` đi **xuôi** như init (resume là "init-nhẹ" — hệ nền tỉnh trước, hệ trên tính toán dựa vào nó sau).
 
-**Khảo sát tái sử dụng (MY_SKILL §2.4):** `IService<T>` đã có — dùng lại. `EventBus` (Utilities) có nhưng không dùng cho `ProgressChanged`: đây là event nội bộ một-service, listener wire trực tiếp, không cần bus xuyên module. `MonoSingleton` không dùng — đăng ký qua `[Service]` như tiền lệ `HapticService`. `IOptionalService<T>` **chưa có trên đĩa** (SystemPlan §0.2 chỉ có contract mẫu; file thuộc plan Ticker đã bị xoá) — Task 1 tạo, Ticker sau này dùng lại.
+**Khảo sát tái sử dụng:** `IService<T>` đã có — dùng lại. `EventBus` (Utilities) có nhưng không dùng cho `ProgressChanged`: đây là event nội bộ một-service, listener wire trực tiếp, không cần bus xuyên module. `MonoSingleton` không dùng — đăng ký qua `[Service]` như tiền lệ `HapticService`. `IOptionalService<T>` **chưa có trên đĩa** (SystemPlan §0.2 chỉ có contract mẫu; file thuộc plan Ticker đã bị xoá) — Task 1 tạo, Ticker sau này dùng lại.
 
 ---
 
@@ -117,12 +117,12 @@ Thứ tự: **1 → 2 → 3**.
 | Quyết định | Lý do |
 |---|---|
 | `BootStep` là **abstract MonoBehaviour**, không interface | Bước phải serialize được vào `List<>` trong Inspector (Editor-first) — interface cần thêm máy móc `InterfaceReference` chưa tồn tại. Tiền lệ: `PoolableBehaviour` cũng là MonoBehaviour nằm trong `Abstractions/` |
-| `Order` chỉ có **một nguồn**: field serialize, property **không virtual** | color-loop cho override `Priority` ở code *đè* giá trị scene ⇒ hai nguồn sự thật, CLAUDE.md của nó phải chép bảng "Priority thật" — vi phạm MY_SKILL §3.8. Không cho override là cái sai không xảy ra được |
+| `Order` chỉ có **một nguồn**: field serialize, property **không virtual** | color-loop cho override `Priority` ở code *đè* giá trị scene ⇒ hai nguồn sự thật, CLAUDE.md của nó phải chép bảng "Priority thật". Không cho override là cái sai không xảy ra được |
 | Chiều ưu tiên (**số nhỏ chạy trước**) khai ở XML doc của `Order` — một chỗ duy nhất | Bất biến ① — *đã sai một lần:* color-loop có 2 entry point sort **ngược chiều nhau** trên cùng `Priority` (`ServiceInit` giảm dần, `GameManager` tăng dần) |
 | `ReinitializeAsync`/`AfterReinitialize`/2 hook là `virtual` rỗng, chỉ `InitializeAsync` abstract | Bước chỉ-init-một-lần (Firebase, Ads) là ca phổ biến nhất — không ép implement nhịp không dùng (ISP) |
 | Hook tên `OnAppPause`/`OnAppQuit` | §0.1 |
 | `IBootstrapService` là `IOptionalService` (không có accessor `Service` throw) | Dự án không dùng SDK bootstrap vẫn hợp lệ — consumer (LiveOps §20) buộc phải viết nhánh degrade, compiler chặn (SystemPlan §0.2) |
-| `IBootstrapService` chỉ **2 member**, `ProgressChanged` KHÔNG nằm trên interface | ISP theo consumer thật: LiveOps chỉ cần "xong chưa / chờ xong"; splash nằm cùng scene với runner, wire thẳng reference concrete (MY_SKILL §3.1 — "D không đòi interface") |
+| `IBootstrapService` chỉ **2 member**, `ProgressChanged` KHÔNG nằm trên interface | ISP theo consumer thật: LiveOps chỉ cần "xong chưa / chờ xong"; splash nằm cùng scene với runner, wire thẳng reference concrete — nhận vào một class cụ thể vẫn là "nhận vào", không cần interface |
 | `BootProgress.Ratio01` là property trên struct | Splash nào cũng cần đúng phép chia này — viết một lần, đo–vẽ suy từ một nguồn (§3.8) |
 
 - [ ] **Step 1: `IOptionalService.cs`** — nội dung khớp SystemPlan §0.2 (nguồn quyết định); Ticker khôi phục sau này **dùng lại file này**, không tạo bản thứ hai.
@@ -263,7 +263,7 @@ namespace Horcrux.Runtime.Abstractions.Bootstrap
 
 | Quyết định | Lý do |
 |---|---|
-| Hai vòng dùng chung **một** thân `RunStepsAsync` qua delegate static cached | Fail-open + progress + cancel là **một tri thức** — hai bản copy sẽ lệch (MY_SKILL §3.8 "cửa hẹp là thân chung"). Delegate `static` cached ⇒ không closure alloc |
+| Hai vòng dùng chung **một** thân `RunStepsAsync` qua delegate static cached | Fail-open + progress + cancel là **một tri thức** — hai bản copy sẽ lệch, nên cửa hẹp gọi vào thân cửa rộng. Delegate `static` cached ⇒ không closure alloc |
 | `BeginRoundAsync`: huỷ token cũ → chờ `isRoundRunning == false` → mới chạy | Bất biến ③ hai vòng không chồng (§0.4). Không await task vòng cũ vì UniTask await-một-lần (§0.3) |
 | `catch (OperationCanceledException) when (token.IsCancellationRequested)` tách khỏi `catch (Exception)` | §0.4 — huỷ vòng dừng êm, lỗi thật fail-open. Filter `when` để OCE do bước tự ném sai token vẫn bị coi là lỗi thật (lộ ra, không nuốt) |
 | Log thứ tự chạy ngay đầu mỗi vòng | Nghiệm thu "nhìn log kể lại thứ tự" + làm trùng-`Order`-ổn-định **nhìn thấy được** |
@@ -271,10 +271,10 @@ namespace Horcrux.Runtime.Abstractions.Bootstrap
 | `initializedSource.Task.Preserve()` cache một lần ở `Awake` | §0.3 |
 | `OnDestroy`: `TrySetCanceled` + huỷ/dispose token | Consumer đang `UntilInitialized` không treo vĩnh viễn khi runner bị destroy (SystemPlan §0.6 ④) |
 | `OnApplicationQuit`: fan-out hook **xong** mới huỷ token | Bước còn cần token sống để flush; huỷ trước là hook chạy trên token chết |
-| Slot null trong list ⇒ `LogError` + bỏ qua, không throw | Không giấu thứ có thật (MY_SKILL §3.6) nhưng cũng không chặn cả game vì một slot trống |
-| Hook app chỉ fan-out khi `IsInitialized` | Android bắn `pause(false)` ngay lúc mở app; quit được giữa cold boot — bước đang init dở nhận hook là chạy trên state nửa vời (biên "frame đầu tiên", MY_SKILL §2.8). Token vẫn được huỷ ở quit dù chưa init xong |
+| Slot null trong list ⇒ `LogError` + bỏ qua, không throw | Không giấu thứ có thật, nhưng cũng không chặn cả game vì một slot trống |
+| Hook app chỉ fan-out khi `IsInitialized` | Android bắn `pause(false)` ngay lúc mở app; quit được giữa cold boot — bước đang init dở nhận hook là chạy trên state nửa vời (biên "frame đầu tiên"). Token vẫn được huỷ ở quit dù chưa init xong |
 
-**Editor setup (MY_SKILL §3.3) — bước thật:**
+**Editor setup — bước thật:**
 
 1. Scene entry của game: tạo GameObject `[Bootstrap]` → add `BootstrapRunner`.
 2. Mỗi bước của game là một GameObject con (tên = nhãn hiển thị trên splash) mang component kế thừa `BootStep`, set `Order` trong Inspector.
@@ -644,13 +644,13 @@ namespace Horcrux.Runtime.Implementations.Bootstrap.Demo
 }
 ```
 
-- [ ] **Step 3: Editor setup scene demo** (MY_SKILL §3.3 — bước thật):
+- [ ] **Step 3: Editor setup scene demo** (bước thật):
 
 1. Scene mới `BootstrapDemo` → GameObject `[Bootstrap]` + `BootstrapRunner`.
 2. 4 GameObject con: `Save(order 0)` · `RemoteConfig(order 10, throwOnInitialize ✓)` · `Ads(order 10)` · `Audio(order 0)` — mỗi cái một `DemoBootStep`, tên và `order` đúng như ghi. Kéo cả 4 vào `steps` **theo thứ tự hierarchy trên**.
 3. GameObject `[Demo]` + `DemoBootDriver`, kéo runner vào.
 
-- [ ] **Step 4: Kịch bản chơi thử** (MY_SKILL §2.8 — nghiệm thu này cần Play mode, developer chạy):
+- [ ] **Step 4: Kịch bản chơi thử** (nghiệm thu này cần Play mode, developer chạy):
 
 | Mục | Nội dung |
 |---|---|

@@ -5,10 +5,10 @@
 
 ## Ngữ cảnh đã chốt (2026-08-29)
 
-- **Người dùng tài liệu:** agent — đọc đúng mục của hệ cần làm rồi sinh plan chi tiết (MY_SKILL §5.3) · developer — đọc để quyết thứ tự làm, và tự code lại theo plan để nắm logic hệ.
+- **Người dùng tài liệu:** agent — đọc đúng mục của hệ cần làm rồi sinh plan chi tiết · developer — đọc để quyết thứ tự làm, và tự code lại theo plan để nắm logic hệ.
 - **Mục tiêu:** SDK mang qua mọi dự án puzzle Unity. Mặt trận hiện tại là **Tầng 1** — phát triển chắc Tầng 1 trước, các tầng khác chưa động.
 - **Hai vùng của tài liệu:** **TẦNG 1 đã polish** ở mức tư tưởng thiết kế — khảo sát re-verify trực tiếp trên code 4 dự án (`color-loop` · `foods_jam` · `Goods-Jam` · `water-flow`) ngày 2026-08-29, không chứa contract C# (contract thuộc plan chi tiết từng hệ). **TẦNG 2–4 + Phụ lục giữ nguyên trạng** bản trước (khuôn 8 phần cũ, có contract C#), chưa re-verify — polish tầng nào thì re-verify tầng đó cùng cách.
-- **Quyết định user đã chốt (MY_SKILL §5.4 — chỉ user đổi):** Stack State Machine **ở Tầng 1** dù re-verify cho thấy 1/4 repo có và bản đó không caller runtime — đổi lại, nghiệm thu buộc có caller thật · #4 tách đôi: **4a Ticker ở Tầng 1** (phụ thuộc bắt buộc của Audio/Haptics/Feedback/Combo), **4b Time Service xuống Tầng 3** làm ngay trước Economy (#14) · Safe-Area **tự viết + banner inset**, không wrap NotchSolution · Bootstrap v1 **không** data-driven · Save v1 **không** cloud/crypto · Scene Flow v1 **không** `ITransition` — ba thứ này đều để "Mở rộng sau" với hình dạng đã nghĩ sẵn.
+- **Quyết định user đã chốt (chỉ user đổi):** Stack State Machine **ở Tầng 1** dù re-verify cho thấy 1/4 repo có và bản đó không caller runtime — đổi lại, nghiệm thu buộc có caller thật · #4 tách đôi: **4a Ticker ở Tầng 1** (phụ thuộc bắt buộc của Audio/Haptics/Feedback/Combo), **4b Time Service xuống Tầng 3** làm ngay trước Economy (#14) · Safe-Area **tự viết + banner inset**, không wrap NotchSolution · Bootstrap v1 **không** data-driven · Save v1 **không** cloud/crypto · Scene Flow v1 **không** `ITransition` — ba thứ này đều để "Mở rộng sau" với hình dạng đã nghĩ sẵn.
 - **ID hệ giữ nguyên vĩnh viễn.** Tham chiếu `§4` trong vùng nguyên trạng (Tầng 2–4): nói về *nhịp tick* → đọc **4a**; nói về *giờ/lịch/countdown/offline* → đọc **4b**.
 
 ## Cách đọc
@@ -117,11 +117,11 @@ Mọi hệ có state đều lưu qua **save-unit riêng** của mình (§2), **k
 
 ## 0.5 Phân loại Foundation / Composite
 
-Theo `MY_SKILL.md` §3.2 (hệ độc lập / hệ kết hợp): **Foundation** = chạy độc lập, port sang dự án khác không cần hệ nào khác trong SDK. **Composite** = ghép từ 2+ Foundation. Cột "Loại" ở bảng dưới đã phân sẵn — dùng nó để đặt folder đúng nhánh `Abstractions/{Foundations|Composites}/` + `Implementations/{Foundations|Composites}/`.
+Phân tầng theo mức phụ thuộc — hệ độc lập so với hệ kết hợp: **Foundation** = chạy độc lập, port sang dự án khác không cần hệ nào khác trong SDK. **Composite** = ghép từ 2+ Foundation. Cột "Loại" ở bảng dưới đã phân sẵn — dùng nó để đặt folder đúng nhánh `Abstractions/{Foundations|Composites}/` + `Implementations/{Foundations|Composites}/`.
 
 ## 0.6 "Xong" nghĩa là gì
 
-Mỗi hệ chỉ coi là xong khi đủ 5 điều: ① contract tách khỏi impl · ② không có type game-specific rò vào SDK · ③ zero-GC ở hot path đã kiểm · ④ huỷ sạch (`CancellationToken` + `Release()` handle + unsubscribe) · ⑤ có file `.md` cạnh `Implementations/` theo `MY_SKILL.md` §5.
+Mỗi hệ chỉ coi là xong khi đủ 5 điều: ① contract tách khỏi impl · ② không có type game-specific rò vào SDK · ③ zero-GC ở hot path đã kiểm · ④ huỷ sạch (`CancellationToken` + `Release()` handle + unsubscribe) · ⑤ có file `.md` cạnh `Implementations/`.
 
 ## 0.7 Ba idiom dùng lại ở nhiều hệ — định nghĩa ở đây, nơi khác chỉ trỏ về
 
@@ -166,7 +166,7 @@ Mỗi hệ chỉ coi là xong khi đủ 5 điều: ① contract tách khỏi imp
 
 ## Hệ đã có plan chi tiết
 
-Bảy hệ dưới đây đã được viết plan theo `MY_SKILL.md` §5.3 (tự chứa, có code dán-được). Năm plan đầu tiên cố ý **thu hẹp phạm vi chỉ đủ cho Combo**; plan Bootstrap và Persistence theo phạm vi v1 của mục 1 và mục 2 — phần còn lại của mục tương ứng trong tài liệu này **vẫn còn hiệu lực** và chưa được lên plan.
+Bảy hệ dưới đây đã được viết plan tự chứa, có code dán-được. Năm plan đầu tiên cố ý **thu hẹp phạm vi chỉ đủ cho Combo**; plan Bootstrap và Persistence theo phạm vi v1 của mục 1 và mục 2 — phần còn lại của mục tương ứng trong tài liệu này **vẫn còn hiệu lực** và chưa được lên plan.
 
 | Hệ | File plan | Trong plan | **Ngoài** plan (vẫn ở tài liệu này) |
 |---|---|---|---|
@@ -183,7 +183,7 @@ Bảy hệ dưới đây đã được viết plan theo `MY_SKILL.md` §5.3 (t�
 > (`git show 245adb7^:Runtime/Implementations/Foundations/Ticker/TickerSystem.md` và tương tự cho
 > Feedback); khôi phục hoặc viết lại khi bắt đầu hệ tương ứng, đối chiếu với mục 4a/§22.
 >
-> **Nguyên tắc phạm vi của 7 plan này** — luật `MY_SKILL.md` NT6 *"xóa nó đi thì hỏng ở đâu"*: mọi mục ở cột "ngoài plan" đều **không gọi được tên chỗ hỏng** ở bản đầu, và thêm lại đều **additive** (thêm file / method / interface mới, hoặc đổi ctor nội bộ). Không mục nào đòi đổi chữ ký **public** đang có.
+> **Nguyên tắc phạm vi của 7 plan này** — *"xóa nó đi thì hỏng ở đâu"*: mọi mục ở cột "ngoài plan" đều **không gọi được tên chỗ hỏng** ở bản đầu, và thêm lại đều **additive** (thêm file / method / interface mới, hoặc đổi ctor nội bộ). Không mục nào đòi đổi chữ ký **public** đang có.
 >
 > Chỉ **một** chỗ cố ý phòng xa vì sửa sau là breaking thật: `PlaySfx(…, pitchScale)` — thêm tham số sau nghĩa là sửa mọi call-site. Hai chỗ từng phòng xa nhưng đã bỏ vì tìm được cách tốt hơn: `FeedbackCue.Intensity` (`Step` đã đủ) và `IFeedbackCamera.ApplyZoom` (dùng interface thứ hai theo ISP thì không breaking implementer nào).
 
@@ -251,7 +251,7 @@ bộ điều phối **chủ động, duy nhất**, không phó mặc Unity.
 - Runner phát **progress event theo bước** (index + tổng số + tên bước) cho splash hiển thị — không enum
   phase cứng: tên phase là nội dung riêng từng game, bước đã tự mang tên (user chốt 2026-08-29). Và một
   service *tuỳ chọn* cho hệ ngoài đăng ký callback "sau init" (`IOptionalService` — §0.2).
-- **Bất biến (MY_SKILL §3.8):** ① chiều ưu tiên định nghĩa ở **đúng một chỗ**, ghi rõ số nhỏ hay số lớn
+- **Bất biến:** ① chiều ưu tiên định nghĩa ở **đúng một chỗ**, ghi rõ số nhỏ hay số lớn
   chạy trước — *đã sai một lần:* color-loop có 2 entry point sort **ngược chiều nhau** trên cùng
   `BaseManager.Priority`. ② hai bước trùng `Order` phải có thứ tự **xác định** (sort ổn định hoặc cấm
   trùng kèm assert) — *đã sai một lần:* color-loop dùng `List.Sort` không stable.
@@ -266,9 +266,9 @@ bộ điều phối **chủ động, duy nhất**, không phó mặc Unity.
 **Phạm vi v1.**
 - Contract + runner một entry point + phase event + token vòng đời + hook pause/quit duyệt ngược.
 - **Cố ý KHÔNG làm ở v1:** *manifest data-driven (SO)* — bản thiết kế trước từng chọn nó (lý do
-  Open/Closed), hạ xuống mở rộng sau theo NT6: chưa ai cần đổi thứ tự bước mà không compile; thêm sau là
+  Open/Closed), hạ xuống mở rộng sau: chưa ai cần đổi thứ tự bước mà không compile; thêm sau là
   additive (một overload nhận config asset) · *chạy song song các bước cùng pha* — cold start chưa đo được
-  là chậm (NT9); thêm sau additive (cờ trên contract bước + `WhenAll` trong runner) · *auto-discovery* —
+  là chậm; thêm sau additive (cờ trên contract bước + `WhenAll` trong runner) · *auto-discovery* —
   magic khó debug.
 - **Mở rộng sau:** manifest SO · parallel-in-phase · nhóm bước theo scene.
 
@@ -312,7 +312,7 @@ ngoài (RCore). Hệ này **thiết kế mới**, lấy nguyên liệu tốt nh�
 - Đồng bộ cloud giữa thiết bị *(mở rộng sau — xem Phạm vi v1)*.
 
 **Tư tưởng cốt lõi.**
-- **Nhiều save-unit độc lập** đăng ký vào một registry — một sự thật một chủ sở hữu (MY_SKILL §3.8); thêm
+- **Nhiều save-unit độc lập** đăng ký vào một registry — một sự thật một chủ sở hữu; thêm
   save-unit mới **không sửa SDK, không sửa unit khác** (Open/Closed). Blob = mọi hệ coupling vào cùng
   object, đổi 1 field dirty cả blob.
 - Mỗi unit: typed, dirty flag, on-change; API đọc/ghi kiểu "một property `Value`" — học bản sống khỏe duy
@@ -322,7 +322,7 @@ ngoài (RCore). Hệ này **thiết kế mới**, lấy nguyên liệu tốt nh�
 - `ISerializer` thay được — abstraction đủ điều kiện **ngay v1** vì đã có hai implementation thật trong hệ
   sinh thái (MemoryPack ở color-loop, JSON/Newtonsoft ở water-flow), không phải phòng xa.
 - Key của unit là **const string tường minh**, không `typeof(T).Name` — đổi tên type không được làm mất
-  save (khoá wire format là hợp đồng, MY_SKILL §3.7).
+  save (khoá wire format là hợp đồng).
 - Load fail (miss/corrupt) → model default + log, **không throw** — save hỏng không được chặn người chơi
   vào game.
 - **Dirty reset SAU khi ghi thành công** — reset trước mà I/O lỗi là mất dữ liệu im lặng.
@@ -348,7 +348,7 @@ ngoài (RCore). Hệ này **thiết kế mới**, lấy nguyên liệu tốt nh�
 **Nghiệm thu.**
 - Thêm một save-unit mới: không sửa dòng nào trong SDK và unit khác.
 - Kill app bất kỳ lúc nào: mất tối đa một chu kỳ autosave; file corrupt vẫn vào được game.
-- Đổi serializer: round-trip mọi unit về đúng giá trị (MY_SKILL §4.3), không sửa code unit.
+- Đổi serializer: round-trip mọi unit về đúng giá trị, không sửa code unit.
 - **Không có đường "chạy no-op âm thầm":** registry rỗng, unit quên đăng ký, key trùng — đều lộ ra
   (log/assert), không im lặng như khung cũ của color-loop.
 
@@ -409,7 +409,7 @@ chung, mỗi màn tự chế một kiểu loading và double-tap mở hai màn c
 - Đủ bộ đã kiểm chứng: load async (single + additive, track handle) + progress gộp/smooth/quantize +
   min-time/fake + 3 hook + blocker.
 - **Cố ý KHÔNG làm ở v1:** `ITransition` (fade/slide) — chưa repo nào có nhiều hơn một kiểu transition
-  thật; abstraction chưa có implementation thứ hai (MY_SKILL §2.4). Hình dạng đã nghĩ sẵn: interface 2
+  thật; abstraction chưa có implementation thứ hai. Hình dạng đã nghĩ sẵn: interface 2
   method vào/ra — thêm sau additive.
 - **Mở rộng sau:** `ITransition` · preload theo manifest khai báo.
 
@@ -488,7 +488,7 @@ riêng, và `TimeRemainElement` duplicate gần nguyên logic `TimeCounter` — 
 
 **Cạm bẫy.** Đăng ký tick mà không remove trong `OnDestroy` → ticker giữ reference chết · sửa list
 listener trong lúc đang phát tick (add/remove từ trong callback) → cần deferred add/remove · để logic
-nặng trong nhịp frame khi nhịp 1 Hz là đủ (MY_SKILL §3.5 — khai đúng nhịp).
+nặng trong nhịp frame khi nhịp 1 Hz là đủ — mỗi phép tính phải khai được nhịp của nó.
 
 ---
 
@@ -2831,7 +2831,7 @@ Hai lỗi phụ, nhỏ hơn nhưng rất hay gặp:
 
 ---
 
-*Tài liệu thiết kế. Khi bắt đầu hiện thực một hệ: đọc §0 → đọc mục của hệ đó → viết spec/plan riêng theo `MY_SKILL.md` §5.3, đặt file `.md` cạnh `Implementations/` của hệ (MY_SKILL §5), rồi cập nhật dòng tương ứng ở bảng tổng quan.*
+*Tài liệu thiết kế. Khi bắt đầu hiện thực một hệ: đọc §0 → đọc mục của hệ đó → viết spec/plan riêng tự chứa, đặt file `.md` cạnh `Implementations/` của hệ, rồi cập nhật dòng tương ứng ở bảng tổng quan.*
 
 
 

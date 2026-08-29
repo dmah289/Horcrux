@@ -1,6 +1,6 @@
 # Audio (SFX) System Implementation Plan
 
-> **Loại tài liệu:** Plan (`MY_SKILL` §5.3). `.md` thiết kế (§5.1) + `.html` (§5.2) viết **sau** khi có source.
+> **Loại tài liệu:** Plan — developer tự code lại để nắm logic. `.md` thiết kế + `.html` viết **sau** khi có source.
 >
 > **For agentic workers:** REQUIRED SUB-SKILL: superpowers:subagent-driven-development hoặc superpowers:executing-plans. Steps dùng checkbox (`- [ ]`).
 
@@ -37,7 +37,7 @@ Implementations/Foundations/Audio/
 | Zero-GC | `AudioId : IEquatable<>` (dictionary key không boxing); không alloc trong `PlaySfx` |
 | SOLID | SDK **không biết clip nào** — catalog là SO của game (D). Chọn clip / throttle / cấp voice là 3 vùng tách rời |
 | Khoá logic | `AudioId` wrap `int`, **không** `string` |
-| Editor-first (MY_SKILL §3.3) | Voice `AudioSource` **gán trong Inspector**, không `AddComponent` lúc runtime. Mọi số cảm giác ở asset catalog (§0.4) |
+| Editor-first | Voice `AudioSource` **gán trong Inspector**, không `AddComponent` lúc runtime. Mọi số cảm giác ở asset catalog (§0.4) |
 | Không state trong SO | Con trỏ chọn clip nằm ở **service**, không trong asset (SO mutable = dirty asset + rò state giữa lần chơi) |
 | Thời gian | `Time.unscaledTime` — throttle phải đúng khi `timeScale = 0` (hitstop) |
 
@@ -100,7 +100,7 @@ Theo NT 7: những số dưới đây **chọn bằng tai**, không dẫn ra t�
 | Số voice | 12 | mảng `Voices` trong Inspector |
 | `SemitonesPerStep` / `MaxSemitones` của ramp | +1 / 12 | `AudioPitchRampChannel` (`FeedbackSystem.md`) |
 
-Cách tune: sửa số trong asset, nhấn Play. **Không** sửa code (MY_SKILL §3.3).
+Cách tune: sửa số trong asset, nhấn Play. **Không** sửa code.
 
 ---
 
@@ -275,10 +275,10 @@ namespace Horcrux.Runtime.Abstractions.Audio
 | `AudioEntry` là **class** (không struct) | Dữ liệu authoring do Unity serialize, sống suốt đời SO ⇒ không alloc theo tần số phát. Struct sẽ bị **copy** mỗi lần trả qua interface |
 | `[SerializeField] private` + property get-only | Config do tác giả điền, runtime chỉ **đọc** |
 | Dictionary dựng ở `OnEnable` | Chạy khi asset được nạp — trước mọi lần tra. Lazy-init thêm một phép kiểm null vào hot path |
-| Log **error** khi `Id = 0` hoặc trùng | 2 lỗi author phổ biến nhất; im lặng thì tiếng không phát mà không ai biết vì sao (MY_SKILL §3.3: lỗi phải lộ ra lúc authoring) |
+| Log **error** khi `Id = 0` hoặc trùng | 2 lỗi author phổ biến nhất; im lặng thì tiếng không phát mà không ai biết vì sao — lỗi phải lộ ra lúc authoring |
 | `Clips` trả `AudioClip[]` trực tiếp | Array implement `IReadOnlyList<T>` ⇒ không wrap, không alloc |
 
-**Editor setup (MY_SKILL §3.3):**
+**Editor setup:**
 
 1. `Create → Horcrux → Audio Catalog` → đặt tên `AudioCatalog_Combo`, lưu ở thư mục asset của **game** (không trong `Assets/Horcrux/`).
 2. Thêm 1 entry: `Id = 1` · kéo 2–3 clip "tick" ngắn (≤0.3s) vào `Clips`.
@@ -423,7 +423,7 @@ namespace Horcrux.Runtime.Implementations.Audio
 
 | Quyết định | Lý do |
 |---|---|
-| Voice là **mảng `AudioSource` gán trong Inspector** | MY_SKILL §3.3: `AddComponent` cho thứ vốn tồn tại lúc authoring là đặt sai chỗ. Gán sẵn thì thiếu là **ô trống trong Inspector**, không phải bug giữa gameplay; và đổi số voice không cần compile |
+| Voice là **mảng `AudioSource` gán trong Inspector** | `AddComponent` cho thứ vốn tồn tại lúc authoring là đặt sai chỗ. Gán sẵn thì thiếu là **ô trống trong Inspector**, không phải bug giữa gameplay; và đổi số voice không cần compile |
 | Helper `#if UNITY_EDITOR` tạo voice | Xóa nó thì author phải add 12 component bằng tay — tedious và dễ sai. Đây là **thao tác authoring** |
 | `OnValidate` cưỡng chế `playOnAwake=false`, `loop=false`, `spatialBlend=0` | Ba cờ này sai là 3 lỗi im lặng khác nhau (tiếng nổ lúc load / tiếng kêu mãi / nghe như xa xăm). Sửa lúc authoring, không kiểm lại ở runtime |
 | 2 mảng song song (`voices`, `_releaseTime`) | `_releaseTime` là state của service về voice, không phải thuộc tính của `AudioSource` ⇒ tách ra khỏi phải bọc class |
@@ -434,7 +434,7 @@ namespace Horcrux.Runtime.Implementations.Audio
 | `int[] _lastClipIndices` song song với entry | State chọn clip ở **service**, không trong SO |
 | Không log khi bị throttle | Bị throttle là hành vi **bình thường**; log ở đây là hàng chục dòng/giây |
 
-**Editor setup (MY_SKILL §3.3):**
+**Editor setup:**
 
 1. Tạo GameObject `[Audio]` ở scene bootstrap → add `AudioService`.
 2. Kéo asset `AudioCatalog_Combo` (Task 2) vào field `Catalog`.
@@ -459,8 +459,8 @@ namespace Horcrux.Runtime.Implementations.Audio
     /// Ba trách nhiệm tách rõ trong ba vùng code: <c>SelectClip</c> · <c>IsThrottled</c> (§0.3)
     /// · <c>RentVoice</c> (§0.2). Chúng không biết nhau nên sửa một cái không ảnh hưởng hai cái kia.
     ///
-    /// Voice là mảng <c>AudioSource</c> GÁN SẴN trong Inspector (không <c>AddComponent</c> lúc runtime
-    /// — MY_SKILL §3.3): thiếu thì lộ ra ô trống lúc authoring, và đổi số voice không cần compile.
+    /// Voice là mảng <c>AudioSource</c> GÁN SẴN trong Inspector, không <c>AddComponent</c> lúc runtime:
+    /// thiếu thì lộ ra ô trống lúc authoring, và đổi số voice không cần compile.
     /// Hệ này chỉ phát 2D nên tất cả voice ở chung một GameObject là đủ.
     /// </remarks>
     [Service(typeof(IAudioService), FindFromScene = true)]
@@ -641,7 +641,7 @@ namespace Horcrux.Runtime.Implementations.Audio
 #if UNITY_EDITOR
         private const int DefaultVoiceCount = 12;
 
-        /// <summary>Tạo sẵn voice lúc AUTHORING — thay việc add 12 component bằng tay (MY_SKILL §3.3).</summary>
+        /// <summary>Tạo sẵn voice lúc AUTHORING — thay việc add 12 component bằng tay.</summary>
         [ContextMenu("Create SFX voices (12)")]
         private void CreateVoices()
         {

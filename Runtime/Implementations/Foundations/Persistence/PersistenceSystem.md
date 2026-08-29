@@ -1,6 +1,6 @@
 # Persistence Implementation Plan
 
-> **Loại tài liệu:** Plan (`MY_SKILL` §5.3) — developer tự code lại để nắm logic. `.md` thiết kế (§5.1) + `.html` (§5.2) viết **sau** khi có source.
+> **Loại tài liệu:** Plan — developer tự code lại để nắm logic. `.md` thiết kế + `.html` viết **sau** khi có source.
 >
 > **For agentic workers:** REQUIRED SUB-SKILL: superpowers:subagent-driven-development hoặc superpowers:executing-plans. Steps dùng checkbox (`- [ ]`).
 
@@ -23,11 +23,11 @@ Game      (các unit cụ thể + Prefs<T> lẻ)     model + const key, đăng k
 | Ràng buộc | Giá trị |
 |---|---|
 | Namespace | `Horcrux.Runtime.Abstractions.Persistence` · `Horcrux.Runtime.Implementations.Persistence` |
-| Hiệu năng | `MarkDirty` chạy theo nhịp **tương tác** — chỉ set cờ + phát event, **không serialize**. Serialize chỉ trong nhịp flush (autosave mặc định 5s + pause/quit), ghi vào **một** `ArrayBufferWriter<byte>` tái dùng (SystemPlan §0.4b: `IBufferWriter<byte>` ra, `ReadOnlySpan<byte>` vào). Load 1 lần lúc `Register`, sync — file save cỡ KB, đo được chậm mới chuyển async (NT9) |
+| Hiệu năng | `MarkDirty` chạy theo nhịp **tương tác** — chỉ set cờ + phát event, **không serialize**. Serialize chỉ trong nhịp flush (autosave mặc định 5s + pause/quit), ghi vào **một** `ArrayBufferWriter<byte>` tái dùng (SystemPlan §0.4b: `IBufferWriter<byte>` ra, `ReadOnlySpan<byte>` vào). Load 1 lần lúc `Register`, sync — file save cỡ KB, đo được chậm mới chuyển async |
 | SOLID | Registry chỉ biết `ISaveUnit` + `ISerializer`, không biết model nào (D) · unit không biết đĩa, không biết format (S) · không type nào mang ngữ nghĩa game (SystemPlan §0.1) |
-| Editor-first (MY_SKILL §3.3) | Chu kỳ autosave + chọn serializer là **cấu hình**, phơi ra Inspector của registry |
+| Editor-first | Chu kỳ autosave + chọn serializer là **cấu hình**, phơi ra Inspector của registry |
 | An toàn | Load fail → model default + log, **không throw** (save hỏng không được chặn người chơi) · ghi fail → **giữ dirty**, log, chu kỳ sau thử lại · try/catch quanh **từng** callback `Changed` (SystemPlan §0.4a) · autosave loop nhận `destroyCancellationToken` |
-| Bất biến (MY_SKILL §3.8) | ① key là **hợp đồng wire format** — const string tường minh, không suy từ tên type ② dirty reset ở **đúng một nơi** (registry), và chỉ **SAU** khi ghi đĩa thành công ③ serialize chỉ xảy ra trong nhịp flush ④ không có đường "chạy no-op âm thầm": key trùng, registry rỗng, ghi/đọc fail — đều có log |
+| Bất biến | ① key là **hợp đồng wire format** — const string tường minh, không suy từ tên type ② dirty reset ở **đúng một nơi** (registry), và chỉ **SAU** khi ghi đĩa thành công ③ serialize chỉ xảy ra trong nhịp flush ④ không có đường "chạy no-op âm thầm": key trùng, registry rỗng, ghi/đọc fail — đều có log |
 
 ## Ngữ cảnh đã chốt
 
@@ -40,7 +40,7 @@ Nguồn thiết kế: `SystemPlan.md` mục 2 + §0.3 + §A.3 (đã duyệt 2026
 | **Ngân sách** | Ghi giá trị: mỗi tương tác (phải rẻ — chỉ cờ + event) · serialize + I/O: mỗi chu kỳ autosave và pause/quit · load: một lần mỗi unit lúc boot. Không hot path mỗi frame |
 | **Ranh giới** | SDK: contract + registry + 2 serializer + typed-prefs. Game: model + const key + thời điểm Register + giá trị interval + chọn serializer. Registry **không** biết Bootstrap (Foundation zero-dep) — phối hợp thứ tự flush với hệ khác là việc wire phía game (§0.1) |
 | **Hướng mở rộng thật** (đều additive) | Crypto = decorator quanh `ISerializer` · cloud = `ICloudSyncable` tách riêng theo ISP + snapshot trên registry + merge rule · migration version cho model · `PrefsDateTime` + `ForceRefresh` + cờ `syncToServer` khi cloud về |
-| **Cố ý KHÔNG làm + lý do** (NT6: *xoá đi thì hỏng ở đâu*) | ① **Crypto** — cả 4 repo không dùng thật (Goods-Jam có Rijndael/TripleDES nhưng dead code, key placeholder). ② **Cloud sync** — nhu cầu thật nhưng backend chưa chuẩn chung. *(① ② là quyết định user đã chốt trong SystemPlan "Ngữ cảnh đã chốt" 2026-08-29.)* ③ **Migration version** — chưa có model nào đổi schema. ④ **Load async** — file KB, chưa đo được chậm (NT9). ⑤ **Backup file corrupt trước khi ghi đè** — nghiệm thu chỉ đòi "corrupt vẫn vào được game". ⑥ **`Flush(unit)` lẻ** — chưa call site nào cần flush một unit riêng |
+| **Cố ý KHÔNG làm + lý do** (*xoá đi thì hỏng ở đâu*) | ① **Crypto** — cả 4 repo không dùng thật (Goods-Jam có Rijndael/TripleDES nhưng dead code, key placeholder). ② **Cloud sync** — nhu cầu thật nhưng backend chưa chuẩn chung. *(① ② là quyết định user đã chốt trong SystemPlan "Ngữ cảnh đã chốt" 2026-08-29.)* ③ **Migration version** — chưa có model nào đổi schema. ④ **Load async** — file KB, chưa đo được chậm. ⑤ **Backup file corrupt trước khi ghi đè** — nghiệm thu chỉ đòi "corrupt vẫn vào được game". ⑥ **`Flush(unit)` lẻ** — chưa call site nào cần flush một unit riêng |
 
 **Ba quyết định user đã chốt (2026-08-29):**
 
@@ -48,7 +48,7 @@ Nguồn thiết kế: `SystemPlan.md` mục 2 + §0.3 + §A.3 (đã duyệt 2026
 2. **Typed-prefs v1 hẹp hơn contract §A.3:** bỏ `syncToServer` (đăng ký cloud snapshot — cloud v1-out), `PrefsDateTime` (chưa call site thật; giá trị thời gian đang sống trong model unit dạng `long` ticks), `ForceRefresh` (chỉ cần sau khi apply cloud snapshot). Cả ba thêm lại đều additive (tham số optional / class mới / method mới).
 3. **Impl JSON = Newtonsoft** (`JsonConvert`) — model không cần attribute, serialize được Dictionary và type con. SDK vì thế yêu cầu package `com.unity.nuget.newtonsoft-json` (color-loop đang có sẵn như dependency gián tiếp — thấy trong `packages-lock.json`; project thiếu thì thêm một dòng manifest); DLL precompiled nên **không** cần sửa asmdef.
 
-**Khảo sát tái sử dụng (MY_SKILL §2.4):** `IService<T>` đã có (`Abstractions/Foundations/IService.cs`) — dùng lại cho `ISaveService` (save là hệ **bắt buộc**: thiếu là lỗi cấu hình, phải throw sớm — không dùng `IOptionalService`). `EventBus` (Utilities) không dùng — `Changed` là event nội bộ một unit, listener wire trực tiếp. `MonoSingleton` không dùng — đăng ký qua `[Service]` như tiền lệ `BootstrapRunner`. `KPrefs` (water-flow) **không bê nguyên**: JSON-hoá cả `int` (§A.3 đòi chuyên biệt theo type gọi thẳng `GetInt`), lambda subscribe `OnForceRefresh` static không bao giờ unsubscribe, và đọc khi chưa có key thì deserialize default **mỗi lần gọi** — extract tư tưởng (cache đọc một lần + on-change), viết mới theo contract §A.3.
+**Khảo sát tái sử dụng:** `IService<T>` đã có (`Abstractions/Foundations/IService.cs`) — dùng lại cho `ISaveService` (save là hệ **bắt buộc**: thiếu là lỗi cấu hình, phải throw sớm — không dùng `IOptionalService`). `EventBus` (Utilities) không dùng — `Changed` là event nội bộ một unit, listener wire trực tiếp. `MonoSingleton` không dùng — đăng ký qua `[Service]` như tiền lệ `BootstrapRunner`. `KPrefs` (water-flow) **không bê nguyên**: JSON-hoá cả `int` (§A.3 đòi chuyên biệt theo type gọi thẳng `GetInt`), lambda subscribe `OnForceRefresh` static không bao giờ unsubscribe, và đọc khi chưa có key thì deserialize default **mỗi lần gọi** — extract tư tưởng (cache đọc một lần + on-change), viết mới theo contract §A.3.
 
 ---
 
@@ -94,7 +94,7 @@ Hai lỗi trong 6 dòng: reset-trước-I/O, và khối `if` chỉ bọc mỗi v
 
 ### 0.4. Serialize thuộc nhịp flush, không thuộc nhịp đổi giá trị
 
-Mỗi lần coin đổi mà serialize cả model + I/O là trả giá theo nhịp tương tác cho một việc chỉ cần theo nhịp chu kỳ (MY_SKILL §3.5 — "mỗi phép tính phải khai được nhịp của nó"). `MarkDirty` vì thế chỉ set cờ + phát `Changed`; serialize dồn về `FlushAll`, và chỉ unit **dirty** mới bị serialize.
+Mỗi lần coin đổi mà serialize cả model + I/O là trả giá theo nhịp tương tác cho một việc chỉ cần theo nhịp chu kỳ — mỗi phép tính phải khai được nhịp của nó. `MarkDirty` vì thế chỉ set cờ + phát `Changed`; serialize dồn về `FlushAll`, và chỉ unit **dirty** mới bị serialize.
 
 *Đã sai một lần — color-loop `GameDataManager`:* mỗi thay đổi bất kỳ field nào → `LateUpdate` frame đó `JsonUtility.ToJson` **cả god-blob 25+ field** + `PlayerPrefs.Save()` (I/O đĩa) ngay trong frame.
 
@@ -130,7 +130,7 @@ Thứ tự: **1 → 2 → 3 → 4 → 5** (4 độc lập với 2–3, nhưng de
 |---|---|
 | `ISaveUnit` non-generic + `SaveUnit<TModel>` generic implement sẵn | Registry cần `List<ISaveUnit>` đồng nhất; typed nằm ở lớp base game kế thừa. Game **không** implement `ISaveUnit` trực tiếp — 3 method wire-format của nó là việc của base (đúng một chỗ, bất biến §3.8) |
 | Key truyền qua **ctor**, kiểu `string` | Khoá wire format là hợp đồng với file trên đĩa (SystemPlan §0.4b: định danh ổn định ra ngoài dùng `const string`) — *đã sai một lần:* `PlayerSaveLoadService` đặt tên file bằng `typeof(T).Name`, đổi tên type là mất save |
-| `SaveUnit` là **plain class**, không MonoBehaviour | Unit không cần Inspector, không cần lifecycle Unity — hệ game sở hữu nó `new` trực tiếp (factory/owner thì đương nhiên `new`, MY_SKILL §3.1-D). Khác `BootStep`: bước boot cần serialize vào list Inspector, unit thì không |
+| `SaveUnit` là **plain class**, không MonoBehaviour | Unit không cần Inspector, không cần lifecycle Unity — hệ game sở hữu nó `new` trực tiếp (factory hoặc owner thì đương nhiên `new`). Khác `BootStep`: bước boot cần serialize vào list Inspector, unit thì không |
 | API đọc/ghi = property `Value` (getter) + `MarkDirty()` | Học `KPrefs.Value` (bản sống khỏe duy nhất) nhưng model là mutable class — mutate field rồi báo dirty là một nhịp; setter thay cả model chỉ cần khi cloud apply snapshot (mở rộng sau, thêm method là additive) |
 | `Changed` là `event Action`, fan-out qua `GetInvocationList` + try/catch từng listener | Đăng ký thưa (SystemPlan §0.4b) → `event` hợp lệ; cô lập lỗi listener là luật §0.4a. Alloc của `GetInvocationList` theo nhịp tương tác, không theo frame — chấp nhận |
 | `ReadPayload` cũng bắn `Changed` | "Value đổi thì `Changed` bắn" là **một** luật không ngoại lệ — load từ đĩa là một lần Value đổi; UI subscribe trước Register vẫn nhận đúng trạng thái |
@@ -298,10 +298,10 @@ namespace Horcrux.Runtime.Abstractions.Persistence
 
 | Quyết định | Lý do |
 |---|---|
-| `ISerializer` có abstraction **ngay v1** | Đủ điều kiện MY_SKILL §2.4: hai implementation **thật** ngay bây giờ (MemoryPack — color-loop, JSON — water-flow), không phải phòng xa |
+| `ISerializer` có abstraction **ngay v1** | Có hai implementation **thật** ngay bây giờ (MemoryPack — color-loop, JSON — water-flow), không phải phòng xa |
 | JSON = Newtonsoft | Quyết định 3 user đã chốt ở "Ngữ cảnh đã chốt" — model không cần attribute, Dictionary và type con serialize được; package đi qua `com.unity.nuget.newtonsoft-json`, DLL precompiled nên không cần sửa asmdef |
 | MemoryPack qua `versionDefines`, bọc `#if HORCRUX_MEMORYPACK` | Quyết định 1 user đã chốt — SDK không được ép mọi project cài MemoryPack; define chỉ bật khi package có mặt |
-| Tên class `MemoryPackSaveSerializer` · `NewtonsoftJsonSerializer` | Tránh đụng tên `MemoryPack.MemoryPackSerializer` và `Newtonsoft.Json.JsonSerializer` của thư viện — một từ một nghĩa (MY_SKILL §3.7) |
+| Tên class `MemoryPackSaveSerializer` · `NewtonsoftJsonSerializer` | Tránh đụng tên `MemoryPack.MemoryPackSerializer` và `Newtonsoft.Json.JsonSerializer` của thư viện — một từ một nghĩa trong toàn hệ |
 | Chọn serializer là quyết định **một lần trước khi ship** | File đã ghi format A đọc bằng format B = corrupt-về-mặt-logic → default + log (không mất khả năng vào game, nhưng mất save). Đổi format sau ship cần migration — mở rộng sau |
 
 - [ ] **Step 1: `NewtonsoftJsonSerializer.cs`**
@@ -380,7 +380,7 @@ namespace Horcrux.Runtime.Implementations.Persistence
 ]
 ```
 
-- [ ] **Step 4: Kiểm chứng** (round-trip MY_SKILL §4.3 — chạy được ở Task 5 qua ContextMenu; tại đây kiểm compile + bảng kỳ vọng):
+- [ ] **Step 4: Kiểm chứng** (round-trip — chạy được ở Task 5 qua ContextMenu; tại đây kiểm compile + bảng kỳ vọng):
 
 | Input | Kỳ vọng |
 |---|---|
@@ -406,18 +406,18 @@ namespace Horcrux.Runtime.Implementations.Persistence
 
 | Quyết định | Lý do |
 |---|---|
-| `Register` **load ngay** (sync) | Không tồn tại trạng thái "đã đăng ký nhưng chưa load" — mọi code sau dòng Register đọc được giá trị thật, không cần phối hợp thứ tự thêm. File cỡ KB lúc boot, sync là bản đơn giản nhất còn đúng (NT13); async thêm sau nếu đo được chậm (NT9) |
+| `Register` **load ngay** (sync) | Không tồn tại trạng thái "đã đăng ký nhưng chưa load" — mọi code sau dòng Register đọc được giá trị thật, không cần phối hợp thứ tự thêm. File cỡ KB lúc boot, sync là bản đơn giản nhất còn đúng; async thêm sau nếu đo được chậm |
 | `EnsureReady()` idempotent, gọi từ cả `Awake` lẫn `Register` | Unity không đảm bảo thứ tự `Awake` giữa registry và hệ game đăng ký sớm — chính bài toán Bootstrap; Persistence là Foundation zero-dep nên phải tự đứng được, không dựa runner |
 | Autosave = UniTask loop + `destroyCancellationToken`, `DelayType.Realtime` | Loop chết theo GameObject (không `while(true)` sống sau destroy — cạm bẫy SystemPlan mục 2); Realtime vì autosave không được ngừng khi game pause bằng `timeScale = 0`. Không dùng Ticker — Foundation zero-dep, và nhịp giây không cần nguồn tick trung tâm |
-| Autosave tick gọi thẳng `FlushAll` | Cửa hẹp là thân chung (MY_SKILL §3.8): autosave, pause, quit, gọi tay — cùng MỘT thân flush, không thể lệch nhau |
+| Autosave tick gọi thẳng `FlushAll` | Cửa hẹp là thân chung: autosave, pause, quit, gọi tay — cùng MỘT thân flush, không thể lệch nhau |
 | Flush ở magic method của chính registry | §0.1 — lưới an toàn khi project không dùng Bootstrap; đây là MonoBehaviour duy nhất của hệ nên magic method sống đúng một chỗ. Flush có thứ tự (khi cần) đi đường `BootStep` phía game |
 | Ghi fail → **giữ dirty** + log, chu kỳ sau thử lại | §0.3 — `ClearDirty` nằm sau `WriteAtomic` trong cùng `try` |
 | Key trùng lúc Register → log error + bỏ unit mới | Hai unit một key là unit sau đè file unit trước (cạm bẫy SystemPlan mục 2); bất biến ④ — phải kêu lên. So sánh tuyến tính `List` đủ: số unit cỡ chục, chạy lúc boot |
 | Flush khi 0 unit → `LogWarning` một lần | Bất biến ④ — khung của color-loop chết âm thầm vì autosave no-op không log (§0.4) |
-| Buffer `ArrayBufferWriter<byte>` field, `Clear()` mỗi unit | SystemPlan mục 2 "ghi vào buffer dùng chung" — grow-only, không alloc theo chu kỳ (MY_SKILL §3.5) |
-| Enum `ESaveSerializer` nested private trong registry | Chỉ registry cần nó (config Inspector) — không phình namespace public khi chưa có người dùng thứ hai (NT6) |
+| Buffer `ArrayBufferWriter<byte>` field, `Clear()` mỗi unit | SystemPlan mục 2 "ghi vào buffer dùng chung" — grow-only, không alloc theo chu kỳ |
+| Enum `ESaveSerializer` nested private trong registry | Chỉ registry cần nó (config Inspector) — không phình namespace public khi chưa có người dùng thứ hai |
 
-**Editor setup (MY_SKILL §3.3) — bước thật:**
+**Editor setup — bước thật:**
 
 1. Scene entry của game: tạo GameObject `[Save]` → add `SaveRegistry`.
 2. Inspector: đặt `autosaveIntervalSeconds` (mặc định 5) và `serializerKind` theo game — **chọn serializer một lần trước khi ship**.
@@ -865,12 +865,12 @@ namespace Horcrux.Runtime.Implementations.Persistence.Demo
 }
 ```
 
-- [ ] **Step 3: Editor setup scene demo** (MY_SKILL §3.3 — bước thật):
+- [ ] **Step 3: Editor setup scene demo** (bước thật):
 
 1. Scene mới `PersistenceDemo` → GameObject `[Save]` + `SaveRegistry` (interval 5, serializer `NewtonsoftJson`).
 2. GameObject `[Demo]` + `DemoSaveDriver`.
 
-- [ ] **Step 4: Kịch bản chơi thử** (MY_SKILL §2.8 — nghiệm thu này cần Play mode, developer chạy):
+- [ ] **Step 4: Kịch bản chơi thử** (nghiệm thu này cần Play mode, developer chạy):
 
 | Mục | Nội dung |
 |---|---|
@@ -888,7 +888,7 @@ namespace Horcrux.Runtime.Implementations.Persistence.Demo
 
 ## Ghi chú thực thi
 
-- **Nghiệm thu cuối = kịch bản Task 5 Step 4** — map với 4 mục Nghiệm thu của SystemPlan mục 2: thêm-unit-không-sửa-SDK (Step 1 Task 5 là bằng chứng sống), kill-app-mất-≤-1-chu-kỳ (ca ① ⑤), corrupt-vẫn-vào-game (ca ③ ⑦), no-op-phải-lộ (ca ④ + LogWarning registry rỗng). Round-trip đổi serializer (MY_SKILL §4.3) chạy qua ca ② với từng serializer: giá trị sống qua đĩa và trở lại đúng.
+- **Nghiệm thu cuối = kịch bản Task 5 Step 4** — map với 4 mục Nghiệm thu của SystemPlan mục 2: thêm-unit-không-sửa-SDK (Step 1 Task 5 là bằng chứng sống), kill-app-mất-≤-1-chu-kỳ (ca ① ⑤), corrupt-vẫn-vào-game (ca ③ ⑦), no-op-phải-lộ (ca ④ + LogWarning registry rỗng). Round-trip đổi serializer chạy qua ca ② với từng serializer: giá trị sống qua đĩa và trở lại đúng.
 - **Sau khi implement xong:** viết `Persistence.md` (tài liệu thiết kế §5.1) cạnh `Implementations/Foundations/Persistence/` — điều kiện ⑤ của "Xong" (SystemPlan §0.6). Chuyển các dòng "đã sai một lần" (§0.2–0.4 của plan này) vào mục quyết định thiết kế của nó.
 - **Hệ dùng tiếp:** Audio §8 (`IAudioSettings` lưu volume), Haptics §9 (`IHapticSettings`), Economy §14 (coin/lives), Rating §18 ("đã rate chưa" — `PrefsBool`), LiveOps §20 (tiến độ event — unit riêng mỗi module). Game wire một `BootStep` "Save" nếu cần flush có thứ tự với hệ khác (§0.1).
 - **Mở rộng sau** (đều additive, không đổi chữ ký đang có): crypto = decorator `ISerializer` (class mới bọc serializer thật) · cloud = interface `ICloudSyncable` riêng theo ISP + snapshot dictionary trên registry + merge rule version/level/timestamp (chống "thiết bị mới data rỗng đè thiết bị cũ") · migration = field `version` trong model + hook `OnDeserialized` · `PrefsDateTime`/`ForceRefresh`/`syncToServer` về cùng đợt cloud · load async = overload `RegisterAsync` khi đo được boot chậm.

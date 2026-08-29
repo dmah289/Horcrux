@@ -513,7 +513,7 @@ function drawScene(hx) {
   ctx.fillStyle = '#e6edf3'; ctx.fillText(label, lx, py - 6);
 }
 
-/* hover: rAF guard, tọa độ scalar (theo blacklist MY_SKILL §5.2) */
+/* hover: rAF guard, toạ độ scalar — không vẽ thẳng trong mousemove */
 let hoverX = null, dirty = false, raf = 0;
 function tick() { raf = 0; if (dirty) { drawScene(hoverX); dirty = false; } }
 canvas.addEventListener('mousemove', e => {
