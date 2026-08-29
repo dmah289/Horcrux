@@ -36,7 +36,7 @@ Nơi **duy nhất** định nghĩa các nguyên tắc này. Các phần sau ch�
 | 1 | **Mật độ thông tin** | Chọn dạng trình bày có mật độ cao nhất **cho loại nội dung đó**: bảng cho so sánh, diagram cho luồng, công thức cho quan hệ định lượng, một câu văn cho trực giác. Không kể lể, không diễn giải lại thứ vừa nói. Áp cho **tài liệu đầu ra** — đối thoại thì ngược lại (§2.3). |
 | 2 | **Trình tự hợp lý** | Dẫn theo mạch **dễ→khó, tổng quan→chi tiết, vấn đề→giải pháp, trực giác→hình thức hóa**. Mỗi bước chỉ dùng khái niệm đã nêu trước; ý phụ thuộc nhau đặt liền kề; đánh số khi là quy trình. |
 | 3 | **Giải thích bản chất** | Mỗi khái niệm: cơ chế, "tại sao", trade-off. Không chỉ "dùng X". Độ sâu thì cân theo NT5 — nguyên tắc này đòi *có* phần bản chất, không đòi phần đó dài. |
-| 4 | **Không lặp** | *Tài liệu:* một khái niệm giải thích một nơi — lần đầu xuất hiện — sau đó trỏ về; khái niệm đã giải ở tài liệu hệ khác thì trỏ sang. Ngoại lệ: bảng tra cứu tổng kết cuối. *Code:* cùng một nguyên tắc — **một chức năng cài đặt một nơi**. Có sẵn và đáp ứng được thì dùng lại, đừng viết bản thứ hai (§2.4); có người dùng thứ hai thì nâng nó thành tái sử dụng được (§3.2). |
+| 4 | **Không lặp** | *Tài liệu:* một khái niệm giải thích một nơi — lần đầu xuất hiện — sau đó trỏ về; khái niệm đã giải ở tài liệu hệ khác thì trỏ sang. Ngoại lệ: bảng tra cứu tổng kết cuối. *Code:* cùng một nguyên tắc — **một chức năng cài đặt một nơi**. Có sẵn và đáp ứng được thì dùng lại, đừng viết bản thứ hai (§2.4); có người dùng thứ hai thì nâng nó thành tái sử dụng được (§3.2). Luật này áp cho **tri thức trùng nhau**, không áp cho **code trông giống nhau** — ranh giới và cách xử ở §2.4. |
 | 5 | **Dẫn giải sâu đúng chỗ** | Độ sâu **cân theo độ khó thật**, không mặc định tối đa: suy ra trong 1–2 bước thì kết quả kèm kiểm mốc là đủ; nhiều bước biến đổi, hoặc có chọn lựa mô hình đáng bàn, thì dẫn giải đầy đủ. Dẫn định luật nền để biện minh cho một phép nhân là over-engineering. |
 | 6 | **Vừa đủ** | *Bao nhiêu thứ được đưa vào.* Đơn giản nhất mà vẫn phục vụ đủ mục đích ban đầu. Đơn giản là **mặc định**; mỗi lớp phức tạp thêm vào phải trả giá bằng **một nhu cầu đang có thật** — "phòng khi cần", "cho đầy đủ", "chuẩn hơn" **không** phải nhu cầu. Kiểm nhanh: *xoá nó đi thì hỏng ở đâu* — không gọi được tên chỗ hỏng thì bỏ. Hai bờ vực đều sai: **thừa** (đúng, nhưng không ai cần) và **thiếu** (cắt vào mục đích ban đầu — mục đích là **sàn**, không phải chỗ gọt cho ngắn). |
 | 7 | **Game feel là tiêu chí nghiệm thu** | Hệ này phục vụ **cảm giác chơi**, không phục vụ độ chính xác vật lý. Công thức "sai sách" mà chơi đã tay thì **đúng**; công thức chuẩn sách mà chơi vô hồn thì **sai**. Toán là *công cụ để đạt cảm giác*, không phải mục tiêu. Tiêu chí này nghiệm thu bằng **chơi thử**, và chỉ developer chơi được — cách bàn giao theo §2.8. |
@@ -151,6 +151,20 @@ Lý do của cả hai bảng: **tính mở rộng đến từ Open/Closed** — 
 đến từ việc viết sẵn thứ chưa ai cần. Một hàm một dòng thêm sau tốn hai phút; giữ nó trong API từ đầu
 tốn mãi mãi. Ngược lại chữ ký sai thì sửa sau rất đắt, nên dồn công sức phòng xa vào **chữ ký và ranh
 giới trách nhiệm** (NT11), không vào số lượng.
+
+**Ranh giới của "không lặp" — tri thức, không phải hình dạng code.** Hai chỗ chỉ là trùng lặp thật khi
+chép cùng **một tri thức** — một luật nghiệp vụ, một công thức, một cấu hình — đổi là buộc đổi cùng
+nhau, lệch là bug (§3.8 "suy từ một nguồn"). Phép thử: *hai chỗ này có cùng lý do thay đổi không?*
+
+| Trả lời | Bản chất | Xử lý |
+|---|---|---|
+| Cùng lý do đổi | trùng lặp thật | gộp về một nguồn — sửa một lần, mọi nơi theo |
+| Khác lý do đổi | **trùng lặp ngẫu nhiên** — giống hôm nay, phân kỳ ngày mai | **để lặp** — gộp là trói hai nghiệp vụ độc lập: khi một bên đổi, hàm chung mọc tham số và nhánh riêng cho từng caller (NT6, NT13) |
+| Chưa trả lời chắc được | chưa hiểu bản chất sự lặp | **để lặp trước** — lặp rồi gộp sau thì rẻ, trừu tượng hóa sai thì mọi caller phải đập (cùng bất đối xứng với bảng "giá của việc thêm sau" ở trên); rõ bản chất rồi — thường ở người dùng thứ hai, thứ ba — mới gộp đúng phần thật sự chung |
+| Mấp mé — giống nhiều nhưng hướng phát triển hai bên chưa rõ | cần ngữ cảnh ngoài code | **hỏi dev** (NT10): nêu phạm vi và hướng phát triển từng bên, được–mất của gộp và của để lặp, dev quyết |
+
+Phép thử trả lời rõ thì agent tự quyết và nêu lý do (NT12); chỉ hàng mấp mé mới hỏi — hỏi mọi lần gộp
+là hỏi máy móc (NT10).
 
 ## 2.5 Ghi ngữ cảnh đã chốt vào đầu output
 

@@ -224,7 +224,7 @@ Các mảng bổ sung mở rộng cảm giác ra ngoài đối tượng: camera,
 #### ~~`HapticPattern`~~ — ✅ **đã chuyển**, và **đổi tên** thành `HapticRamp`
 - Pitch ramp phiên bản xúc giác: combo rung tăng dần cường độ.
 - Hiện thực: `HapticRampChannel` → `FeedbackSystem.md` Task 5.
-- ⚠️ **Vì sao đổi tên:** `PendingSystems.md` §9 đã dùng tên `HapticPattern` cho *struct mô tả MỘT cú rung*. Hai thứ khác nhau — một cú rung ≠ một chuỗi rung tăng dần.
+- ⚠️ **Vì sao đổi tên:** `SystemPlan.md` #9 (Haptics) đã dùng tên `HapticPattern` cho *struct mô tả MỘT cú rung*. Hai thứ khác nhau — một cú rung ≠ một chuỗi rung tăng dần.
 
 ### K. VFX động (thuần toán, feed cho shader/particle)
 
@@ -324,7 +324,7 @@ Mỗi class ghép vài viên gạch tầng 2 thành một hành vi hoàn chỉnh
 ### Tầng 4 — Orchestrator (← mọi tầng dưới)
 Dàn dựng nhiều hiệu ứng thành "sequence" — làm cuối cùng vì cần tất cả nguyên liệu.
 
-> ⚠️ **Tầng này giờ có một nhà chung.** Việc "dàn dựng nhiều hiệu ứng cùng lúc" đã được SDK-hoá thành hệ **Feedback Orchestrator** (`Implementations/Composites/Feedback/FeedbackSystem.md`): một *cue* → fan-out 4 kênh (audio · haptic · hitstop · camera). Ba orchestrator dưới đây **không** nên tự gọi service trực tiếp nữa — chúng chỉ nên bắn cue. Hai bộ dàn dựng song song là anti-pattern #4 của `PendingSystems.md`.
+> ⚠️ **Tầng này giờ có một nhà chung.** Việc "dàn dựng nhiều hiệu ứng cùng lúc" đã được SDK-hoá thành hệ **Feedback Orchestrator** (`Implementations/Composites/Feedback/FeedbackSystem.md`): một *cue* → fan-out 4 kênh (audio · haptic · hitstop · camera). Ba orchestrator dưới đây **không** nên tự gọi service trực tiếp nữa — chúng chỉ nên bắn cue. Hai bộ dàn dựng song song là anti-pattern #4 (Hai impl song song) — Phụ lục B của `SystemPlan.md`.
 
 41. ~~`ChainReaction`~~ — ✅ đã chuyển sang `ComboSystem.md` § *Giai đoạn 2* (chưa làm: chặn bởi `StaggerHelper` + chưa có board caller).
 42. **`SatisfyingClear`** ⭐ ← `ColorFlash` + `StaggerHelper` + suck-in (`Easing`) + burst. **Nên** bắn cue qua `IFeedbackDispatcher` thay vì gọi audio/haptic trực tiếp.

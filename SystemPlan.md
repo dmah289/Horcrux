@@ -1,22 +1,26 @@
-# Horcrux SDK — Pending Runtime Systems
+# Horcrux SDK — SystemPlan (tài liệu tư duy trước khi phát triển)
 
 > **Phạm vi:** chỉ **runtime**. Editor tooling nằm ngoài SDK (Phụ lục C).
 > **Đã có trong SDK, không làm lại:** Object Pooling · EventBus · Remote Config · Tweening/Easing · PhysXHelper · MonoSingleton/SingletonSO · `IService<T>`.
+
+## Ngữ cảnh đã chốt (2026-08-29)
+
+- **Người dùng tài liệu:** agent — đọc đúng mục của hệ cần làm rồi sinh plan chi tiết (MY_SKILL §5.3) · developer — đọc để quyết thứ tự làm, và tự code lại theo plan để nắm logic hệ.
+- **Mục tiêu:** SDK mang qua mọi dự án puzzle Unity. Mặt trận hiện tại là **Tầng 1** — phát triển chắc Tầng 1 trước, các tầng khác chưa động.
+- **Hai vùng của tài liệu:** **TẦNG 1 đã polish** ở mức tư tưởng thiết kế — khảo sát re-verify trực tiếp trên code 4 dự án (`color-loop` · `foods_jam` · `Goods-Jam` · `water-flow`) ngày 2026-08-29, không chứa contract C# (contract thuộc plan chi tiết từng hệ). **TẦNG 2–4 + Phụ lục giữ nguyên trạng** bản trước (khuôn 8 phần cũ, có contract C#), chưa re-verify — polish tầng nào thì re-verify tầng đó cùng cách.
+- **Quyết định user đã chốt (MY_SKILL §5.4 — chỉ user đổi):** Stack State Machine **ở Tầng 1** dù re-verify cho thấy 1/4 repo có và bản đó không caller runtime — đổi lại, nghiệm thu buộc có caller thật · #4 tách đôi: **4a Ticker ở Tầng 1** (phụ thuộc bắt buộc của Audio/Haptics/Feedback/Combo), **4b Time Service xuống Tầng 3** làm ngay trước Economy (#14) · Safe-Area **tự viết + banner inset**, không wrap NotchSolution · Bootstrap v1 **không** data-driven · Save v1 **không** cloud/crypto · Scene Flow v1 **không** `ITransition` — ba thứ này đều để "Mở rộng sau" với hình dạng đã nghĩ sẵn.
+- **ID hệ giữ nguyên vĩnh viễn.** Tham chiếu `§4` trong vùng nguyên trạng (Tầng 2–4): nói về *nhịp tick* → đọc **4a**; nói về *giờ/lịch/countdown/offline* → đọc **4b**.
 
 ## Cách đọc
 
 | Bước | Đọc gì | Vì sao |
 |---|---|---|
-| 1 | **§0** — nguyên tắc chung | Quy ước DI, lưu trữ, zero-GC, hình dạng API được định nghĩa **một lần** ở đây; 21 mục sau chỉ trỏ về, không giải lại |
+| 1 | **§0** — nguyên tắc chung | Quy ước DI, lưu trữ, zero-GC, hình dạng API được định nghĩa **một lần** ở đây; các mục sau chỉ trỏ về, không giải lại |
 | 2 | **Bảng tổng quan** + đồ thị phụ thuộc | Biết hệ đang cần nằm ở tầng nào, phụ thuộc gì, làm sau cái gì |
-| 3 | **Mục của hệ cần làm** | Tự chứa — đủ để viết spec/plan chi tiết, không cần nguồn khác |
+| 3 | **Mục của hệ cần làm** | Tự chứa — đủ để viết plan chi tiết, không cần nguồn khác |
 | 4 | Chỉ khi hệ có toán | §19 dẫn giải từ trực giác → công thức, đọc tuần tự §19.1→§19.7 |
 
-**Mỗi mục hệ thống có đúng 8 phần, luôn cùng thứ tự** (nên không mục nào cần mô tả lại cấu trúc của mình):
-
-`Bài toán` (vì sao cần) → `Use case` (phải làm được gì) → `Mô hình` (thành phần → vai trò) → `Contract` (chữ ký C#) → `Luồng` (ASCII) → `Quyết định thiết kế` (quyết định | vì sao | đánh đổi) → `Cạm bẫy` (lỗi đã trả giá) → `Xong khi`.
-
-**Code trong tài liệu là *contract*, không phải implementation** — chữ ký + ràng buộc kiểu, thân hàm để trống. Hình dạng chữ ký đã tuân §0.4; khi hiện thực không được nới lỏng nó.
+**Khuôn mục theo vùng.** Tầng 1 (đã polish): `Bài toán` → `Use case` → `Tư tưởng cốt lõi` → `Ranh giới SDK/game` → `Phạm vi v1` (gồm gì · cố ý không · mở rộng sau) → `Nghiệm thu` → `Khảo sát (re-verify)` → `Cạm bẫy`. Tầng 2–4 (nguyên trạng): `Bài toán` → `Use case` → `Mô hình` → `Contract` → `Luồng` → `Quyết định thiết kế` → `Cạm bẫy` → `Xong khi` — code trong vùng này là *contract* (chữ ký + ràng buộc kiểu, thân để trống), không phải implementation.
 
 ---
 
@@ -110,11 +114,11 @@ Mọi hệ có state đều lưu qua **save-unit riêng** của mình (§2), **k
 
 ## 0.5 Phân loại Foundation / Composite
 
-Theo `SKILL.md`: **Foundation** = chạy độc lập, port sang dự án khác không cần hệ nào khác trong SDK. **Composite** = ghép từ 2+ Foundation. Cột "Loại" ở bảng dưới đã phân sẵn — dùng nó để đặt folder đúng nhánh `Abstractions/{Foundations|Composites}/` + `Implementations/{Foundations|Composites}/`.
+Theo `MY_SKILL.md` §3.2 (hệ độc lập / hệ kết hợp): **Foundation** = chạy độc lập, port sang dự án khác không cần hệ nào khác trong SDK. **Composite** = ghép từ 2+ Foundation. Cột "Loại" ở bảng dưới đã phân sẵn — dùng nó để đặt folder đúng nhánh `Abstractions/{Foundations|Composites}/` + `Implementations/{Foundations|Composites}/`.
 
 ## 0.6 "Xong" nghĩa là gì
 
-Mỗi hệ chỉ coi là xong khi đủ 5 điều: ① contract tách khỏi impl · ② không có type game-specific rò vào SDK · ③ zero-GC ở hot path đã kiểm · ④ huỷ sạch (`CancellationToken` + `Release()` handle + unsubscribe) · ⑤ có file `.md` cạnh `Implementations/` theo `DOCS_SKILL`.
+Mỗi hệ chỉ coi là xong khi đủ 5 điều: ① contract tách khỏi impl · ② không có type game-specific rò vào SDK · ③ zero-GC ở hot path đã kiểm · ④ huỷ sạch (`CancellationToken` + `Release()` handle + unsubscribe) · ⑤ có file `.md` cạnh `Implementations/` theo `MY_SKILL.md` §5.
 
 ## 0.7 Ba idiom dùng lại ở nhiều hệ — định nghĩa ở đây, nơi khác chỉ trỏ về
 
@@ -133,7 +137,8 @@ Mỗi hệ chỉ coi là xong khi đủ 5 điều: ① contract tách khỏi imp
 | 1 | Bootstrap & Lifecycle | Foundation | Bắt buộc | 1 | — |
 | 2 | Persistence (save-unit + cloud) | Foundation | Bắt buộc | 1 | — |
 | 3 | Scene Flow & Loading | Foundation | Bắt buộc | 1 | Pooling *(tuỳ chọn: warm-up)* |
-| 4 | Time & Ticker | Foundation | Bắt buộc | 1 | — |
+| 4a | Ticker (nguồn tick trung tâm) | Foundation | Bắt buộc | 1 | — |
+| 4b | Time Service (server time + countdown) | Foundation | Bắt buộc | 3 | 4a *(nhịp)* |
 | 5 | Stack State Machine | Foundation | Cao | 1 | — |
 | 6 | Safe-Area & Responsive Canvas | Foundation | Bắt buộc | 1 | — |
 | 7 | **UI Navigator** (Page/Popup/Sheet) | Composite | Bắt buộc | 2 | Pooling, Tweening |
@@ -143,56 +148,61 @@ Mỗi hệ chỉ coi là xong khi đủ 5 điều: ① contract tách khỏi imp
 | 11 | Toast & Notification Badge | Composite | Bắt buộc | 2 | §7, Pooling, EventBus |
 | 12 | Analytics (contract + taxonomy) | Foundation | Bắt buộc | 2 | — |
 | 13 | Monetization Boundary | Foundation | Bắt buộc | 2 | — |
-| 14 | Economy (Currency/Lives/Reward) | Composite | Bắt buộc | 3 | §2, §4, §7, Tweening |
+| 14 | Economy (Currency/Lives/Reward) | Composite | Bắt buộc | 3 | §2, 4a, 4b, §7, Tweening |
 | 15 | Level Library (runtime) | Composite | Bắt buộc | 3 | §2, RemoteConfig |
 | 16 | Tutorial / FTUE | Composite | Bắt buộc | 3 | §7, Tweening, RemoteConfig |
 | 17 | Tab Navigation / Scroll-Snap | Composite | Trung bình | 3 | Tweening |
 | 18 | In-Game Rating | Composite | Cao | 3 | §7, §2 |
-| 19 | 💎 Adaptive Difficulty (Glicko-2) | Foundation *(lõi toán)* + Composite *(áp dụng)* | Thấp — **IP cao** | 4 | §2, §4, §15 |
-| 20 | 💎 LiveOps Module Host | Composite | Bắt buộc | 4 | §2, §4, §7, §12, §13, §14 |
-| 21 | 💎 Ads Pacing & Monetization Scenario | Composite | Thấp — **port dễ** | 4 | §13, §4, RemoteConfig |
-| 22 | **Feedback Orchestrator** (cue → đa giác quan) 📄 | Composite | Cao | 3 | §4, §8, §9 *(2 sau là optional)* |
-| 23 | **Combo** (streak · tier · multiplier) 📄 | Composite | Trung bình | 4 | §4 · §22 *(optional)* |
+| 19 | 💎 Adaptive Difficulty (Glicko-2) | Foundation *(lõi toán)* + Composite *(áp dụng)* | Thấp — **IP cao** | 4 | §2, 4b, §15 |
+| 20 | 💎 LiveOps Module Host | Composite | Bắt buộc | 4 | §2, 4b, §7, §12, §13, §14 |
+| 21 | 💎 Ads Pacing & Monetization Scenario | Composite | Thấp — **port dễ** | 4 | §13, 4b, RemoteConfig |
+| 22 | **Feedback Orchestrator** (cue → đa giác quan) 📄 | Composite | Cao | 3 | 4a, §8, §9 *(2 sau là optional)* |
+| 23 | **Combo** (streak · tier · multiplier) 📄 | Composite | Trung bình | 4 | 4a · §22 *(optional)* |
 
 💎 = giá trị IP cao, đáng nhân rộng dù ít nơi dùng. 📄 = **đã có plan triển khai chi tiết**, xem bảng dưới.
 
 ## Hệ đã có plan chi tiết
 
-Năm hệ dưới đây đã được viết plan theo `DOCS_SKILL` Phần C (tự chứa, có code dán-được). Plan cố ý **thu hẹp phạm vi chỉ đủ cho Combo** — phần còn lại của mục tương ứng trong tài liệu này **vẫn còn hiệu lực** và chưa được lên plan.
+Năm hệ dưới đây đã được viết plan theo `MY_SKILL.md` §5.3 (tự chứa, có code dán-được). Plan cố ý **thu hẹp phạm vi chỉ đủ cho Combo** — phần còn lại của mục tương ứng trong tài liệu này **vẫn còn hiệu lực** và chưa được lên plan.
 
 | Hệ | File plan | Trong plan | **Ngoài** plan (vẫn ở tài liệu này) |
 |---|---|---|---|
-| §4 Time & Ticker | `Implementations/Foundations/Ticker/TickerSystem.md` | `ITicker` + **2 nhịp** (`ITickable`, `IPauseAware`) + 1 `Update` duy nhất, `IOptionalService<T>` (§0.2), `DeferredList<T>`. 6 file | **nhịp 1 Hz** (`ISecondTickable`), `Destroyed` event, `ITimeService`, chống tua giờ, `Countdown`, `TimeFormatter` |
+| 4a Ticker (+4b Time) | `Implementations/Foundations/Ticker/TickerSystem.md` | `ITicker` + **2 nhịp** (`ITickable`, `IPauseAware`) + 1 `Update` duy nhất, `IOptionalService<T>` (§0.2), `DeferredList<T>`. 6 file | **nhịp 1 Hz** (`ISecondTickable`), `Destroyed` event, `ITimeService`, chống tua giờ, `Countdown`, `TimeFormatter` |
 | §9 Haptics | `Implementations/Foundations/Haptics/HapticSystem.md` | `PlayCustom(HapticPattern)` + `IHapticBackend` (**2 member**) + backend Android có **biên độ**. 6 file | **bộ preset** (`EHapticPreset` + `Play(preset)`), rung liên tục (`Begin/End` + ref-count), waveform, impl vendor, `IHapticSettings` |
 | §8 Audio | `Implementations/Foundations/Audio/AudioSystem.md` | ⚠️ **SFX 2D + `pitchScale`** (xem cảnh báo ở §8), catalog SO, throttle theo clip, voice gán ở Inspector. 6 file | **SFX 3D** (`PlaySfxAt`), music + crossfade, `PauseAll/ResumeAll`, `EAudioSelectMode`, `IAudioSettings`, mixer group |
 | §22 Feedback | `Implementations/Composites/Feedback/FeedbackSystem.md` | `FeedbackCue {Id, Step}` + dispatcher + 4 kênh (audio · haptic · hitstop · **shake**); **kèm** `TraumaShake`. Tham số cue serialize **trên chính kênh** — không asset trung gian. 12 file | zoom punch (thêm `IFeedbackCameraZoom` **riêng** theo ISP — không sửa interface cũ), `FeedbackCue.Intensity`, bảng cue dạng SO, kênh particle/text/ripple, slow-mo dài, kênh thêm lúc runtime |
 | §23 Combo | `Implementations/Composites/Combo/ComboSystem.md` | `ComboTracker` (C# thuần), 3 window policy, hệ số nhân Linear, bậc = `int[]` trên Inspector, bridge, `ComboMeter`, demo driver. 11 file | nhãn/hệ số/cue riêng theo bậc (thay `int[]` bằng SO + interface), đường nhân điểm khác, multi-track, lưu kỷ lục, telemetry, `ChainReaction` |
 
-> **Nguyên tắc phạm vi của 5 plan này** — luật `DOCS_SKILL` NT 6 *"xóa nó đi thì hỏng ở đâu"*: mọi mục ở cột "ngoài plan" đều **không gọi được tên chỗ hỏng** ở bản đầu, và thêm lại đều **additive** (thêm file / method / interface mới, hoặc đổi ctor nội bộ). Không mục nào đòi đổi chữ ký **public** đang có.
+> ⚠️ **2/5 file plan đã bị xoá trong commit `clean` của repo Horcrux** — `TickerSystem.md` và
+> `FeedbackSystem.md` (3 plan còn trên đĩa: Haptics, Audio, Combo). Nội dung khôi phục được từ git
+> (`git show 245adb7^:Runtime/Implementations/Foundations/Ticker/TickerSystem.md` và tương tự cho
+> Feedback); khôi phục hoặc viết lại khi bắt đầu hệ tương ứng, đối chiếu với mục 4a/§22.
+>
+> **Nguyên tắc phạm vi của 5 plan này** — luật `MY_SKILL.md` NT6 *"xóa nó đi thì hỏng ở đâu"*: mọi mục ở cột "ngoài plan" đều **không gọi được tên chỗ hỏng** ở bản đầu, và thêm lại đều **additive** (thêm file / method / interface mới, hoặc đổi ctor nội bộ). Không mục nào đòi đổi chữ ký **public** đang có.
 >
 > Chỉ **một** chỗ cố ý phòng xa vì sửa sau là breaking thật: `PlaySfx(…, pitchScale)` — thêm tham số sau nghĩa là sửa mọi call-site. Hai chỗ từng phòng xa nhưng đã bỏ vì tìm được cách tốt hơn: `FeedbackCue.Intensity` (`Step` đã đủ) và `IFeedbackCamera.ApplyZoom` (dùng interface thứ hai theo ISP thì không breaking implementer nào).
 
 ## Thứ tự phụ thuộc
 
 ```
-TẦNG 1  ┌─ 1 Bootstrap ── 2 Persistence ── 3 SceneFlow ── 4 Time&Ticker ── 5 StateMachine ── 6 SafeArea
+TẦNG 1  ┌─ 1 Bootstrap ── 2 Persistence ── 3 SceneFlow ── 4a Ticker ── 5 StateMachine ── 6 SafeArea
         │      (nhỏ, zero-coupling, ROI cao nhất → làm trước)
         ▼
 TẦNG 2  ┌─ 7 UI Navigator ◄── 8 Audio ── 9 Haptics ── 12 Analytics ── 13 Monet Boundary
         │        └─► 10 Button ── 11 Toast/Badge
         ▼
-TẦNG 3  ┌─ 14 Economy ── 15 Level Library ── 16 Tutorial ── 17 TabNav ── 18 Rating
-        │  └─ 22 Feedback Orchestrator ◄── §4 (bắt buộc) + §8, §9 (optional)
+TẦNG 3  ┌─ 4b Time ── 14 Economy ── 15 Level Library ── 16 Tutorial ── 17 TabNav ── 18 Rating
+        │  └─ 22 Feedback Orchestrator ◄── 4a (bắt buộc) + §8, §9 (optional)
         ▼
 TẦNG 4  └─ 19 Adaptive Difficulty ── 20 LiveOps Host ── 21 Ads Pacing
         │  (tiêu thụ hầu hết tầng dưới qua interface → làm cuối)
-        └─ 23 Combo ◄── §4 (bắt buộc) + §22 (optional)
+        └─ 23 Combo ◄── 4a (bắt buộc) + §22 (optional)
 ```
 
 **Lát cắt dọc "combo đa giác quan"** — 5 hệ đã có plan, chạy được độc lập với 21 hệ còn lại:
 
 ```
-§4 Ticker ──┬─► §9 Haptics ─┐
+4a Ticker ──┬─► §9 Haptics ─┐
             └─► §8 Audio ───┴─► §22 Feedback ──► §23 Combo
 ```
 
@@ -202,537 +212,366 @@ TẦNG 4  └─ 19 Adaptive Difficulty ── 20 LiveOps Host ── 21 Ads Pac
 
 # TẦNG 1 — Foundation
 
-## 1. Bootstrap & Lifecycle — `Foundation`
+Sáu mục dưới đây theo khuôn tư tưởng (xem "Cách đọc"). Nhãn *bản chất* của mỗi hệ nói thẳng nó là
+**extract** (đã có bản chạy tốt để chưng cất) hay **thiết kế mới** (use case thật nhưng chưa nơi nào làm
+đúng) — plan chi tiết sau này đừng đi tìm "bản gốc" không tồn tại.
 
-**Bài toán.** Unity không đảm bảo thứ tự `Awake()` giữa các object. Nhưng khởi tạo game **có thứ tự bắt buộc**: load save → fetch remote config → init ads/audio → vào màn hình đầu. Sai thứ tự = crash (ads init trước khi có config) hoặc sai logic (UI đọc coin trước khi save load xong). Cần một bộ điều phối **chủ động**, không phó mặc Unity.
+**Hiện trạng Horcrux (re-verify 2026-08-29):** cả 6 chủ đề Tầng 1 **chưa có gì trong SDK** — chỉ có
+`IService<T>` (wrapper mỏng trên Sisus.Init) và `MonoSingleton`. Không có nguy cơ viết trùng.
 
-**Use case**
+## 1. Bootstrap & Lifecycle — `Foundation` · *extract + làm sạch*
+
+**Bài toán.** Unity không đảm bảo thứ tự `Awake()` giữa các object, nhưng khởi tạo game **có thứ tự bắt
+buộc**: load save → fetch remote config → init ads/audio → vào màn đầu. Sai thứ tự = crash hoặc sai logic.
+Bằng chứng 4 repo còn cho thấy vấn đề thứ hai: **không repo nào có MỘT con đường khởi tạo** — color-loop
+có 3 điểm init rời rạc, foods_jam init IAP đồng bộ *trước* chuỗi async tạo ràng buộc thứ tự ẩn. Cần một
+bộ điều phối **chủ động, duy nhất**, không phó mặc Unity.
+
+**Use case.**
 - Cold start: chạy tuần tự N bước async, splash chờ tới khi xong; một bước throw → không được treo splash mãi.
-- Vào scene gameplay: `Reinitialize()` toàn bộ manager theo level mới (không destroy/recreate).
-- `OnApplicationPause` / `OnApplicationQuit`: gọi hook dọn dẹp theo **thứ tự ngược**.
-- Hệ khác cần biết "data đã init xong chưa" để bám vào (§20 dùng `IInitializationService`).
+- Vào lại scene/level mới: `Reinitialize` toàn bộ bước theo level mới, **huỷ mọi loop async của level trước**.
+- `OnApplicationPause` / `OnApplicationQuit`: hook dọn dẹp theo **thứ tự ngược**.
+- Hệ ngoài cần biết "init xong chưa" để bám vào (LiveOps Host §20 cần đúng cái này).
 
-**Mô hình**
+**Tư tưởng cốt lõi.**
+- Contract bước init **nhỏ**: thứ tự (`Order`) + `InitializeAsync(ct)`; vòng đời hai nhịp — init một lần
+  lúc boot, reinit mỗi nhịp load level; hook pause/quit. Runner chỉ biết contract, không biết bước làm gì.
+- **Reinit hai pha**: pha async tuần tự → pha sync "after" chạy khi *mọi* bước đã reinit xong — bước sau
+  đọc state của bước trước mới chắc đúng.
+- **Token theo vòng đời**: runner cấp `CancellationToken`, refresh (cancel cũ, tạo mới) mỗi vòng init —
+  mọi loop `.Forget()` của các hệ nhận token này, reload là huỷ sạch.
+- **Fail-open**: bước throw → log rõ + đi tiếp, không treo splash (chơi được offline tốt hơn không mở được
+  app); tuyệt đối không `.Forget()` trần nuốt exception.
+- Runner phát **phase event** (WaitForNetwork/Services/PlayerData/Content/Finished) cho splash hiển thị,
+  và một service *tuỳ chọn* cho hệ ngoài đăng ký callback "sau init" (`IOptionalService` — §0.2).
+- **Bất biến (MY_SKILL §3.8):** ① chiều ưu tiên định nghĩa ở **đúng một chỗ**, ghi rõ số nhỏ hay số lớn
+  chạy trước — *đã sai một lần:* color-loop có 2 entry point sort **ngược chiều nhau** trên cùng
+  `BaseManager.Priority`. ② hai bước trùng `Order` phải có thứ tự **xác định** (sort ổn định hoặc cấm
+  trùng kèm assert) — *đã sai một lần:* color-loop dùng `List.Sort` không stable.
 
-| Thành phần | Vai trò |
+**Ranh giới SDK / game.**
+
+| SDK sở hữu | Game điền |
 |---|---|
-| `IBootstrapStep` | Một bước init: có `Order` + `InitializeAsync(ct)` |
-| `BootstrapRunner` | Sort theo `Order`, `await` từng bước, phát event tiến độ; **không biết** bước đó làm gì |
-| `BootstrapManifest` (SO) | **Data-driven**: danh sách bước + order khai báo trong asset, không hardcode trong code |
-| `IInitializationService` | Cho phép hệ ngoài đăng ký callback "sau khi init xong" |
-| `EBootstrapPhase` | Nhãn pha (`WaitForNetwork`/`Services`/`PlayerData`/`Content`/`Finished`) để UI splash hiển thị |
+| Contract bước init + runner (sort, await, token, phase event) | Các bước/manager cụ thể |
+| Service "đã init xong" (optional) | Giá trị `Order` + wire danh sách bước trong scene/Inspector |
 
-**Contract**
+**Phạm vi v1.**
+- Contract + runner một entry point + phase event + token vòng đời + hook pause/quit duyệt ngược.
+- **Cố ý KHÔNG làm ở v1:** *manifest data-driven (SO)* — bản thiết kế trước từng chọn nó (lý do
+  Open/Closed), hạ xuống mở rộng sau theo NT6: chưa ai cần đổi thứ tự bước mà không compile; thêm sau là
+  additive (một overload nhận config asset) · *chạy song song các bước cùng pha* — cold start chưa đo được
+  là chậm (NT9); thêm sau additive (cờ trên contract bước + `WhenAll` trong runner) · *auto-discovery* —
+  magic khó debug.
+- **Mở rộng sau:** manifest SO · parallel-in-phase · nhóm bước theo scene.
 
-```csharp
-public interface IBootstrapStep
-{
-    int Order { get; }                                  // nhỏ chạy trước
-    EBootstrapPhase Phase { get; }
-    UniTask InitializeAsync(CancellationToken ct);
-    UniTask ReinitializeAsync(CancellationToken ct);    // vào lại scene/level mới
-    void OnAfterReinitialize();                         // hook sync, chạy sau khi mọi step reinit xong
-    void OnApplicationPauseChanged(bool isPaused);
-    void OnApplicationQuit();
-}
+**Nghiệm thu.**
+- Nhìn log boot kể lại được đúng thứ tự init, không cần đọc code.
+- Một bước throw giữa cold start: vẫn vào được game, lỗi hiện rõ trong log, splash không treo.
+- Reinit 2 lần liên tiếp không rò task (đếm instance/log token cancel).
+- Hai bước trùng `Order`: thứ tự lặp lại y hệt giữa các lần chạy.
 
-public interface IBootstrapRunner : IService<IBootstrapRunner>
-{
-    bool IsInitialized { get; }
-    EBootstrapPhase CurrentPhase { get; }
-    event Action<EBootstrapPhase> PhaseChanged;
-    UniTask InitializeAsync();
-    UniTask ReinitializeAsync();
-}
+**Khảo sát (re-verify 2026-08-29).** 4 repo = 3 hình khác nhau, pattern **chưa hội tụ**:
+- `color-loop` — gần hình đã chọn nhất: `Assets/_TheGame/Runtime/_Core/Scripts/GamePlay/BaseManager.cs`
+  (25 LOC) + `GameManager.cs` (112, có Reinitialize + AfterReinitialize + RefreshGameToken) +
+  `Runtime/Game/Scripts/ServiceInit.cs` (54). UniTask + CT + Priority đều thật. Mìn: 3 điểm khởi tạo rời
+  rạc (GameInitializer / ServiceInit / StartGame) và 2 chiều sort ngược nhau.
+- `foods_jam` / `Goods-Jam` — `GameBoostrap.cs` (~150/214 LOC): chuỗi `await` tuần tự hard-code theo enum
+  phase (WaitForOnline→InitServices→InitPlayerData→CheckNewVersion→Finished), không contract/registry;
+  từng gãy thật vì `.Forget()` nuốt exception treo loading (có comment thừa nhận); IAP init đồng bộ trước
+  chuỗi async.
+- `water-flow` — không orchestrator: thứ tự từ scene `Services` + Sisus `Initializer<,>`; mỏng nhưng thứ
+  tự async ngầm định, không chờ được chuỗi có kiểm soát.
 
-public interface IInitializationService : IOptionalService<IInitializationService>
-{
-    void RegisterPostInitialization(Action callback);    // gọi ngay nếu đã init xong
-    void UnregisterPostInitialization(Action callback);
-}
-```
-
-**Luồng**
-
-```
-InitializeAsync()
-  ├─ RefreshToken()           ← cancel CTS cũ, tạo CTS mới (mọi step nhận token này)
-  ├─ steps.Sort(by Order)
-  ├─ foreach step:  SetPhase(step.Phase) → await step.InitializeAsync(ct)
-  │                 try/catch: log + fail-open, KHÔNG để splash treo
-  ├─ IsInitialized = true
-  └─ PostInitialization callbacks
-                                   ┌──────────────┐
-ReinitializeAsync()  ──► reinit tuần tự ──► AfterReinitialize (pha 2, sync)
-OnApplicationQuit()  ──► duyệt NGƯỢC thứ tự ──► step.OnApplicationQuit()
-```
-
-**Quyết định thiết kế**
-
-| Quyết định | Vì sao | Đánh đổi |
-|---|---|---|
-| Điều phối chủ động, không dùng `Awake()` | Thứ tự Unity không kiểm soát được | Phải nhớ đăng ký step vào manifest |
-| Manifest data-driven (SO) thay list hardcode | Thêm/bớt/đổi thứ tự bước không sửa code (Open/Closed) | Một chỗ nữa phải maintain |
-| 2 pha reinit (`Reinitialize` async → `AfterReinitialize` sync) | Bước sau cần **tất cả** bước trước đã reinit xong mới đọc được state đúng | Phức tạp hơn 1 pha |
-| CTS refresh mỗi lần init | Init lần 2 phải huỷ mọi task đang treo của lần 1 | — |
-| Fail-open: step throw → log + đi tiếp | `.Forget()` nuốt exception ⇒ splash treo vĩnh viễn. Chơi được offline tốt hơn là không mở được app | Có thể vào game với state thiếu → phải log rõ |
-| Runner chỉ biết `Order` + `InitializeAsync` | Runner không phụ thuộc chi tiết step nào (D trong SOLID) | Không tối ưu được song song tự động |
-
-**Cạm bẫy**
-- `InitializeAsync().Forget()` không bọc try/catch → treo splash im lặng. Bắt buộc catch + log + `SetPhase(Finished)`.
-- Bước init **song song được** (fetch config + preload asset) nếu bị `await` tuần tự sẽ kéo dài cold start. Cho `IBootstrapStep` khai `bool CanRunParallelInPhase` để runner `WhenAll` các step cùng pha.
-- Service-locator lạm dụng: `GetStep<T>()` để lấy manager rồi gọi lẫn nhau → coupling ẩn. Ưu tiên DI; chỉ tra cứu chéo khi thật cần.
-- `OnApplicationQuit` phải duyệt **ngược** — quit theo thứ tự init sẽ dọn nền trước khi hệ trên nó dọn xong.
-
-**Xong khi:** §0.6 + cold start có exception vẫn vào được game · reinit 2 lần liên tiếp không rò task · manifest thay thứ tự không cần recompile.
+**Cạm bẫy.** Thứ tự ngầm qua `Awake()` · `.Forget()` không bọc try/catch (đã sai một lần — foods_jam) ·
+init đồng bộ chen trước chuỗi async · lạm dụng service-locator lấy bước rồi gọi lẫn nhau (coupling ẩn —
+ưu tiên DI) · quit duyệt xuôi thứ tự init (dọn nền trước khi hệ trên dọn xong).
 
 ---
 
-## 2. Persistence — `Foundation`
+## 2. Persistence — `Foundation` · *thiết kế mới trên bằng chứng*
 
-**Bài toán.** Lưu tiến độ người chơi phải **có kiểu** (không stringly-typed), **chống sửa** (coin/level không edit bằng tool), **không mất khi app bị kill**, **đồng bộ cloud được**, và **không biến thành một god-blob** mà mọi hệ cùng thò tay vào.
+**Bài toán.** Lưu tiến độ người chơi phải **có kiểu**, **không mất khi app bị kill**, và **không biến
+thành god-blob** mọi hệ cùng thò tay vào. Bằng chứng cho thấy cả 4 repo **chưa có bản đúng tư tưởng nào
+đang sống**: khung "sạch" của color-loop đã chết (không ai đăng ký, autosave chạy no-op), state thật dồn
+vào god-blob `GameData` 25+ field lưu bằng JsonUtility + PlayerPrefs; 2 repo khác giao cả cho thư viện
+ngoài (RCore). Hệ này **thiết kế mới**, lấy nguyên liệu tốt nhất từ mỗi repo.
 
-**Use case**
-- Lưu level, coin, booster, settings, lives, daily-streak, tiến độ event.
+**Use case.**
+- Lưu level, coin, booster, settings, lives, streak, tiến độ event — mỗi cụm một đơn vị, module nào sở hữu cụm đó.
 - Autosave định kỳ; app bị kill đột ngột không mất quá 1 chu kỳ.
-- Đồng bộ giữa thiết bị: đẩy/nhận một `Dictionary<key, value>` lên/từ server.
-- Mã hoá giá trị nhạy cảm; giá trị không nhạy cảm để nguyên (rẻ hơn).
-- Đọc/ghi lẻ một giá trị nhỏ (bool "đã rate chưa") mà không cần dựng cả model.
+- Đổi format serialize (MemoryPack ↔ JSON) không đụng logic game.
+- Đọc/ghi lẻ một giá trị nhỏ (bool "đã rate chưa") không cần dựng model — typed-prefs (§A.3).
+- Đồng bộ cloud giữa thiết bị *(mở rộng sau — xem Phạm vi v1)*.
 
-**Mô hình — 3 lớp, thay được từng lớp**
+**Tư tưởng cốt lõi.**
+- **Nhiều save-unit độc lập** đăng ký vào một registry — một sự thật một chủ sở hữu (MY_SKILL §3.8); thêm
+  save-unit mới **không sửa SDK, không sửa unit khác** (Open/Closed). Blob = mọi hệ coupling vào cùng
+  object, đổi 1 field dirty cả blob.
+- Mỗi unit: typed, dirty flag, on-change; API đọc/ghi kiểu "một property `Value`" — học bản sống khỏe duy
+  nhất đang có (`KPrefs<T>` của water-flow: cache đọc một lần, set thì ghi + phát on-change).
+- Registry: vòng autosave gom unit dirty + `FlushAll` ở pause/quit; serialize **chỉ trong autosave loop**
+  (không trong hot path mỗi lần coin đổi), ghi vào buffer dùng chung.
+- `ISerializer` thay được — abstraction đủ điều kiện **ngay v1** vì đã có hai implementation thật trong hệ
+  sinh thái (MemoryPack ở color-loop, JSON/Newtonsoft ở water-flow), không phải phòng xa.
+- Key của unit là **const string tường minh**, không `typeof(T).Name` — đổi tên type không được làm mất
+  save (khoá wire format là hợp đồng, MY_SKILL §3.7).
+- Load fail (miss/corrupt) → model default + log, **không throw** — save hỏng không được chặn người chơi
+  vào game.
+- **Dirty reset SAU khi ghi thành công** — reset trước mà I/O lỗi là mất dữ liệu im lặng.
 
-| Lớp | Trách nhiệm | Đổi được sang |
-|---|---|---|
-| `IStorage` | bytes ↔ chỗ chứa | file `persistentDataPath` · `PlayerPrefs` · cloud |
-| `ISerializer` | object ↔ bytes | MemoryPack · JSON · Newtonsoft; **crypto là decorator bọc ngoài**, không nhồi vào logic |
-| `ISaveRegistry` | tập `ISaveUnit` + dirty + autosave + flush | — |
+**Ranh giới SDK / game.**
 
-Bên cạnh đó: **typed-prefs** cho giá trị lẻ (§A.3).
+| SDK sở hữu | Game điền |
+|---|---|
+| Contract save-unit (typed, dirty, on-change) + registry (autosave, flush) | Model dữ liệu + khai báo unit + key |
+| `ISerializer` + 2 impl (MemoryPack, JSON) · typed-prefs (§A.3) | Chọn serializer; nhịp autosave/flush theo game |
 
-**Contract**
+**Phạm vi v1.**
+- Unit + registry (dirty/autosave/flush) + `ISerializer` 2 impl + on-change + typed-prefs.
+- **Cố ý KHÔNG làm ở v1:**
+  - **Crypto** — cả 4 repo đều không dùng thật (Goods-Jam có Rijndael/TripleDES nhưng dead code, key còn
+    placeholder). Hình dạng đã nghĩ sẵn: **decorator quanh `ISerializer`** — thêm sau không sửa call-site.
+  - **Cloud** — nhu cầu thật (foods_jam/Goods-Jam sync qua RCore `DownloadThenImportProfile`) nhưng backend
+    chưa chuẩn chung. Hình dạng đã nghĩ sẵn: **`ICloudSyncable` tách riêng theo ISP** (không nhồi vào
+    contract unit — unit cục bộ không bị buộc implement rồi `return null`) + snapshot dictionary trên
+    registry; kèm rule merge (version/level/timestamp) chống "thiết bị mới data rỗng đè thiết bị cũ".
+- **Mở rộng sau:** crypto decorator · cloud sync + merge rule · migration version cho model.
 
-```csharp
-public interface IStorage
-{
-    UniTask<byte[]> ReadAsync(string key, CancellationToken ct);      // cold path: 1 lần/boot
-    UniTask WriteAsync(string key, ReadOnlyMemory<byte> bytes, CancellationToken ct);
-    bool Exists(string key);
-    void Delete(string key);
-}
+**Nghiệm thu.**
+- Thêm một save-unit mới: không sửa dòng nào trong SDK và unit khác.
+- Kill app bất kỳ lúc nào: mất tối đa một chu kỳ autosave; file corrupt vẫn vào được game.
+- Đổi serializer: round-trip mọi unit về đúng giá trị (MY_SKILL §4.3), không sửa code unit.
+- **Không có đường "chạy no-op âm thầm":** registry rỗng, unit quên đăng ký, key trùng — đều lộ ra
+  (log/assert), không im lặng như khung cũ của color-loop.
 
-public interface ISerializer
-{
-    void Serialize<T>(in T value, IBufferWriter<byte> writer);        // ghi vào buffer của registry
-    T Deserialize<T>(ReadOnlySpan<byte> bytes);
-}
-// EncryptedSerializer : ISerializer  ← decorator, ctor(ISerializer inner, IKeyProvider keys)
+**Khảo sát (re-verify 2026-08-29).**
+- `water-flow` — **nguyên liệu API tốt nhất, đang sống:** `Assets/_Core/Kelsey/Core/Runtime/Prefs/KPrefs.cs`
+  — `KPrefs<T>.Value`, cache lazy, on-change, server-save hook, `ForceRefresh()`. Lưu ý: `AESEncryption`
+  tồn tại nhưng tách rời (KPrefs không mã hoá) và bị copy trùng 2 nơi.
+- `color-loop` — **nguyên liệu khung, nhưng khung đã chết:** `PlayerSaveLoadService.cs` (122 LOC,
+  MemoryPack, autosave 100ms, dirty) còn nguyên cấu trúc mà `AssignService()` không có caller → autosave
+  no-op. State thật: `GameDataManager.cs` god-blob `GameData` (JsonUtility + PlayerPrefs, partial
+  `.Lives/.Resources/.Settings`). *Phản ví dụ trung tâm của hệ này.*
+- `foods_jam` / `Goods-Jam` — save qua RCore `JObjectDBManagerV2` (UPM ngoài); bằng chứng nhu cầu
+  cloud-sync là thật; crypto Goods-Jam là dead code.
 
-public interface ISaveUnit
-{
-    string Key { get; }                 // const string, KHÔNG typeof(T).Name — xem §0.4(b)
-    bool IsDirty { get; }
-    void MarkDirty();
-    UniTask LoadAsync(CancellationToken ct);
-    void Save(bool force = false);
-}
-
-// Tách riêng: KHÔNG phải save-unit nào cũng sync cloud (settings, cache cục bộ thì không).
-// Gộp vào ISaveUnit sẽ buộc mọi unit implement 2 method rồi return null — dấu hiệu vi phạm ISP.
-public interface ICloudSyncable
-{
-    object ToCloudPayload();                            // cold path (1 lần/sync) → boxing chấp nhận được
-    void ApplyCloudPayload(object payload);
-}
-
-public interface ISaveRegistry : IService<ISaveRegistry>
-{
-    void Register(ISaveUnit unit);                      // log lỗi nếu Key trùng
-    T Get<T>() where T : class, ISaveUnit;
-    UniTask LoadAllAsync(CancellationToken ct);
-    void FlushAll();                                    // gọi ở OnApplicationPause/Quit
-    IReadOnlyDictionary<string, object> BuildCloudSnapshot();   // chỉ unit là ICloudSyncable
-    void ApplyCloudSnapshot(IReadOnlyDictionary<string, object> snapshot);
-}
-
-// Save-unit điển hình: model + dirty, KHÔNG biết storage/serializer
-public sealed class SaveUnit<TModel> : ISaveUnit where TModel : class, new() { public TModel Data { get; } }
-```
-
-**Luồng**
-
-```
-Bootstrap(§1) ──► LoadAllAsync ──► foreach unit: Storage.Read → Serializer.Deserialize
-                                   (miss/corrupt → new TModel(), log, KHÔNG throw)
-gameplay ──► unit.Data.coin += 10 ; unit.MarkDirty()
-autosave loop (≈100ms, PlayerLoopTiming.LastUpdate)
-        └─► foreach dirty unit:  buffer.Clear() → Serialize(vào buffer dùng chung)
-                              → Storage.Write(buffer) → IsDirty = false  ← SAU khi ghi xong
-OnApplicationPause(true) / Quit ──► FlushAll()   (bỏ qua dirty flag, ghi hết)
-cloud ──► BuildCloudSnapshot() ──► server ;  server ──► ApplyCloudSnapshot()
-```
-
-**Quyết định thiết kế**
-
-| Quyết định | Vì sao | Đánh đổi |
-|---|---|---|
-| **Nhiều save-unit độc lập** thay 1 blob | Blob = mọi hệ coupling vào cùng object, sửa 1 field dirty cả blob, ghi lại toàn bộ | Nhiều file nhỏ hơn 1 file lớn |
-| Key = tên save-unit | Trùng khớp key cloud-sync, không cần bảng map | Đổi tên type = mất save → phải khai key tường minh, đừng dùng `typeof(T).Name` |
-| Dirty flag + autosave loop | Ghi mỗi lần đổi = I/O liên tục; ghi cuối cùng = mất dữ liệu khi kill | Mất tối đa 1 chu kỳ |
-| Serialize vào `IBufferWriter<byte>` dùng chung, không trả `byte[]` | Autosave chạy 10 lần/giây × N unit; trả `byte[]` là alloc theo tần số đó. Registry giữ **một** buffer, `Clear()` rồi tái dùng | Impl serializer phức tạp hơn `return bytes` |
-| Crypto là **decorator** của serializer | Bật/tắt, đổi thuật toán không sửa call-site nào | Thêm 1 lớp gián tiếp |
-| `ICloudSyncable` tách khỏi `ISaveUnit` | ISP: unit cục bộ không bị buộc implement 2 method rồi `return null` | Registry phải kiểm `is ICloudSyncable` |
-| Cloud tách hẳn khỏi local | Local phải chạy offline hoàn chỉnh; cloud là tuỳ chọn cắm thêm | Phải nghĩ chiến lược merge |
-| `LoadAsync` fail → default, không throw | Save corrupt không được chặn người chơi vào game | Im lặng mất tiến độ → phải log + (tuỳ chọn) backup file cũ |
-
-**Cạm bẫy**
-- **Autosave loop không có `CancellationToken`** → `while(true)` sống sau khi scene destroy. Luôn truyền token từ §1.
-- `Save(force: false)` mà **reset dirty trước khi ghi thành công** → I/O lỗi là mất dữ liệu im lặng. Reset dirty **sau** khi write xong.
-- Cloud ghi đè local mù quáng: thiết bị mới (data rỗng) sync xuống thiết bị cũ = xoá tiến độ. Phải có rule so sánh (version/level/timestamp) trước khi apply.
-- Serialize **trong** hot path (mỗi lần coin đổi) → GC. Chỉ serialize trong autosave loop.
-- Key trùng giữa 2 unit → unit sau ghi đè unit trước. Registry phải log lỗi khi `Register` key trùng.
-
-**Xong khi:** §0.6 + kill app giữa gameplay không mất >1 chu kỳ · corrupt file vẫn vào được game · thêm save-unit mới không sửa file nào của registry.
+**Cạm bẫy.** God-blob (đã sai một lần — color-loop) · khung không ai đăng ký chạy no-op âm thầm (đã sai
+một lần — color-loop) · autosave loop không nhận `CancellationToken` → `while(true)` sống sau destroy ·
+serialize trong hot path → GC · cloud ghi đè local mù quáng · key trùng giữa 2 unit → unit sau đè unit
+trước (registry phải log khi Register).
 
 ---
 
-## 3. Scene Flow & Loading — `Foundation`
+## 3. Scene Flow & Loading — `Foundation` · *extract từ Goods-Jam (verified nguyên vẹn)*
 
-**Bài toán.** Chuyển scene phải: che bằng loading screen, hiển thị progress **mượt** (không nhảy 0→100), **chặn input** suốt transition, và có **thời gian tối thiểu** để không nháy khi load nhanh.
+**Bài toán.** Chuyển scene phải: che bằng loading screen, progress **mượt** (không nhảy 0→100), **chặn
+input** suốt transition, và có **thời gian hiển thị tối thiểu** để không nháy khi load nhanh. Không có hệ
+chung, mỗi màn tự chế một kiểu loading và double-tap mở hai màn chồng nhau.
 
-**Use case**
+**Use case.**
 - Splash → Home → Gameplay → Home, loading che asset đang tải.
-- "Fake loading" khi thực ra chẳng cần load gì (reload level cùng scene) nhưng UX cần nhịp nghỉ.
-- Chặn double-tap/spam suốt transition (dùng lại được **ngoài** scene-load: lúc mở popup, lúc chờ ads).
+- "Fake loading" khi thực ra không cần load gì (reload level cùng scene) nhưng UX cần nhịp nghỉ.
+- Chặn double-tap/spam suốt transition — tiện ích dùng lại được **ngoài** scene-load (mở popup, chờ ads).
 - Progress = tổng hợp nhiều task: load scene + preload asset + warm pool + fetch data.
-- Hook 3 điểm: **trước** khi đổi scene · **giữa** lúc màn loading che kín · **sau** khi scene hiện.
+- Hook 3 điểm: **trước** khi đổi scene · **giữa** lúc màn che kín · **sau** khi scene hiện.
 
-**Mô hình**
+**Tư tưởng cốt lõi.**
+- Service điều phối load (Addressables-first, UniTask + CT), **không vẽ gì**; loading screen **chỉ nhận
+  progress qua contract**, không bị service gọi thẳng vào method UI (điểm sửa so với bản Goods-Jam —
+  coupling ngược chiều).
+- Progress: **gộp nhiều task có trọng số → smooth (lerp theo `unscaledDeltaTime`) → quantize** — Addressables
+  trả progress giật cục (0 → 0.9 → 1), mắt người đọc thanh nhảy là "lag". Progress **không bao giờ lùi**.
+- **Min-time per-scene** (config asset): load nhanh mà không có sàn thời gian → loading nháy 1 frame, tệ
+  hơn không có. Fake-progress và min-time là **quyết định UX có chủ đích** — ghi rõ để người tối ưu sau
+  không "sửa cho đúng".
+- Hook **MidTransition** là *cửa sổ duy nhất* swap state mà người chơi không thấy nháy — lý do nó tồn tại
+  như một khái niệm riêng.
+- **Blocker đếm tham chiếu + scope** (idiom §0.7): nhiều nguồn block đồng thời, `bool` sẽ mở khoá sớm khi
+  nguồn đầu tiên nhả; kèm scope `IDisposable` để nhánh exception không rò refCount.
+- `unscaledDeltaTime` — transition phải chạy khi `timeScale = 0`.
 
-| Thành phần | Vai trò |
+**Ranh giới SDK / game.**
+
+| SDK sở hữu | Game điền |
 |---|---|
-| `ISceneFlowService` | API `LoadAsync(sceneRef, progress, ct)`; điều phối, **không** vẽ gì |
-| `ILoadingScreen` | Chỉ subscribe progress + chạy transition; không biết ai đang load |
-| `ITransition` | fade/slide/wipe — cắm được, reskin không sửa lõi |
-| `IInteractionBlocker` | **Đếm tham chiếu** Block/Unblock; tiện ích độc lập |
-| `SceneLoadProfile` (SO) | Per-scene: `minLoadingSeconds`, `fadeIn/Out`, `smoothSpeed`, `progressQuantizeStep` |
-| `LoadProgressAggregator` | Gộp N task có trọng số → 1 giá trị `[0,1]` |
+| Service load + aggregator progress + min-time/fake + 3 hook | Danh sách scene, số min/fake per-scene, nội dung preload |
+| Blocker (tiện ích độc lập) + contract cho loading screen | Loading screen cụ thể (UI, skin) |
 
-**Contract**
+**Phạm vi v1.**
+- Đủ bộ đã kiểm chứng: load async (single + additive, track handle) + progress gộp/smooth/quantize +
+  min-time/fake + 3 hook + blocker.
+- **Cố ý KHÔNG làm ở v1:** `ITransition` (fade/slide) — chưa repo nào có nhiều hơn một kiểu transition
+  thật; abstraction chưa có implementation thứ hai (MY_SKILL §2.4). Hình dạng đã nghĩ sẵn: interface 2
+  method vào/ra — thêm sau additive.
+- **Mở rộng sau:** `ITransition` · preload theo manifest khai báo.
 
-```csharp
-public interface ISceneFlowService : IService<ISceneFlowService>
-{
-    bool IsLoading { get; }
-    UniTask LoadAsync(AssetReference sceneRef, IProgress<float> progress = null,
-                      CancellationToken ct = default);
-    UniTask ReloadWithFakeLoadingAsync(CancellationToken ct = default);
-    UniTask<SceneInstance> LoadAdditiveAsync(AssetReference sceneRef, CancellationToken ct = default);
-    UniTask UnloadAdditiveAsync(SceneInstance instance);
+**Nghiệm thu.**
+- Spam nút play trong transition: không load 2 lần (guard ngay đầu), không mở được gì.
+- Exception giữa load: blocker vẫn được nhả (scope), app không khoá cứng.
+- Progress không bao giờ giảm; đạt 1.0 rồi mới activate scene.
+- Load thật nhanh hơn min-time: màn loading vẫn hiển thị đủ min-time, không nháy.
 
-    void RegisterBeforeSceneChanged(Action cb);   // one-shot, tự clear sau khi gọi
-    void RegisterMidTransition(Action cb);        // lúc loading che kín — điểm swap state an toàn
-    void RegisterAfterSceneAppeared(Action cb);
-}
+**Khảo sát (re-verify 2026-08-29).**
+- `Goods-Jam` — **nguồn chính, CONFIRMED đúng từng con số:** `Assets/_Asssets/Scripts/Common/Manager/SceneLoader/`
+  — `SceneManager.cs` (204) + `SceneLoaderScreen` (192) + `SceneFakeLoaderScreen` (162) +
+  `ScreenInteractionBlocker` (53, MonoSingleton + counter lồng nhau) + 2 file data = 657 LOC. UniTask,
+  `Addressables.LoadSceneAsync`, progress lerp + snap, `sceneLoadingMinTime`, hook Before/Middle/After.
+- `color-loop` — biến thể event-driven gọn: `LoadingManager` (27 LOC) + `GameLoadContext` (50 LOC, mảng
+  `Func<IProgress<float>, UniTask>`) — nguồn của tư tưởng "progress gộp nhiều task".
+- `water-flow` — `LoadingController` dùng `allowSceneActivation=false`, drive progress tới 1 rồi mới
+  activate; không có blocker riêng.
+- `foods_jam` — `InitializerLoadingPanel` (274 LOC) monolith: panel tự load scene + fake progress — phản
+  ví dụ "loading screen ôm logic load".
 
-public interface IInteractionBlocker : IService<IInteractionBlocker>
-{
-    bool IsBlocking { get; }        // refCount > 0
-    void Block();
-    void Unblock();
-    IDisposable BlockScope();       // using(blocker.BlockScope()) { await …; }  ← không rò refCount
-}
-
-public interface ITransition
-{
-    UniTask PlayInAsync(CancellationToken ct);
-    UniTask PlayOutAsync(CancellationToken ct);
-}
-```
-
-**Luồng**
-
-```
-LoadAsync(sceneRef)
-  ├─ guard: IsLoading → return (chống gọi lồng)
-  ├─ blocker.Block()
-  ├─ transition.PlayInAsync()          ← màn hình đã che kín
-  ├─ BeforeSceneChanged callbacks (one-shot)
-  ├─ aggregator: [scene op] + [preload] + [warm pool] ──► progress thô
-  │     └─ mỗi frame: smooth = Lerp(smooth, raw, unscaledDt × speed)
-  │                   hiển thị = Quantize(smooth, step)   ← tránh số nhảy giật
-  ├─ chờ tới khi  raw == 1  VÀ  elapsed ≥ minLoadingSeconds
-  ├─ MidTransition callbacks           ← swap state ở đây, người chơi không thấy
-  ├─ transition.PlayOutAsync()
-  ├─ AfterSceneAppeared callbacks
-  └─ blocker.Unblock()
-```
-
-**Quyết định thiết kế**
-
-| Quyết định | Vì sao | Đánh đổi |
-|---|---|---|
-| Progress **smooth + quantize** | Addressables trả progress giật cục (0 → 0.9 → 1); mắt người đọc thanh nhảy là "lag" | Progress hiển thị trễ hơn thực tế |
-| `minLoadingSeconds` per-scene | Load nhanh mà không có sàn thời gian → loading nháy 1 frame, tệ hơn không có | Cố tình làm chậm |
-| Blocker **đếm tham chiếu** | Nhiều nguồn block đồng thời (load + popup + ads); ai xong trước Unblock sẽ mở khoá sớm nếu chỉ dùng bool | Rò refCount nếu quên Unblock → có `BlockScope()` để chống |
-| Hook `MidTransition` riêng | Đây là **cửa sổ duy nhất** đổi state mà người chơi không thấy nháy | Thêm 1 khái niệm |
-| `ITransition` tách khỏi service | Reskin fade→wipe không sửa logic load (Open/Closed) | — |
-| `unscaledDeltaTime` | Transition phải chạy khi `timeScale = 0` (đang pause) | — |
-
-**Cạm bẫy**
-- Loading screen **tự nó** cần load asset → cũng mất thời gian. Đặt loading screen ở scene bootstrap siêu nhẹ, hoặc preload nó trước.
-- Gọi `LoadAsync` lồng nhau (2 nút cùng bấm) → 2 scene load song song. Guard `IsLoading` **ở đầu**, không ở giữa.
-- `Addressables.LoadSceneAsync` không release → rò. Track `SceneInstance` cho additive; scene single thì Unity tự dọn.
-- Quên `Unblock()` ở nhánh exception → app khoá cứng vĩnh viễn. `BlockScope()` + `try/finally`.
-- `Time.deltaTime` khi pause = 0 → progress đóng băng.
-
-**Xong khi:** §0.6 + spam nút play không load 2 lần · exception giữa load vẫn `Unblock` · progress không bao giờ giảm.
+**Cạm bẫy.** Loading screen tự nó cần load asset → đặt ở scene bootstrap siêu nhẹ hoặc preload trước ·
+guard chống gọi lồng phải nằm **ở đầu** service · `Addressables` scene additive không release → rò ·
+quên nhả blocker ở nhánh exception → khoá cứng vĩnh viễn · `Time.deltaTime` khi pause = 0 → progress
+đóng băng.
 
 ---
 
-## 4. Time & Ticker — `Foundation`
+## 4a. Ticker — `Foundation` · *thiết kế mới (plan cũ khôi phục được từ git)*
 
-> 📄 **Đã có plan (phần Ticker):** `Implementations/Foundations/Ticker/TickerSystem.md` — `ITicker` + `ITickable`/`ISecondTickable`/`IPauseAware`, một `Update` duy nhất, và hai nền dùng chung `IOptionalService<T>` (§0.2 của tài liệu này) + `DeferredList<T>`.
-> **Chưa lên plan, vẫn ở mục này:** `ITimeService`, `IServerTimeProvider`, chống tua giờ, `Countdown` struct, `TimeFormatter`.
+**Bài toán.** Hàng chục UI countdown, hiệu ứng, hệ theo nhịp — mỗi cái tự chạy `Update()`/vòng
+`UniTask.Delay` riêng là GC, phí CPU và không kiểm soát được. Cần **một nguồn tick trung tâm** (luật
+§0.4a). Bằng chứng: **0/4 repo có** — Goods-Jam là bản khá nhất cũng để mỗi counter tự chạy một vòng
+`UniTask.Delay(1s)` với CTS riêng.
 
-**Bài toán.** Hai nhu cầu khác nhau nhưng cùng gốc "thời gian":
-1. **Nguồn thời gian tin được** — chống người chơi tua đồng hồ máy để nhận thưởng sớm.
-2. **Một nguồn tick trung tâm** — hàng chục UI cùng đếm ngược mà không sinh hàng chục `Update()`.
+**Use case.**
+- Nhiều label countdown cùng refresh 1 lần/giây — 1 tick, N listener.
+- Hiệu ứng/logic cần nhịp mỗi frame nhưng không muốn MonoBehaviour riêng.
+- App background → resume: mọi hệ theo thời gian cần biết **đã offline bao lâu** — con số tính **một
+  nơi**, phát cho tất cả (tính lại ở từng hệ = lặp + lệch nhau).
 
-**Use case**
-- Lives refill sau X phút · daily reset nửa đêm · event live-ops đếm ngược · cooldown booster.
-- Chống cheat: tua giờ máy tiến 1 ngày không được nhận daily.
-- 5 UI cùng hiển thị "còn 02:31" — 1 tick/giây, 5 listener.
-- App background 3 tiếng → khi resume phải biết **đã offline bao lâu** (§20 cần số này để trừ timer).
-- Đếm ngược phải chạy cả khi `timeScale = 0`.
+**Tư tưởng cốt lõi.**
+- **Một `Update` duy nhất** phát 3 nhịp: mỗi frame · 1 Hz · pause-changed. Nhịp 1 Hz cho countdown UI —
+  60 Hz cho một dòng text "02:31" là vô nghĩa, giảm 60× công format.
+- **3 nhịp = 3 interface 1-method** (ISP): listener chỉ implement nhịp nó cần, không ai viết method rỗng.
+- **Listener là interface + list, không `event Action<T>`**: đăng ký/huỷ xảy ra liên tục theo popup
+  mở-đóng — mỗi `+=`/`-=` cấp phát invocation-list mới; interface + `List<T>` là 0 byte (§0.4b). Method
+  đăng ký đặt tên theo nhịp, không overload chung — một class implement 2 nhịp sẽ làm overload nhập nhằng.
+- Nhịp pause mang `offlineSeconds` — v1 tính bằng device UTC (đủ đúng cho *khoảng* offline); khi Time
+  Service (4b) xuất hiện, đổi nguồn giờ **bên trong** ticker, consumer không đổi.
+- Mặc định `unscaledDeltaTime` — countdown/event không được đóng băng khi pause gameplay.
+- Cô lập lỗi: try/catch quanh **từng** callback (§0.4a) — 1 listener throw không kill vòng tick.
 
-**Mô hình**
+**Ranh giới SDK / game.**
 
-| Thành phần | Vai trò |
+| SDK sở hữu | Game điền |
 |---|---|
-| `ITimeService` | `UtcNow` đã hiệu chỉnh = deviceUtc + offset; offset = serverTime − deviceTime |
-| `IServerTimeProvider` | *(optional)* nguồn giờ thật — Firebase/GameServer/HTTP `Date` header |
-| `ITicker` | **Một** `Update` trung tâm, phát 3 nhịp: mỗi frame · 1 Hz · pause-changed |
-| `Countdown` (struct) | Đếm tới `endUnixSeconds`, phát `Finished`; **không** MonoBehaviour |
-| `CountdownLabel` | Binding UI: `Countdown` → text; **chỉ** format, không giữ logic |
-| `TimeFormatter` | `long seconds → string` (auto-detect `d/h/m/s`) + cờ warning; **zero-GC** |
+| Ticker + 3 contract nhịp + event Destroyed | Listener cụ thể; tự Remove trong OnDestroy |
 
-**Contract**
+**Phạm vi v1.**
+- Đúng phần trên. **Cố ý KHÔNG làm ở v1:** nhịp interval tuỳ ý (chưa có nhu cầu thật; thêm sau additive) ·
+  mọi thứ thuộc *giờ/lịch* (`ITimeService`, `Countdown`, `TimeFormatter`) — đó là **4b**, Tầng 3.
+- **Ghi chú plan:** plan chi tiết `TickerSystem.md` (ITicker + 2 nhịp + `IOptionalService` + `DeferredList`)
+  từng tồn tại, **đã bị xoá trong commit `clean`** — khôi phục từ git khi bắt đầu làm, đối chiếu lại với
+  mục này (mục này là nguồn tư tưởng, plan là nguồn chi tiết).
 
-```csharp
-public interface ITimeService : IService<ITimeService>
-{
-    DateTime UtcNow { get; }            // đã + offset
-    long UtcNowUnixSeconds { get; }
-    bool IsServerTimeTrusted { get; }   // false = đang fallback device clock
-    TimeSpan ServerOffset { get; }
-    UniTask ResyncAsync(CancellationToken ct);      // gọi ở resume + sau khi có mạng
-    event Action OffsetChanged;
-}
+**Nghiệm thu.**
+- 20 label countdown chạy đồng thời: 0 byte GC alloc mỗi giây (Profiler).
+- Đăng ký/huỷ listener 1000 lần: không alloc.
+- Resume sau N giờ background: `offlineSeconds` đúng (±1s).
+- 1 listener throw: các listener còn lại vẫn nhận tick, lỗi được log.
 
-public interface IServerTimeProvider : IOptionalService<IServerTimeProvider>
-{
-    UniTask<DateTime?> FetchUtcNowAsync(CancellationToken ct);   // null = không lấy được
-}
+**Khảo sát (re-verify 2026-08-29).** 0/4 repo có nguồn tick trung tâm. Goods-Jam
+(`TimeCounter`/`TimeRemainElement`): mỗi instance một vòng `UniTask.Delay(1s, ignoreTimeScale)` + CTS
+riêng, và `TimeRemainElement` duplicate gần nguyên logic `TimeCounter` — đúng hai bệnh hệ này chữa.
 
-// 3 nhịp độc lập → 3 interface 1-method (ISP): listener chỉ implement nhịp nó cần
-public interface ITickable       { void OnTick(float unscaledDeltaTime); }   // mỗi frame
-public interface ISecondTickable { void OnSecondTick(); }                    // 1 Hz
-public interface IPauseAware     { void OnPauseChanged(bool isPaused, float offlineSeconds); }
-
-public interface ITicker : IService<ITicker>
-{
-    // Tên phân biệt theo nhịp, KHÔNG overload `Register` — một class implement 2 nhịp
-    // sẽ làm `Register(this)` nhập nhằng (CS0121).
-    void AddTickListener(ITickable listener);
-    void RemoveTickListener(ITickable listener);
-    void AddSecondListener(ISecondTickable listener);
-    void RemoveSecondListener(ISecondTickable listener);
-    void AddPauseListener(IPauseAware listener);
-    void RemovePauseListener(IPauseAware listener);
-
-    event Action Destroyed;                                     // thưa → event là đủ (§0.4b)
-}
-```
-
-**Luồng**
-
-```
-Bootstrap ──► IServerTimeProvider?.FetchUtcNowAsync()
-               ├─ ok    → offset = server − deviceUtc ; IsServerTimeTrusted = true
-               └─ fail  → offset = 0 ; IsServerTimeTrusted = false  (log + chặn cấp thưởng nhạy cảm)
-
-Ticker.Update()  (một chỗ duy nhất)
-   ├─ OnTick(unscaledDeltaTime)                 → listener realtime
-   └─ dồn ≥1s → OnSecondTick()                  → mọi CountdownLabel refresh
-
-OnApplicationPause(false)  ← resume
-   ├─ offlineSeconds = TimeService.UtcNow − lastPauseUtc
-   ├─ ResyncAsync()                             ← chống tua giờ lúc background
-   └─ OnPauseChanged(false, offlineSeconds)     → §14 refill lives, §20 trừ timer event
-```
-
-**Quyết định thiết kế**
-
-| Quyết định | Vì sao | Đánh đổi |
-|---|---|---|
-| Offset thay vì lưu server time | Chỉ cần fetch 1 lần rồi cộng offset; không cần gọi mạng mỗi query | Drift nếu device clock chạy sai tốc độ (rất nhỏ) |
-| `IsServerTimeTrusted` **lộ ra ngoài** | Offline phải chơi được, nhưng **không** được cấp thưởng theo giờ khi chưa tin được giờ. Consumer phải tự quyết | Consumer phải xử lý 2 nhánh |
-| Tick 1 Hz cho UI countdown | 60 Hz cho một dòng text "02:31" là vô nghĩa — giảm 60× công format | Sai lệch tối đa 1s khi hiện |
-| Listener là **interface**, không `Action<float>` | Đăng ký/huỷ xảy ra liên tục (mỗi popup mở-đóng): `event`/`Action` cấp phát mảng invocation-list mới mỗi lần, còn `Action` trỏ method của instance thì alloc thêm delegate. Interface + `List<T>` là 0 byte (§0.4b) | Listener phải là class, không dùng được lambda tại chỗ |
-| 3 interface 1-method thay 1 interface 3-method | Countdown chỉ cần 1 Hz, hiệu ứng chỉ cần mỗi frame — không ai bị buộc viết method rỗng (ISP) | 3 cặp Add/Remove |
-| `Countdown` là **struct**, không MonoBehaviour | Countdown là dữ liệu, không phải object trong scene; zero-GC, dùng được trong logic thuần | Phải có chủ sở hữu gọi tick |
-| `OnPauseChanged` mang `offlineSeconds` | Mọi hệ theo thời gian cần chính con số này; tính lại ở từng hệ = lặp + lệch nhau | — |
-| `unscaledDeltaTime` mặc định | Countdown/event không được đóng băng khi pause gameplay | Muốn scale thì tự nhân |
-| Mốc epoch cố định (Unix 1970 UTC) | Lưu `long` seconds gọn, so sánh rẻ, không lệ thuộc timezone | Phải nhớ mọi API là UTC |
-
-**Cạm bẫy**
-- **Tin device clock cho phần thưởng** = cheat trong 10 giây. Mọi cấp thưởng theo giờ phải kiểm `IsServerTimeTrusted`.
-- Không resync khi resume → tua giờ lúc background vẫn ăn được thưởng.
-- Countdown dựa `Time.deltaTime` tích luỹ (thay vì `endTime − now`) → sai tích luỹ dần và **sai hẳn** sau khi background.
-- Mỗi UI một `Update()` + `string.Format` mỗi frame = GC nặng nhất trong UI mobile. Bắt buộc qua `ITicker` 1 Hz + `TimeFormatter` zero-GC (`StringBuilder`/`Span<char>` tái dùng).
-- Đăng ký tick mà không unregister trong `OnDestroy` → ticker giữ reference chết.
-- `DateTime.Now` (local) lẫn với `UtcNow` → sai theo timezone người chơi. **Chỉ dùng UTC** trong toàn hệ; đổi sang local chỉ ở tầng hiển thị.
-
-**Xong khi:** §0.6 + tua giờ máy tiến/lùi không đổi được kết quả countdown · 20 label countdown không sinh GC alloc/giây · resume sau 3h trả đúng `offlineSeconds`.
+**Cạm bẫy.** Đăng ký tick mà không remove trong `OnDestroy` → ticker giữ reference chết · sửa list
+listener trong lúc đang phát tick (add/remove từ trong callback) → cần deferred add/remove · để logic
+nặng trong nhịp frame khi nhịp 1 Hz là đủ (MY_SKILL §3.5 — khai đúng nhịp).
 
 ---
 
-## 5. Stack State Machine — `Foundation`
+## 5. Stack State Machine — `Foundation` · *giữ theo quyết định user; viết mới thuần C#*
 
-**Bài toán.** Nhiều flow cần "quay lại trạng thái trước": pause rồi resume, popup chồng popup, tutorial tạm chiếm control rồi trả lại. FSM phẳng buộc mỗi state phải **biết** state trước nó là gì — ngăn xếp thì không.
+> **Ghi chú phạm vi:** re-verify cho thấy 1/4 repo có (chỉ color-loop) và bản đó **không có caller
+> runtime** (chỉ 2 file sample). User quyết giữ ở Tầng 1 vì tin đây là utility nền — quyết định user, chỉ
+> user đổi. Hệ quả ràng buộc: v1 **bắt buộc có caller thật** ở game đầu tiên tích hợp mới tính là xong.
 
-**Use case**
-- Gameplay: `Playing` → push `Paused` → pop → về đúng `Playing` với nguyên state.
+**Bài toán.** Nhiều flow cần "quay lại trạng thái trước": pause rồi resume, tutorial tạm chiếm control
+rồi trả lại. FSM phẳng buộc mỗi state phải **biết** state trước nó là gì — ngăn xếp thì không.
+
+**Use case.**
+- Gameplay: `Playing` → push `Paused` → pop → về đúng `Playing` với **nguyên state** (không rebuild).
 - Tutorial push `TutorialControl`, chặn input gameplay, pop xong trả lại.
-- Cutscene/animation chiếm quyền tạm thời.
-- Undo-flow nông (mở nhiều lớp, đóng lần lượt).
+- Cutscene chiếm quyền tạm thời; undo-flow nông (mở nhiều lớp, đóng lần lượt).
 
-**Mô hình**
+**Tư tưởng cốt lõi.**
+- Vòng đời chia **hai nhóm hook** — đây là giá trị thật của stack so với FSM phẳng: `Push/Pop` (sinh–diệt
+  của chính state) tách khỏi `Suspend/Resume` (bị đè–được trả lại, quan hệ với lân cận). `Paused` push lên
+  `Playing` thì `Playing` **Suspend** (giữ nguyên state), không **Pop** (mất state).
+- **Thuần C#, không MonoBehaviour** — state là logic, test được không cần scene; chủ sở hữu cấp tick
+  (qua Ticker 4a hoặc tự gọi).
+- Chỉ **đỉnh** stack nhận update — state bị che không tiêu CPU.
+- State độc lập, **không biết nhau**, không giữ tham chiếu chéo — machine điều phối.
+- **Không transition table** — ngăn xếp không cần bảng chuyển; thêm bảng/blackboard/visual editor là biến
+  thành hệ khác (~150 LOC là đúng cỡ của nó).
 
-`IStackState` có **6** hook — chia làm 2 nhóm, đây là điểm cốt lõi:
+**Ranh giới SDK / game.**
 
-| Hook | Khi nào | Nhóm |
-|---|---|---|
-| `OnPush` | state này vừa được đẩy vào | vòng đời của **chính nó** |
-| `OnPop` | state này vừa bị lấy ra | vòng đời của **chính nó** |
-| `OnSuspend` | state **khác** được push lên trên nó | quan hệ với **lân cận** |
-| `OnResume` | state trên nó bị pop, nó thành đỉnh | quan hệ với **lân cận** |
-| `OnUpdate(dt)` | mỗi tick, **chỉ đỉnh** stack | — |
-| `OnReset` | stack bị xoá sạch | — |
+| SDK sở hữu | Game điền |
+|---|---|
+| Contract state (push/pop/suspend/resume/update/reset) + machine | Các state cụ thể; ai cấp tick |
 
-Tách `Push/Pop` (sinh–diệt) khỏi `Suspend/Resume` (tạm ngừng–tiếp tục) là lý do dùng stack: `Paused` push lên `Playing` thì `Playing` **Suspend** (giữ nguyên state), không **Pop** (mất state).
+**Phạm vi v1.**
+- Contract + machine thuần C# (API tham chiếu bản color-loop: push/pop/pop-nhiều/pop-hết/reset).
+- **Cố ý KHÔNG làm ở v1:** FSM phẳng kèm theo (chưa có nhu cầu thật; nếu cần là biến thể cùng contract,
+  thêm sau additive) · adapter MonoBehaviour (chưa có người dùng đòi kéo thả Inspector; bản component cũ
+  của color-loop chỉ làm tham khảo API).
+- **Mở rộng sau:** FSM phẳng cùng contract · adapter component.
 
-**Contract**
+**Nghiệm thu.**
+- Unit test thuần C# phủ push/pop/suspend/resume/pop-nhiều-tầng/pop-stack-rỗng — chạy không cần scene.
+- Push/pop/reset không alloc sau lần khởi tạo; `Playing→Paused→Playing` giữ nguyên state.
+- **Có ít nhất một caller thật** (ví dụ pause flow) trong game đầu tiên tích hợp — không caller thì hệ
+  chưa xong, dù code hoàn chỉnh.
 
-```csharp
-public interface IStackState
-{
-    void OnPush();
-    void OnPop();
-    void OnSuspend();
-    void OnResume();
-    void OnUpdate(float deltaTime);
-    void OnReset();
-}
+**Khảo sát (re-verify 2026-08-29).**
+- `color-loop` — bản duy nhất: `Assets/_TheGame/_AlienCode/Unity Extensions/Extra/Runtime/StackStateMachine/`
+  — `IStackState.cs` (41 LOC: 6 hook đúng mô hình trên) + `StackStateMachineComponent.cs` (165 LOC, kế
+  thừa `ScriptableComponent` — **không** thuần C# như khảo sát cũ ghi). Caller: chỉ 2 file sample UI.
+- `foods_jam` / `Goods-Jam` / `water-flow` — GONE. Thứ gần nhất là stack của UI navigator (Push/Pop
+  popup) — cùng semantics nhưng là hệ khác (§7).
 
-// C# thuần, KHÔNG bắt buộc MonoBehaviour
-public class StackStateMachine<T> where T : class, IStackState
-{
-    public int StateCount { get; }
-    public T CurrentState { get; }           // null khi rỗng
-    public double CurrentStateTime { get; }  // double: không mất chính xác sau nhiều giờ
-    public T GetState(int index);
-
-    public void Push(T state);
-    public void Pop();
-    public void PopStates(int count);
-    public void PopAll();
-    public void Reset();
-    public void Update(float deltaTime);     // chủ sở hữu gọi (qua §4 ITicker)
-
-    protected virtual void OnStatePushed(T state) { }
-    protected virtual void OnStatePopped(T state) { }
-}
-```
-
-**Luồng**
-
-```
-Push(B)   : A.OnSuspend()  →  stack.Add(B)  →  B.OnPush()   →  OnStatePushed(B)
-Pop()     : B.OnPop()      →  stack.RemoveAt(last)          →  A.OnResume()  →  OnStatePopped(B)
-Update(dt): CurrentStateTime += dt  →  CurrentState.OnUpdate(dt)     ← chỉ đỉnh
-Reset()   : pop từ đỉnh xuống, mỗi state OnReset()
-```
-
-**Quyết định thiết kế**
-
-| Quyết định | Vì sao | Đánh đổi |
-|---|---|---|
-| C# thuần, không MonoBehaviour | State là logic, không cần GameObject; test được không cần scene | Phải tự gọi `Update` |
-| Chỉ đỉnh nhận `OnUpdate` | State bị che không nên tiêu CPU | Muốn chạy nền phải tự đăng ký `ITicker` |
-| Guard "đang transition" (chỉ `DEBUG`) | `Push` trong `OnPush` = stack hỏng khó lần; guard bắt được ngay lúc dev | Không bảo vệ ở build release (chấp nhận — đã test) |
-| `List<T>` + `RemoveAt(last)` | Pop là O(1); pre-alloc capacity → zero-GC | Không truy cập ngẫu nhiên hiệu quả (không cần) |
-| `CurrentStateTime` là `double` | `float` mất chính xác sau ~vài giờ tích luỹ | 8 byte |
-| Không có "transition table" | Ngăn xếp không cần bảng chuyển; thêm bảng = biến thành visual-scripting | Không validate chuyển đổi hợp lệ được |
-
-**Cạm bẫy**
-- **Over-engineer.** Đây là ~150 LOC. Đừng thêm transition table, blackboard, event bus riêng, visual editor — có nhu cầu đó thì đã là hệ khác.
-- `Push`/`Pop` bên trong `OnPush`/`OnPop` → sửa list đang duyệt. Guard + (nếu cần) hàng đợi command.
-- `Pop()` trên stack rỗng → NRE. Guard hoặc trả `bool`.
-- State giữ tham chiếu chéo tới state khác → mất tính độc lập, không dùng lại được.
-
-**Xong khi:** §0.6 + push/pop/reset không alloc sau lần khởi tạo · `Playing→Paused→Playing` giữ nguyên state · pop stack rỗng không throw.
+**Cạm bẫy.** Over-engineer (transition table/visual editor) · `Push`/`Pop` từ bên trong `OnPush`/`OnPop`
+→ sửa list đang duyệt (guard DEBUG + hàng đợi nếu cần) · `Pop` trên stack rỗng → NRE (guard/`bool`) ·
+tích luỹ thời gian state bằng `float` mất chính xác sau vài giờ (dùng `double`).
 
 ---
 
-## 6. Safe-Area & Responsive Canvas — `Foundation`
+## 6. Safe-Area & Responsive Canvas — `Foundation` · *tự viết trên bộ code đã hội tụ ở 3 repo*
 
-**Bài toán.** UI mobile phải đúng trên mọi tỉ lệ + tai thỏ + home-bar + **và cả banner ads đang chiếm đáy màn hình**. Vùng an toàn **đổi lúc runtime** (xoay máy, banner hiện/ẩn, split-screen) → tính một lần lúc `Start()` là sai.
+**Bài toán.** UI mobile phải đúng trên mọi tỉ lệ + notch + home-bar **và cả banner ads chiếm đáy màn
+hình**. Vùng an toàn **đổi lúc runtime** (xoay máy, banner hiện/ẩn) → tính một lần lúc `Start()` là sai.
+Bằng chứng còn cho thấy vấn đề thứ hai không phải "thiếu" mà là **thừa**: mỗi repo đang chạy 2–4 bản
+safe-area song song — SDK tồn tại để mỗi dự án chỉ còn **một đường duy nhất**.
 
-**Use case**
-- Nút không lọt dưới notch / home-bar / camera đục lỗ.
-- Nội dung co giãn theo aspect ratio (tablet 4:3 ↔ phone 20:9).
+**Use case.**
+- Nút không lọt dưới notch/home-bar/camera đục lỗ; layout co giãn theo aspect (tablet 4:3 ↔ phone 20:9).
 - Banner hiện → padding đáy tăng, UI đẩy lên; banner ẩn → trả lại.
-- Vùng **ngược lại** (`UnsafeArea`): background phải phủ kín cả notch, không được co vào safe-area.
-- Board gameplay canh giữa vùng an toàn, không bị UI che.
+- Vùng **ngược lại**: background phải phủ kín cả notch, không co vào safe-area.
+- Board gameplay canh giữa vùng an toàn (quy đổi sang world bounds cho camera).
+- Preview notch trong Editor khi làm UI.
 
-**Mô hình**
-
-| Thành phần | Vai trò |
-|---|---|
-| `ISafeAreaUpdatable` | Contract 1 hàm `UpdateRect()` — mọi thứ phản ứng với vùng an toàn |
-| `SafeAreaBase` | Abstract: lấy `Screen.safeArea` + kích thước màn, gọi `UpdateRect(rect, w, h)` |
-| `SafeAreaComponent` | Padding có cờ `[Flags] Top/Bottom/Left/Right` → chọn cạnh nào bám |
-| `UnsafeAreaComponent` | Nghịch đảo — phủ ra tới mép vật lý |
-| `SafeAreaWatcher` | So `Screen.safeArea` mỗi frame; **chỉ** gọi `UpdateRect()` khi đổi |
-| `IScreenInsetProvider` | *(optional)* inset phụ ngoài OS — chiều cao banner ads |
-| `CanvasBounder` | Quy đổi vùng an toàn → world bounds cho camera/board gameplay |
-
-**Contract**
-
-```csharp
-public interface ISafeAreaUpdatable { void UpdateRect(); }
-
-public interface IScreenInsetProvider : IOptionalService<IScreenInsetProvider>
-{
-    float BottomInsetPixels { get; }        // banner height, …
-    event Action InsetChanged;
-}
-
-[DisallowMultipleComponent, RequireComponent(typeof(SafeAreaWatcher))]
-public abstract class SafeAreaBase : MonoBehaviour, ISafeAreaUpdatable
-{
-    public virtual void ResetRect();                            // về full-stretch
-    public void UpdateRect();                                   // đọc Screen.safeArea + inset → gọi hook
-    protected abstract void UpdateRect(Rect safeArea, int width, int height);
-}
-```
+**Tư tưởng cốt lõi.**
+- Contract **một hàm** `UpdateRect()` — mọi thứ phản ứng với vùng an toàn đều implement được (ISP cực gọn).
+- **Padding bằng anchor, không offset**: anchor là tỉ lệ → tự đúng khi canvas scale/đổi resolution;
+  offset là pixel → lệch. Cạnh bám khai bằng `[Flags]` (thực tế mỗi panel chỉ bám 1–2 cạnh).
+- **Watcher so sánh rồi mới update** (dirty): `Screen.safeArea` đổi rất ít; rebuild layout mỗi frame là
+  phí lớn nhất của UGUI.
+- **Inset ngoài OS qua provider tuỳ chọn** (`IOptionalService` — §0.2): chiều cao banner chỉ hệ ads biết —
+  SDK safe-area không được phụ thuộc ads; banner chỉ là một nguồn inset nữa cộng vào padding đáy.
+- **Vùng ngược là component riêng** — nhu cầu ngược hẳn, nhồi cờ vào một class là if/else lồng.
+- Quy đổi vùng an toàn → world bounds (bounder) cho board/camera — cùng nguồn sự thật với UI.
 
 **Công thức padding** (`safeArea` gốc trái-dưới, cùng hệ pixel với `width`/`height`):
 
 ```
 paddingTop    = height − (safeArea.y + safeArea.height)
-paddingBottom = safeArea.y            (+ IScreenInsetProvider.BottomInsetPixels)
+paddingBottom = safeArea.y            (+ inset banner nếu có)
 paddingLeft   = safeArea.x
 paddingRight  = width  − (safeArea.x + safeArea.width)
 
@@ -745,34 +584,55 @@ sizeDelta = anchoredPosition = 0        ← anchor gánh toàn bộ, không dùn
 
 | Mốc | Kỳ vọng | ✓ |
 |---|---|---|
-| Không notch (`safeArea == full screen`) | 4 padding = 0 → `anchorMin=(0,0)`, `anchorMax=(1,1)` | công thức cho đúng full-stretch |
-| Chỉ bám `Top`, notch cao 100px, `height=2400` | `anchorMax.y = 2300/2400` | phần trên bị chừa đúng 100px |
+| Không notch (`safeArea == full screen`) | 4 padding = 0 → `anchorMin=(0,0)`, `anchorMax=(1,1)` | full-stretch |
+| Chỉ bám `Top`, notch cao 100px, `height=2400` | `anchorMax.y = 2300/2400` | chừa đúng 100px |
 | Banner 150px, có cờ `Bottom` | `anchorMin.y = 150/2400` | UI đẩy lên đúng chiều cao banner |
-| Xoay ngang | `safeArea` đổi → watcher phát hiện → `UpdateRect()` | không cần restart |
+| Xoay ngang | `safeArea` đổi → watcher phát hiện → update | không cần restart |
 
-**Quyết định thiết kế**
+**Ranh giới SDK / game.**
 
-| Quyết định | Vì sao | Đánh đổi |
-|---|---|---|
-| Dùng **anchor**, không `offsetMin/Max` | Anchor là tỉ lệ → tự đúng khi canvas scale/đổi resolution; offset là pixel → lệch | Phải zero `sizeDelta`/`anchoredPosition` |
-| Watcher **so sánh** rồi mới update | `Screen.safeArea` đổi rất ít; rebuild layout mỗi frame là phí lớn nhất trong UGUI | 1 phép so `Rect` mỗi frame (rẻ) |
-| `ISafeAreaUpdatable` là 1 hàm | Interface segregation cực gọn → mọi thứ (bounder, camera, particle) implement được | — |
-| Inset ngoài OS qua `IScreenInsetProvider` | Banner height chỉ hệ ads biết; SDK không được phụ thuộc ads | 1 lớp gián tiếp |
-| `UnsafeArea` là component **riêng** | Background phủ tràn là nhu cầu ngược hẳn; nhồi cờ vào 1 class = if/else lồng | 2 class |
-| Padding là `[Flags]` | Thực tế mỗi panel chỉ bám 1–2 cạnh (header bám top, footer bám bottom) | — |
+| SDK sở hữu | Game điền |
+|---|---|
+| Contract + base + component padding/vùng-ngược + watcher + bounder | Áp component vào canvas/layout của nó |
+| Contract inset provider (optional) | Hệ ads của game implement provider (báo chiều cao banner) |
 
-**Cạm bẫy**
-- Tính safe-area một lần trong `Start()` → sai ngay khi xoay máy hoặc banner hiện.
-- Trộn safe-area với anchor thủ công trên **cùng** `RectTransform` → giằng nhau. Cho component chiếm trọn 1 RectTransform, con của nó tự do layout.
-- Quên vùng ngược: background co vào safe-area → viền đen quanh notch.
-- Rebuild layout đồng loạt mỗi frame: dirty flag + chỉ update khi `Rect` khác.
-- Chỉ nhớ `Screen.safeArea` mà quên inset banner → nút bị banner đè.
+**Phạm vi v1.**
+- Đủ bộ trên (contract · base · padding `[Flags]` · vùng ngược · watcher · inset provider · bounder).
+- **Cố ý KHÔNG làm ở v1:** *wrap NotchSolution* — phương án đã cân hai lần và loại: không cover banner
+  inset, và bằng chứng cho thấy các team vẫn tự viết song song dù đã có nó; NotchSolution vẫn dùng được
+  như công cụ preview notch trong Editor ở dự án sẵn có — **không là dependency runtime của SDK** · *simulator
+  proxy riêng* — bộ cũ có (reflection vào Device Simulator), thêm sau nếu cần preview không qua NotchSolution.
+- **Mở rộng sau:** simulator proxy · grid/layout helper bám vùng an toàn khi có board thật cần.
 
-**Xong khi:** §0.6 + xoay máy/hiện-ẩn banner UI đúng ngay không restart · không notch cho ra full-stretch · zero rebuild khi vùng an toàn không đổi.
+**Nghiệm thu.**
+- Xoay máy / banner hiện-ẩn: UI đúng ngay, không restart; công thức cho full-stretch khi không notch
+  (bảng kiểm mốc trên).
+- Zero rebuild khi vùng an toàn không đổi (watcher chỉ phát khi khác).
+- Dự án tích hợp xong: grep chỉ còn **một** đường safe-area — các bản song song cũ bị thay, không chạy kèm.
+
+**Khảo sát (re-verify 2026-08-29).**
+- Bộ code hội tụ (`SafeAreaBase` ~171–176 LOC + `SafeAreaComponent` ~92–96 + `RuntimeSafeAreaUpdater` +
+  `ISafeAreaUpdatable` + simulator proxy) xuất hiện ở **3 repo** — một tổ tiên chung bị copy: foods_jam
+  (namespace `Squirrel.UGUI`, KHÔNG phải lib riêng như khảo sát cũ ghi — nằm lẫn trong Gameplay/Utilities),
+  Goods-Jam, và bản đầy đủ nhất ở water-flow (`Kelsey/UGUI/SafeArea~`, có prefab post-processor) **đã bị
+  tắt** — folder hậu tố `~` nên Unity bỏ qua; bản đang chạy ở đó là `SafeAreaFilter/SafeArea.cs` đơn giản hơn.
+- NotchSolution: 3/4 repo (đều vendored trong Assets; water-flow không có) — khảo sát cũ ghi "cả 4" là sai
+  — và luôn chạy **song song** với bản tự viết, chưa nơi nào là đường duy nhất.
+- Bệnh chung: foods_jam 4 bản safe-area song song · color-loop 3 · Goods-Jam 2.
+
+**Cạm bẫy.** Tính một lần trong `Start()` → sai khi xoay máy/banner hiện · trộn safe-area với anchor thủ
+công trên **cùng** `RectTransform` → giằng nhau (component chiếm trọn một RectTransform, con của nó tự do)
+· quên vùng ngược → viền đen quanh notch · quên inset banner → nút bị banner đè · tích hợp mà không gỡ
+bản song song cũ là tái tạo đúng cái bệnh SDK sinh ra để chữa.
 
 ---
 
 # TẦNG 2 — Services
+
+> ⚠️ **Từ đây đến hết Phụ lục: nguyên trạng bản trước, chưa polish, chưa re-verify** (khuôn 8 phần cũ, có
+> contract C#) — ngoại lệ duy nhất: mục **4b Time Service** ở Tầng 3 đã re-verify 2026-08-29. Đường
+> dẫn/LOC khảo sát trong vùng này có thể đã trôi; khi polish tầng nào thì re-verify tầng đó như đã làm
+> với Tầng 1.
 
 ## 7. UI Navigator (Page / Popup / Sheet) — `Composite` ⭐ **hệ UI quan trọng nhất**
 
@@ -1498,6 +1358,88 @@ public interface IIapService : IService<IIapService>
 ---
 
 # TẦNG 3 — Puzzle / F2P features
+
+## 4b. Time Service (server time + countdown) — `Foundation` · *tách từ mục Time & Ticker cũ; làm ngay trước Economy (§14)*
+
+> **Nhãn bản chất (re-verify 2026-08-29): thiết kế mới, không phải extract.** Khảo sát cũ tin "Goods-Jam
+> trọn vẹn nhất"; sự thật: **0/4 repo có server-time offset** — Goods-Jam `TimeManager.Now => DateTime.UtcNow`
+> thuần (311 LOC 4 file), không chống chỉnh giờ; water-flow/foods_jam chỉ có static UtcNow helper;
+> color-loop lưu `UtcTicks` thẳng trong `GameData`. Consumer thật đầu tiên là Lives/Daily của Economy
+> (§14) → user quyết chuyển hệ này xuống Tầng 3, làm ngay trước Economy. **Phần nguồn tick (`ITicker`,
+> 3 nhịp) đã tách lên Tầng 1 — mục 4a**; mục này chỉ còn phần *giờ/lịch*.
+
+**Bài toán.** Nguồn thời gian **tin được** — chống người chơi tua đồng hồ máy để nhận thưởng sớm — và bộ
+countdown/format dùng chung cho mọi tính năng theo thời gian.
+
+**Use case**
+- Lives refill sau X phút · daily reset nửa đêm · event live-ops đếm ngược · cooldown booster.
+- Chống cheat: tua giờ máy tiến 1 ngày không được nhận daily.
+- App background 3 tiếng → resume phải resync giờ (chống tua giờ lúc background); `offlineSeconds` do
+  ticker (4a) phát, nguồn giờ lấy từ đây.
+- Đếm ngược chạy cả khi `timeScale = 0` (qua nhịp unscaled của 4a).
+
+**Mô hình**
+
+| Thành phần | Vai trò |
+|---|---|
+| `ITimeService` | `UtcNow` đã hiệu chỉnh = deviceUtc + offset; offset = serverTime − deviceTime |
+| `IServerTimeProvider` | *(optional — §0.2)* nguồn giờ thật: Firebase/GameServer/HTTP `Date` header |
+| `Countdown` (struct) | Đếm tới `endUnixSeconds`, phát `Finished`; **không** MonoBehaviour |
+| `CountdownLabel` | Binding UI: `Countdown` → text qua nhịp 1 Hz của 4a; **chỉ** format, không giữ logic |
+| `TimeFormatter` | `long seconds → string` (auto-detect `d/h/m/s`) + cờ warning; **zero-GC** |
+
+**Contract**
+
+```csharp
+public interface ITimeService : IService<ITimeService>
+{
+    DateTime UtcNow { get; }            // đã + offset
+    long UtcNowUnixSeconds { get; }
+    bool IsServerTimeTrusted { get; }   // false = đang fallback device clock
+    TimeSpan ServerOffset { get; }
+    UniTask ResyncAsync(CancellationToken ct);      // gọi ở resume + sau khi có mạng
+    event Action OffsetChanged;
+}
+
+public interface IServerTimeProvider : IOptionalService<IServerTimeProvider>
+{
+    UniTask<DateTime?> FetchUtcNowAsync(CancellationToken ct);   // null = không lấy được
+}
+```
+
+**Luồng**
+
+```
+Bootstrap ──► IServerTimeProvider?.FetchUtcNowAsync()
+               ├─ ok    → offset = server − deviceUtc ; IsServerTimeTrusted = true
+               └─ fail  → offset = 0 ; IsServerTimeTrusted = false  (log + chặn cấp thưởng nhạy cảm)
+
+OnApplicationPause(false)  ← resume (nhịp pause của 4a)
+   ├─ ResyncAsync()                             ← chống tua giờ lúc background
+   └─ consumer nhận offlineSeconds từ 4a        → §14 refill lives, §20 trừ timer event
+```
+
+**Quyết định thiết kế**
+
+| Quyết định | Vì sao | Đánh đổi |
+|---|---|---|
+| Offset thay vì lưu server time | Fetch 1 lần rồi cộng offset; không gọi mạng mỗi query | Drift nếu device clock chạy sai tốc độ (rất nhỏ) |
+| `IsServerTimeTrusted` **lộ ra ngoài** | Offline phải chơi được, nhưng **không** cấp thưởng theo giờ khi chưa tin được giờ. Consumer tự quyết | Consumer xử lý 2 nhánh |
+| `Countdown` là **struct**, không MonoBehaviour | Countdown là dữ liệu; zero-GC, dùng được trong logic thuần | Phải có chủ sở hữu gọi tick |
+| Mốc epoch cố định (Unix 1970 UTC) | Lưu `long` seconds gọn, so sánh rẻ, không lệ thuộc timezone | Mọi API là UTC — đổi sang local chỉ ở tầng hiển thị |
+
+**Cạm bẫy**
+- **Tin device clock cho phần thưởng** = cheat trong 10 giây. Mọi cấp thưởng theo giờ phải kiểm `IsServerTimeTrusted`.
+- Không resync khi resume → tua giờ lúc background vẫn ăn được thưởng.
+- Countdown dựa `deltaTime` tích luỹ (thay vì `endTime − now`) → sai dần và **sai hẳn** sau background.
+- `DateTime.Now` (local) lẫn với `UtcNow` → sai theo timezone. **Chỉ dùng UTC** trong toàn hệ.
+- Mỗi UI một `Update()` + `string.Format` mỗi frame — đã có 4a + `TimeFormatter` zero-GC, đừng tự chế lại.
+
+**Xong khi:** §0.6 + tua giờ máy tiến/lùi không đổi được kết quả countdown · resume sau 3h resync xong và
+consumer nhận đúng `offlineSeconds` (phối hợp 4a) · countdown label không sinh GC alloc/giây (phối hợp
+4a + `TimeFormatter`).
+
+---
 
 ## 14. Economy: Currency · Lives · Reward — `Composite`
 
@@ -2880,7 +2822,7 @@ Hai lỗi phụ, nhỏ hơn nhưng rất hay gặp:
 
 ---
 
-*Tài liệu thiết kế. Khi bắt đầu hiện thực một hệ: đọc §0 → đọc mục của hệ đó → viết spec/plan riêng theo `DOCS_SKILL`, đặt file `.md` cạnh `Implementations/` của hệ (quy tắc 4 trong `SKILL.md`), rồi cập nhật dòng tương ứng ở bảng tổng quan.*
+*Tài liệu thiết kế. Khi bắt đầu hiện thực một hệ: đọc §0 → đọc mục của hệ đó → viết spec/plan riêng theo `MY_SKILL.md` §5.3, đặt file `.md` cạnh `Implementations/` của hệ (MY_SKILL §5), rồi cập nhật dòng tương ứng ở bảng tổng quan.*
 
 
 
