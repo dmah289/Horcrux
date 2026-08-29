@@ -67,7 +67,8 @@ namespace Horcrux.Runtime.Abstractions
     }
 
     // Thêm mới: service TUỲ CHỌN — cố tình KHÔNG có `Service`.
-    // 📄 Đã có plan: TickerSystem.md Task 1 (file Abstractions/Foundations/IOptionalService.cs).
+    // 📄 Đã có plan: BootstrapSystem.md Task 1 (file Abstractions/Foundations/IOptionalService.cs);
+    // TickerSystem.md (khôi phục sau) dùng lại file này, bỏ task trùng.
     public interface IOptionalService<out T>
     {
         public static bool TryGet(out T service) => Sisus.Init.Service.TryGet(out service);
@@ -84,6 +85,8 @@ namespace Horcrux.Runtime.Abstractions
 ## 0.3 Quy ước lưu trữ
 
 Mọi hệ có state đều lưu qua **save-unit riêng** của mình (§2), **không** dùng chung một blob toàn cục. Hệ chỉ khai báo model + implement `ISaveUnit`; registry lo dirty/autosave/crypto.
+
+📄 Đã có plan: `Implementations/Foundations/Persistence/PersistenceSystem.md` (v1 không crypto — decorator quanh `ISerializer` thêm sau).
 
 ## 0.4 Hiệu năng — luật áp cho mọi hệ dưới đây
 
@@ -134,8 +137,8 @@ Mỗi hệ chỉ coi là xong khi đủ 5 điều: ① contract tách khỏi imp
 
 | # | Hệ thống | Loại | Phổ quát | Tầng | Phụ thuộc SDK |
 |---|---|---|---|:--:|---|
-| 1 | Bootstrap & Lifecycle | Foundation | Bắt buộc | 1 | — |
-| 2 | Persistence (save-unit + cloud) | Foundation | Bắt buộc | 1 | — |
+| 1 | Bootstrap & Lifecycle 📄 | Foundation | Bắt buộc | 1 | — |
+| 2 | Persistence (save-unit + cloud) 📄 | Foundation | Bắt buộc | 1 | — |
 | 3 | Scene Flow & Loading | Foundation | Bắt buộc | 1 | Pooling *(tuỳ chọn: warm-up)* |
 | 4a | Ticker (nguồn tick trung tâm) | Foundation | Bắt buộc | 1 | — |
 | 4b | Time Service (server time + countdown) | Foundation | Bắt buộc | 3 | 4a *(nhịp)* |
@@ -163,22 +166,24 @@ Mỗi hệ chỉ coi là xong khi đủ 5 điều: ① contract tách khỏi imp
 
 ## Hệ đã có plan chi tiết
 
-Năm hệ dưới đây đã được viết plan theo `MY_SKILL.md` §5.3 (tự chứa, có code dán-được). Plan cố ý **thu hẹp phạm vi chỉ đủ cho Combo** — phần còn lại của mục tương ứng trong tài liệu này **vẫn còn hiệu lực** và chưa được lên plan.
+Bảy hệ dưới đây đã được viết plan theo `MY_SKILL.md` §5.3 (tự chứa, có code dán-được). Năm plan đầu tiên cố ý **thu hẹp phạm vi chỉ đủ cho Combo**; plan Bootstrap và Persistence theo phạm vi v1 của mục 1 và mục 2 — phần còn lại của mục tương ứng trong tài liệu này **vẫn còn hiệu lực** và chưa được lên plan.
 
 | Hệ | File plan | Trong plan | **Ngoài** plan (vẫn ở tài liệu này) |
 |---|---|---|---|
+| 1 Bootstrap | `Implementations/Foundations/Bootstrap/BootstrapSystem.md` | `BootStep` (Order + 2 nhịp + 2 hook app) + `BootstrapRunner` (sort ổn định, fail-open, token vòng đời, `BootProgress`) + `IBootstrapService` (`IsInitialized` + `UntilInitialized`) + `IOptionalService<T>` (§0.2) + demo nghiệm thu. 7 file | manifest SO · parallel-in-phase · nhóm bước theo scene |
+| 2 Persistence | `Implementations/Foundations/Persistence/PersistenceSystem.md` | `ISaveUnit`/`SaveUnit<TModel>` (typed + dirty + on-change) + `SaveRegistry` (load-lúc-Register, autosave, flush pause/quit, ghi nguyên tử) + `ISerializer` 2 impl (Newtonsoft JSON · MemoryPack qua versionDefines) + typed-prefs `Prefs<T>` + 4 chuyên biệt (§A.3) + demo nghiệm thu. 10 file | crypto decorator · cloud (`ICloudSyncable` + merge rule) · migration version · `PrefsDateTime`/`ForceRefresh`/`syncToServer` |
 | 4a Ticker (+4b Time) | `Implementations/Foundations/Ticker/TickerSystem.md` | `ITicker` + **2 nhịp** (`ITickable`, `IPauseAware`) + 1 `Update` duy nhất, `IOptionalService<T>` (§0.2), `DeferredList<T>`. 6 file | **nhịp 1 Hz** (`ISecondTickable`), `Destroyed` event, `ITimeService`, chống tua giờ, `Countdown`, `TimeFormatter` |
 | §9 Haptics | `Implementations/Foundations/Haptics/HapticSystem.md` | `PlayCustom(HapticPattern)` + `IHapticBackend` (**2 member**) + backend Android có **biên độ**. 6 file | **bộ preset** (`EHapticPreset` + `Play(preset)`), rung liên tục (`Begin/End` + ref-count), waveform, impl vendor, `IHapticSettings` |
 | §8 Audio | `Implementations/Foundations/Audio/AudioSystem.md` | ⚠️ **SFX 2D + `pitchScale`** (xem cảnh báo ở §8), catalog SO, throttle theo clip, voice gán ở Inspector. 6 file | **SFX 3D** (`PlaySfxAt`), music + crossfade, `PauseAll/ResumeAll`, `EAudioSelectMode`, `IAudioSettings`, mixer group |
 | §22 Feedback | `Implementations/Composites/Feedback/FeedbackSystem.md` | `FeedbackCue {Id, Step}` + dispatcher + 4 kênh (audio · haptic · hitstop · **shake**); **kèm** `TraumaShake`. Tham số cue serialize **trên chính kênh** — không asset trung gian. 12 file | zoom punch (thêm `IFeedbackCameraZoom` **riêng** theo ISP — không sửa interface cũ), `FeedbackCue.Intensity`, bảng cue dạng SO, kênh particle/text/ripple, slow-mo dài, kênh thêm lúc runtime |
 | §23 Combo | `Implementations/Composites/Combo/ComboSystem.md` | `ComboTracker` (C# thuần), 3 window policy, hệ số nhân Linear, bậc = `int[]` trên Inspector, bridge, `ComboMeter`, demo driver. 11 file | nhãn/hệ số/cue riêng theo bậc (thay `int[]` bằng SO + interface), đường nhân điểm khác, multi-track, lưu kỷ lục, telemetry, `ChainReaction` |
 
-> ⚠️ **2/5 file plan đã bị xoá trong commit `clean` của repo Horcrux** — `TickerSystem.md` và
-> `FeedbackSystem.md` (3 plan còn trên đĩa: Haptics, Audio, Combo). Nội dung khôi phục được từ git
+> ⚠️ **2/7 file plan đã bị xoá trong commit `clean` của repo Horcrux** — `TickerSystem.md` và
+> `FeedbackSystem.md` (4 plan còn trên đĩa: Bootstrap, Haptics, Audio, Combo). Nội dung khôi phục được từ git
 > (`git show 245adb7^:Runtime/Implementations/Foundations/Ticker/TickerSystem.md` và tương tự cho
 > Feedback); khôi phục hoặc viết lại khi bắt đầu hệ tương ứng, đối chiếu với mục 4a/§22.
 >
-> **Nguyên tắc phạm vi của 5 plan này** — luật `MY_SKILL.md` NT6 *"xóa nó đi thì hỏng ở đâu"*: mọi mục ở cột "ngoài plan" đều **không gọi được tên chỗ hỏng** ở bản đầu, và thêm lại đều **additive** (thêm file / method / interface mới, hoặc đổi ctor nội bộ). Không mục nào đòi đổi chữ ký **public** đang có.
+> **Nguyên tắc phạm vi của 7 plan này** — luật `MY_SKILL.md` NT6 *"xóa nó đi thì hỏng ở đâu"*: mọi mục ở cột "ngoài plan" đều **không gọi được tên chỗ hỏng** ở bản đầu, và thêm lại đều **additive** (thêm file / method / interface mới, hoặc đổi ctor nội bộ). Không mục nào đòi đổi chữ ký **public** đang có.
 >
 > Chỉ **một** chỗ cố ý phòng xa vì sửa sau là breaking thật: `PlaySfx(…, pitchScale)` — thêm tham số sau nghĩa là sửa mọi call-site. Hai chỗ từng phòng xa nhưng đã bỏ vì tìm được cách tốt hơn: `FeedbackCue.Intensity` (`Step` đã đủ) và `IFeedbackCamera.ApplyZoom` (dùng interface thứ hai theo ISP thì không breaking implementer nào).
 
@@ -230,7 +235,8 @@ bộ điều phối **chủ động, duy nhất**, không phó mặc Unity.
 **Use case.**
 - Cold start: chạy tuần tự N bước async, splash chờ tới khi xong; một bước throw → không được treo splash mãi.
 - Vào lại scene/level mới: `Reinitialize` toàn bộ bước theo level mới, **huỷ mọi loop async của level trước**.
-- `OnApplicationPause` / `OnApplicationQuit`: hook dọn dẹp theo **thứ tự ngược**.
+- `OnApplicationPause` / `OnApplicationQuit`: hook dọn dẹp theo **thứ tự ngược** (pause là "quit không
+  hẹn trước" trên Android); riêng resume đi **xuôi** như init (user chốt 2026-08-29).
 - Hệ ngoài cần biết "init xong chưa" để bám vào (LiveOps Host §20 cần đúng cái này).
 
 **Tư tưởng cốt lõi.**
@@ -242,8 +248,9 @@ bộ điều phối **chủ động, duy nhất**, không phó mặc Unity.
   mọi loop `.Forget()` của các hệ nhận token này, reload là huỷ sạch.
 - **Fail-open**: bước throw → log rõ + đi tiếp, không treo splash (chơi được offline tốt hơn không mở được
   app); tuyệt đối không `.Forget()` trần nuốt exception.
-- Runner phát **phase event** (WaitForNetwork/Services/PlayerData/Content/Finished) cho splash hiển thị,
-  và một service *tuỳ chọn* cho hệ ngoài đăng ký callback "sau init" (`IOptionalService` — §0.2).
+- Runner phát **progress event theo bước** (index + tổng số + tên bước) cho splash hiển thị — không enum
+  phase cứng: tên phase là nội dung riêng từng game, bước đã tự mang tên (user chốt 2026-08-29). Và một
+  service *tuỳ chọn* cho hệ ngoài đăng ký callback "sau init" (`IOptionalService` — §0.2).
 - **Bất biến (MY_SKILL §3.8):** ① chiều ưu tiên định nghĩa ở **đúng một chỗ**, ghi rõ số nhỏ hay số lớn
   chạy trước — *đã sai một lần:* color-loop có 2 entry point sort **ngược chiều nhau** trên cùng
   `BaseManager.Priority`. ② hai bước trùng `Order` phải có thứ tự **xác định** (sort ổn định hoặc cấm
@@ -2764,6 +2771,8 @@ public class AddressableObjectReference<T> where T : UnityEngine.Object
 ## A.3 Typed prefs — `Prefs<T>`
 
 Cho giá trị lẻ không đáng dựng cả model (§2 dùng cho model lớn): "đã rate chưa", "đã xem tutorial X", "lần cuối hỏi ở level nào".
+
+📄 Đã có plan: `PersistenceSystem.md` Task 4 — v1 không `syncToServer`/`PrefsDateTime`/`ForceRefresh` (cả ba gắn cloud, về cùng đợt cloud — mở rộng sau).
 
 ```csharp
 public sealed class Prefs<T>
