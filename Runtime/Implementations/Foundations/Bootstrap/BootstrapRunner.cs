@@ -2,34 +2,39 @@
 using System.Collections.Generic;
 using System.Threading;
 using Cysharp.Threading.Tasks;
+using Horcrux.Runtime.Abstractions.Bootstrap;
+using Sisus.Init;
 using UnityEngine;
 
 namespace Horcrux.Runtime.Implementations.Bootstrap
 {
-    public sealed class BootstrapRunner : MonoBehaviour, IBootrapService
+    /// <summary>The game's single init path: sorts the steps, awaits them in order, survives a failing step, owns the lifecycle token.</summary>
+    [Service(typeof(IBootstrapService), FindFromScene = true)]
+    public sealed class BootstrapRunner : MonoBehaviour, IBootstrapService
     {
         private const string InitPhaseName = "Initialize";
-        private const string reinitPhaseName = "Reinitialize";
-        private const string afterReinitPhaseName = "AfterReinitialize";
-        private const string onAppPausePhaseName = "OnAppPause";
-        private const string onAppQuitPhaseName = "OnAppQuit";
+        private const string ReinitPhaseName = "Reinitialize";
+        private const string AfterReinitPhaseName = "AfterReinitialize";
+        private const string OnAppPausePhaseName = "OnAppPause";
+        private const string OnAppQuitPhaseName = "OnAppQuit";
         
+        /// <summary>Fires before each step.</summary>
+        public event Action<BootProgress> ProgressChanged;
         
-        public event Action<BootProgress> ProgressChanged; 
+        [SerializeField, Tooltip("Every BootStep of the game. On an Order tie, the step listed earlier runs first.")]
+        private List<BootStep> steps = new();
         
-        [SerializeField] private List<BootStep> steps = new();
-        
-        private bool sorted;
-        private readonly UniTaskCompletionSource initializedSource = new();
-        private UniTask initializedTask;
-        private CancellationTokenSource lifecycleCts;
-        private bool isPhaseRunning;
-
         private static readonly Func<BootStep, CancellationToken, UniTask> InitializeStep =
             static (step, ct) => step.InitializeAsync(ct);
         private static readonly Func<BootStep, CancellationToken, UniTask> ReinitializeStep =
             static (step, ct) => step.ReinitializeAsync(ct);
         
+        private readonly UniTaskCompletionSource initializedSource = new();
+        private UniTask initializedTask;
+        private CancellationTokenSource lifecycleCts;
+        private bool isPhaseRunning;
+        
+        /// <inheritdoc />
         public bool IsInitialized { get; private set; }
 
         #region Unity callbacks
@@ -43,7 +48,7 @@ namespace Horcrux.Runtime.Implementations.Bootstrap
 
         private void OnDestroy()
         {
-            // cancel the task to avoid consumer waiting forever
+            // Release consumers waiting on UntilInitializedAsync.
             initializedSource.TrySetCanceled();
 
             if (lifecycleCts == null)
@@ -54,8 +59,10 @@ namespace Horcrux.Runtime.Implementations.Bootstrap
             lifecycleCts = null;
         }
 
+        // Pause walks backwards, resume forwards.
         private void OnApplicationPause(bool isPaused)
         {
+            // Android fires resume as the app opens; a half-initialized step must not take the hook.
             if (!IsInitialized)
                 return;
 
@@ -85,12 +92,14 @@ namespace Horcrux.Runtime.Implementations.Bootstrap
                     }
                     catch (Exception e)
                     {
-                        LogStepFailure(steps[i], onAppQuitPhaseName, e);
+                        LogStepFailure(steps[i], OnAppQuitPhaseName, e);
                     }
                 }
             }
 
+            // Hooks run first, the token dies after.
             lifecycleCts?.Cancel();
+            lifecycleCts?.Dispose();
             lifecycleCts = null;
         }
 
@@ -98,9 +107,10 @@ namespace Horcrux.Runtime.Implementations.Bootstrap
 
         #region API
 
+        /// <summary>Cold start. The game calls this exactly once, before the first <see cref="ReinitializeAsync"/>.</summary>
         public async UniTask InitializeAsync()
         {
-            CancellationToken ct = await BeginPhaseAsync(InitPhaseName);
+            CancellationToken ct = await BeginPhaseAsync();
 
             try
             {
@@ -109,6 +119,7 @@ namespace Horcrux.Runtime.Implementations.Bootstrap
                 if (ct.IsCancellationRequested)
                     return;
 
+                // One-way latch: a level reinit never resets it.
                 IsInitialized = true;
                 initializedSource.TrySetResult();
             }
@@ -117,18 +128,20 @@ namespace Horcrux.Runtime.Implementations.Bootstrap
                 isPhaseRunning = false;
             }
         }
-
+        
+        /// <summary>One level load. The previous phase's token is cancelled before this phase starts.</summary>
         public async UniTask ReinitializeAsync()
         {
-            CancellationToken ct = await BeginPhaseAsync(reinitPhaseName);
+            CancellationToken ct = await BeginPhaseAsync();
 
             try
             {
-                await RunStepsAsync(ReinitializeStep, reinitPhaseName, ct);
+                await RunStepsAsync(ReinitializeStep, ReinitPhaseName, ct);
 
                 if (ct.IsCancellationRequested)
                     return;
 
+                // Cross-step reads are safe now.
                 int stepCount = steps.Count;
                 for (int i = 0; i < stepCount; i++)
                 {
@@ -139,7 +152,7 @@ namespace Horcrux.Runtime.Implementations.Bootstrap
                     }
                     catch (Exception e)
                     {
-                        LogStepFailure(step, afterReinitPhaseName, e);
+                        LogStepFailure(step, AfterReinitPhaseName, e);
                     }
                 }
             }
@@ -149,6 +162,7 @@ namespace Horcrux.Runtime.Implementations.Bootstrap
             }
         }
         
+        /// <inheritdoc />
         public UniTask UntilInitializedAsync(CancellationToken ct = default)
         {
             if(IsInitialized) 
@@ -165,8 +179,6 @@ namespace Horcrux.Runtime.Implementations.Bootstrap
 
         private void SortStepsStably()
         {
-            sorted = false;
-            
             List<(BootStep step, int idx)> stepsWithIdx = new();
             int cnt = steps.Count;
             for (int i = 0; i < cnt; i++)
@@ -185,15 +197,13 @@ namespace Horcrux.Runtime.Implementations.Bootstrap
             steps.Clear();
             for (int i = 0; i < stepsWithIdx.Count; i++)
                 steps.Add(stepsWithIdx[i].step);
-
-            sorted = true;
         }
 
-        private async UniTask<CancellationToken> BeginPhaseAsync(string phaseName)
+        private async UniTask<CancellationToken> BeginPhaseAsync()
         {
             RefreshLifecycleTokenSource();
             
-            // avoid overlapping 2 phases init and reinit.
+            // Keeps two phases from overlapping.
             while(isPhaseRunning)
                 await UniTask.Yield();
 
@@ -229,14 +239,17 @@ namespace Horcrux.Runtime.Implementations.Bootstrap
                 }
                 catch (OperationCanceledException) when (ct.IsCancellationRequested)
                 {
+                    // A new phase took over. Stop quietly; this is not a step failure.
                     return;
                 }
                 catch (Exception e)
                 {
+                    // Fail-open
                     LogStepFailure(step, phaseName, e);
                 }
             }
             
+            // The phase is done.
             RaiseProgress(new BootProgress(stepCount, stepCount, string.Empty));
         }
 
@@ -269,7 +282,7 @@ namespace Horcrux.Runtime.Implementations.Bootstrap
             }
             catch (Exception e)
             {
-                LogStepFailure(step, onAppPausePhaseName, e);
+                LogStepFailure(step, OnAppPausePhaseName, e);
             }
         }
         

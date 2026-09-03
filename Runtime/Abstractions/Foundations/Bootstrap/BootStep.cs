@@ -2,25 +2,31 @@
 using Cysharp.Threading.Tasks;
 using UnityEngine;
 
-namespace Horcrux.Runtime.Implementations.Bootstrap
+namespace Horcrux.Runtime.Abstractions.Bootstrap
 {
+    /// <summary>One step of the game's init chain.</summary>
     public abstract class BootStep : MonoBehaviour
     {
-        // incremental order
-        [SerializeField] private int order;
+        [SerializeField, Tooltip("Lower runs first. On a tie, the step listed earlier on the runner runs first.")]
+        private int order;
         
+        /// <summary>Lower runs first.</summary>
         public int Order => order;
         
-        // cold start
+        /// <summary>Runs once on cold start. Throwing is survivable.</summary>
         public abstract UniTask InitializeAsync(CancellationToken ct);
-        // per-level load
+
+        /// <summary>Runs on every level load, after the previous level's token is already cancelled.</summary>
         public virtual UniTask ReinitializeAsync(CancellationToken ct) => UniTask.CompletedTask;
-        // after all steps are reinitialized
+
+        /// <summary>Sync stage that runs once every step has reinitialized</summary>
         public virtual void AfterReinitialize(CancellationToken ct) {}
-        
-        // pause calls steps in reverse order, resume calls steps in order
+
+        /// <summary>Called on pause and resume. Pause walks the steps backwards, resume walks them forwards like init.</summary>
+        /// <param name="isPaused">True on pause, false on resume.</param>
         public virtual void OnAppPause(bool isPaused) {}
-        // quit calls steps in reverse order
+
+        /// <summary>Called on app quit, walking the steps backwards.</summary>
         public virtual void OnAppQuit() {}
     }
 }
