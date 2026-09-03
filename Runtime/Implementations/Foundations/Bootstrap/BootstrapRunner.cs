@@ -6,18 +6,18 @@ using UnityEngine;
 
 namespace Horcrux.Runtime.Implementations.Bootstrap
 {
-    public sealed class BoostrapRunner : MonoBehaviour, IBoostrapService
+    public sealed class BootstrapRunner : MonoBehaviour, IBootrapService
     {
-        private static readonly string initPhaseName = "Initialize";
-        private static readonly string reinitPhaseName = "Reinitialize";
-        private static readonly string afterReinitPhaseName = "AfterReinitialize";
-        private static readonly string onAppPausePhaseName = "OnAppPause";
-        private static readonly string onAppQuitPhaseName = "OnAppQuit";
+        private const string InitPhaseName = "Initialize";
+        private const string reinitPhaseName = "Reinitialize";
+        private const string afterReinitPhaseName = "AfterReinitialize";
+        private const string onAppPausePhaseName = "OnAppPause";
+        private const string onAppQuitPhaseName = "OnAppQuit";
         
         
-        public event Action<BoostProgress> ProgressChanged; 
+        public event Action<BootProgress> ProgressChanged; 
         
-        [SerializeField] private List<BoostStep> steps = new();
+        [SerializeField] private List<BootStep> steps = new();
         
         private bool sorted;
         private readonly UniTaskCompletionSource initializedSource = new();
@@ -25,9 +25,9 @@ namespace Horcrux.Runtime.Implementations.Bootstrap
         private CancellationTokenSource lifecycleCts;
         private bool isPhaseRunning;
 
-        private static readonly Func<BoostStep, CancellationToken, UniTask> InitializeStep =
+        private static readonly Func<BootStep, CancellationToken, UniTask> InitializeStep =
             static (step, ct) => step.InitializeAsync(ct);
-        private static readonly Func<BoostStep, CancellationToken, UniTask> ReinitializeStep =
+        private static readonly Func<BootStep, CancellationToken, UniTask> ReinitializeStep =
             static (step, ct) => step.ReinitializeAsync(ct);
         
         public bool IsInitialized { get; private set; }
@@ -100,11 +100,11 @@ namespace Horcrux.Runtime.Implementations.Bootstrap
 
         public async UniTask InitializeAsync()
         {
-            CancellationToken ct = await BeginPhaseAsync(initPhaseName);
+            CancellationToken ct = await BeginPhaseAsync(InitPhaseName);
 
             try
             {
-                await RunStepsAsync(InitializeStep, initPhaseName, ct);
+                await RunStepsAsync(InitializeStep, InitPhaseName, ct);
 
                 if (ct.IsCancellationRequested)
                     return;
@@ -132,7 +132,7 @@ namespace Horcrux.Runtime.Implementations.Bootstrap
                 int stepCount = steps.Count;
                 for (int i = 0; i < stepCount; i++)
                 {
-                    BoostStep step = steps[i];
+                    BootStep step = steps[i];
                     try
                     {
                         step.AfterReinitialize(ct);
@@ -167,13 +167,13 @@ namespace Horcrux.Runtime.Implementations.Bootstrap
         {
             sorted = false;
             
-            List<(BoostStep step, int idx)> stepsWithIdx = new();
+            List<(BootStep step, int idx)> stepsWithIdx = new();
             int cnt = steps.Count;
             for (int i = 0; i < cnt; i++)
             {
                 if (steps[i] == null)
                 {
-                    Debug.LogError($"[Boostrap] Step at index {i} is null");
+                    Debug.LogError($"[Bootstrap] : Step at index {i} is null");
                     continue;
                 }
                 stepsWithIdx.Add((steps[i], i));
@@ -212,7 +212,7 @@ namespace Horcrux.Runtime.Implementations.Bootstrap
             lifecycleCts = new();
         }
 
-        private async UniTask RunStepsAsync(Func<BoostStep, CancellationToken, UniTask> runSteps,
+        private async UniTask RunStepsAsync(Func<BootStep, CancellationToken, UniTask> runSteps,
             string phaseName, CancellationToken ct)
         {
             int stepCount = steps.Count;
@@ -221,8 +221,8 @@ namespace Horcrux.Runtime.Implementations.Bootstrap
                 if (ct.IsCancellationRequested)
                     return;
                 
-                BoostStep step = steps[i];
-                RaiseProgress(new BoostProgress(i, stepCount, step.name));
+                BootStep step = steps[i];
+                RaiseProgress(new BootProgress(i, stepCount, step.name));
                 try
                 {
                     await runSteps(step, ct);
@@ -237,22 +237,22 @@ namespace Horcrux.Runtime.Implementations.Bootstrap
                 }
             }
             
-            RaiseProgress(new BoostProgress(stepCount, stepCount, string.Empty));
+            RaiseProgress(new BootProgress(stepCount, stepCount, string.Empty));
         }
 
-        private void RaiseProgress(in BoostProgress progress)
+        private void RaiseProgress(in BootProgress progress)
         {
-            Action<BoostProgress> handlers = ProgressChanged;
+            Action<BootProgress> handlers = ProgressChanged;
             if (handlers == null)
                 return;
 
             Delegate[] invocationList = handlers.GetInvocationList();
             for (int i = 0; i < invocationList.Length; i++)
             {
-                Action<BoostProgress> action = (Action<BoostProgress>)invocationList[i];
+                Action<BootProgress> handler = (Action<BootProgress>)invocationList[i];
                 try
                 {
-                    action.Invoke(progress);
+                    handler.Invoke(progress);
                 }
                 catch (Exception e)
                 {
@@ -261,13 +261,7 @@ namespace Horcrux.Runtime.Implementations.Bootstrap
             }
         }
 
-        private void LogStepFailure(BoostStep step, string phaseName, Exception e)
-        {
-            Debug.LogError($"[BoostStrap] : {step.name} failed at {phaseName}. Skip (fail-open)", step);
-            Debug.LogException(e, step);
-        }
-
-        private void SafePause(BoostStep step, bool isPaused)
+        private void SafePause(BootStep step, bool isPaused)
         {
             try
             {
@@ -277,6 +271,12 @@ namespace Horcrux.Runtime.Implementations.Bootstrap
             {
                 LogStepFailure(step, onAppPausePhaseName, e);
             }
+        }
+        
+        private void LogStepFailure(BootStep step, string phaseName, Exception e)
+        {
+            Debug.LogError($"[Bootstrap] : {step.name} failed at {phaseName}. Skip (fail-open)", step);
+            Debug.LogException(e, step);
         }
 
         #endregion

@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace Horcrux.Runtime.Implementations.Bootstrap
 {
-    public abstract class BoostStep : MonoBehaviour
+    public abstract class BootStep : MonoBehaviour
     {
         // incremental order
         [SerializeField] private int order;

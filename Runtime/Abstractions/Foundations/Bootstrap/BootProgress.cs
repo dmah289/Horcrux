@@ -1,13 +1,13 @@
 ﻿namespace Horcrux.Runtime.Implementations.Bootstrap
 {
-    public readonly struct BoostProgress
+    public readonly struct BootProgress
     {
         public readonly int StepIdx;
         // total step count per round
         public readonly int StepCount;
         public readonly string StepName;
         
-        public BoostProgress(int stepIdx, int stepCount, string stepName)
+        public BootProgress(int stepIdx, int stepCount, string stepName)
         {
             StepIdx = stepIdx;
             StepCount = stepCount;

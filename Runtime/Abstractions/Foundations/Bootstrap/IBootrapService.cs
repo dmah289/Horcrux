@@ -4,7 +4,7 @@ using Horcrux.Runtime.Abstractions;
 
 namespace Horcrux.Runtime.Implementations.Bootstrap
 {
-    public interface IBoostrapService : IService<IBoostrapService>
+    public interface IBootrapService : IService<IBootrapService>
     {
         public bool IsInitialized { get; }
         
