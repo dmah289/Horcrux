@@ -551,6 +551,16 @@ sai **không thể xảy ra**, thay vì dặn đừng sai:
 | **Hai phép tính buộc phải khớp thì suy từ MỘT nguồn** | đo–vẽ, vẽ–hit-test, điều kiện ẩn–hiện: cùng một hàm, hoặc cùng một biểu thức copy nguyên — không viết hai bản "giống nhau", kể cả khi công thức hiển nhiên. Hai bản sẽ lệch, và lệch kiểu nhìn-vẫn-đúng-bấm-thì-trượt. Ranh giới với luật "để lặp" của §2.4: xem §1.7 |
 | **Cửa hẹp là thân chung của cửa rộng** | hai đường làm gần cùng một việc (bản đầy đủ và bản giữ-lại-một-phần) thì bản hẹp gọi vào thân bản rộng — hai bên không thể lệch nhau |
 
+**Ngưỡng dưới của luật này — chỗ dừng, không phải chỗ nới.** Cái sai mà **Editor đã làm cho không xảy ra
+được**, hoặc mà **developer đã chốt thành quy ước**, thì **không viết code canh nó**: mỗi guard runtime cho
+một ca không bao giờ xảy ra là một nhánh phải đọc, phải test, và phải giữ đúng mãi mãi (NT3, NT4). Câu hỏi
+phân xử — **cái sai đó lộ ra lúc nào?** Lộ ngay lúc authoring (ô trống trong Inspector, danh sách sai thứ tự
+nhìn thấy ngay khi Play) hoặc nổ to ngay lần chạy đầu ⇒ để nó lộ, đừng bọc. Lọt qua authoring rồi **sai âm
+thầm** giữa gameplay ⇒ đó là bất biến thật, quay lại bảng trên. **Quy ước chỉ thay được guard khi nó viết ra
+ở chỗ người vi phạm đang nhìn** — Tooltip, XML doc của chính API đó, dòng trong tài liệu module — chứ không
+phải chỉ nói trong một lượt chat. Dữ liệu từ ngoài (import, server, save) không thuộc diện này: không ai đảm
+bảo được nó lúc authoring — §3.9.
+
 **Bug "sai âm thầm" sửa xong thì chưng cất thành một dòng bất biến trong tài liệu module**, dạng *"đã
 sai một lần: [triệu chứng]"* — đó là loại tri thức đắt nhất và không đọc ra được từ code (NT8, §5.4).
 
