@@ -182,14 +182,7 @@ namespace Horcrux.Runtime.Implementations.Bootstrap
             List<(BootStep step, int idx)> stepsWithIdx = new();
             int cnt = steps.Count;
             for (int i = 0; i < cnt; i++)
-            {
-                if (steps[i] == null)
-                {
-                    Debug.LogError($"[Bootstrap] : Step at index {i} is null");
-                    continue;
-                }
                 stepsWithIdx.Add((steps[i], i));
-            }
             
             stepsWithIdx.Sort(static (a, b) => a.step.Order != b.step.Order ?
                 a.step.Order.CompareTo(b.step.Order) : a.idx.CompareTo(b.idx));
