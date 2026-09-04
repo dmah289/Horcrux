@@ -1,675 +1,371 @@
-# Bootstrap & Lifecycle Implementation Plan
+# Bootstrap — một con đường khởi tạo duy nhất
 
-> **Loại tài liệu:** Plan — developer tự code lại để nắm logic. `.md` thiết kế + `.html` viết **sau** khi có source.
->
-> **For agentic workers:** REQUIRED SUB-SKILL: superpowers:subagent-driven-development hoặc superpowers:executing-plans. Steps dùng checkbox (`- [ ]`).
+`BootstrapRunner` sắp các `BootStep` theo `Order`, await **tuần tự**, và một bước ném exception thì
+**vẫn vào được game**. Mỗi nhịp chạy cấp một `CancellationToken` vòng đời: load level mới là mọi loop
+async của level trước bị huỷ sạch trước khi bước nào của level mới chạy.
 
-**Goal:** MỘT con đường khởi tạo duy nhất cho cả game — `BootstrapRunner` sort các `BootStep` theo `Order`, await tuần tự, **fail-open** (một bước throw không treo splash), cấp **token vòng đời** (reload level = huỷ sạch mọi loop async của level trước), fan-out hook pause/quit theo **thứ tự ngược**.
+Bước không biết nhau và không biết runner. Runner không biết bước làm gì — nó chỉ biết `BootStep`.
 
-**Architecture:** 2 tầng, tổng **7 file** (4 contract + 1 runner + 2 demo).
+Danh sách bước và giá trị `Order` là **cấu hình trong Inspector**, không phải code.
+
+---
+
+## §1. Bề mặt API
+
+`BootStep` — `Horcrux.Runtime.Abstractions.Bootstrap`, `abstract class BootStep : MonoBehaviour`:
+
+| Thành phần | Chữ ký | Vai trò |
+|---|---|---|
+| `Order` | `int Order { get; }` | Số **nhỏ chạy trước**. Nguồn duy nhất là field `order` trong Inspector |
+| `InitializeAsync` | `abstract UniTask InitializeAsync(CancellationToken ct)` | Cold start, chạy một lần. Nhịp duy nhất **bắt buộc** override |
+| `ReinitializeAsync` | `virtual UniTask ReinitializeAsync(CancellationToken ct)` | Mỗi lần load level |
+| `AfterReinitialize` | `virtual void AfterReinitialize(CancellationToken ct)` | Sync, chạy sau khi **mọi** bước đã reinit xong |
+| `OnAppPause` | `virtual void OnAppPause(bool isPaused)` | Pause đi **ngược**, resume đi **xuôi** |
+| `OnAppQuit` | `virtual void OnAppQuit()` | Đi **ngược** |
+
+`BootstrapRunner` — `Horcrux.Runtime.Implementations.Bootstrap`, `sealed class BootstrapRunner : MonoBehaviour, IBootstrapService`:
+
+| Thành phần | Chữ ký | Vai trò |
+|---|---|---|
+| `InitializeAsync` | `UniTask InitializeAsync()` | Chạy nhịp init. Game gọi **đúng một lần** |
+| `ReinitializeAsync` | `UniTask ReinitializeAsync()` | Chạy nhịp reinit, rồi `AfterReinitialize` của mọi bước |
+| `ProgressChanged` | `event Action<BootProgress>` | Bắn **trước** mỗi bước, cộng một nhịp đóng ở cuối |
+| `IsInitialized` | `bool { get; }` | Latch "cold boot xong" |
+| `UntilInitializedAsync` | `UniTask UntilInitializedAsync(CancellationToken ct = default)` | Chờ cold boot xong |
+
+`IBootstrapService : IService<IBootstrapService>` — cửa cho hệ ngoài, đúng **2 member**: `IsInitialized`
+và `UntilInitializedAsync`. `ProgressChanged` **không** nằm trên interface (§8).
+
+`BootProgress` — `readonly struct`, payload của `ProgressChanged`:
+
+| Thành phần | Chữ ký | Nội dung |
+|---|---|---|
+| `StepIndex` | `readonly int` | Index của bước **sắp chạy**. Bằng `StepCount` ở nhịp đóng |
+| `StepCount` | `readonly int` | Tổng số bước của nhịp này |
+| `StepName` | `readonly string` | Tên GameObject của bước. Rỗng ở nhịp đóng |
+| `Ratio01` | `float { get; }` | `StepIndex / StepCount`, trong `[0..1]`. `StepCount <= 0` trả `1f` |
+| `IsFinished` | `bool { get; }` | True ở nhịp đóng |
+
+| File | Nội dung |
+|---|---|
+| `Abstractions/Foundations/Bootstrap/BootStep.cs` | `BootStep` |
+| `Abstractions/Foundations/Bootstrap/BootProgress.cs` | `BootProgress` |
+| `Abstractions/Foundations/Bootstrap/IBootstrapService.cs` | `IBootstrapService` |
+| `Implementations/Foundations/Bootstrap/BootstrapRunner.cs` | `BootstrapRunner` |
+
+Runner đăng ký bằng `[Service(typeof(IBootstrapService), FindFromScene = true)]` — `Sisus.Init` tìm nó
+trong scene, không cần singleton. `Awake` tự gọi `DontDestroyOnLoad`.
+
+---
+
+## §2. Luồng dữ liệu
 
 ```
-Contract (BootStep, IBootstrapService)   thứ tự + 2 nhịp + 2 hook app · trạng thái "init xong chưa"
-Runner   (BootstrapRunner)               sort ổn định · await tuần tự · fail-open · token · progress event
-Game     (các bước cụ thể)               kế thừa BootStep, wire vào list của runner trong Inspector
+   Inspector                 Awake                    InitializeAsync() / ReinitializeAsync()
+┌──────────────┐      ┌─────────────────┐      ┌──────────────────────────────────────────┐
+│ steps: List  │      │ Preserve() task │      │ ① huỷ + dispose token cũ                 │
+│  ├ step.order│─────>│ bỏ ô null (log) │─────>│ ② chờ isPhaseRunning == false            │
+│  ├ step.order│      │ sort ổn định    │      │ ③ token mới                              │
+│  └ …         │      │  (Order, idx)   │      ├──────────────────────────────────────────┤
+└──────────────┘      └─────────────────┘      │ for i in 0..n-1:                         │
+                                               │   ProgressChanged(i, n, step.name) ──────┼──> splash
+                                               │   await step[i].<nhịp>(ct)               │
+                                               │     ├ cancel khi ct huỷ ⇒ dừng êm nhịp   │
+                                               │     └ exception khác    ⇒ log, đi tiếp   │
+                                               │   ProgressChanged(n, n, "") ─────────────┼──> splash
+                                               └──────────────────┬───────────────────────┘
+                                                                  │
+                                      nhịp reinit ⇒ AfterReinitialize(ct)
+                                      nhịp init   ⇒ IsInitialized = true, nhả UntilInitializedAsync()
 ```
 
-**Tech Stack:** C#, UniTask, `Sisus.Init` (`[Service]`). **Không** Addressables, không toán.
+Lần theo **một** giá trị từ đầu tới cuối — số `order` của một bước:
 
-## Global Constraints
-
-| Ràng buộc | Giá trị |
+| Chặng | Nó thành cái gì |
 |---|---|
-| Namespace | `Horcrux.Runtime.Abstractions.Bootstrap` · `…Implementations.Bootstrap` (riêng `IOptionalService`: `Horcrux.Runtime.Abstractions` — cạnh `IService`) |
-| Hiệu năng | Boot chạy **một lần**, reinit chạy **mỗi lần load level** — không hot path ⇒ chọn bản dễ đọc nhất. `BootProgress` là `readonly struct`; `ProgressChanged` là `event Action<T>` — hợp lệ vì thưa (SystemPlan §0.4b) |
-| SOLID | Runner chỉ biết contract `BootStep`, không biết bước làm gì (D) · bước không biết nhau và không biết runner (S) · không type nào mang ngữ nghĩa game (SystemPlan §0.1) |
-| Editor-first | Danh sách bước + giá trị `Order` là **cấu hình**, gán trong Inspector; code chỉ lo hành vi chạy |
-| An toàn | Fail-open từng bước · try/catch quanh **từng** callback (SystemPlan §0.4a) · `CancellationToken` propagate xuống mọi bước · `OnDestroy` huỷ token + nhả consumer đang await |
-| Bất biến | ① chiều ưu tiên khai ở **đúng một chỗ** (`BootStep.Order`: **số nhỏ chạy trước**) ② trùng `Order` ⇒ thứ tự **xác định** (sort ổn định theo index gốc) ③ hai vòng init/reinit **không bao giờ chạy chồng** |
+| Tác giả gán trong Inspector | field `order` của một `BootStep` |
+| `Awake` của runner | `step.Order` là nửa đầu khoá sort; vị trí trong `steps` là nửa sau |
+| Sau khi sort | vị trí `i` của bước trong `steps` — **đây chính là thứ tự chạy** |
+| Trước mỗi bước | `new BootProgress(i, stepCount, step.name)` |
+| Ra khỏi hệ | `Ratio01 = i / stepCount` cho thanh bar, `StepName` cho nhãn splash |
+| Nhịp đóng | `BootProgress(n, n, "")` ⇒ `Ratio01 == 1f`, `IsFinished == true` |
 
-## Ngữ cảnh đã chốt
-
-Nguồn thiết kế: `SystemPlan.md` mục 1 (đã duyệt 2026-08-29). Nguồn extract: `color-loop` — `BaseManager.cs` (contract 2 nhịp + AfterReinitialize) · `GameManager.cs` (RefreshGameToken, fan-out hook) · `ServiceInit.cs`/`StartGame.cs`/`GameInitializer.cs` (phản ví dụ: 3 điểm init rời rạc, 2 chiều sort ngược nhau).
-
-| Nhóm | Chốt |
-|---|---|
-| **Ai gọi** | Entry scene của game gọi `InitializeAsync()` đúng một lần lúc cold start, rồi `ReinitializeAsync()` cho level đầu và mỗi lần reload level (thường từ hook MidTransition của Scene Flow) · splash của game subscribe `ProgressChanged` (reference kéo thả trong scene) · hệ ngoài (LiveOps Host §20 sau này) hỏi qua `IBootstrapService.TryGet` + `UntilInitialized` |
-| **Mục tiêu** | Nhìn log boot kể lại được đúng thứ tự init · một bước throw giữa cold start vẫn vào được game · reinit huỷ sạch loop của level trước |
-| **Ngân sách** | Cold start 1 lần + reinit mỗi level. Không hot path — không tối ưu gì, ưu tiên đọc hiểu |
-| **Ranh giới** | SDK: contract + runner (sort, await, token, progress, hook). Game: các bước cụ thể, giá trị `Order`, thời điểm gọi 2 vòng. Runner **không tự chạy** trong `Start()` — game quyết thời điểm (phải phối hợp với splash/ATT prompt) |
-| **Hướng mở rộng thật** (đều additive) | Manifest SO (overload nhận config asset) · chạy song song bước cùng pha (cờ trên contract + `WhenAll`) · nhóm bước theo scene |
-| **Cố ý KHÔNG làm + lý do** (*xoá đi thì hỏng ở đâu*) | ① **Manifest data-driven (SO)** — chưa ai cần đổi thứ tự bước mà không compile. ② **Parallel-in-phase** — cold start chưa đo được là chậm. ③ **Auto-discovery** (quét scene/reflection tìm bước) — magic khó debug; danh sách trong Inspector lộ đủ. ④ **Expose token ra property public** — v1 mọi bước nhận token qua tham số 2 nhịp; hệ ngoài chưa ai cần. ⑤ **Reset `IsInitialized` khi reinit** — nó là latch "cold boot xong" một chiều; LiveOps cần đúng nghĩa đó |
-
-**Hai quyết định user đã chốt (2026-08-29, đã đồng bộ vào SystemPlan mục 1):**
-
-1. Phase event hiện thực bằng **`BootProgress` theo bước** (index + count + tên bước), **không** enum phase cứng. Lý do: tên phase là nội dung riêng từng game; bước đã tự mang tên hiển thị được; enum cứng bắt mọi game map bước→phase — một tri thức trùng phải giữ khớp ở hai nơi. Splash vẫn đủ hiển thị (ratio + label). Cần enum phase thật thì thêm sau là additive.
-2. Hook pause: `isPaused == true` đi **ngược** (pause là "quit không hẹn trước" trên Android — hệ trên ghi vào hệ nền xong, hệ nền mới chốt sổ), `isPaused == false` đi **xuôi** như init (resume là "init-nhẹ" — hệ nền tỉnh trước, hệ trên tính toán dựa vào nó sau).
-
-**Khảo sát tái sử dụng:** `IService<T>` đã có — dùng lại. `EventBus` (Utilities) có nhưng không dùng cho `ProgressChanged`: đây là event nội bộ một-service, listener wire trực tiếp, không cần bus xuyên module. `MonoSingleton` không dùng — đăng ký qua `[Service]` như tiền lệ `HapticService`. `IOptionalService<T>` **chưa có trên đĩa** (SystemPlan §0.2 chỉ có contract mẫu; file thuộc plan Ticker đã bị xoá) — Task 1 tạo, Ticker sau này dùng lại.
+`Ratio01` là "đã xong bao nhiêu bước", nên bước đầu **đang chạy** thì tỉ lệ vẫn là 0.
 
 ---
 
-## §0. Bốn ràng buộc thật
+## §3. Use case
 
-Không có toán. Bốn sự thật của nền tảng quyết định hình dạng code — đọc trước khi viết.
+### 3.1. Viết một bước
 
-### 0.1. Unity gọi magic method trên MỌI MonoBehaviour trùng tên — hook phải đổi tên
+Kế thừa `BootStep`, override đúng những nhịp cần dùng. `InitializeAsync` là nhịp duy nhất bắt buộc.
 
-Unity gọi `OnApplicationPause`/`OnApplicationQuit` trên **mọi** MonoBehaviour có method trùng tên, bất kể access modifier. Bản color-loop đặt hook virtual tên `OnApplicationPause` ngay trên `BaseManager` ⇒ mỗi manager bị gọi **hai lần**: Unity gọi thẳng + `GameManager` fan-out. *Đã sai một lần — color-loop, sai âm thầm vì phần lớn handler idempotent.*
+```csharp
+public sealed class RemoteConfigBootStep : BootStep
+{
+    public override async UniTask InitializeAsync(CancellationToken ct)
+    {
+        await FetchAsync(ct);   // ct đi xuống MỌI await bên trong
+    }
 
-**Hệ quả lên API:** hook trên `BootStep` tên `OnAppPause(bool)` / `OnAppQuit()` — Unity không biết tên này, chỉ runner gọi. Cái sai **không thể xảy ra**, không phải "nhớ đừng override nhầm".
+    public override UniTask ReinitializeAsync(CancellationToken ct)
+    {
+        RefreshLoopAsync(ct).Forget();   // loop của level này chết cùng ct
+        return UniTask.CompletedTask;
+    }
+}
+```
 
-**Phép kiểm tái lập:** thêm `Debug.Log` vào `OnAppPause` của một `DemoBootStep`, chạy demo, bấm pause trong Editor — log hiện đúng **một** lần mỗi bước.
+**Hai luật của một bước:**
 
-### 0.2. `List<T>.Sort` không ổn định — trùng `Order` là thứ tự đổi giữa các lần chạy
-
-.NET dùng introsort (không stable). Hai bước trùng `Order` có thể đổi chỗ nhau giữa hai lần chạy — bug "lúc được lúc không" khó tái lập nhất. *Đã sai một lần — color-loop: `EntitiesManager` và `BoosterManager` cùng Priority 0, thứ tự không xác định.*
-
-**Hệ quả lên code:** sort theo khoá kép `(Order, index gốc trong Inspector)` — trùng `Order` thì phần tử đứng trước trong list chạy trước, lặp lại y hệt mọi lần chạy.
-
-| Input | Kỳ vọng |
+| Luật | Vì sao |
 |---|---|
-| `[A(0), B(10), C(0)]` (theo thứ tự Inspector) | chạy `A → C → B`, mọi lần chạy đều vậy |
+| `ct` truyền xuống **mọi** await và mọi loop bên trong | Đây là đường duy nhất để reinit huỷ được việc của level trước. Bước không nhận `ct` thì loop của nó sống qua mọi lần load level |
+| `.Forget()` thì tự bọc try/catch trong thân loop | `.Forget()` không có ai bắt exception cho nó. Fail-open của runner chỉ phủ phần **await được** của bước |
 
-### 0.3. `UniTask` chỉ await được MỘT lần — task "chờ init xong" phải `Preserve()`
+Nhịp nào chọn: chỉ chạy một lần (Firebase, Ads, RemoteConfig) ⇒ chỉ `InitializeAsync`. Có state phải
+dựng lại mỗi level ⇒ thêm `ReinitializeAsync`. Cần **đọc state của bước khác** ⇒ `AfterReinitialize`,
+vì lúc đó mọi bước đã reinit xong.
 
-`UniTask` mặc định dùng nguồn pooled, await lần hai là undefined behavior. `UntilInitialized()` sẽ bị nhiều consumer await ⇒ cache **một** bản `initializedSource.Task.Preserve()` (bản cho phép await nhiều lần) ngay ở `Awake`, mọi call trả về bản đó.
+### 3.2. Editor setup
 
-Cùng ràng buộc này loại cách "lưu UniTask của vòng đang chạy rồi await nó khi vòng mới bắt đầu" — thay bằng cờ `isRoundRunning` + vòng chờ `UniTask.Yield()` (§0.4).
+1. Một GameObject trong scene đầu, add `BootstrapRunner`.
+2. Mỗi bước là một component trong scene — đặt làm **con của runner**, để nó đi theo `DontDestroyOnLoad`
+   (§7: bước bị destroy khi load scene là một lỗi thoát ra khỏi đường fail-open).
+3. Kéo mọi bước vào field `steps` của runner, gán `order` trên từng bước.
 
-### 0.4. Huỷ vòng ≠ lỗi bước — hai loại exception, hai cách xử
+Lúc Play, danh sách `steps` trong Inspector là danh sách **đã sort** — đó là thứ tự chạy thật, đọc
+được ngay tại đó.
 
-Trong một vòng init có hai loại exception **khác bản chất**, nuốt chung một `catch` là mất phân biệt:
+### 3.3. Gọi hai nhịp
 
-| Exception | Nghĩa | Xử |
+Runner **không tự chạy**. Game quyết thời điểm, vì nó phải phối hợp với splash và các prompt hệ điều hành.
+
+```csharp
+[SerializeField] private BootstrapRunner bootstrap;
+
+private async UniTaskVoid Start()
+{
+    bootstrap.ProgressChanged += OnProgress;
+    await bootstrap.InitializeAsync();     // cold start, đúng một lần cả đời app
+    await bootstrap.ReinitializeAsync();   // level đầu
+}
+```
+
+Mỗi lần load lại level: `await bootstrap.ReinitializeAsync()` — thường từ hook giữa transition của
+scene flow, để việc huỷ token xảy ra lúc màn hình đã bị che.
+
+### 3.4. Splash nghe progress
+
+```csharp
+private void OnProgress(BootProgress p)
+{
+    bar.fillAmount = p.Ratio01;
+    label.text = p.IsFinished ? "Done" : p.StepName;
+}
+
+private void OnDestroy() => bootstrap.ProgressChanged -= OnProgress;
+```
+
+`-=` là **bắt buộc**: runner sống qua mọi scene, splash thì không. Bỏ `-=` là mỗi nhịp sau đó bắn vào
+một object đã destroy — exception bị log rồi bỏ qua, nên nó chỉ hiện ra dưới dạng Console ồn.
+
+### 3.5. Hệ ngoài chờ cold boot
+
+```csharp
+if (IBootstrapService.TryGet(out IBootstrapService bootstrap))
+    await bootstrap.UntilInitializedAsync(ct);
+```
+
+`TryGet` cho nhánh degrade khi dự án không dùng runner. `IService<IBootstrapService>.Service` là bản
+throw khi thiếu — dùng khi thiếu runner đúng là lỗi cấu hình.
+
+---
+
+## §4. Thứ tự chạy
+
+Sort xảy ra **một lần**, trong `Awake`, ngay trên chính list `steps`. Khoá kép:
+
+```
+(Order tăng dần, index gốc trong Inspector tăng dần)
+```
+
+| Input (thứ tự Inspector) | Thứ tự chạy |
+|---|---|
+| `[A(0), B(10), C(0)]` | `A → C → B`, **mọi** lần chạy đều vậy |
+
+Ô null trong `steps` bị log `[Bootstrap] : Step at index {i} is null` rồi **loại khỏi danh sách** —
+không phải lỗi chết, các bước còn lại chạy đủ.
+
+**Hai bất biến của mục này:**
+
+| Bất biến | Được giữ bằng |
+|---|---|
+| ① Chiều ưu tiên khai ở **đúng một chỗ** | `Order` không `virtual`, không ai đè được. Chiều "số nhỏ trước" viết ở XML doc của `Order` cho người đọc code và ở Tooltip của `order` cho người gán số. Đổi chiều là phải đổi cả hai chỗ **và** comparator |
+| ② Trùng `Order` vẫn có thứ tự **xác định** | Nửa sau của khoá là index gốc. Không dựa vào tính ổn định của `List<T>.Sort` — nó không có tính đó |
+
+Sort tại chỗ có một đánh đổi đã nhận: thứ tự tác giả gán trong Inspector **không còn** sau `Awake`. Bù
+lại không tồn tại list thứ hai phải giữ khớp với list gốc, và mỗi lần chạy đều sort lại từ dữ liệu vừa
+deserialize nên kết quả không tích luỹ qua các lần chạy.
+
+---
+
+## §5. Token vòng đời và luật không chạy chồng
+
+Mở một nhịp mới luôn đi đúng ba bước, theo thứ tự đó:
+
+| Bước | Việc | Vì sao phải đúng thứ tự này |
 |---|---|---|
-| `OperationCanceledException` khi token của vòng đã huỷ | vòng mới tiếp quản (reload trong lúc đang init) | **dừng êm cả vòng** — không log như lỗi, không chạy bước kế |
-| Mọi exception khác | bước hỏng thật (mất mạng, config lỗi…) | **fail-open**: log rõ tên bước + exception, **đi tiếp** bước kế — chơi được offline tốt hơn không mở được app |
+| ① | Huỷ + dispose token cũ, tạo token mới | Nhịp cũ phải biết mình bị thay **trước khi** ai chờ nó |
+| ② | `while (isPhaseRunning) await UniTask.Yield()` | Bước 5 của nhịp cũ chạy song song bước 0 của nhịp mới là state đan xen |
+| ③ | `isPhaseRunning = true`, trả token | — |
 
-*Đã sai một lần — foods_jam:* `.Forget()` trần nuốt exception ⇒ loading treo vĩnh viễn, có comment thừa nhận trong code. Fail-open + log là câu trả lời cấu trúc.
+Nhịp cũ thoát ở **await kế tiếp của chính nó**: bước đang chạy không truyền `ct` xuống thì nó vẫn chạy
+tới hết bước hiện tại rồi vòng lặp mới dừng ở bước sau.
 
-Vòng bị huỷ giữa chừng còn một hệ quả: **hai vòng không được chạy chồng** (bước 5 vòng cũ chạy song song bước 0 vòng mới là state đan xen). Trình tự bắt buộc khi mở vòng mới: ① huỷ token cũ → ② chờ `isRoundRunning == false` (vòng cũ thoát hẳn ở await kế tiếp của nó) → ③ mới chạy.
+Giữa lúc kiểm `isPhaseRunning` và lúc set nó thành `true` **không có await nào** — đó là thứ làm cho hai
+lời gọi trong cùng frame không cùng lọt qua. Chèn một await vào giữa hai dòng đó là mở lại đúng lỗi
+chạy chồng mà mục này tồn tại để chặn.
 
----
-
-## Bản đồ triển khai
-
-| Task | File | Nội dung |
-|---|---|---|
-| 1 | `Abstractions/Foundations/IOptionalService.cs` · `Abstractions/Foundations/Bootstrap/` — `BootStep.cs` · `BootProgress.cs` · `IBootstrapService.cs` | 4 contract |
-| 2 | `Implementations/Foundations/Bootstrap/BootstrapRunner.cs` | runner |
-| 3 | `Implementations/Foundations/Bootstrap/Demo/` — `DemoBootStep.cs` · `DemoBootDriver.cs` + scene demo + cập nhật `SystemPlan.md` | nghiệm thu |
-
-Thứ tự: **1 → 2 → 3**.
+Token chết ở ba chỗ: nhịp mới tiếp quản · `OnDestroy` · `OnApplicationQuit` — chỗ cuối huỷ token **sau
+khi** hook `OnAppQuit` của mọi bước đã chạy, vì hook cần token còn sống để flush.
 
 ---
 
-### Task 1: 4 contract
+## §6. Bảo đảm
 
-**Files:** `Assets/Horcrux/Runtime/Abstractions/Foundations/IOptionalService.cs` + 3 file trong `Assets/Horcrux/Runtime/Abstractions/Foundations/Bootstrap/`
+| Bảo đảm | Nội dung |
+|---|---|
+| Thứ tự | `(Order, index Inspector)`. Lặp lại y hệt mọi lần chạy |
+| Tuần tự | Bước `i+1` chỉ bắt đầu sau khi await của bước `i` xong. Không có song song |
+| Bước ném exception | Log tên bước + tên nhịp + exception, **đi tiếp** bước kế. Nhịp vẫn tính là xong |
+| Bước ném `OperationCanceledException` khi token đã huỷ | Dừng êm **cả nhịp**, không log như lỗi. Đây là nhịp mới tiếp quản, không phải bước hỏng |
+| Hai nhịp chạy chồng | Không xảy ra (§5) |
+| `IsInitialized` | Latch một chiều. Reinit không reset. Bước lỗi vẫn tính là đã chạy |
+| `UntilInitializedAsync` | Await được **nhiều lần**, bởi **nhiều consumer**. Đã xong thì trả về ngay |
+| `ct` của consumer | Huỷ chỉ lời chờ đó. Boot vẫn chạy tiếp |
+| `AfterReinitialize` | Chỉ chạy khi nhịp reinit không bị huỷ, và chỉ sau khi mọi bước đã reinit xong |
+| Hook pause/quit | try/catch quanh **từng** bước. Một bước lỗi không chặn các bước còn lại |
+| Listener của `ProgressChanged` | Exception bị log, không thoát ra runner. Các listener khác chạy đủ |
+| Ô null trong `steps` | Log rồi loại ở `Awake` (§4) |
+| `Ratio01` | Luôn trong `[0..1]`. Phép chia nằm đúng một chỗ nên mọi splash lấp bar giống nhau |
 
-**Interfaces:**
-- Consumes: `IService<T>` (đã có) · `Sisus.Init.Service` · UniTask.
-- Produces: `IOptionalService<T>` (1 member static) · `abstract class BootStep : MonoBehaviour` (`Order` + 3 nhịp + 2 hook) · `readonly struct BootProgress` (3 field + 2 property suy ra) · `IBootstrapService : IOptionalService<>` (2 member).
+---
 
-**Quyết định thiết kế:**
+## §7. Giới hạn
+
+| Giới hạn | Hệ quả |
+|---|---|
+| **Runner không tự chạy** | Không có `Start()` gọi init. Không ai gọi `InitializeAsync()` thì `UntilInitializedAsync` treo vĩnh viễn |
+| **Thiết kế cho MỘT call site** | Ba lời gọi xếp hàng thì lời ở giữa không bị loại: nó chạy bằng token mới nhất, và lời sau nó **dùng lại** đúng token đó thay vì được cấp token mới. Người gọi phải là một — scene flow của game |
+| **Không chặn gọi `InitializeAsync` hai lần** | Lần hai chạy lại toàn bộ chuỗi. `IsInitialized` là latch, không phải guard |
+| **Bước phải sống cùng đời runner** | Runner `DontDestroyOnLoad`, bước thì không tự động. Bước bị destroy lúc load scene làm `steps` giữ reference chết ⇒ nhịp sau ném `MissingReferenceException` **thoát ra khỏi** đường fail-open, vì đọc `step.name` để log cũng ném. Đặt bước làm con của runner (§3.2) |
+| **Hook pause/quit im lặng trước khi init xong** | Cả hai chặn bằng `IsInitialized`. Quit giữa lúc đang boot: không bước nào được flush |
+| **Nhịp bị huỷ không có nhịp đóng** | `ProgressChanged` không bắn `IsFinished` ⇒ splash đứng ở giữa. Nhịp mới bắn lại từ index 0 nên tỉ lệ **tụt về sau** — splash phải chịu được điều đó |
+| **`ProgressChanged` không tự nhả** | Runner sống mãi. Listener của scene phải `-=` (§3.4) |
+| **Main-thread only** | Không lock quanh `isPhaseRunning`, `steps`, `IsInitialized` |
+| **Không có timeout mỗi bước** | Bước treo thì treo cả chuỗi và treo cả splash. Timeout là việc của bước |
+| **`steps` chốt ở `Awake`** | Không có API thêm hoặc bớt bước lúc chạy |
+
+---
+
+## §8. Quyết định thiết kế
 
 | Quyết định | Lý do |
 |---|---|
-| `BootStep` là **abstract MonoBehaviour**, không interface | Bước phải serialize được vào `List<>` trong Inspector (Editor-first) — interface cần thêm máy móc `InterfaceReference` chưa tồn tại. Tiền lệ: `PoolableBehaviour` cũng là MonoBehaviour nằm trong `Abstractions/` |
-| `Order` chỉ có **một nguồn**: field serialize, property **không virtual** | color-loop cho override `Priority` ở code *đè* giá trị scene ⇒ hai nguồn sự thật, CLAUDE.md của nó phải chép bảng "Priority thật". Không cho override là cái sai không xảy ra được |
-| Chiều ưu tiên (**số nhỏ chạy trước**) khai ở XML doc của `Order` — một chỗ duy nhất | Bất biến ① — *đã sai một lần:* color-loop có 2 entry point sort **ngược chiều nhau** trên cùng `Priority` (`ServiceInit` giảm dần, `GameManager` tăng dần) |
-| `ReinitializeAsync`/`AfterReinitialize`/2 hook là `virtual` rỗng, chỉ `InitializeAsync` abstract | Bước chỉ-init-một-lần (Firebase, Ads) là ca phổ biến nhất — không ép implement nhịp không dùng (ISP) |
-| Hook tên `OnAppPause`/`OnAppQuit` | §0.1 |
-| `IBootstrapService` là `IOptionalService` (không có accessor `Service` throw) | Dự án không dùng SDK bootstrap vẫn hợp lệ — consumer (LiveOps §20) buộc phải viết nhánh degrade, compiler chặn (SystemPlan §0.2) |
-| `IBootstrapService` chỉ **2 member**, `ProgressChanged` KHÔNG nằm trên interface | ISP theo consumer thật: LiveOps chỉ cần "xong chưa / chờ xong"; splash nằm cùng scene với runner, wire thẳng reference concrete — nhận vào một class cụ thể vẫn là "nhận vào", không cần interface |
-| `BootProgress.Ratio01` là property trên struct | Splash nào cũng cần đúng phép chia này — viết một lần, đo–vẽ suy từ một nguồn (§3.8) |
+| `BootStep` là **abstract MonoBehaviour**, không interface | Bước phải serialize được vào `List<>` trong Inspector (Editor-first). Interface cần thêm máy móc reference chưa tồn tại trong SDK |
+| `Order` có **một nguồn**: field serialize, property **không virtual** | Cho override `Order` ở code là tạo nguồn sự thật thứ hai, và tài liệu buộc phải chép lại một bảng "Order thật" |
+| Sort **tại chỗ** trên `steps`, không giữ list thứ hai | Hai list buộc khớp là chỗ lệch. `Awake` sort lại từ dữ liệu vừa deserialize nên vẫn xác định (§4) |
+| Chỉ `InitializeAsync` là `abstract`, phần còn lại `virtual` rỗng | Bước chỉ-init-một-lần là ca phổ biến nhất — không ép implement nhịp không dùng |
+| Hook tên `OnAppPause` / `OnAppQuit`, không phải tên Unity | Xem "đã sai một lần" dưới đây |
+| Pause đi **ngược**, resume đi **xuôi** | Pause là "quit không hẹn trước" trên mobile: hệ trên ghi vào hệ nền xong, hệ nền mới chốt sổ. Resume là init-nhẹ: hệ nền tỉnh trước, hệ trên tính dựa vào nó sau |
+| `ProgressChanged` **không** nằm trên `IBootstrapService` | Hệ ngoài chỉ cần "xong chưa / chờ xong". Splash nằm cùng scene với runner nên wire thẳng reference concrete — nhận vào một class cụ thể vẫn là "nhận vào" |
+| Progress là `BootProgress` **theo bước**, không enum phase cứng | Tên phase là nội dung riêng từng game. Enum cứng bắt mọi game map bước→phase, tức một tri thức trùng phải giữ khớp ở hai nơi. Splash vẫn đủ dữ liệu: tỉ lệ + nhãn |
+| `Ratio01` là property trên struct | Splash nào cũng cần đúng phép chia đó. Đo và vẽ suy từ một nguồn |
+| `initializedSource.Task.Preserve()` cache một bản ở `Awake` | `UniTask` mặc định chỉ await được **một** lần. `UntilInitializedAsync` bị nhiều consumer await ⇒ phải là bản `Preserve` |
+| Cờ `isPhaseRunning` + `UniTask.Yield()`, không lưu `UniTask` của nhịp đang chạy | Cùng ràng buộc trên: task của nhịp cũ không await lại được từ nhịp mới |
+| Hai delegate `static readonly` cho hai nhịp | Một vòng chạy dùng chung cho cả hai, và không cấp phát closure mỗi nhịp |
+| `RaiseProgress` gọi từng handler trong try/catch riêng | Một listener lỗi không được cắt chuỗi thông báo của các listener sau |
+| `[Service(FindFromScene = true)]`, không singleton | Đăng ký qua DI như các service khác của SDK; runner vẫn là object trong scene để wire được trong Inspector |
+| `IsInitialized` **không** reset khi reinit | Nó mang nghĩa "cold boot đã xong", không phải "level đã sẵn sàng" |
 
-- [ ] **Step 1: `IOptionalService.cs`** — nội dung khớp SystemPlan §0.2 (nguồn quyết định); Ticker khôi phục sau này **dùng lại file này**, không tạo bản thứ hai.
+**Đã sai một lần** — bốn cái sai đã xảy ra thật, và cấu trúc hiện tại làm chúng không xảy ra lại được:
 
-```csharp
-namespace Horcrux.Runtime.Abstractions
-{
-    /// <summary>Service TUỲ CHỌN: thiếu là hợp lệ, consumer phải degrade — cố tình KHÔNG có accessor throw.</summary>
-    /// <remarks>
-    /// Đối ngẫu của <see cref="IService{T}"/>: bắt buộc thì thiếu phải throw sớm (lỗi cấu hình),
-    /// tuỳ chọn thì thiếu phải chạy tiếp. Ép ở tầng type — không có <c>Service</c> để mà gọi,
-    /// consumer không thể viết nhánh throw dù muốn.
-    /// </remarks>
-    public interface IOptionalService<out T>
-    {
-        public static bool TryGet(out T service) => Sisus.Init.Service.TryGet(out service);
-    }
-}
-```
-
-- [ ] **Step 2: `BootStep.cs`**
-
-```csharp
-using System.Threading;
-using Cysharp.Threading.Tasks;
-using UnityEngine;
-
-namespace Horcrux.Runtime.Abstractions.Bootstrap
-{
-    /// <summary>Một bước trong chuỗi khởi tạo game. Kế thừa, implement nhịp cần, wire vào BootstrapRunner.</summary>
-    /// <remarks>
-    /// Logic khởi tạo đặt trong <see cref="InitializeAsync"/>, KHÔNG đặt trong <c>Awake</c> —
-    /// <c>Awake</c> không có thứ tự đảm bảo giữa các object, đó chính là bài toán hệ này giải.
-    ///
-    /// Hook app cố tình KHÔNG trùng tên magic method của Unity (<c>OnApplicationPause</c>…):
-    /// trùng tên là Unity gọi thẳng lên từng bước + runner fan-out lần nữa = chạy hai lần (plan §0.1).
-    /// </remarks>
-    public abstract class BootStep : MonoBehaviour
-    {
-        [SerializeField, Tooltip("Số NHỎ chạy trước. Trùng nhau: bước đứng trước trong list của runner chạy trước.")]
-        private int order;
-
-        /// <summary>Thứ tự chạy — SỐ NHỎ CHẠY TRƯỚC. Nguồn duy nhất là field Inspector, không override được.</summary>
-        public int Order => order;
-
-        /// <summary>Chạy MỘT lần lúc cold start. Throw ⇒ runner log rồi đi tiếp bước kế (fail-open).</summary>
-        /// <param name="cancellationToken">Token vòng đời — huỷ khi có vòng init/reinit mới. Propagate xuống mọi await.</param>
-        public abstract UniTask InitializeAsync(CancellationToken cancellationToken);
-
-        /// <summary>Chạy mỗi nhịp load level, sau khi token của level trước đã bị huỷ.</summary>
-        /// <param name="cancellationToken">Token vòng đời MỚI — mọi loop <c>.Forget()</c> của level nhận token này.</param>
-        public virtual UniTask ReinitializeAsync(CancellationToken cancellationToken) => UniTask.CompletedTask;
-
-        /// <summary>Pha sync chạy khi MỌI bước đã xong <see cref="ReinitializeAsync"/> — đọc state bước khác an toàn.</summary>
-        public virtual void AfterReinitialize(CancellationToken cancellationToken) { }
-
-        /// <summary>Runner gọi khi app pause/resume. Pause đi NGƯỢC thứ tự init, resume đi XUÔI.</summary>
-        public virtual void OnAppPause(bool isPaused) { }
-
-        /// <summary>Runner gọi khi app quit, theo thứ tự NGƯỢC init. Chỗ flush cuối cùng.</summary>
-        public virtual void OnAppQuit() { }
-    }
-}
-```
-
-- [ ] **Step 3: `BootProgress.cs` + `IBootstrapService.cs`**
-
-```csharp
-// ── BootProgress.cs ───────────────────────────────────────────────────────
-namespace Horcrux.Runtime.Abstractions.Bootstrap
-{
-    /// <summary>Tiến độ một vòng init/reinit — splash đọc <see cref="Ratio01"/> và <see cref="StepName"/>.</summary>
-    public readonly struct BootProgress
-    {
-        /// <summary>Chỉ số bước SẮP chạy (0-based); bằng <see cref="StepCount"/> ở nhịp báo "vòng đã xong".</summary>
-        public readonly int StepIndex;
-
-        /// <summary>Tổng số bước của vòng.</summary>
-        public readonly int StepCount;
-
-        /// <summary>Tên GameObject của bước — nhãn hiển thị; rỗng ở nhịp cuối.</summary>
-        public readonly string StepName;
-
-        public BootProgress(int stepIndex, int stepCount, string stepName)
-        {
-            StepIndex = stepIndex;
-            StepCount = stepCount;
-            StepName = stepName;
-        }
-
-        /// <summary>Tiến độ [0..1] cho progress bar — phép chia viết MỘT lần ở đây, mọi splash dùng chung.</summary>
-        public float Ratio01 => StepCount <= 0 ? 1f : (float)StepIndex / StepCount;
-
-        /// <summary>Nhịp cuối của vòng (mọi bước đã chạy xong).</summary>
-        public bool IsFinished => StepIndex >= StepCount;
-    }
-}
-
-// ── IBootstrapService.cs ──────────────────────────────────────────────────
-using System.Threading;
-using Cysharp.Threading.Tasks;
-
-namespace Horcrux.Runtime.Abstractions.Bootstrap
-{
-    /// <summary>Cửa hỏi "cold boot xong chưa" cho hệ ngoài — tuỳ chọn: project không dùng SDK bootstrap vẫn hợp lệ.</summary>
-    /// <remarks>
-    /// <see cref="IsInitialized"/> là latch MỘT CHIỀU của cold start — Reinitialize theo level không reset nó.
-    /// Consumer: LiveOps Host (SystemPlan §20) chờ init xong mới kích hoạt module.
-    /// </remarks>
-    public interface IBootstrapService : IOptionalService<IBootstrapService>
-    {
-        /// <summary>Cold start đã chạy trọn chuỗi bước chưa (bước fail-open vẫn tính là đã chạy).</summary>
-        bool IsInitialized { get; }
-
-        /// <summary>Chờ tới khi cold start xong; đã xong thì trả về ngay. Await được nhiều lần, nhiều consumer.</summary>
-        /// <param name="cancellationToken">Token của CONSUMER — huỷ việc chờ, không huỷ boot.</param>
-        UniTask UntilInitialized(CancellationToken cancellationToken = default);
-    }
-}
-```
-
-- [ ] **Step 4: Kiểm chứng** — compile sạch; `new BootProgress(0, 4, "A").Ratio01 == 0f` · `(2, 4, …) → 0.5f` · `(4, 4, "") → 1f, IsFinished == true` · `(0, 0, …) → 1f` (không chia 0).
-
-- [ ] **Step 5: Commit** — `feat(sdk): add bootstrap contracts + IOptionalService`
+| Cái sai | Cấu trúc chặn nó |
+|---|---|
+| Hook virtual đặt tên `OnApplicationPause` ngay trên base class của bước. Unity gọi magic method trên **mọi** MonoBehaviour trùng tên, bất kể access modifier ⇒ mỗi bước chạy hook **hai lần**: Unity gọi thẳng, cộng fan-out của runner. Sai âm thầm vì phần lớn handler idempotent | Hook tên `OnAppPause` / `OnAppQuit` — Unity không biết tên này, chỉ runner gọi |
+| Hai bước trùng ưu tiên đổi chỗ nhau giữa hai lần chạy. `List<T>.Sort` là introsort, **không ổn định** — bug "lúc được lúc không", khó tái lập nhất | Khoá kép có index gốc (§4, bất biến ②) |
+| Hai entry point sort **ngược chiều nhau** trên cùng một trường ưu tiên | Một comparator duy nhất, trong runner. Chiều khai ở `Order` + Tooltip (§4, bất biến ①) |
+| `.Forget()` trần nuốt exception của bước ⇒ loading treo vĩnh viễn | Fail-open có log: bước lỗi được nêu tên, chuỗi đi tiếp |
 
 ---
 
-### Task 2: `BootstrapRunner`
+## §9. Cố ý không có
 
-**Files:**
-- Create: `Assets/Horcrux/Runtime/Implementations/Foundations/Bootstrap/BootstrapRunner.cs`
-
-**Interfaces:**
-- Consumes: `BootStep` · `BootProgress` · `IBootstrapService` (Task 1) · `[Service]` của Sisus.Init.
-- Produces: `BootstrapRunner : MonoBehaviour, IBootstrapService` — `UniTask InitializeAsync()` · `UniTask ReinitializeAsync()` · `event Action<BootProgress> ProgressChanged` · (từ interface) `IsInitialized` + `UntilInitialized(ct)`.
-
-**Quyết định thiết kế:**
-
-| Quyết định | Lý do |
-|---|---|
-| Hai vòng dùng chung **một** thân `RunStepsAsync` qua delegate static cached | Fail-open + progress + cancel là **một tri thức** — hai bản copy sẽ lệch, nên cửa hẹp gọi vào thân cửa rộng. Delegate `static` cached ⇒ không closure alloc |
-| `BeginRoundAsync`: huỷ token cũ → chờ `isRoundRunning == false` → mới chạy | Bất biến ③ hai vòng không chồng (§0.4). Không await task vòng cũ vì UniTask await-một-lần (§0.3) |
-| `catch (OperationCanceledException) when (token.IsCancellationRequested)` tách khỏi `catch (Exception)` | §0.4 — huỷ vòng dừng êm, lỗi thật fail-open. Filter `when` để OCE do bước tự ném sai token vẫn bị coi là lỗi thật (lộ ra, không nuốt) |
-| Log thứ tự chạy ngay đầu mỗi vòng | Nghiệm thu "nhìn log kể lại thứ tự" + làm trùng-`Order`-ổn-định **nhìn thấy được** |
-| `RaiseProgress` fan-out qua `GetInvocationList` + try/catch từng listener | Splash vỡ không được kéo boot chết (SystemPlan §0.4a). Alloc của `GetInvocationList` chấp nhận được: chỉ chạy lúc boot |
-| `initializedSource.Task.Preserve()` cache một lần ở `Awake` | §0.3 |
-| `OnDestroy`: `TrySetCanceled` + huỷ/dispose token | Consumer đang `UntilInitialized` không treo vĩnh viễn khi runner bị destroy (SystemPlan §0.6 ④) |
-| `OnApplicationQuit`: fan-out hook **xong** mới huỷ token | Bước còn cần token sống để flush; huỷ trước là hook chạy trên token chết |
-| Slot null trong list ⇒ `LogError` + bỏ qua, không throw | Không giấu thứ có thật, nhưng cũng không chặn cả game vì một slot trống |
-| Hook app chỉ fan-out khi `IsInitialized` | Android bắn `pause(false)` ngay lúc mở app; quit được giữa cold boot — bước đang init dở nhận hook là chạy trên state nửa vời (biên "frame đầu tiên"). Token vẫn được huỷ ở quit dù chưa init xong |
-
-**Editor setup — bước thật:**
-
-1. Scene entry của game: tạo GameObject `[Bootstrap]` → add `BootstrapRunner`.
-2. Mỗi bước của game là một GameObject con (tên = nhãn hiển thị trên splash) mang component kế thừa `BootStep`, set `Order` trong Inspector.
-3. Kéo thả các bước vào list `steps` của runner.
-4. Splash controller của game giữ `[SerializeField] BootstrapRunner` — kéo thả, subscribe `ProgressChanged`.
-
-- [ ] **Step 1: `BootstrapRunner.cs`**
-
-```csharp
-using System;
-using System.Collections.Generic;
-using System.Text;
-using System.Threading;
-using Cysharp.Threading.Tasks;
-using Horcrux.Runtime.Abstractions.Bootstrap;
-using Sisus.Init;
-using UnityEngine;
-
-namespace Horcrux.Runtime.Implementations.Bootstrap
-{
-    /// <summary>Con đường khởi tạo DUY NHẤT của game: sort bước, await tuần tự, fail-open, token vòng đời.</summary>
-    /// <remarks>
-    /// Game gọi <see cref="InitializeAsync"/> một lần lúc cold start rồi <see cref="ReinitializeAsync"/>
-    /// cho level đầu và mỗi lần reload level. Runner KHÔNG tự chạy — thời điểm boot phải phối hợp
-    /// với splash/consent prompt, việc đó thuộc game.
-    ///
-    /// Mở vòng mới khi vòng cũ đang chạy là hợp lệ: token cũ bị huỷ, vòng cũ dừng êm ở await kế
-    /// tiếp, vòng mới chờ nó thoát hẳn rồi mới chạy (plan §0.4). KHÔNG gọi 2 vòng từ trong một
-    /// BootStep — chờ chính mình là deadlock.
-    /// </remarks>
-    [Service(typeof(IBootstrapService), FindFromScene = true)]
-    public sealed class BootstrapRunner : MonoBehaviour, IBootstrapService
-    {
-        [SerializeField, Tooltip("Mọi BootStep của game. Trùng Order: bước đứng trước chạy trước.")]
-        private List<BootStep> steps = new();
-
-        // Thứ tự chạy đã chốt (sort ổn định một lần ở Awake) — nguồn sự thật duy nhất về thứ tự.
-        private readonly List<BootStep> ordered = new();
-
-        // Hai vòng dùng chung MỘT thân RunStepsAsync; delegate static cached để không closure alloc.
-        private static readonly Func<BootStep, CancellationToken, UniTask> InitializeStep =
-            static (step, ct) => step.InitializeAsync(ct);
-        private static readonly Func<BootStep, CancellationToken, UniTask> ReinitializeStep =
-            static (step, ct) => step.ReinitializeAsync(ct);
-
-        private readonly UniTaskCompletionSource initializedSource = new();
-        private UniTask initializedTask;                 // bản Preserve() — await được nhiều lần (§0.3)
-        private CancellationTokenSource lifecycleSource;
-        private bool isRoundRunning;
-
-        public bool IsInitialized { get; private set; }
-
-        /// <summary>Bắn trước mỗi bước + một nhịp cuối khi vòng xong. Splash subscribe qua reference scene.</summary>
-        public event Action<BootProgress> ProgressChanged;
-
-        private void Awake()
-        {
-            DontDestroyOnLoad(gameObject);
-            initializedTask = initializedSource.Task.Preserve();
-            BuildOrderedList();
-        }
-
-        private void OnDestroy()
-        {
-            initializedSource.TrySetCanceled();          // consumer đang await không treo vĩnh viễn
-            if (lifecycleSource == null) return;
-            lifecycleSource.Cancel();
-            lifecycleSource.Dispose();
-            lifecycleSource = null;
-        }
-
-        public UniTask UntilInitialized(CancellationToken cancellationToken = default)
-        {
-            if (IsInitialized) return UniTask.CompletedTask;
-            return cancellationToken.CanBeCanceled
-                ? initializedTask.AttachExternalCancellation(cancellationToken)
-                : initializedTask;
-        }
-
-        /// <summary>Cold start — game gọi đúng MỘT lần, trước <see cref="ReinitializeAsync"/> đầu tiên.</summary>
-        public async UniTask InitializeAsync()
-        {
-            var token = await BeginRoundAsync("Initialize");
-            try
-            {
-                await RunStepsAsync(InitializeStep, "Initialize", token);
-                if (token.IsCancellationRequested) return;
-
-                IsInitialized = true;                    // latch một chiều — Reinitialize không reset
-                initializedSource.TrySetResult();
-            }
-            finally { isRoundRunning = false; }
-        }
-
-        /// <summary>Mỗi nhịp load level. Token của vòng trước bị huỷ TRƯỚC khi vòng này chạy.</summary>
-        public async UniTask ReinitializeAsync()
-        {
-            var token = await BeginRoundAsync("Reinitialize");
-            try
-            {
-                await RunStepsAsync(ReinitializeStep, "Reinitialize", token);
-                if (token.IsCancellationRequested) return;
-
-                // Pha 2 sync: chạy khi MỌI bước xong pha async — bước sau đọc state bước trước mới chắc đúng.
-                foreach (var step in ordered)
-                {
-                    try { step.AfterReinitialize(token); }
-                    catch (Exception e) { LogStepFailure(step, "AfterReinitialize", e); }
-                }
-            }
-            finally { isRoundRunning = false; }
-        }
-
-        private async UniTask<CancellationToken> BeginRoundAsync(string roundName)
-        {
-            RefreshLifecycleToken();                     // vòng cũ thấy token huỷ ở await kế tiếp của nó
-            while (isRoundRunning) await UniTask.Yield();// chờ nó thoát hẳn — hai vòng không bao giờ chồng (§0.4)
-            isRoundRunning = true;
-            LogRoundOrder(roundName);
-            return lifecycleSource.Token;
-        }
-
-        private async UniTask RunStepsAsync(
-            Func<BootStep, CancellationToken, UniTask> runStep, string phaseName, CancellationToken token)
-        {
-            for (int i = 0; i < ordered.Count; i++)
-            {
-                if (token.IsCancellationRequested) return;
-
-                var step = ordered[i];
-                RaiseProgress(new BootProgress(i, ordered.Count, step.name));
-                try
-                {
-                    await runStep(step, token);
-                }
-                catch (OperationCanceledException) when (token.IsCancellationRequested)
-                {
-                    return;                              // vòng mới tiếp quản — dừng êm, không phải lỗi (§0.4)
-                }
-                catch (Exception e)
-                {
-                    LogStepFailure(step, phaseName, e);  // fail-open: chơi được offline tốt hơn không mở được app
-                }
-            }
-            RaiseProgress(new BootProgress(ordered.Count, ordered.Count, string.Empty));
-        }
-
-        private void RefreshLifecycleToken()
-        {
-            if (lifecycleSource != null)
-            {
-                lifecycleSource.Cancel();
-                lifecycleSource.Dispose();
-            }
-            lifecycleSource = new CancellationTokenSource();
-        }
-
-        // Unity gọi magic method này trên runner — nơi DUY NHẤT trong hệ nhận nó (§0.1).
-        // Pause đi NGƯỢC (hệ trên flush trước khi hệ nền dọn), resume đi XUÔI như init.
-        private void OnApplicationPause(bool isPaused)
-        {
-            if (!IsInitialized) return;              // Android bắn pause(false) ngay lúc mở app — bước chưa init xong không được nhận hook
-
-            if (isPaused)
-                for (int i = ordered.Count - 1; i >= 0; i--) SafePause(ordered[i], true);
-            else
-                for (int i = 0; i < ordered.Count; i++) SafePause(ordered[i], false);
-        }
-
-        private void OnApplicationQuit()
-        {
-            if (IsInitialized)                           // quit giữa cold boot: không flush bước đang init dở
-            {
-                for (int i = ordered.Count - 1; i >= 0; i--)
-                {
-                    try { ordered[i].OnAppQuit(); }
-                    catch (Exception e) { LogStepFailure(ordered[i], "OnAppQuit", e); }
-                }
-            }
-            lifecycleSource?.Cancel();                   // hook chạy XONG mới huỷ — bước còn cần token để flush
-        }
-
-        private void SafePause(BootStep step, bool isPaused)
-        {
-            try { step.OnAppPause(isPaused); }
-            catch (Exception e) { LogStepFailure(step, "OnAppPause", e); }
-        }
-
-        private void BuildOrderedList()
-        {
-            var indexed = new List<(BootStep step, int index)>(steps.Count);
-            for (int i = 0; i < steps.Count; i++)
-            {
-                if (steps[i] == null)
-                {
-                    Debug.LogError($"[Bootstrap] Slot {i} trong danh sách bước đang trống — gán bước hoặc xoá slot.", this);
-                    continue;
-                }
-                indexed.Add((steps[i], i));
-            }
-
-            // List.Sort không stable (§0.2) ⇒ khoá kép (Order, index gốc): trùng Order thì giữ thứ tự Inspector.
-            indexed.Sort(static (a, b) => a.step.Order != b.step.Order
-                ? a.step.Order.CompareTo(b.step.Order)   // SỐ NHỎ CHẠY TRƯỚC — chiều khai ở BootStep.Order
-                : a.index.CompareTo(b.index));
-
-            ordered.Clear();
-            foreach (var (step, _) in indexed) ordered.Add(step);
-        }
-
-        private void RaiseProgress(in BootProgress progress)
-        {
-            var handlers = ProgressChanged;
-            if (handlers == null) return;
-
-            // Cô lập lỗi từng listener — splash vỡ không được kéo boot chết theo (SystemPlan §0.4a).
-            foreach (Action<BootProgress> handler in handlers.GetInvocationList())
-            {
-                try { handler(progress); }
-                catch (Exception e) { Debug.LogException(e, this); }
-            }
-        }
-
-        private void LogRoundOrder(string roundName)
-        {
-            var builder = new StringBuilder("[Bootstrap] ").Append(roundName).Append(" order: ");
-            for (int i = 0; i < ordered.Count; i++)
-            {
-                if (i > 0) builder.Append(" → ");
-                builder.Append(ordered[i].name).Append('(').Append(ordered[i].Order).Append(')');
-            }
-            Debug.Log(builder.ToString(), this);
-        }
-
-        private void LogStepFailure(BootStep step, string phaseName, Exception exception)
-        {
-            Debug.LogError($"[Bootstrap] Bước '{step.name}' lỗi ở {phaseName} — bỏ qua, đi tiếp (fail-open).", step);
-            Debug.LogException(exception, step);
-        }
-    }
-}
-```
-
-- [ ] **Step 2: Kiểm chứng** (bảng input → kỳ vọng; chưa kèm code test — Task 3 nghiệm thu bằng demo + log):
-
-| Input | Kỳ vọng |
-|---|---|
-| List `[A(0), B(10), C(0)]` | log `Initialize order: A(0) → C(0) → B(10)`, mọi lần chạy y hệt |
-| Bước B throw trong `InitializeAsync` | log lỗi nêu tên B, C vẫn chạy, `IsInitialized == true`, splash nhận nhịp cuối |
-| `ReinitializeAsync()` gọi khi vòng trước đang chạy | vòng trước dừng êm (không log lỗi), vòng sau chạy trọn, không có bước nào chạy chồng |
-| `UntilInitialized()` gọi từ 2 consumer, trước VÀ sau khi init xong | cả hai return đúng, không exception await-twice |
-| `UntilInitialized(ct)` với ct huỷ giữa chừng | consumer nhận cancel, boot **không** bị ảnh hưởng |
-| Destroy runner khi đang có consumer chờ | consumer nhận cancel, không treo |
-| Slot null trong `steps` | `LogError` chỉ đúng slot đó, các bước còn lại chạy bình thường |
-| Pause/quit bắn TRƯỚC khi cold boot xong | không bước nào nhận hook; quit vẫn huỷ token |
-
-- [ ] **Step 3: Commit** — `feat(sdk): add BootstrapRunner (single boot path, fail-open, lifecycle token)`
+| Không có | Lý do | Thêm lại khi |
+|---|---|---|
+| Log liệt kê thứ tự bước sau khi sort | Danh sách `steps` trong Inspector lúc Play **là** danh sách đã sort — mở ra thấy đủ | Cần đọc thứ tự trên build device, chỗ không mở được Inspector |
+| Manifest data-driven (ScriptableObject) | Chưa ai cần đổi thứ tự bước mà không compile | Thêm overload nhận config asset — additive, không sửa chữ ký cũ |
+| Chạy song song các bước cùng pha | Cold start chưa đo được là chậm | Đo ra được bước nào chờ I/O song song được; thêm cờ trên contract + `WhenAll` |
+| Auto-discovery — quét scene hoặc reflection để tìm bước | Magic khó debug. Danh sách trong Inspector lộ đủ | — |
+| Expose token vòng đời ra property public | Mọi bước nhận token qua tham số của nhịp. Chưa hệ nào ngoài chuỗi bước cần nó | Xuất hiện hệ ngoài cần đúng token vòng đời của level |
+| Reset `IsInitialized` khi reinit | Nó là latch "cold boot xong" một chiều, và consumer cần đúng nghĩa đó | — |
+| `UntilReinitializedAsync` — bản đối xứng cho nhịp reinit | Cold boot là **latch một chiều**: xong rồi xong mãi nên người tới muộn hỏi được. "Level sẵn sàng" là **cạnh lặp lại**: cùng một `true` lúc nghĩa là level này, lúc là level trước — sai âm thầm. Chỗ biết chắc là nơi gọi: `await ReinitializeAsync()` (§3.3). Bước trong chuỗi thì dùng `AfterReinitialize` | Có consumer **ngoài** chuỗi bước và **không phải** call site. Khi đó cần thêm dấu "level đã cũ", không chỉ thêm hàm chờ |
+| `IOptionalService<T>` — biến thể service "thiếu là hợp lệ", không có accessor throw | `IBootstrapService` dùng `IService<T>`; consumer gọi `TryGet` là đã tự có nhánh degrade | Cần **compiler** chặn không cho consumer viết nhánh throw |
+| Timeout mỗi bước | Timeout hợp lý là con số riêng của từng bước, runner không biết | — |
+| Retry bước lỗi | Bước biết cái gì retry được, runner không biết. Fail-open đưa quyết định về đúng chỗ đó | — |
+| Guard chặn `InitializeAsync` gọi lần hai | Chỉ có một call site (§7), thêm guard là đỡ một cái sai chưa xảy ra | Có hơn một chỗ trong game gọi nhịp init |
+| Nhịp async "trước khi quit" | `OnApplicationQuit` của Unity là sync, không chờ await được | — |
 
 ---
 
-### Task 3: Demo + nghiệm thu chơi thử
+## §10. Chẩn đoán
 
-**Files:**
-- Create: `Assets/Horcrux/Runtime/Implementations/Foundations/Bootstrap/Demo/DemoBootStep.cs`
-- Create: `Assets/Horcrux/Runtime/Implementations/Foundations/Bootstrap/Demo/DemoBootDriver.cs`
-- Scene demo (Editor setup dưới) — không commit vào SDK nếu project có quy ước riêng về scene demo.
-
-**Interfaces:**
-- Consumes: `BootStep` · `BootstrapRunner` · `BootProgress` (Task 1–2).
-- Produces: chỉ demo — không hệ nào phụ thuộc.
-
-- [ ] **Step 1: `DemoBootStep.cs`**
-
-```csharp
-using System;
-using System.Threading;
-using Cysharp.Threading.Tasks;
-using Horcrux.Runtime.Abstractions.Bootstrap;
-using UnityEngine;
-
-namespace Horcrux.Runtime.Implementations.Bootstrap.Demo
-{
-    /// <summary>Bước giả lập để nghiệm thu runner bằng log — không dùng trong game thật.</summary>
-    public sealed class DemoBootStep : BootStep
-    {
-        [SerializeField, Min(0f), Tooltip("Giả lập thời gian một bước init thật (giây).")]
-        private float workSeconds = 0.3f;
-
-        [SerializeField, Tooltip("Bật để kiểm fail-open: bước này throw, boot vẫn phải đi tiếp.")]
-        private bool throwOnInitialize;
-
-        public override async UniTask InitializeAsync(CancellationToken cancellationToken)
-        {
-            await UniTask.Delay(TimeSpan.FromSeconds(workSeconds), DelayType.Realtime,
-                cancellationToken: cancellationToken);
-            if (throwOnInitialize)
-                throw new InvalidOperationException($"'{name}' cố ý throw để kiểm fail-open.");
-            Debug.Log($"[DemoBootStep] '{name}' Initialize xong.", this);
-        }
-
-        public override async UniTask ReinitializeAsync(CancellationToken cancellationToken)
-        {
-            await UniTask.Delay(TimeSpan.FromSeconds(workSeconds), DelayType.Realtime,
-                cancellationToken: cancellationToken);
-            Debug.Log($"[DemoBootStep] '{name}' Reinitialize xong.", this);
-        }
-
-        public override void AfterReinitialize(CancellationToken cancellationToken)
-            => Debug.Log($"[DemoBootStep] '{name}' AfterReinitialize.", this);
-
-        public override void OnAppPause(bool isPaused)
-            => Debug.Log($"[DemoBootStep] '{name}' OnAppPause({isPaused}).", this);
-
-        public override void OnAppQuit()
-            => Debug.Log($"[DemoBootStep] '{name}' OnAppQuit.", this);
-    }
-}
-```
-
-- [ ] **Step 2: `DemoBootDriver.cs`**
-
-```csharp
-using Cysharp.Threading.Tasks;
-using Horcrux.Runtime.Abstractions.Bootstrap;
-using UnityEngine;
-
-namespace Horcrux.Runtime.Implementations.Bootstrap.Demo
-{
-    /// <summary>Driver demo: cold start + một nhịp Reinitialize, in progress đúng cách splash sẽ làm.</summary>
-    /// <remarks><c>.Forget()</c> ở đây an toàn: exception bước đã bị runner nuốt có log (fail-open),
-    /// exception còn lại UniTask tự log qua unobserved handler.</remarks>
-    public sealed class DemoBootDriver : MonoBehaviour
-    {
-        [SerializeField] private BootstrapRunner runner;
-
-        private void Start() => RunDemoAsync().Forget();
-
-        private void OnDestroy()
-        {
-            if (runner != null) runner.ProgressChanged -= LogProgress;
-        }
-
-        private async UniTaskVoid RunDemoAsync()
-        {
-            runner.ProgressChanged += LogProgress;
-
-            await runner.InitializeAsync();
-            Debug.Log($"[Demo] IsInitialized = {runner.IsInitialized}");
-
-            await runner.ReinitializeAsync();
-            Debug.Log("[Demo] Xong nhịp reinit đầu. Chuột phải component này để chạy các ca kiểm còn lại.");
-        }
-
-        [ContextMenu("Reinitialize")]
-        private void ReinitializeFromMenu() => runner.ReinitializeAsync().Forget();
-
-        [ContextMenu("Reinitialize x2 (kiểm hai vòng không chồng)")]
-        private void ReinitializeTwice()
-        {
-            runner.ReinitializeAsync().Forget();
-            runner.ReinitializeAsync().Forget();   // vòng 1 phải dừng êm, vòng 2 chạy trọn
-        }
-
-        private void LogProgress(BootProgress progress)
-            => Debug.Log($"[Demo] progress {progress.Ratio01:P0} — {(progress.IsFinished ? "xong" : progress.StepName)}");
-    }
-}
-```
-
-- [ ] **Step 3: Editor setup scene demo** (bước thật):
-
-1. Scene mới `BootstrapDemo` → GameObject `[Bootstrap]` + `BootstrapRunner`.
-2. 4 GameObject con: `Save(order 0)` · `RemoteConfig(order 10, throwOnInitialize ✓)` · `Ads(order 10)` · `Audio(order 0)` — mỗi cái một `DemoBootStep`, tên và `order` đúng như ghi. Kéo cả 4 vào `steps` **theo thứ tự hierarchy trên**.
-3. GameObject `[Demo]` + `DemoBootDriver`, kéo runner vào.
-
-- [ ] **Step 4: Kịch bản chơi thử** (nghiệm thu này cần Play mode, developer chạy):
-
-| Mục | Nội dung |
+| Triệu chứng | Nguyên nhân thường gặp |
 |---|---|
-| Vào đâu | Scene `BootstrapDemo`, bấm Play |
-| Làm gì | ① nhìn log boot · ② dừng Play, Play lại lần nữa · ③ chuột phải driver → "Reinitialize x2" · ④ bấm nút Pause của Editor rồi bỏ |
-| Nhìn cái gì | ① `Initialize order: Save(0) → Audio(0) → RemoteConfig(10) → Ads(10)` — trùng 0 và trùng 10 đều theo thứ tự kéo thả; lỗi đỏ nêu tên `RemoteConfig` kèm chữ "fail-open"; sau đó `Ads` vẫn init; progress lên tới 100%; `IsInitialized = True` · ② thứ tự y hệt lần trước · ③ đúng MỘT chuỗi reinit chạy trọn, không log lỗi từ vòng bị huỷ, không bước nào in chồng nhau · ④ mỗi bước in `OnAppPause(True)` đúng **một lần**, theo thứ tự ngược (`Ads` trước `Save`) |
-| Khác trước ra sao | So bản color-loop: một bước throw là treo splash; ở đây game vẫn vào được |
-| Dấu hiệu hỏng | `OnAppPause` in 2 lần một bước (§0.1 tái phát) · thứ tự đổi giữa 2 lần Play (§0.2) · vòng reinit x2 in xen kẽ 2 chuỗi (bất biến ③ vỡ) · lỗi `RemoteConfig` làm `Ads` không chạy (fail-open vỡ) |
-
-- [ ] **Step 5: Commit** — `feat(sdk): add bootstrap demo + acceptance scene`
-
-> `SystemPlan.md` đã được cập nhật cùng lần viết plan này (bảng "Hệ đã có plan chi tiết", 📄 hàng 1, dòng `IOptionalService` ở §0.2) — không còn việc tài liệu nào trong task.
+| Bước chạy sai thứ tự mong đợi | Hai bước trùng `Order` ⇒ thứ tự là thứ tự trong Inspector (§4) · hoặc `order` sửa trên prefab mà bản trong scene có giá trị override |
+| `[Bootstrap] : Step at index N is null` | Ô trống trong `steps`, hoặc reference chết. Bước đó bị loại, chuỗi vẫn chạy |
+| `[Bootstrap] : X failed at Initialize. Skip (fail-open)` | Bước `X` ném exception; chuỗi đi tiếp. Exception thật nằm ở dòng log ngay sau |
+| Splash đứng lại ở giữa | Nhịp bị huỷ giữa chừng nên không có nhịp đóng (§7) |
+| Splash tụt tỉ lệ về 0 rồi chạy lại | Một nhịp mới đã tiếp quản nhịp đang chạy |
+| `UntilInitializedAsync` ném `OperationCanceledException` | Runner bị destroy — nó nhả mọi consumer đang chờ · hoặc `ct` của chính consumer bị huỷ |
+| `UntilInitializedAsync` không bao giờ trả về | Chưa ai gọi `InitializeAsync()` · hoặc nhịp init bị huỷ trước khi tới cuối nên latch không bật |
+| `MissingReferenceException` thoát ra từ trong runner | Một bước đã bị destroy nhưng còn trong `steps` (§7) |
+| `OnAppPause` / `OnAppQuit` không được gọi | `IsInitialized` còn `false` — cold boot chưa xong (§7) |
+| Hook app chạy hai lần mỗi bước | Bước tự khai method tên `OnApplicationPause` hoặc `OnApplicationQuit`. Đổi sang override `OnAppPause` / `OnAppQuit` (§8) |
+| Loop async của level trước vẫn chạy sau khi reload | Bước không truyền `ct` xuống loop của nó (§3.1) |
+| Bước reinit đọc state của bước khác ra giá trị cũ | Việc đó thuộc `AfterReinitialize`, không thuộc `ReinitializeAsync` |
+| Console ồn exception từ splash sau khi đổi scene | Thiếu `-=` cho `ProgressChanged` (§3.4) |
 
 ---
 
-## Ghi chú thực thi
+## §11. Nghiệm thu
 
-- **Nghiệm thu cuối = kịch bản Task 3 Step 4** — map 1-1 với 4 mục Nghiệm thu của SystemPlan mục 1. Ba mục đầu quan sát bằng log trong Play mode; riêng "reinit không rò task" nhìn qua: sau "Reinitialize x2" không còn log nào của vòng bị huỷ xuất hiện muộn.
-- **Sau khi implement xong:** viết `Bootstrap.md` (tài liệu thiết kế §5.1) cạnh `Implementations/Foundations/Bootstrap/` — điều kiện ⑤ của "Xong" (SystemPlan §0.6). Chuyển 2 dòng "đã sai một lần" (§0.1, §0.2 của plan này) vào mục quyết định thiết kế của nó.
-- **Hệ dùng tiếp:** mọi hệ Tầng 1 còn lại là ứng viên `BootStep` ở phía game (Persistence flush ở `OnAppPause(true)`/`OnAppQuit`, Remote Config fetch ở `InitializeAsync`…). SDK không tự wire — game quyết bước nào tồn tại.
-- **Ticker (khôi phục sau):** Task 1 của nó trùng file `IOptionalService.cs` — dùng file của plan này, bỏ task trùng.
-- **Mở rộng sau** (đều additive, không đổi chữ ký đang có): manifest SO — overload `InitializeAsync(BootManifest)` · parallel-in-phase — cờ `AllowParallel` trên `BootStep` + `WhenAll` nhóm cùng `Order` · nhóm bước theo scene · expose `CancellationToken` vòng đời thành property khi có consumer ngoài bước đầu tiên.
+Chưa có scene demo trong SDK — các phép kiểm dưới đây chạy trong scene thật của game.
+
+| Tiêu chí | Phép kiểm | Kỳ vọng |
+|---|---|---|
+| Thứ tự lặp lại được | 3 bước, hai trong đó trùng `Order`. Vào Play 3 lần, đọc list `steps` trong Inspector | Ba lần cho cùng một thứ tự, và trùng `Order` thì bước đứng trước trong Inspector đứng trước |
+| Một bước lỗi vẫn vào được game | `throw` trong `InitializeAsync` của bước giữa | Console có `Skip (fail-open)` + exception · các bước sau vẫn chạy · `IsInitialized == true` |
+| Reinit huỷ sạch level trước | Bước có `while (!ct.IsCancellationRequested)` in log mỗi giây. Gọi `ReinitializeAsync()` hai lần liên tiếp | Chỉ còn **một** loop in log |
+| Hai nhịp không chạy chồng | Gọi `ReinitializeAsync()` hai lần trong cùng frame, mỗi bước in tên mình | Log không đan xen hai chuỗi |
+| Hook app chạy đúng một lần | `Debug.Log` trong `OnAppPause` của một bước, bấm pause trong Editor | Đúng **một** dòng log mỗi bước |
+| Progress đủ cho splash | Subscribe `ProgressChanged`, in `Ratio01` và `StepName` | Tỉ lệ đi từ 0 lên 1 · `IsFinished` đúng một lần mỗi nhịp · nhãn khớp tên GameObject của bước |
+| Ô null không làm chết chuỗi | Để một ô `steps` trống | Một `LogError` · các bước còn lại chạy đủ |
+
+---
+
+## §12. Bảng metrics
+
+| Phép đo | Giá trị | Ghi chú |
+|---|---|---|
+| Sort | O(n log n), `n` = số bước | Một lần, trong `Awake` |
+| Một nhịp | O(n) + chi phí thật của từng bước | Tuần tự, không song song |
+| Alloc ở `Awake` | 1 `List<(BootStep, int)>` + 1 bản `Preserve` của task | Một lần cả đời app |
+| Alloc mỗi nhịp | 1 `CancellationTokenSource` | Bản cũ được `Dispose` |
+| Alloc mỗi bước | 1 `Delegate[]` từ `GetInvocationList()` | Chỉ khi `ProgressChanged` có listener. Không listener ⇒ 0 |
+| Alloc lúc chờ nhịp cũ thoát | 0 | `UniTask.Yield()` |
+| Alloc của `UntilInitializedAsync` | 0 khi đã init xong hoặc khi `ct` không huỷ được · 1 khi có `ct` thật | `AttachExternalCancellation` mới là chỗ cấp phát |
+| Delegate cho hai nhịp | 2, `static readonly` | Tạo một lần cho cả đời app |
+| Alloc trên đường lỗi | string format của log | Chỉ khi có bước lỗi hoặc ô null |
+| Ngân sách thiết kế | cold start **1 lần** + reinit **mỗi lần load level** | **Không** phải hot path — mọi chỗ chọn bản dễ đọc |

@@ -222,7 +222,7 @@ namespace Horcrux.Runtime.Implementations.Bootstrap
             lifecycleCts = new();
         }
 
-        private async UniTask RunStepsAsync(Func<BootStep, CancellationToken, UniTask> runSteps,
+        private async UniTask RunStepsAsync(Func<BootStep, CancellationToken, UniTask> runStep,
             string phaseName, CancellationToken ct)
         {
             int stepCount = steps.Count;
@@ -235,7 +235,7 @@ namespace Horcrux.Runtime.Implementations.Bootstrap
                 RaiseProgress(new BootProgress(i, stepCount, step.name));
                 try
                 {
-                    await runSteps(step, ct);
+                    await runStep(step, ct);
                 }
                 catch (OperationCanceledException) when (ct.IsCancellationRequested)
                 {
