@@ -66,10 +66,10 @@ app quit    ──> OnAppQuit()             sync  n-1 ──────>   0   
    Inspector                 Awake                    InitializeAsync() / ReinitializeAsync()
 ┌──────────────┐      ┌─────────────────┐      ┌──────────────────────────────────────────┐
 │ steps: List  │      │ Preserve() task │      │ ① huỷ + dispose token cũ                 │
-│  ├ step.order│─────>│ bỏ ô null (log) │─────>│ ② chờ isPhaseRunning == false            │
-│  ├ step.order│      │ sort ổn định    │      │ ③ token mới                              │
-│  └ …         │      │  (Order, idx)   │      ├──────────────────────────────────────────┤
-└──────────────┘      └─────────────────┘      │ for i in 0..n-1:                         │
+│  ├ step.order│─────>│ sort ổn định    │─────>│ ② chờ isPhaseRunning == false            │
+│  ├ step.order│      │  (Order, idx)   │      │ ③ token mới                              │
+│  └ …         │      └─────────────────┘      ├──────────────────────────────────────────┤
+└──────────────┘                               │ for i in 0..n-1:                         │
                                                │   ProgressChanged(i, n, step.name) ──────┼──> splash
                                                │   await step[i].<nhịp>(ct)               │
                                                │     ├ cancel khi ct huỷ ⇒ dừng êm nhịp   │
@@ -211,7 +211,6 @@ Chưa có scene demo trong SDK — các phép kiểm chạy trong scene thật c
 | Hai nhịp không chạy chồng | Gọi `ReinitializeAsync()` hai lần trong cùng frame, mỗi bước in tên mình | Log không đan xen hai chuỗi |
 | Hook app chạy đúng một lần | `Debug.Log` trong `OnAppPause` của một bước, bấm pause trong Editor | Đúng **một** dòng log mỗi bước |
 | Progress đủ cho splash | Subscribe `ProgressChanged`, in `Ratio01` và `StepName` | Tỉ lệ đi 0→1 · `IsFinished` đúng một lần mỗi nhịp · nhãn khớp tên GameObject |
-| Ô null không làm chết chuỗi | Để một ô `steps` trống | Một `LogError` · các bước còn lại chạy đủ |
 | Nhiều consumer chờ cold boot | Hai chỗ cùng `await UntilInitializedAsync()`, một chỗ gọi sau khi đã init xong | Cả ba đều trả về, không chỗ nào ném |
 
 ---
@@ -276,7 +275,6 @@ Chưa có scene demo trong SDK — các phép kiểm chạy trong scene thật c
 | Triệu chứng | Nguyên nhân |
 |---|---|
 | Bước chạy sai thứ tự mong đợi | Trùng `Order` ⇒ thứ tự Inspector quyết (§4.1) · hoặc `order` sửa trên prefab mà bản trong scene có override |
-| `[Bootstrap] : Step at index N is null` | Ô trống hoặc reference chết trong `steps`. Bước đó bị loại, chuỗi vẫn chạy |
 | `[Bootstrap] : X failed at Initialize. Skip (fail-open)` | Bước `X` ném exception, chuỗi đi tiếp. Exception thật ở dòng log ngay sau |
 | `MissingReferenceException` thoát ra từ trong runner | Một bước đã bị destroy nhưng còn trong `steps` (§6) |
 | Splash đứng lại ở giữa | Nhịp bị huỷ giữa chừng nên không có nhịp đóng (§6) |

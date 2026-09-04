@@ -114,7 +114,7 @@ namespace Horcrux.Runtime.Implementations.Bootstrap
 
             try
             {
-                await RunStepsAsync(InitializeStep, InitPhaseName, ct);
+                await RunPhaseAsync(InitializeStep, InitPhaseName, ct);
 
                 if (ct.IsCancellationRequested)
                     return;
@@ -136,7 +136,7 @@ namespace Horcrux.Runtime.Implementations.Bootstrap
 
             try
             {
-                await RunStepsAsync(ReinitializeStep, ReinitPhaseName, ct);
+                await RunPhaseAsync(ReinitializeStep, ReinitPhaseName, ct);
 
                 if (ct.IsCancellationRequested)
                     return;
@@ -215,7 +215,7 @@ namespace Horcrux.Runtime.Implementations.Bootstrap
             lifecycleCts = new();
         }
 
-        private async UniTask RunStepsAsync(Func<BootStep, CancellationToken, UniTask> runStep,
+        private async UniTask RunPhaseAsync(Func<BootStep, CancellationToken, UniTask> runStep,
             string phaseName, CancellationToken ct)
         {
             int stepCount = steps.Count;

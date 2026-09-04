@@ -358,12 +358,17 @@ dạng**, không chỉ cho thuật toán.
 | **Logic tại chỗ** | chỉ chạy ở một nơi, đọc một mạch là hiểu hết | có **người gọi thứ hai**, hoặc một ý không còn nhìn hết trong một màn hình |
 | **Hàm tách riêng** | đặt được tên nói đúng mục đích (§3.7); không giữ state giữa các lần gọi | phát sinh **state phải giữ**, hoặc một cụm hàm cùng thao tác trên một nhóm dữ liệu |
 | **Class hoặc struct** | có **trách nhiệm gọi được tên** và state của riêng nó (`S` ở bảng trên); chọn `struct` hay `class` theo §3.5 | có **implementation thứ hai** (§2.4) |
+| **Delegate làm tham số** | thân thuật toán **giống hệt nhau** ở mọi biến thể, chỉ khác **một thao tác** gọi được tên, và biến thể **không giữ state riêng**. Khai `static readonly Func<…>` với lambda `static`: biến thể có tên đọc được ngay tại call site, và bắt biến ngoài trở thành **lỗi biên dịch** thay vì rác GC âm thầm (§3.5, §3.8) | biến thể cần **state riêng**, hoặc cần **hơn một thao tác** đi cùng nhau — lúc đó nó đã là interface |
 | **Interface hoặc abstract** | §2.4 — implementation thứ hai **đang có thật**, không phải sắp có | — |
 
-Ba hệ quả hay bị bỏ qua:
+Bốn hệ quả hay bị bỏ qua:
 
 - **`D` không đòi interface.** Nhận vào một class cụ thể vẫn là "nhận vào"; thứ `D` cấm là consumer tự
   `new` thứ nó phụ thuộc, không phải việc phụ thuộc vào một kiểu cụ thể.
+- **Bậc delegate giữ bất biến của vòng lặp ở đúng một bản.** Khi n biến thể dùng chung một vòng lặp, thứ
+  chỉ được phép có **một bản** là bất biến của vòng lặp — thứ tự chạy, phát tiến độ, xử lý lỗi, điểm thoát
+  khi bị huỷ — chứ không phải thân biến thể. Nhân vòng lặp ra n bản, hoặc cắm `if` biến thể vào giữa nó, là
+  nhân bất biến ra n bản: thêm biến thể thứ n+1 thì phải đọc lại và giữ đúng cả n+1 lần (NT6).
 - **Thước đo là phạm vi bài toán, không phải số khái niệm nghĩ ra được.** Cùng một cách chia có thể đúng
   ở hệ nhiều người chạm và còn mở rộng, mà thừa ở một tính năng cục bộ. Hỏi *"người đọc sau phải mở bao
   nhiêu file để lần hết một luồng?"* trước khi tách.
