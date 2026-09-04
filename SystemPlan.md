@@ -86,7 +86,7 @@ namespace Horcrux.Runtime.Abstractions
 
 Mọi hệ có state đều lưu qua **save-unit riêng** của mình (§2), **không** dùng chung một blob toàn cục. Hệ chỉ khai báo model + implement `ISaveUnit`; registry lo dirty/autosave/crypto.
 
-📄 Đã có plan: `Implementations/Foundations/Persistence/PersistenceSystem.md` (v1 không crypto — decorator quanh `ISerializer` thêm sau).
+📄 Đã có plan, **hai bản thay thế nhau, chọn một**: `Abstractions/Foundations/Persistence/PersistenceV1.md` (lưu vào PlayerPrefs, model JSON-hoá bằng Newtonsoft, 7 file) · `Abstractions/Foundations/Persistence/PersistenceV2.md` (lưu ra file trên đĩa, format thay được qua `ISerializer`, 10 file, kèm bước nhập dữ liệu một chiều từ bản V1). Cả hai đều không crypto — decorator quanh serializer thêm sau.
 
 ## 0.4 Hiệu năng — luật áp cho mọi hệ dưới đây
 
@@ -171,7 +171,7 @@ Bảy hệ dưới đây đã được viết plan tự chứa, có code dán-đ
 | Hệ | File plan | Trong plan | **Ngoài** plan (vẫn ở tài liệu này) |
 |---|---|---|---|
 | 1 Bootstrap | `Implementations/Foundations/Bootstrap/BootstrapSystem.md` | `BootStep` (Order + 2 nhịp + 2 hook app) + `BootstrapRunner` (sort ổn định, fail-open, token vòng đời, `BootProgress`) + `IBootstrapService` (`IsInitialized` + `UntilInitialized`) + `IOptionalService<T>` (§0.2) + demo nghiệm thu. 7 file | manifest SO · parallel-in-phase · nhóm bước theo scene |
-| 2 Persistence | `Implementations/Foundations/Persistence/PersistenceSystem.md` | `ISaveUnit`/`SaveUnit<TModel>` (typed + dirty + on-change) + `SaveRegistry` (load-lúc-Register, autosave, flush pause/quit, ghi nguyên tử) + `ISerializer` 2 impl (Newtonsoft JSON · MemoryPack qua versionDefines) + typed-prefs `Prefs<T>` + 4 chuyên biệt (§A.3) + demo nghiệm thu. 10 file | crypto decorator · cloud (`ICloudSyncable` + merge rule) · migration version · `PrefsDateTime`/`ForceRefresh`/`syncToServer` |
+| 2 Persistence | **hai bản, chọn một:** `Abstractions/Foundations/Persistence/PersistenceV1.md` · `Abstractions/Foundations/Persistence/PersistenceV2.md` | Chung cả hai bản: `ISaveUnit`/`SaveUnit<TModel>` (typed + dirty + on-change) + `SaveRegistry` (load-lúc-Register, autosave, flush pause/quit) + typed-prefs `Prefs<T>` + 4 chuyên biệt (§A.3) + demo nghiệm thu. **V1** lưu vào PlayerPrefs, JSON Newtonsoft cố định, 7 file. **V2** lưu ra file, ghi nguyên tử, `ISerializer` 2 impl (Newtonsoft JSON · MemoryPack qua versionDefines), nhập một chiều từ V1, 10 file. Phần API game chạm giống hệt nhau ở hai bản | crypto decorator · cloud (`ICloudSyncable` + merge rule) · migration version cho model · `PrefsDateTime`/`ForceRefresh`/`syncToServer` |
 | 4a Ticker (+4b Time) | `Implementations/Foundations/Ticker/TickerSystem.md` | `ITicker` + **2 nhịp** (`ITickable`, `IPauseAware`) + 1 `Update` duy nhất, `IOptionalService<T>` (§0.2), `DeferredList<T>`. 6 file | **nhịp 1 Hz** (`ISecondTickable`), `Destroyed` event, `ITimeService`, chống tua giờ, `Countdown`, `TimeFormatter` |
 | §9 Haptics | `Implementations/Foundations/Haptics/HapticSystem.md` | `PlayCustom(HapticPattern)` + `IHapticBackend` (**2 member**) + backend Android có **biên độ**. 6 file | **bộ preset** (`EHapticPreset` + `Play(preset)`), rung liên tục (`Begin/End` + ref-count), waveform, impl vendor, `IHapticSettings` |
 | §8 Audio | `Implementations/Foundations/Audio/AudioSystem.md` | ⚠️ **SFX 2D + `pitchScale`** (xem cảnh báo ở §8), catalog SO, throttle theo clip, voice gán ở Inspector. 6 file | **SFX 3D** (`PlaySfxAt`), music + crossfade, `PauseAll/ResumeAll`, `EAudioSelectMode`, `IAudioSettings`, mixer group |
@@ -2772,7 +2772,7 @@ public class AddressableObjectReference<T> where T : UnityEngine.Object
 
 Cho giá trị lẻ không đáng dựng cả model (§2 dùng cho model lớn): "đã rate chưa", "đã xem tutorial X", "lần cuối hỏi ở level nào".
 
-📄 Đã có plan: `PersistenceSystem.md` Task 4 — v1 không `syncToServer`/`PrefsDateTime`/`ForceRefresh` (cả ba gắn cloud, về cùng đợt cloud — mở rộng sau).
+📄 Đã có plan: `PersistenceV1.md` Task 3 và `PersistenceV2.md` Task 4 — cùng một `Prefs.cs` không đổi giữa hai bản; không `syncToServer`/`PrefsDateTime`/`ForceRefresh` (cả ba gắn cloud, về cùng đợt cloud — mở rộng sau).
 
 ```csharp
 public sealed class Prefs<T>
