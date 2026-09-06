@@ -195,6 +195,15 @@ cho một thay đổi cục bộ; phạm vi khảo sát tương xứng phạm vi
 
 Nói rõ đã khảo sát những đâu và kết luận gì, để developer biết quyết định đến từ đâu (NT8).
 
+**Bê một khuôn có sẵn thì soi kỹ nhất đúng những chỗ khuôn cũ *cố ý* làm.** Trực giác nói ngược: phần cố
+ý là phần đã được cân nhắc kỹ, nên nó có vẻ là phần bê được. Nhưng cân nhắc kỹ nghĩa là nó **bám chặt
+vào ngữ cảnh cũ** — chính nó mới là chỗ dễ bê nhầm nhất, còn phần viết theo quán tính thì trung tính,
+sang đâu cũng vô hại. Nên với mỗi quyết định cố ý trong khuôn, hỏi lại **lý do gốc của nó có còn đúng ở
+bài toán này không**: còn thì giữ, hết thì đảo — và đảo ở đâu thì ghi lý do ngay tại đó, vì người đọc
+sau sẽ so hai khuôn với nhau và cần biết chỗ lệch là chủ ý. *Đã sai một lần:* một khuôn cố ý serialize
+giá trị runtime để developer nhìn thấy nó trong asset; bài toán mới lưu dữ liệu của người chơi, bê
+nguyên là ghi tiến độ người chơi vào asset của project rồi đưa vào version control.
+
 Sau đó mới tới phạm vi. **Mọi thứ định đưa vào** — chương tài liệu, demo, hàm, tham số, guard, tối ưu,
 lớp trừu tượng — qua cùng một luật: **có nhu cầu thật ngay bây giờ thì đưa vào**. Nhu cầu thật của từng
 loại (ví dụ, không phải danh sách đóng):
@@ -555,6 +564,16 @@ sai **không thể xảy ra**, thay vì dặn đừng sai:
 | **Một cờ chỉ được tiêu thụ ở đúng MỘT nơi** | có nơi thứ hai thì nơi chạy sau không bao giờ thấy cờ bật — cache của nó đứng im, không có gì báo |
 | **Hai phép tính buộc phải khớp thì suy từ MỘT nguồn** | đo–vẽ, vẽ–hit-test, điều kiện ẩn–hiện: cùng một hàm, hoặc cùng một biểu thức copy nguyên — không viết hai bản "giống nhau", kể cả khi công thức hiển nhiên. Hai bản sẽ lệch, và lệch kiểu nhìn-vẫn-đúng-bấm-thì-trượt. Ranh giới với luật "để lặp" của §2.4: xem §1.7 |
 | **Cửa hẹp là thân chung của cửa rộng** | hai đường làm gần cùng một việc (bản đầy đủ và bản giữ-lại-một-phần) thì bản hẹp gọi vào thân bản rộng — hai bên không thể lệch nhau |
+| **Một bảo đảm phải phủ MỌI đường vào** | hệ tuyên bố "mất không quá X", "luôn hợp lệ", "luôn đúng thứ tự" thì **mọi** cửa ghi phải đi qua đúng chỗ tạo ra bảo đảm đó. Một cửa thứ hai đi vòng không làm bảo đảm sai — nó làm bảo đảm **chỉ còn đúng cho một nửa hệ**, trong khi tài liệu vẫn phát biểu nguyên câu; nửa kia hỏng im lặng, và hỏng đúng vào lúc người ta tin nhất |
+
+**Phép kiểm của luật cuối — đếm cửa trước, đọc thân sau.** Đọc kỹ đường chính rồi kết luận "bảo đảm này
+đạt" là cách bỏ sót đúng những đường phụ: chúng thường sinh ra sau, cho một cỡ dữ liệu khác hoặc một tiện
+ích nhỏ, và người viết chúng không nghĩ mình đang chạm vào bảo đảm nào. Việc phải làm là **liệt kê mọi
+cửa ghi vào cùng một kho** — grep API ghi của kho đó là ra hết — rồi với từng cửa, hoặc chỉ ra nó đi qua
+chỗ tạo bảo đảm, hoặc **viết ngay tại chỗ rằng cửa này không được bảo đảm**. Ép mọi cửa về **một** thân
+là cách rẻ nhất giữ cho phép kiểm này còn đúng về sau (cùng họ với "cửa hẹp là thân chung của cửa rộng"
+ở trên). Nghiệm thu thuộc nhánh **tầm nhìn** của §2.8: đây là chứng minh sự vắng mặt, mắt người không
+nhìn thấy được cửa mà mình không biết là có.
 
 **Ngưỡng dưới của luật này — chỗ dừng, không phải chỗ nới.** Đích vẫn là **bản build không có ca null hay ca
 sai nào**; bỏ guard chỉ là đường rẻ hơn tới đúng đích đó, không phải một đích khác. Nên **mặc định là guard
