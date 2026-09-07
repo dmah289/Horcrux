@@ -1,19 +1,24 @@
-# Persistence Implementation Plan — SaveCollection + PlayerPrefs + Newtonsoft JSON
+# Persistence Implementation Plan — SaveEntry + BaseSaveCollection + PlayerPrefs + Newtonsoft JSON
 
 > **Loại tài liệu:** Plan — developer tự code lại để nắm logic. `.md` thiết kế + `.html` viết **sau** khi có source.
 >
 > **For agentic workers:** REQUIRED SUB-SKILL: superpowers:subagent-driven-development hoặc superpowers:executing-plans. Steps dùng checkbox (`- [ ]`).
 
-**Goal:** Lưu tiến độ người chơi **có kiểu**, **quản lý tập trung tại một nơi nhìn thấy được**, **không mất khi app bị kill** (tối đa một chu kỳ autosave), **không god-blob**. Mọi thứ persist được — từ một cờ `bool` tới cả model tiến độ — đều là một `SaveEntry<T>`, và mọi `SaveEntry<T>` đều là field của một ScriptableObject duy nhất: `SaveCollection`. Collection lo quét, kiểm trùng key, load, autosave, flush và bước `PlayerPrefs.Save()`; entry chỉ giữ giá trị + cờ dirty + sự kiện on-change.
+**Goal:** Lưu tiến độ người chơi **có kiểu**, **quản lý tập trung tại một nơi nhìn thấy được**, **không mất khi app bị kill** (tối đa một chu kỳ autosave), **không god-blob**, và **không một type nào của dự án bị biên dịch vào assembly SDK**. Mọi thứ persist được — từ một cờ `bool` tới cả model tiến độ — đều là một `SaveEntry<T>`, và mọi `SaveEntry<T>` đều là field của **một** ScriptableObject duy nhất: một class dẫn xuất từ `BaseSaveCollection`, khai trong assembly của dự án. Collection lo quét, kiểm trùng key, load, autosave, flush và bước `PlayerPrefs.Save()`; entry chỉ giữ giá trị + cờ dirty + sự kiện on-change.
 
-**Architecture:** 3 tầng, tổng **10 file** (3 contract + 3 impl + 1 composite + 3 demo).
+**Architecture:** 3 tầng, tổng **9 file** — 6 trong SDK (3 contract + 2 impl + 1 composite), 3 trong assembly của dự án.
 
 ```
-Contract   (ISaveEntry, SaveEntry<T>,      key + default + dirty + on-change · CHỈ nói bằng chuỗi payload
-            ISaveCollection)                cửa Initialize/FlushAll/Flush
-Collection (SaveCollection + SaveDriver)    quét field · kiểm key · load · autosave · flush hai giai đoạn ·
-                                            PlayerPrefs.Save() một lần mỗi lượt · hỏng → default + log
-Game       (partial class + partial iface)  model + key + giá trị mặc định, khai lúc authoring
+Contract   (ISaveEntry, SaveEntry<T>,       key + default + dirty + on-change · CHỈ nói bằng chuỗi payload
+            ISaveCollection)                 cửa Initialize/FlushAll/Flush · interface thuần, KHÔNG derive IService
+            SDK, Abstractions
+
+Máy móc    (BaseSaveCollection               abstract · quét field · kiểm key · load · autosave · flush hai giai
+            + SaveDriver)                    đoạn · PlayerPrefs.Save() một lần mỗi lượt · hỏng → default + log
+            SDK, Implementations
+
+Domain     (IGameSave + GameSave)            model + key + giá trị mặc định + property có kiểu + [Service] ×2,
+            dự án, com.FelixFelicis          khai lúc authoring — không type nào của nó lộ vào SDK
 ```
 
 **Tech Stack:** C#, UniTask, `Sisus.Init` (`[Service]`), Odin Inspector (`[Button]`, `[GUIColor]` — DLL precompiled, mọi asmdef tự reference), Newtonsoft.Json (package `com.unity.nuget.newtonsoft-json`), PlayerPrefs, `System.Reflection`. Unity 6000.3. **Không** đụng asmdef của SDK, **không** thêm package nào, **không** Addressables, **không** toán.
@@ -22,11 +27,12 @@ Game       (partial class + partial iface)  model + key + giá trị mặc đị
 
 | Ràng buộc | Giá trị |
 |---|---|
-| Namespace | `Horcrux.Runtime.Abstractions.Persistence` · `Horcrux.Runtime.Implementations.Persistence` |
+| Namespace | SDK: `Horcrux.Runtime.Abstractions.Persistence` · `Horcrux.Runtime.Implementations.Persistence`. Dự án: namespace của chính nó (`FelixFelicis.Save` trong repo này) — **không** nằm dưới `Horcrux.*` |
 | Ngôn ngữ trong code | Comment và XML doc viết **tiếng Anh**, khớp với toàn bộ `.cs` đang có trong SDK |
 | Hiệu năng | Gán `Value` hoặc `MarkDirty` chạy theo nhịp **tương tác** — chỉ set cờ + phát event, **không** serialize. Serialize dồn về nhịp flush (autosave mặc định 5 giây + pause/quit) và chỉ chạm entry đang dirty. Reflection quét field và load: **một lần mỗi phiên**, có cache |
 | Ngân sách dữ liệu | Tổng payload **vài chục KB**. `PlayerPrefs.Save()` ghi lại **toàn bộ** kho prefs mỗi lượt flush có entry dirty; vượt ngưỡng thì PlayerPrefs không còn là chỗ đúng nữa — xem mục "Ba giới hạn của cách lưu này". Con số thật lấy bằng nút `Print all payloads` ở Task 4 |
-| SOLID | Collection chỉ biết `ISaveEntry`, không biết kiểu nào bên trong · entry không biết chỗ lưu, chỉ nói bằng chuỗi payload · hệ SDK **nhận vào** entry của mình, không tự khai · không type nào trong hệ mang ngữ nghĩa game |
+| SOLID | Collection chỉ biết `ISaveEntry`, không biết kiểu nào bên trong · entry không biết chỗ lưu, chỉ nói bằng chuỗi payload · hệ SDK **nhận vào** entry của mình, không tự khai · không type nào trong SDK mang ngữ nghĩa game, và không type nào của dự án được gọi tên trong SDK |
+| Ranh giới assembly | SDK không tham chiếu assembly của dự án, và **không** có `.asmref` nào kéo file dự án vào SDK. Chiều phụ thuộc đúng một hướng: dự án → SDK |
 | Editor-first | Key, giá trị mặc định và chu kỳ autosave đều là **cấu hình**, phơi ra Inspector. Kiểm trùng key chạy được **lúc authoring**, không cần Play |
 | An toàn | Đọc fail → giữ giá trị mặc định + log, **không throw** · ghi fail → **giữ dirty**, log, chu kỳ sau thử lại · try/catch quanh **từng** callback `Changed` · autosave loop nhận `destroyCancellationToken` |
 | Bất biến | ① key là **hợp đồng wire format** — chuỗi điền trong Inspector, không suy từ tên type hay tên field ② dirty reset ở **đúng một nơi** (collection), và chỉ **SAU** khi `PlayerPrefs.Save()` thành công ③ serialize chỉ xảy ra trong nhịp flush ④ **`PlayerPrefs.SetString` chỉ xuất hiện đúng một chỗ trong cả hệ** — không có cửa ghi thứ hai ⑤ không có đường "chạy no-op âm thầm": key trùng, key rỗng, field chưa gán, collection rỗng, ghi/đọc fail — đều có log |
@@ -35,16 +41,18 @@ Game       (partial class + partial iface)  model + key + giá trị mặc đị
 
 | Nhóm | Chốt |
 |---|---|
-| **Ai gọi** | Game khai mọi `SaveEntry` trong partial class của `SaveCollection` (cặp partial class + partial interface, y khuôn `RCVariableCollection`) · gameplay và UI gán `Value`, hoặc mutate model rồi `MarkDirty()`, hoặc subscribe `Changed` · hệ SDK **nhận vào** entry của mình qua Init, không tự khai · `FlushAll` hệ tự gọi (autosave + pause/quit); game gọi `Flush(entry)` để chốt sổ một entry sớm |
-| **Mục tiêu** | Một nơi duy nhất nhìn thấy mọi thứ game lưu · trùng key bắt được **lúc authoring** · mọi giá trị persist được đều nằm trong vòng flush, không có ngoại lệ · quên khởi tạo không làm mất tiến độ · thêm entry mới không sửa SDK và không đụng entry khác |
+| **Ai gọi** | Dự án khai mọi `SaveEntry` trên `GameSave` — một `sealed class` dẫn xuất từ `BaseSaveCollection`, nằm trong assembly của dự án — và phơi chúng ra qua `IGameSave` (cùng khuôn với `RemoteConfigCollectionPlan.md`) · gameplay và UI gán `Value`, hoặc mutate model rồi `MarkDirty()`, hoặc subscribe `Changed` · hệ SDK **nhận vào** entry của mình qua Init, không tự khai · `FlushAll` hệ tự gọi (autosave + pause/quit); game gọi `Flush(entry)` để chốt sổ một entry sớm |
+| **Mục tiêu** | Một nơi duy nhất nhìn thấy mọi thứ game lưu · trùng key bắt được **lúc authoring** · mọi giá trị persist được đều nằm trong vòng flush, không có ngoại lệ · quên khởi tạo không làm mất tiến độ · thêm entry mới không sửa SDK và không đụng entry khác · **model của dự án không bị biên dịch vào assembly SDK**, nên submodule commit được một mình |
 | **Ngân sách** | Gán hoặc `MarkDirty`: mỗi tương tác, phải rẻ — chỉ cờ + event · serialize + `PlayerPrefs.Save()`: mỗi chu kỳ autosave, pause, quit, và mỗi lần `Flush(entry)` · reflection + load: một lần mỗi phiên. Không hot path mỗi frame |
-| **Ranh giới** | SDK: `SaveEntry<T>`, `SaveCollection`, `SaveDriver`, `SaveBootStep` tuỳ chọn, nút Editor. Game: model, key, giá trị mặc định, interval, và toàn bộ phần partial |
-| **Hướng phát triển thật** | Chuyển kho sang file trên đĩa khi chạm một trong ba giới hạn ở mục ngay dưới. Entry chỉ nói bằng **chuỗi payload** và không biết `PlayerPrefs` tồn tại, nên việc đó sửa nội bộ `SaveCollection` — không đụng entry, không đụng code game |
+| **Ranh giới** | SDK: `ISaveEntry`, `SaveEntry<T>`, `ISaveCollection`, `BaseSaveCollection`, `SaveDriver`, `SaveBootStep` tuỳ chọn, nút Editor, và `KeyPrefix` (wire format). Dự án: model, key, giá trị mặc định, interval, `IGameSave`, `GameSave`, hai dòng `[Service]`, `[CreateAssetMenu]`, đường dẫn Resources |
+| **Hướng phát triển thật** | Chuyển kho sang file trên đĩa khi chạm một trong ba giới hạn ở mục ngay dưới. Entry chỉ nói bằng **chuỗi payload** và không biết `PlayerPrefs` tồn tại, nên việc đó sửa nội bộ `BaseSaveCollection` — không đụng entry, không đụng code game |
 
 **Những gì cố ý KHÔNG làm, kèm lý do** (*xoá nó đi thì hỏng ở đâu*):
 
 | Không làm | Vì sao |
 |---|---|
+| `partial class SaveCollection` trong SDK + `.asmref` phía dự án | Mọi phần của một `partial` phải cùng một assembly, nên nửa của dự án buộc phải biên dịch vào `com.horcrux.runtime` — và type nó **gọi tên** (`SaveEntry<PlayerProgress>`) cũng phải nằm trong đó, kéo theo cả chuỗi phụ thuộc của model. Kết quả: file nằm trong thư mục dự án nhưng domain thuộc về SDK, và một model cần thứ gì của `com.FelixFelicis` là bế tắc — chiều ngược lại là circular reference. Ràng buộc §0.10 |
+| Cho `ISaveCollection` derive `IService<ISaveCollection>` | Interface của dự án derive cả nó lẫn `IService<IGameSave>` sẽ thừa hưởng **hai** thành viên `Service` → mọi lần đọc `IGameSave.Service` là lỗi biên dịch CS0229. Ràng buộc §0.10 |
 | Khái niệm `Prefs<T>` riêng cho giá trị lẻ | Giá trị lẻ và model chỉ khác nhau ở **một bước** — cách biến thành chuỗi. Dựng bộ máy thứ hai cho một bước là đặt giá trị lẻ ra **ngoài** cờ dirty và ngoài `PlayerPrefs.Save()`, tức là ra ngoài chính bảo đảm mà hệ tuyên bố |
 | `ISerializer` | Hệ này có **đúng một** format. Interface cho một implementation là một lớp phải đọc mà đầu kia không có ai đứng |
 | `ISaveStore` | Đúng một chỗ lưu đang có thật. Ranh giới "entry chỉ nói bằng chuỗi payload" đã đủ để đổi chỗ lưu sau này mà không đụng entry — đó là chỗ đáng phòng xa, và nó tốn 0 dòng |
@@ -60,11 +68,11 @@ Game       (partial class + partial iface)  model + key + giá trị mặc đị
 
 | Cái có sẵn | Kết luận |
 |---|---|
-| `IService<T>` (`Abstractions/Foundations/IService.cs`) | **Dùng lại** cho `ISaveCollection`. Save là hệ **bắt buộc** — thiếu asset trong `Resources/Config/` là lỗi cấu hình, phải lộ ngay lần Play đầu, nên `IService` (throw) chứ không `IOptionalService` |
-| `RCVariableCollection` + `RCVariable<T>` + `RegisteredRCVar` | **Dùng lại khuôn**, không dùng lại code: cùng cơ chế `[Service(ResourcePath)]` + partial class + attribute + reflection quét field. Ba chỗ cố ý đảo ngược lại nằm ở bảng trong Task 1 — lý do gốc của chúng là *"cho developer thấy giá trị fetch về ngay trong asset"*, lý do đó không còn đúng khi thứ được lưu là dữ liệu của người chơi |
+| `IService<T>` (`Abstractions/Foundations/IService.cs`) | **Dùng lại**, nhưng ở **phía dự án**: `IGameSave` derive nó, `ISaveCollection` thì không (§0.10). Save là hệ **bắt buộc** — thiếu asset trong `Resources/Config/` là lỗi cấu hình, phải lộ ngay lần Play đầu, nên `IService` (throw) chứ không `IOptionalService` |
+| `BaseRemoteConfigCollection` + `RCVariable<T>` + `RegisteredRCVar` (`RemoteConfigCollectionPlan.md`) | **Dùng lại khuôn**, không dùng lại code: cùng cơ chế abstract base trong SDK + subclass của dự án + attribute + reflection quét field + hai dòng `[Service]`. Hai hệ cố ý dùng **một** khuôn, nên bốn ràng buộc §0.10 là ràng buộc chung của cả hai. Ba chỗ cố ý đảo ngược so với `RCVariable<T>` nằm ở bảng trong Task 1 — lý do gốc của chúng là *"cho developer thấy giá trị fetch về ngay trong asset"*, lý do đó không còn đúng khi thứ được lưu là dữ liệu của người chơi |
 | `BootStep` + `BootstrapRunner` | **Dùng lại** cho `SaveBootStep` tuỳ chọn ở nhánh Composites. `BootStep` đã có sẵn `OnAppPause`/`OnAppQuit`, và runner fan-out **ngược thứ tự** cho cả hai — đó chính là thứ magic method của một MonoBehaviour lẻ không hứa được |
 | `EventBus` (Utilities) | **Không dùng** — `Changed` là event nội bộ một entry, listener wire trực tiếp |
-| `MonoSingleton` | **Không dùng** — đăng ký qua `[Service]`, như tiền lệ `BootstrapRunner` và `RCVariableCollection` |
+| `MonoSingleton` | **Không dùng** — đăng ký qua `[Service]` trên class của dự án, cùng khuôn `BaseRemoteConfigCollection` |
 | `ISaveUnit.cs` đang có | **Xoá** — mảnh còn lại của kiến trúc cũ, không có implementation nào |
 
 ## Ba giới hạn của cách lưu này
@@ -81,9 +89,9 @@ Con số thật lấy bằng nút `Print all payloads` ở Task 4 — nó in đ�
 
 ---
 
-## §0. Chín ràng buộc thật
+## §0. Mười ràng buộc thật
 
-Không có toán. Năm sự thật của nền tảng và bốn bug có thật trong repo quyết định hình dạng code — đọc trước khi viết.
+Không có toán. Năm sự thật của nền tảng, bốn bug có thật trong repo, và một ranh giới của C# cộng Unity quyết định hình dạng code — đọc trước khi viết.
 
 ### 0.1. PlayerPrefs cũng là một file trên đĩa — biết nó là file nào thì mới đặt đúng ranh giới
 
@@ -171,26 +179,52 @@ Chặn bằng cấu trúc: `Initialize()` gọi `ResetRuntimeState()` cho **mọ
 
 ### 0.9. Bước khởi tạo bắt buộc mà quên gọi thì mất dữ liệu — không được để nó phụ thuộc trí nhớ
 
-*Đã sai một lần — chính repo này:* `RCVariableCollection.Initialize()` được tài liệu hướng dẫn game tự gọi, và grep cả `Assets` cho `.Initialize()` hiện **không ra caller nào** ngoài hai kết quả thuộc Odin. Hệ dựng xong, không ai bấm nút khởi động, và không có gì báo.
+*Đã sai một lần — chính repo này:* `BaseRemoteConfigCollection.Initialize()` được tài liệu hướng dẫn game tự gọi, và grep cả `Assets` cho `.Initialize()` hiện **không ra caller nào** ngoài hai kết quả thuộc Odin. Hệ dựng xong, không ai bấm nút khởi động, và không có gì báo.
 
 Với remote config, cái giá của việc quên là giá trị rơi về default. Với save, cái giá là **người chơi mất tiến độ** — và mất theo kiểu tệ nhất: entry chưa load nên mang giá trị mặc định, rồi flush kế tiếp ghi đè giá trị mặc định đó lên save thật.
 
-Nên `Initialize()` ở hệ này có **hai lối vào cùng chạy một thân idempotent**: gọi tường minh từ `SaveBootStep` để trả chi phí load ở nơi có màn hình loading, hoặc không gọi thì `EnsureInitialized()` ở mọi cửa vào công khai tự lo. Đây là chỗ cố ý đi khác khuôn `RCVariableCollection`.
+Nên `Initialize()` ở hệ này có **hai lối vào cùng chạy một thân idempotent**: gọi tường minh từ `SaveBootStep` để trả chi phí load ở nơi có màn hình loading, hoặc không gọi thì `EnsureInitialized()` ở mọi cửa vào công khai tự lo. Đây là chỗ cố ý đi khác khuôn `BaseRemoteConfigCollection`.
+
+### 0.10. Ranh giới assembly — bốn sự thật quyết định vì sao khuôn là kế thừa, không phải `partial`
+
+Domain của dự án phải nằm trong assembly của dự án. Bốn sự thật dưới là lý do khuôn có hình dạng này; cả bốn đã kiểm bằng phép thử chạy được, đừng suy lại từ trực giác.
+
+**① `partial` không đi qua được ranh giới assembly, và nó kéo theo cả model.** Mọi phần của một `partial` type phải được biên dịch trong **cùng một** assembly. Nên một `partial class SaveCollection` khai trong `com.horcrux.runtime` buộc nửa của dự án phải đi vào assembly đó — bằng `.asmref`. Nhưng nửa đó **gọi tên** `SaveEntry<PlayerProgress>`, và một type được gọi tên bên trong `com.horcrux.runtime` phải tra được từ danh sách references của assembly đó. `PlayerProgress` nằm trong `com.FelixFelicis`, mà `com.FelixFelicis` đã reference `com.horcrux.runtime` — thêm chiều ngược lại là **circular reference**, Unity từ chối biên dịch. Nên model, và mọi thứ model phụ thuộc, bị kéo vào assembly SDK theo. Kế thừa không có vấn đề này: subclass **là** một type của dự án, và nó chỉ gọi tên xuống phía SDK.
+
+**② Contract của SDK không được derive `IService<>`.** `IService<out T>` khai `Service` là thành viên **static** ngay trong interface. C# **cho** đọc thành viên static của interface nền qua tên interface dẫn xuất — đó là lý do `ILevelCheater.Service` hiện nay biên dịch được. Nhưng một interface thừa hưởng **hai** instantiation khác nhau của `IService<>` thì cái tên `Service` nhập nhằng:
+
+```csharp
+public interface ISaveCollection : IService<ISaveCollection> { }              // nếu giữ IService ở contract
+public interface IGameSave : ISaveCollection, IService<IGameSave> { }
+
+var x = IGameSave.Service;
+// error CS0229: Ambiguity between 'IService<ISaveCollection>.Service' and 'IService<IGameSave>.Service'
+```
+
+Đây là lỗi **biên dịch**, và nó nổ ở đúng thứ khuôn này tồn tại để giữ: call site không cast. Nên `ISaveCollection` là interface thuần, và chỉ `IGameSave` derive `IService<>`. Code SDK cần contract thì viết `IService<ISaveCollection>.Service` — chạy được vì `IService<T>.Service` chỉ là `Service.Get<T>()`, không đòi `T` phải derive nó. Đổi lại, dự án phải đăng ký **cả hai** service type (Task 5).
+
+**③ `[Service]` không di truyền.** `ServiceAttribute` khai `AllowMultiple = true, Inherited = false`. `Inherited = false` nghĩa là một `[Service]` viết trên `BaseSaveCollection` **không** áp cho subclass: service không được đăng ký, và `Service.Get<>()` ném exception ở lần chạm đầu tiên. Nên `[Service]`, `[CreateAssetMenu]` và đường dẫn Resources đều thuộc dự án. `AllowMultiple = true` là thứ cho phép ②: một class dẫn xuất mang hai dòng `[Service]` cùng một `ResourcePath`, và `Resources.Load` trả về **cùng một** instance asset nên không sinh hai object.
+
+**④ Reflection thấy private field của subclass, không thấy của base.** `GetType()` trả về type **thật lúc chạy**, nên `GetEntryFields()` viết trong `BaseSaveCollection` lấy đúng những `private` field mà `GameSave` khai. Mặt còn lại: `GetFields` **không** trả về private field khai trên chính base class. Nên `BaseSaveCollection` không thể tự khai một entry private rồi mong nó vào danh sách — nó sẽ bị bỏ qua **không có lỗi nào**. Hôm nay SDK không khai entry nào nên không ảnh hưởng; ngày nào cần thì field đó phải là `protected`.
+
+**Một bẫy đi kèm, không có trong bản `partial`:** magic method của Unity bị subclass che. Với `partial` chỉ có một class nên không có gì che nhau; với kế thừa, một `OnDestroy` hay `OnDisable` khai trên `GameSave` sẽ che bản của base, Unity gọi bản của subclass, và việc dọn dẹp của base **không chạy** — im lặng. Hệ này hôm nay không dùng magic method nào trên collection, nên chưa chạm; nếu về sau thêm thì khai `protected virtual` để `override` là đường duy nhất.
 
 ---
 
 ## Bản đồ triển khai
 
-| Task | File | Nội dung |
-|---|---|---|
-| 1 | `Abstractions/Foundations/Persistence/` — `ISaveEntry.cs` · `SaveEntry.cs` · `ISaveCollection.cs`; **xoá** `ISaveUnit.cs` | 3 contract |
-| 2 | `Implementations/Foundations/Persistence/SaveCollection.cs` | lõi collection |
-| 3 | `Implementations/Foundations/Persistence/SaveDriver.cs` | autosave + pause/quit |
-| 4 | `SaveCollection.cs` (thêm khối `#if UNITY_EDITOR`) | 3 nút Editor |
-| 5 | `Implementations/Composites/Persistence/SaveBootStep.cs` | flush có thứ tự, tuỳ chọn |
-| 6 | `Abstractions/.../Persistence/Demo/` + `Implementations/.../Persistence/Demo/` | demo + nghiệm thu |
+| Task | Ở đâu | File | Nội dung |
+|---|---|---|---|
+| 1 | SDK | `Abstractions/Foundations/Persistence/` — `ISaveEntry.cs` · `SaveEntry.cs` · `ISaveCollection.cs`; **xoá** `ISaveUnit.cs` | 3 contract |
+| 2 | SDK | `Implementations/Foundations/Persistence/BaseSaveCollection.cs` | lõi collection, abstract |
+| 3 | SDK | `Implementations/Foundations/Persistence/SaveDriver.cs` | autosave + pause/quit |
+| 4 | SDK | `BaseSaveCollection.cs` (thêm khối `#if UNITY_EDITOR`) | 3 nút Editor |
+| 5 | **Dự án** | `IGameSave.cs` · `GameSave.cs` · `DemoSaveDriver.cs` trong `com.FelixFelicis` | cặp file của dự án + demo + nghiệm thu |
+| 6 | SDK | `Implementations/Composites/Persistence/SaveBootStep.cs` | flush có thứ tự, tuỳ chọn |
 
-Thứ tự: **1 → 2 → 3 → 4 → 5 → 6**. Task 4 sửa file của Task 2; Task 5 và 6 độc lập với nhau.
+Thứ tự: **1 → 2 → 3 → 4 → 5 → 6**. Task 4 sửa file của Task 2.
+
+**Task 5 là chỗ hệ chạy được lần đầu, và đó là hệ quả trực tiếp của §0.10.** Không có subclass của dự án thì không tạo được asset, không đăng ký được service, và không có entry nào để quét — nên **Task 1–4 không nghiệm thu bằng Play được**, chỉ nghiệm thu bằng "compile sạch". Đây không phải thiếu sót của plan: SDK cố ý không tự chạy được một mình, vì tự chạy được nghĩa là nó đang mang một entry, và một entry là domain. Task 6 làm sau Task 5 vì phép kiểm thứ tự flush của nó cần một entry thật để nhìn.
 
 ---
 
@@ -204,7 +238,7 @@ Thứ tự: **1 → 2 → 3 → 4 → 5 → 6**. Task 4 sửa file của Task 2;
 
 **Interfaces:**
 - Consumes: `IService<T>` (`Abstractions/Foundations/IService.cs`) · `Newtonsoft.Json.JsonConvert`.
-- Produces: `ISaveEntry` (2 property + 4 method) · `SaveEntry<T>` (game khai) · `partial interface ISaveCollection : IService<ISaveCollection>` (1 property + 3 method).
+- Produces: `ISaveEntry` (2 property + 4 method) · `SaveEntry<T>` (dự án khai) · `interface ISaveCollection` (1 property + 3 method, **không** derive `IService<>`).
 
 **Quyết định thiết kế:**
 
@@ -222,7 +256,7 @@ Thứ tự: **1 → 2 → 3 → 4 → 5 → 6**. Task 4 sửa file của Task 2;
 | `implicit operator T` | Tiền lệ `RCVariable<T>` đã có, và nó làm call site đọc gọn: `if (collection.HasRated)` |
 | `Changed` là `event Action<T>`, fan-out qua `GetInvocationList` + try/catch từng listener | Đăng ký thưa nên `event` là đúng mức. Một listener ném exception không được kéo cả hệ chết. Alloc theo nhịp tương tác, không theo frame |
 | `ReadPayload` cũng bắn `Changed` | "Value đổi thì `Changed` bắn" là **một** luật không ngoại lệ |
-| `ISaveCollection` là `partial interface` | Game khai thêm property cho entry của mình, y khuôn `IRCVariableCollection` |
+| `ISaveCollection` là interface **thuần** — không `partial`, không derive `IService<>` | `partial` không đi qua ranh giới assembly nên nửa của dự án sẽ kéo cả model vào SDK; và derive `IService<>` ở đây làm `IGameSave.Service` nhập nhằng, lỗi CS0229 (§0.10 ① và ②). Property có kiểu của dự án nằm trên `IGameSave` ở Task 5 |
 
 - [ ] **Step 1: `ISaveEntry.cs`**
 
@@ -267,7 +301,7 @@ using UnityEngine;
 
 namespace Horcrux.Runtime.Abstractions.Persistence
 {
-    /// <summary>One saved value of any size — a flag, a counter, or a whole progress model. Declared as a field on SaveCollection.</summary>
+    /// <summary>One saved value of any size — a flag, a counter, or a whole progress model. Declared as a field on the project's save collection.</summary>
     /// <remarks>
     /// Small values and big models share this one type on purpose. They differ only in how the value becomes a
     /// string, and a second type built for that one step is what puts a value outside the dirty flag and outside
@@ -372,13 +406,21 @@ using System.Collections.Generic;
 
 namespace Horcrux.Runtime.Abstractions.Persistence
 {
-    /// <summary>The one place every saved value lives. A REQUIRED service: a missing asset is a setup error, not a runtime case.</summary>
+    /// <summary>The one place every saved value lives. A game project derives its own service interface from this one.</summary>
     /// <remarks>
-    /// A game project adds its own entries as partial declarations — a property here and a backing field on
-    /// SaveCollection — the same two-file pattern RCVariableCollection uses. Both files are required: without
-    /// the property, nothing outside the collection can reach the entry.
+    /// The project side owns the entries: it declares an interface deriving both this one and
+    /// <see cref="IService{T}"/> closed over itself, holding one typed property per entry, and a sealed class
+    /// deriving BaseSaveCollection that implements it. That is what keeps every model and key inside the project's
+    /// own assembly while a call site still reads a value with no cast. Registered as a REQUIRED service by that
+    /// class: a missing asset is a setup error, not a runtime case.
+    /// <para>
+    /// This interface must NOT derive <see cref="IService{T}"/>. A project interface deriving both would inherit
+    /// two static Service members, and every read of it fails to compile with CS0229, ambiguity. Code that needs
+    /// this contract and nothing else asks <see cref="IService{T}"/> closed over this type, which resolves for any
+    /// type whether or not that type derives it.
+    /// </para>
     /// </remarks>
-    public partial interface ISaveCollection : IService<ISaveCollection>
+    public interface ISaveCollection
     {
         /// <summary>Every entry that passed validation. Empty until Initialize has run.</summary>
         IReadOnlyList<ISaveEntry> Entries { get; }
@@ -406,20 +448,23 @@ namespace Horcrux.Runtime.Abstractions.Persistence
 
 ---
 
-### Task 2: `SaveCollection` — lõi
+### Task 2: `BaseSaveCollection` — lõi
 
 **Files:**
-- Create: `Assets/Horcrux/Runtime/Implementations/Foundations/Persistence/SaveCollection.cs`
+- Create: `Assets/Horcrux/Runtime/Implementations/Foundations/Persistence/BaseSaveCollection.cs`
 
 **Interfaces:**
-- Consumes: `ISaveEntry` · `ISaveCollection` (Task 1) · `PlayerPrefs` · `[Service]` của Sisus.Init · `System.Reflection`.
-- Produces: `RegisteredSave` (attribute) · `SaveCollection : ScriptableObject, ISaveCollection` — `Initialize()` · `FlushAll()` · `Flush(ISaveEntry)` · `Entries` · `AutosaveIntervalSeconds` · `const string KeyPrefix`.
+- Consumes: `ISaveEntry` · `ISaveCollection` (Task 1) · `PlayerPrefs` · `System.Reflection`.
+- Produces: `RegisteredSave` (attribute) · `abstract class BaseSaveCollection : ScriptableObject, ISaveCollection` — `Initialize()` · `FlushAll()` · `Flush(ISaveEntry)` · `Entries` · `AutosaveIntervalSeconds` · `const string KeyPrefix`.
 
 **Quyết định thiết kế:**
 
 | Quyết định | Lý do |
 |---|---|
-| ScriptableObject qua `[Service(ResourcePath)]`, không MonoBehaviour trong scene | Không phải đặt GameObject vào scene entry, sống qua mọi lần đổi scene, và key hiện trong Inspector của một asset tra được bằng Project window. Cùng khuôn `RCVariableCollection` |
+| ScriptableObject, không MonoBehaviour trong scene | Không phải đặt GameObject vào scene entry, sống qua mọi lần đổi scene, và key hiện trong Inspector của một asset tra được bằng Project window. Cùng khuôn `BaseRemoteConfigCollection` |
+| `abstract`, và **không** mang `[Service]`, `[CreateAssetMenu]`, hay đường dẫn Resources | `Inherited = false` nên `[Service]` viết ở đây không tới được subclass; `[CreateAssetMenu]` trên type abstract tạo ra một menu item luôn thất bại; đường dẫn asset là quyết định của dự án (§0.10 ③). Ba thứ đó nằm ở Task 5 |
+| `KeyPrefix` **ở lại** SDK | Nó là **wire format**, không phải cấu hình của dự án: đổi nó là mọi save đang có trên máy người chơi thành mồ côi. Để mỗi dự án tự đặt là mời mỗi dự án tự tạo ra một lần đổi không hồi lại được |
+| `GetEntryFields()` dùng `Public \| NonPublic \| Instance` | Quét trên `GetType()` nên nó thấy private field mà subclass khai. Nó **không** thấy private field khai trên chính base — nên base không được tự khai entry (§0.10 ④) |
 | `Initialize()` public **và** `EnsureInitialized()` lazy ở mọi cửa vào | Quên gọi thì entry mang giá trị mặc định và flush kế **ghi đè giá trị mặc định lên save thật**. Đây là chỗ cố ý khác khuôn cũ: hai lối vào, một thân idempotent |
 | `ScanEntries()` là **một** thân dùng chung cho `Initialize` và nút `Validate keys` | Hai bản kiểm sẽ lệch nhau, và lệch kiểu nguy hiểm nhất: nút báo sạch trong khi runtime vẫn bỏ entry. Cùng một hàm thì không thể lệch |
 | Kiểm ba thứ: field chưa gán · key rỗng · trùng key — mỗi lỗi một `LogError` nêu **tên field** | Nêu key thôi thì không đủ để mở Inspector tìm; tên field là thứ developer nhìn thấy trên màn hình |
@@ -432,13 +477,9 @@ namespace Horcrux.Runtime.Abstractions.Persistence
 | `Entries` không hứa thứ tự khai báo | `Type.GetFields` không đảm bảo thứ tự. Hứa một thứ tự không có là mở đường cho code sau dựa vào nó |
 | Flush khi 0 entry → `LogWarning` đúng một lần | Một hệ save không bao giờ được no-op trong im lặng |
 
-**Editor setup — bước thật:**
+**Editor setup:** không có. Type này `abstract` nên không tạo được asset từ nó — asset và mọi bước Inspector thuộc Task 5, sau khi dự án đã có subclass.
 
-1. Project window → chuột phải → `Create` → `Horcrux` → `SaveCollection`.
-2. Đặt asset vào **`Assets/.../Resources/Config/SaveCollection.asset`** — đường dẫn phải khớp `ResourcePath`, sai là service không resolve được.
-3. Inspector: đặt `Autosave Interval Seconds` (mặc định 5) theo game.
-
-- [ ] **Step 1: `SaveCollection.cs`**
+- [ ] **Step 1: `BaseSaveCollection.cs`**
 
 ```csharp
 using System;
@@ -446,12 +487,11 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using Horcrux.Runtime.Abstractions.Persistence;
-using Sisus.Init;
 using UnityEngine;
 
 namespace Horcrux.Runtime.Implementations.Persistence
 {
-    /// <summary>Marks a SaveEntry field on SaveCollection as one the collection owns. A field without it is ignored.</summary>
+    /// <summary>Marks a SaveEntry field on the project's save collection as one the collection owns. A field without it is ignored.</summary>
     [AttributeUsage(AttributeTargets.Field)]
     public sealed class RegisteredSave : Attribute { }
 
@@ -459,15 +499,22 @@ namespace Horcrux.Runtime.Implementations.Persistence
     /// <remarks>
     /// Storage is PlayerPrefs — one entry per key, holding the value as JSON. The contract is "lose at most ONE
     /// autosave cycle": on Android a swipe-kill never runs OnApplicationQuit, so pause is the last signal we trust.
-    /// A game declares its entries as partial fields on this class; nothing registers itself at runtime, which is
-    /// what makes a duplicate key catchable while authoring rather than after shipping.
+    /// <para>
+    /// A game project derives one sealed class from this IN ITS OWN ASSEMBLY and declares the entries there, so no
+    /// save model ever has to be compiled into this SDK. The derived class carries the three things missing here on
+    /// purpose — the Service registration, the CreateAssetMenu entry and the Resources path — because
+    /// ServiceAttribute is declared Inherited = false and a registration written here would never reach it. Nothing
+    /// registers itself at runtime, which is what makes a duplicate key catchable while authoring rather than after
+    /// shipping.
+    /// </para>
+    /// <para>
+    /// The scan reads the runtime type, so it picks up the private fields of the derived class. It does NOT pick up
+    /// private fields declared on this class: an entry added here would have to be protected, and one left private
+    /// is dropped with no error at all.
+    /// </para>
     /// </remarks>
-    [Service(typeof(ISaveCollection), ResourcePath = ResourcePath)]
-    [CreateAssetMenu(menuName = "Horcrux/SaveCollection", fileName = "SaveCollection")]
-    public partial class SaveCollection : ScriptableObject, ISaveCollection
+    public abstract class BaseSaveCollection : ScriptableObject, ISaveCollection
     {
-        private const string ResourcePath = "Config/SaveCollection";
-
         /// <summary>Sits in front of every entry key.</summary>
         /// <remarks>PlayerPrefs is one flat namespace shared with remote config caches, ad and analytics SDKs.
         /// This prefix is what keeps a same-named key of theirs from landing on a player's progress. Wire format:
@@ -694,7 +741,7 @@ namespace Horcrux.Runtime.Implementations.Persistence
 | Gọi `FlushAll` trước khi ai đó gọi `Initialize` | tự initialize, load đúng, không `NullReferenceException` |
 | Gọi `Initialize()` hai lần | kết quả y hệt một lần; không nhân đôi entry, không tạo driver thứ hai |
 
-- [ ] **Step 3: Commit** — `feat(sdk): add SaveCollection (scan, validate, load, two-phase flush)`
+- [ ] **Step 3: Commit** — `feat(sdk): add BaseSaveCollection (scan, validate, load, two-phase flush)`
 
 ---
 
@@ -704,8 +751,8 @@ namespace Horcrux.Runtime.Implementations.Persistence
 - Create: `Assets/Horcrux/Runtime/Implementations/Foundations/Persistence/SaveDriver.cs`
 
 **Interfaces:**
-- Consumes: `ISaveCollection` · `SaveCollection` (Task 2) · UniTask.
-- Produces: `SaveDriver : MonoBehaviour` — `internal static Spawn(SaveCollection)`.
+- Consumes: `ISaveCollection` · `BaseSaveCollection` (Task 2) · UniTask.
+- Produces: `SaveDriver : MonoBehaviour` — `internal static Spawn(BaseSaveCollection)`.
 
 **Quyết định thiết kế:**
 
@@ -742,7 +789,7 @@ namespace Horcrux.Runtime.Implementations.Persistence
         private ISaveCollection collection;
         private float intervalSeconds;
 
-        internal static SaveDriver Spawn(SaveCollection owner)
+        internal static SaveDriver Spawn(BaseSaveCollection owner)
         {
             // Visible on purpose: an autosave loop is a real thing running, and a developer must be able to see it.
             var host = new GameObject("[Save]");
@@ -793,10 +840,10 @@ namespace Horcrux.Runtime.Implementations.Persistence
 
 ---
 
-### Task 4: Ba nút Editor trên `SaveCollection`
+### Task 4: Ba nút Editor trên `BaseSaveCollection`
 
 **Files:**
-- Modify: `Assets/Horcrux/Runtime/Implementations/Foundations/Persistence/SaveCollection.cs` — thêm khối `#if UNITY_EDITOR` ở cuối class.
+- Modify: `Assets/Horcrux/Runtime/Implementations/Foundations/Persistence/BaseSaveCollection.cs` — thêm khối `#if UNITY_EDITOR` ở cuối class.
 
 **Interfaces:**
 - Consumes: `ScanEntries` · `KeyPrefix` (Task 2) · Odin `[Button]`, `[GUIColor]` · `UnityEditor.EditorUtility`.
@@ -812,8 +859,9 @@ namespace Horcrux.Runtime.Implementations.Persistence
 | `DeleteAllSaveData` chỉ xoá khoá của entry **đang khai**, và nói ra điều đó | `PlayerPrefs` không có API liệt kê khoá, nên khoá mồ côi do đổi tên entry không thể tìm được. Báo con số thật còn hơn để developer tin là đã sạch |
 | `PrintAllPayloads` in cả độ dài từng payload và tổng | Đây là con số duy nhất trả lời được "đã chạm ngưỡng vài chục KB chưa" |
 | Cả ba nút chạy được **ngoài Play mode** | Chúng đọc field qua reflection, không đọc `entries` — nên trùng key lộ ra lúc đang dựng, đúng lúc còn sửa rẻ |
+| Ba nút ở lại base, không chuyển sang subclass của dự án | Chúng chỉ chạm `ScanEntries` và `KeyPrefix`, không chạm type nào của dự án. Odin vẽ `[Button]` khai ở base trên Inspector của asset dẫn xuất, nên chuyển sang dự án là bắt mỗi dự án chép lại ba nút giống nhau |
 
-- [ ] **Step 1: thêm vào cuối `SaveCollection`, trước dấu `}` của class**
+- [ ] **Step 1: thêm vào cuối `BaseSaveCollection`, trước dấu `}` của class**
 
 ```csharp
 #if UNITY_EDITOR
@@ -899,125 +947,86 @@ namespace Horcrux.Runtime.Implementations.Persistence
 
 ---
 
-### Task 5: `SaveBootStep` — flush có thứ tự, tuỳ chọn
+### Task 5: Cặp file của dự án + demo + nghiệm thu
 
-**Files:**
-- Create: `Assets/Horcrux/Runtime/Implementations/Composites/Persistence/SaveBootStep.cs`
+Đây là chỗ hệ chạy được lần đầu. Hai file đầu là **cặp file thật** mà mọi dự án dùng SDK này phải viết — không phải demo, không xoá được. File thứ ba là driver nghiệm thu, xoá được sau khi chạy xong.
+
+Ở bản `partial` cũ, phần này buộc phải nằm trong SDK và plan phải gọi nó là *"ngoại lệ duy nhất cho luật SDK không khai entry"*. Giờ nó không còn là ngoại lệ: model và entry nằm trong assembly của dự án, đúng chỗ của chúng.
+
+**Files** — cả ba nằm trong assembly của dự án (gợi ý: `Assets/FelixFelicis/Implements/Save/`):
+- Create: `IGameSave.cs`
+- Create: `GameSave.cs`
+- Create: `DemoSaveDriver.cs` — xoá được sau khi nghiệm thu xong
+- Scene demo (Editor setup dưới).
 
 **Interfaces:**
-- Consumes: `BootStep` (`Abstractions/Foundations/Bootstrap/BootStep.cs`) · `ISaveCollection` (Task 1).
-- Produces: `SaveBootStep : BootStep`.
+- Consumes: `ISaveCollection` · `SaveEntry<T>` · `IService<T>` · `BaseSaveCollection` · `RegisteredSave`.
+- Produces: `IGameSave` (1 property mỗi entry) · `GameSave` (sealed) · `DemoSaveDriver : MonoBehaviour`.
 
 **Quyết định thiết kế:**
 
 | Quyết định | Lý do |
 |---|---|
-| Nằm ở nhánh **Composites**, không phải Foundations | Nó phụ thuộc cả Bootstrap lẫn Persistence. Lõi Persistence ở Foundations vẫn chạy được ở project không dùng Bootstrap |
-| Là **tuỳ chọn**, không thay driver | Driver vẫn chạy autosave. Step này chỉ thêm đường flush **có thứ tự** cho pause và quit |
-| `InitializeAsync` gọi `Initialize()` | Trả chi phí reflection và load ở nơi có màn hình loading, và làm lỗi save lộ ra trong pha boot thay vì giữa gameplay |
-| Chạy hai đường flush cùng lúc là chấp nhận được | Flush là idempotent: đường nào chạy trước cũng đúng, và đường chạy sau bắt nốt phần vừa sinh ra. Lượt không thấy gì dirty không chạm đĩa |
-| Đặt `Order` **thấp** (init sớm) để flush **muộn** | Fan-out pause và quit đi **ngược** chiều init. Step init sớm nhất sẽ flush muộn nhất — đó mới là thứ ta muốn: chốt sổ sau khi mọi hệ đã ghi xong |
+| `IGameSave : ISaveCollection, IService<IGameSave>` | Derive contract để game gọi được `Flush(entry)` và `FlushAll()`; derive `IService<chính mình>` để có `Service` không nhập nhằng. Đây là nửa còn lại của §0.10 ②: contract không derive, dự án thì derive |
+| Hai dòng `[Service]` trên `GameSave`, cùng một `ResourcePath` | Một asset trả lời cho cả hai cửa: game hỏi `IGameSave` để có property có kiểu, `SaveBootStep` trong SDK hỏi `ISaveCollection`. Thiếu dòng thứ hai thì Task 6 ném exception lúc boot. `AllowMultiple = true` cho phép, và `Resources.Load` trả cùng một instance nên không sinh hai object (§0.10 ③) |
+| `sealed` | Không có implementation thứ hai và không có lý do để có. Một chain ba tầng khi chưa ai cần là thêm một bậc người đọc phải leo |
+| Hai file, không một | `IGameSave` là thứ mọi call site đọc; `GameSave` là chi tiết triển khai. Thêm một entry là sửa hai chỗ liền nhau, và IntelliSense ở call site chỉ thấy phần nó cần |
+| `DemoProgress` khai ngay trong `IGameSave.cs` | Ở demo thì gọn hơn. Một dự án thật đặt model ở file riêng trong thư mục của feature sở hữu nó — model là dữ liệu của feature, không phải của collection |
+| Model là `class` dữ liệu thuần, public field | `JsonConvert` là đường duy nhất vào và ra. Không `UnityEngine.Object` (tham chiếu engine không thuộc về một save) và không struct của Unity (`Vector3.normalized` làm serializer đệ quy vô hạn) |
 
-**Editor setup — bước thật:**
-
-1. Trên GameObject có `BootstrapRunner`: add component `SaveBootStep`.
-2. Đặt `Order` **thấp** — vì fan-out pause/quit đi ngược, step init sớm sẽ flush **muộn nhất**, sau khi mọi hệ khác đã ghi xong.
-3. Kéo `SaveBootStep` vào danh sách steps của `BootstrapRunner` nếu runner dùng danh sách tường minh.
-
-- [ ] **Step 1: `SaveBootStep.cs`**
+- [ ] **Step 1: `IGameSave.cs`**
 
 ```csharp
-using System.Threading;
-using Cysharp.Threading.Tasks;
-using Horcrux.Runtime.Abstractions.Bootstrap;
+using System.Collections.Generic;
+using Horcrux.Runtime.Abstractions;
 using Horcrux.Runtime.Abstractions.Persistence;
 
-namespace Horcrux.Runtime.Implementations.Persistence
+namespace FelixFelicis.Save
 {
-    /// <summary>Optional: moves the save load into boot, and gives pause and quit an ORDERED flush.</summary>
+    /// <summary>Every value this game saves, typed. Read one through IGameSave.Service.</summary>
     /// <remarks>
-    /// The runner walks steps backwards on pause and quit, so a step that initializes EARLY flushes LAST — after
-    /// every system above it has written. That is the ordering a MonoBehaviour's own magic methods cannot promise.
-    /// This does not replace SaveDriver: the driver still runs the autosave timer, and the second flush of a pause
-    /// finds nothing dirty and never reaches storage.
+    /// Deriving IService here — and NOT on ISaveCollection — is what keeps Service unambiguous. Adding an entry
+    /// means one property here and one field on GameSave; both are required, since nothing outside the class can
+    /// reach a private field.
     /// </remarks>
-    public sealed class SaveBootStep : BootStep
-    {
-        public override UniTask InitializeAsync(CancellationToken ct)
-        {
-            // Pays the reflection scan and the load here, where a loading screen is up and a broken save is visible.
-            ISaveCollection.Service.Initialize();
-            return UniTask.CompletedTask;
-        }
-
-        public override void OnAppPause(bool isPaused)
-        {
-            if (isPaused) ISaveCollection.Service.FlushAll();
-        }
-
-        public override void OnAppQuit() => ISaveCollection.Service.FlushAll();
-    }
-}
-```
-
-- [ ] **Step 2: Kiểm chứng:**
-
-| Input | Kỳ vọng |
-|---|---|
-| Play với `SaveBootStep` trong chain | load xảy ra trong pha boot; `[Save]` xuất hiện ngay sau đó |
-| Một `BootStep` khác `Order` cao hơn ghi vào một entry trong `OnAppPause` | giá trị đó **có** trong payload sau khi pause — chứng minh thứ tự đúng |
-| Pause với cả driver lẫn step | flush chạy hai lần, lần sau không chạm đĩa (không log gì thêm) |
-| Play **không** có `SaveBootStep` | hệ vẫn chạy đủ; load xảy ra ở lần chạm đầu tiên |
-
-- [ ] **Step 3: Commit** — `feat(sdk): add optional SaveBootStep for ordered flush`
-
----
-
-### Task 6: Demo + nghiệm thu
-
-Demo là **bản mẫu chạy được của khuôn hai file** mà game project sẽ dùng, đồng thời là chỗ nghiệm thu. Đây là ngoại lệ duy nhất cho luật "SDK không khai entry": nó là bộ nghiệm thu của chính SDK, và cả thư mục `Demo/` xoá được mà không ảnh hưởng gì.
-
-**Files:**
-- Create: `Assets/Horcrux/Runtime/Abstractions/Foundations/Persistence/Demo/ISaveCollection.Demo.cs`
-- Create: `Assets/Horcrux/Runtime/Implementations/Foundations/Persistence/Demo/SaveCollection.Demo.cs`
-- Create: `Assets/Horcrux/Runtime/Implementations/Foundations/Persistence/Demo/DemoSaveDriver.cs`
-- Scene demo (Editor setup dưới).
-
-- [ ] **Step 1: `ISaveCollection.Demo.cs`** — nửa partial interface
-
-```csharp
-namespace Horcrux.Runtime.Abstractions.Persistence
-{
-    /// <summary>Demo half of the two-file pattern a game project copies. Delete the Demo folders to drop it.</summary>
-    public partial interface ISaveCollection
+    public interface IGameSave : ISaveCollection, IService<IGameSave>
     {
         SaveEntry<DemoProgress> DemoProgress { get; }
         SaveEntry<bool> DemoHasRated { get; }
     }
 
-    /// <summary>Demo model — plain data, public fields. A real save model looks exactly like this.</summary>
+    /// <summary>Demo model — plain data, public fields. A real save model looks exactly like this, in its own file.</summary>
     [System.Serializable]
     public sealed class DemoProgress
     {
         public int coins;
         public int currentLevel = 1;
-        public System.Collections.Generic.List<string> unlockedSkins = new();
+        public List<string> unlockedSkins = new();
     }
 }
 ```
 
-- [ ] **Step 2: `SaveCollection.Demo.cs`** — nửa partial class
+- [ ] **Step 2: `GameSave.cs`**
 
 ```csharp
 using Horcrux.Runtime.Abstractions.Persistence;
+using Horcrux.Runtime.Implementations.Persistence;
+using Sisus.Init;
 using UnityEngine;
 
-namespace Horcrux.Runtime.Implementations.Persistence
+namespace FelixFelicis.Save
 {
-    /// <summary>Demo half of the two-file pattern. A game project writes exactly this shape, in a folder carrying
-    /// a com.horcrux.runtime.asmref so the partial lands in the same assembly.</summary>
-    public partial class SaveCollection
+    /// <summary>This game's saved values. Lives in the game assembly so no save model reaches the SDK.</summary>
+    /// <remarks>Registered twice on purpose: the game reads IGameSave for typed access, SaveBootStep reads
+    /// ISaveCollection for the contract, and both resolve to this one asset.</remarks>
+    [Service(typeof(IGameSave), ResourcePath = ResourcePath)]
+    [Service(typeof(ISaveCollection), ResourcePath = ResourcePath)]
+    [CreateAssetMenu(menuName = "FelixFelicis/SaveCollection", fileName = "SaveCollection")]
+    public sealed class GameSave : BaseSaveCollection, IGameSave
     {
+        // Must match where the asset sits under a Resources folder, or the service never resolves.
+        private const string ResourcePath = "Config/SaveCollection";
+
         [RegisteredSave, SerializeField] private SaveEntry<DemoProgress> demoProgress;
         [RegisteredSave, SerializeField] private SaveEntry<bool> demoHasRated;
 
@@ -1031,18 +1040,19 @@ namespace Horcrux.Runtime.Implementations.Persistence
 
 ```csharp
 using Horcrux.Runtime.Abstractions.Persistence;
+using Horcrux.Runtime.Implementations.Persistence;   // BaseSaveCollection.KeyPrefix, for the corrupt-payload case
 using UnityEngine;
 
-namespace Horcrux.Runtime.Implementations.Persistence.Demo
+namespace FelixFelicis.Save
 {
     /// <summary>Acceptance driver: change values and watch load, autosave and flush through the log. Not for a real game.</summary>
     public sealed class DemoSaveDriver : MonoBehaviour
     {
-        private ISaveCollection save;
+        private IGameSave save;
 
         private void Start()
         {
-            save = ISaveCollection.Service;
+            save = IGameSave.Service;
             save.DemoProgress.Changed += OnProgressChanged;
             LogState();
         }
@@ -1086,7 +1096,7 @@ namespace Horcrux.Runtime.Implementations.Persistence.Demo
         [ContextMenu("Corrupt the progress payload")]
         private void CorruptPayload()
         {
-            PlayerPrefs.SetString(SaveCollection.KeyPrefix + save.DemoProgress.Key, "{ garbage");
+            PlayerPrefs.SetString(BaseSaveCollection.KeyPrefix + save.DemoProgress.Key, "{ garbage");
             PlayerPrefs.Save();
             Debug.Log("[DemoSave] Payload broken — stop Play and Play again to see it handled.", this);
         }
@@ -1103,22 +1113,33 @@ namespace Horcrux.Runtime.Implementations.Persistence.Demo
 
 - [ ] **Step 4: Editor setup** (bước thật):
 
-1. Tạo asset `SaveCollection` và đặt vào `Resources/Config/SaveCollection.asset`.
-2. Inspector của asset: điền key `demo_progress` cho `Demo Progress`, `demo_has_rated` cho `Demo Has Rated`; đặt giá trị mặc định muốn có.
-3. Bấm `Validate keys` — phải sạch **trước khi** Play.
-4. Scene mới `PersistenceDemo` → GameObject `[Demo]` + component `DemoSaveDriver`.
+1. Project window → chuột phải → `Create` → `FelixFelicis` → `SaveCollection`.
+2. Đặt asset vào `Assets/<…>/Resources/Config/SaveCollection.asset` — đường dẫn **sau** `Resources/` phải khớp `ResourcePath`, sai là service không resolve và `Service.Get<>()` ném exception.
+3. Inspector của asset: điền key `demo_progress` cho `Demo Progress`, `demo_has_rated` cho `Demo Has Rated`; đặt giá trị mặc định muốn có; đặt `Autosave Interval Seconds` (mặc định 5).
+4. Bấm `Validate keys` — phải sạch **trước khi** Play.
+5. Scene mới `PersistenceDemo` → GameObject `[Demo]` + component `DemoSaveDriver`.
 
-- [ ] **Step 5: Nghiệm thu tự động** (agent tự chạy — bốn thứ mắt người sót):
+- [ ] **Step 5: Nghiệm thu khuôn kế thừa** — bốn thứ này chỉ Unity kiểm được, và cả bốn là hệ quả trực tiếp của §0.10:
+
+| Kiểm | Cách làm | Kỳ vọng |
+|---|---|---|
+| Unity serialize được `SaveEntry<T>` khai trên subclass | mở asset trong Inspector | vẽ đủ `key` và `defaultValue` của cả hai entry; `value` và `isDirty` **không** hiện vì `[NonSerialized]` |
+| Nút Editor khai ở base hiện trên asset dẫn xuất | mở asset | thấy đủ ba nút `Validate keys`, `Print all payloads`, `Delete all save data` |
+| Scan thấy private field của subclass (§0.10 ④) | bấm `Validate keys` | báo đúng **2** entry |
+| Hai service type trỏ cùng một object (§0.10 ②③) | trong `Start` của `DemoSaveDriver`, so `ReferenceEquals(IGameSave.Service, IService<ISaveCollection>.Service)` | `true`. `false` hoặc exception nghĩa là thiếu một dòng `[Service]`, và Task 6 sẽ chết lúc boot |
+
+- [ ] **Step 6: Nghiệm thu tự động** (agent tự chạy — năm thứ mắt người sót):
 
 | Kiểm | Cách làm | Kỳ vọng |
 |---|---|---|
 | Round-trip mọi kiểu dùng thật | `SaveEntry<T>` với `int` · `bool` · `float` · `string` · một enum · `DemoProgress` có `List`: gán, `WritePayload`, `ReadPayload` vào một entry mới, so giá trị | bằng nhau từng field |
-| **Không còn cửa ghi thứ hai** | `grep -rn "PlayerPrefs.Set" Assets/Horcrux/Runtime` | trong hệ Persistence ra **đúng một** kết quả runtime, nằm trong `FlushInternal`; kết quả trong `Demo/` và trong nút Editor là cố ý và phải đếm riêng |
+| **Không còn cửa ghi thứ hai** | `grep -rn "PlayerPrefs.Set" Assets/Horcrux/Runtime` | trong hệ Persistence ra **đúng một** kết quả runtime, nằm trong `FlushInternal`; kết quả trong nút Editor là cố ý và phải đếm riêng. `DemoSaveDriver` nằm ngoài `Assets/Horcrux` nên không lọt vào phép grep này — kiểm nó riêng |
 | Không còn dấu vết kiến trúc cũ | `grep -rn "ISaveUnit\|SaveUnit\|Prefs<\|PrefsBool\|PrefsInt\|SaveRegistry" Assets` | không kết quả nào |
+| **SDK không mang domain của dự án** | `grep -rn --include=*.cs "FelixFelicis\|DemoProgress\|IGameSave\|GameSave" Assets/Horcrux` và `find . -name "*.asmref"` | không kết quả nào. Giới hạn vào `*.cs` là cố ý: plan này nằm trong `Assets/Horcrux` và có nhắc các tên đó, nhưng tài liệu nói **về** dự án không phải SDK phụ thuộc dự án. Đây là phép kiểm của chính mục tiêu mới trong Goal, và là thứ duy nhất chứng minh submodule commit được một mình |
 | `defaultValue` không bị mutate | lấy `Value`, mutate sâu vào nó (`coins = 999`, `unlockedSkins.Add`), gọi `Initialize()` lại, đọc `Value` | về đúng mặc định đã author; asset không bị đánh dấu dirty |
 | Dirty không tắt trước khi xuống đĩa | dựng ca `PlayerPrefs.Save()` ném exception | mọi entry vừa ghi **còn** dirty, log nêu rõ, lượt sau thử lại |
 
-- [ ] **Step 6: Kịch bản chơi thử** (nghiệm thu này cần Play mode, developer chạy):
+- [ ] **Step 7: Kịch bản chơi thử** (nghiệm thu này cần Play mode, developer chạy):
 
 | Mục | Nội dung |
 |---|---|
@@ -1128,13 +1149,92 @@ namespace Horcrux.Runtime.Implementations.Persistence.Demo
 | Khác trước ra sao | Ở thiết kế cũ, giá trị lẻ như `rated` đi một đường riêng không có cờ dirty, và `PlayerPrefs.Save()` chỉ chạy khi có model dirty — nên ca ④ với app bị kill không qua pause là **mất giá trị**. Trùng key chỉ lộ lúc Play và chỉ giữa các model; ca ⑨ giờ lộ lúc authoring và phủ mọi entry |
 | Dấu hiệu hỏng | coins về 0 sau restart bình thường (mất save) · `dirty=True` còn mãi sau khi payload đã đổi (`ClearDirty` không chạy) · ca ① payload đã đổi ngay khi vừa add (serialize đang bám nhịp tương tác) · ca ④ `rated` về mặc định (giá trị lẻ lại rơi ra ngoài vòng flush) · ca ⑦ exception đỏ không ai bắt, hoặc `rated` cũng mất theo (một entry hỏng kéo cả lượt) · ca ② payload không đổi sau khi chờ (thiếu `PlayerPrefs.Save()`) · ca ⑨ phải Play mới thấy lỗi |
 
-- [ ] **Step 7: Commit** — `feat(sdk): add persistence demo + acceptance scene`
+- [ ] **Step 8: Commit** — `feat(game): add GameSave collection + persistence acceptance scene`
+
+---
+
+### Task 6: `SaveBootStep` — flush có thứ tự, tuỳ chọn
+
+**Files:**
+- Create: `Assets/Horcrux/Runtime/Implementations/Composites/Persistence/SaveBootStep.cs`
+
+**Interfaces:**
+- Consumes: `BootStep` (`Abstractions/Foundations/Bootstrap/BootStep.cs`) · `ISaveCollection` (Task 1) · `IService<T>` (`Abstractions/Foundations/IService.cs`).
+- Produces: `SaveBootStep : BootStep`.
+
+**Quyết định thiết kế:**
+
+| Quyết định | Lý do |
+|---|---|
+| Nằm ở nhánh **Composites**, không phải Foundations | Nó phụ thuộc cả Bootstrap lẫn Persistence. Lõi Persistence ở Foundations vẫn chạy được ở project không dùng Bootstrap |
+| Resolve bằng `IService<ISaveCollection>.Service`, không `ISaveCollection.Service` | `ISaveCollection` là interface thuần nên nó không có thành viên `Service` nào — và nó thuần vì derive `IService<>` ở đó làm call site của dự án nhập nhằng (§0.10 ②). Dạng đóng tường minh này chạy với **bất kỳ** `T` vì `IService<T>.Service` chỉ là `Service.Get<T>()` |
+| Đây là **chỗ duy nhất** trong SDK cần collection | Nên nó cũng là chỗ duy nhất buộc dự án phải viết dòng `[Service(typeof(ISaveCollection), …)]` thứ hai ở Task 5. Thiếu dòng đó thì step này ném exception ngay pha boot — và ném là đúng: save là hệ bắt buộc, thiếu đăng ký là lỗi cấu hình |
+| Là **tuỳ chọn**, không thay driver | Driver vẫn chạy autosave. Step này chỉ thêm đường flush **có thứ tự** cho pause và quit |
+| `InitializeAsync` gọi `Initialize()` | Trả chi phí reflection và load ở nơi có màn hình loading, và làm lỗi save lộ ra trong pha boot thay vì giữa gameplay |
+| Chạy hai đường flush cùng lúc là chấp nhận được | Flush là idempotent: đường nào chạy trước cũng đúng, và đường chạy sau bắt nốt phần vừa sinh ra. Lượt không thấy gì dirty không chạm đĩa |
+| Đặt `Order` **thấp** (init sớm) để flush **muộn** | Fan-out pause và quit đi **ngược** chiều init. Step init sớm nhất sẽ flush muộn nhất — đó mới là thứ ta muốn: chốt sổ sau khi mọi hệ đã ghi xong |
+
+**Editor setup — bước thật:**
+
+1. Trên GameObject có `BootstrapRunner`: add component `SaveBootStep`.
+2. Đặt `Order` **thấp** — vì fan-out pause/quit đi ngược, step init sớm sẽ flush **muộn nhất**, sau khi mọi hệ khác đã ghi xong.
+3. Kéo `SaveBootStep` vào danh sách steps của `BootstrapRunner` nếu runner dùng danh sách tường minh.
+
+- [ ] **Step 1: `SaveBootStep.cs`**
+
+```csharp
+using System.Threading;
+using Cysharp.Threading.Tasks;
+using Horcrux.Runtime.Abstractions;
+using Horcrux.Runtime.Abstractions.Bootstrap;
+using Horcrux.Runtime.Abstractions.Persistence;
+
+namespace Horcrux.Runtime.Implementations.Persistence
+{
+    /// <summary>Optional: moves the save load into boot, and gives pause and quit an ORDERED flush.</summary>
+    /// <remarks>
+    /// The runner walks steps backwards on pause and quit, so a step that initializes EARLY flushes LAST — after
+    /// every system above it has written. That is the ordering a MonoBehaviour's own magic methods cannot promise.
+    /// This does not replace SaveDriver: the driver still runs the autosave timer, and the second flush of a pause
+    /// finds nothing dirty and never reaches storage.
+    /// </remarks>
+    public sealed class SaveBootStep : BootStep
+    {
+        public override UniTask InitializeAsync(CancellationToken ct)
+        {
+            // Pays the reflection scan and the load here, where a loading screen is up and a broken save is visible.
+            IService<ISaveCollection>.Service.Initialize();
+            return UniTask.CompletedTask;
+        }
+
+        public override void OnAppPause(bool isPaused)
+        {
+            if (isPaused) IService<ISaveCollection>.Service.FlushAll();
+        }
+
+        public override void OnAppQuit() => IService<ISaveCollection>.Service.FlushAll();
+    }
+}
+```
+
+- [ ] **Step 2: Kiểm chứng:**
+
+| Input | Kỳ vọng |
+|---|---|
+| Play với `SaveBootStep` trong chain | load xảy ra trong pha boot; `[Save]` xuất hiện ngay sau đó |
+| Một `BootStep` khác `Order` cao hơn ghi vào một entry trong `OnAppPause` | giá trị đó **có** trong payload sau khi pause — chứng minh thứ tự đúng |
+| Pause với cả driver lẫn step | flush chạy hai lần, lần sau không chạm đĩa (không log gì thêm) |
+| Play **không** có `SaveBootStep` | hệ vẫn chạy đủ; load xảy ra ở lần chạm đầu tiên |
+| Bỏ dòng `[Service(typeof(ISaveCollection), …)]` khỏi `GameSave` rồi Play | exception ngay pha boot nêu `ISaveCollection` chưa đăng ký — **không** phải im lặng bỏ qua bước load. Trả dòng đó lại rồi Play tiếp |
+
+- [ ] **Step 3: Commit** — `feat(sdk): add optional SaveBootStep for ordered flush`
 
 ---
 
 ## Ghi chú thực thi
 
-- **Nghiệm thu cuối = Step 5 và Step 6 của Task 6.** Năm mục tiêu ở "Ngữ cảnh đã chốt" map vào đó: một-nơi-nhìn-thấy-mọi-thứ (nút `Print all payloads` liệt kê đủ) · trùng-key-bắt-lúc-authoring (ca ⑨) · mọi-giá-trị-trong-vòng-flush (ca ④ cộng phép grep "không còn cửa ghi thứ hai") · quên-khởi-tạo-không-mất-tiến-độ (bảng Task 2, hàng "gọi `FlushAll` trước `Initialize`") · thêm-entry-không-sửa-SDK (`SaveCollection.Demo.cs` là bằng chứng sống — 6 dòng cho một entry mới).
-- **Sau khi implement xong:** viết `Persistence.md` (tài liệu thiết kế cho agent) cạnh `Implementations/Foundations/Persistence/`, rồi sinh `.html` từ nó. Chuyển chín mục `§0` sang mục quyết định thiết kế của tài liệu đó — bốn mục "đã sai một lần" (§0.4, §0.5, §0.6, §0.9) là loại tri thức không đọc ra được từ code.
+- **Nghiệm thu cuối = Step 5, 6 và 7 của Task 5.** Sáu mục tiêu ở "Ngữ cảnh đã chốt" map vào đó: một-nơi-nhìn-thấy-mọi-thứ (nút `Print all payloads` liệt kê đủ) · trùng-key-bắt-lúc-authoring (ca ⑨) · mọi-giá-trị-trong-vòng-flush (ca ④ cộng phép grep "không còn cửa ghi thứ hai") · quên-khởi-tạo-không-mất-tiến-độ (bảng Task 2, hàng "gọi `FlushAll` trước `Initialize`") · thêm-entry-không-sửa-SDK (`GameSave.cs` là bằng chứng sống — 2 dòng cho một entry mới, và không dòng nào trong `Assets/Horcrux`) · model-không-vào-SDK (hàng cuối bảng Step 6).
+- **Sau khi implement xong:** viết `Persistence.md` (tài liệu thiết kế cho agent) cạnh `Implementations/Foundations/Persistence/`, rồi sinh `.html` từ nó. Chuyển mười mục `§0` sang mục quyết định thiết kế của tài liệu đó — bốn mục "đã sai một lần" (§0.4, §0.5, §0.6, §0.9) là loại tri thức không đọc ra được từ code, và §0.10 là loại người đọc sau sẽ **vô tình phá** nếu không thấy lý do viết sẵn.
 - **Khoá `"save." + Key` và định dạng JSON của payload là hợp đồng ra ngoài.** Dữ liệu trên máy người chơi bám vào đúng hai thứ đó. Đổi tiền tố hay đổi định dạng sau khi ship là mọi save cũ thành mồ côi — không có gì báo, chỉ là một ngày tất cả người chơi cũ mở game lên thấy tiến độ về 0.
-- **Hệ dùng tiếp:** Audio (volume), Haptics, Economy (coin và lives), Rating, LiveOps. Cả bốn **nhận vào** `SaveEntry<T>` của mình qua Init chứ không tự khai — game khai entry trong partial class rồi nối vào, nên một hệ SDK vẫn bê lẻ sang project không dùng Persistence được.
+- **Hệ dùng tiếp:** Audio (volume), Haptics, Economy (coin và lives), Rating, LiveOps. Cả năm **nhận vào** `SaveEntry<T>` của mình qua Init chứ không tự khai — dự án khai entry trên `GameSave` rồi nối vào, nên một hệ SDK vẫn bê lẻ sang project không dùng Persistence được.
+- **Khuôn "abstract base trong SDK + subclass của dự án" dùng chung với hệ Remote Config** — xem `Abstractions/Foundations/RemoteConfigSystem/RemoteConfigCollectionPlan.md`. Hai hệ cố ý giống nhau đến từng chi tiết: cùng ràng buộc §0.10, cùng hai dòng `[Service]`, cùng cách reflection quét field. Sửa một bên mà không sửa bên kia là làm hai khuôn từ một khuôn.

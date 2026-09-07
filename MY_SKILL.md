@@ -399,6 +399,35 @@ thuộc hệ nào khác trong framework dùng chung) so với hệ **kết hợp
 Phân loại sai chỗ này là sửa sau rất đắt (§2.4). **Utilities** là static và universal — dự án nào cũng
 cần, không phụ thuộc bất kỳ hệ thống nào trong framework.
 
+**Ranh giới giữa framework dùng chung và dự án dùng nó đi đúng một chiều: dự án → framework.** Framework
+không gọi tên type nào của dự án — và **cơ chế mở rộng mà nó cung cấp cũng không được ép dự án đẩy domain
+của mình sang phía framework**. Phép kiểm khi chọn cơ chế: *nửa mà dự án viết có nằm trong ranh giới biên
+dịch của dự án không?* Không nằm thì mọi type nửa đó **gọi tên** cũng bị kéo theo, lan tiếp theo cả chuỗi
+phụ thuộc của chúng — và framework mất tính bê-sang-dự-án-khác dù thư mục file trông vẫn đúng chỗ.
+
+> **Nền tảng** — với C# và Unity thì đáp án đã chốt:
+>
+> | Cơ chế mở rộng | Kết quả |
+> |---|---|
+> | `partial class` khai ở framework, nửa kia ở dự án | **Hỏng.** Mọi phần của một `partial` phải cùng một assembly, nên nửa của dự án buộc phải vào assembly framework bằng `.asmref` — và type nó gọi tên phải tra được từ assembly đó. Type của dự án thì không tra được, vì thêm chiều ngược lại là **circular reference** và Unity từ chối biên dịch. Kết cục: domain nằm ở assembly framework |
+> | `abstract class` ở framework, dự án khai subclass | **Đúng.** Subclass là type của dự án và nó chỉ gọi tên xuống phía framework. Phần framework tự chạy được một mình biến mất — đó là đặc điểm, không phải thiếu sót: tự chạy được nghĩa là nó đang mang một mẩu domain |
+>
+> Ba thứ đi kèm khi chuyển sang kế thừa, mỗi thứ một cái bẫy hỏng-im-lặng:
+>
+> | Thứ | Bẫy |
+> |---|---|
+> | Attribute khai `Inherited = false` — `[Service]` của InitArgs là một | Khai ở base **không** tới được subclass, nên dự án phải tự khai. Quên là không đăng ký được gì, và lỗi nổ ở lần chạm đầu tiên |
+> | `GetType().GetFields(NonPublic \| Instance)` | Thấy private field của subclass vì nó đọc type lúc chạy, nhưng **không** thấy private field khai trên chính base. Field khai nhầm ở base bị bỏ qua **không một dòng lỗi nào** |
+> | Magic method của Unity (`OnDestroy`, `Awake`…) | Subclass đặt trùng tên là che hẳn bản của base, và phần dọn dẹp của base im lặng không chạy. Khai `protected virtual` để `override` là đường duy nhất |
+>
+> Một hệ quả nữa, ở tầng interface: **contract của framework không được derive interface generic mang
+> thành viên static** — ở bộ này là `IService<T>`, cái cho đọc `IFoo.Service`. Nếu contract derive nó thì
+> interface của dự án — derive cả contract lẫn `IService<chính mình>` — thừa hưởng **hai** thành viên
+> `Service` khác instantiation, và mọi lần đọc là **CS0229 Ambiguity**: lỗi biên dịch, không phải cảnh
+> báo, và nổ ở đúng thứ khuôn này tồn tại để giữ là call site không cast. Nên chỉ interface của dự án
+> derive nó. Không mất gì: `IService<T>.Service` chỉ là `Service.Get<T>()`, nên code cần contract thì đọc
+> qua dạng đóng tường minh `IService<Contract>.Service` — chạy với bất kỳ `T`, kể cả `T` không derive nó.
+
 **Chức năng có người dùng thứ hai thì đề xuất nâng nó thành tái sử dụng được** (NT6) — đừng copy sang
 chỗ mới. Nâng bằng cách nào thì tuỳ bản chất chức năng: hàm thuần không giữ state → Utilities hoặc
 Helper static · có state hoặc sẽ có nhiều biến thể → trừu tượng hoá thành interface rồi tách
