@@ -1,6 +1,6 @@
 ﻿namespace Horcrux.Runtime.Abstractions.Persistence
 {
-    public interface ISaveUnit
+    public interface ISaveEntry
     {
         string Key { get; }
         

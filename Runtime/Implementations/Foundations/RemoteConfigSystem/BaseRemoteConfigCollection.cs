@@ -22,11 +22,16 @@ namespace Horcrux.Runtime.Implementations.RemoteConfigSystem
         private List<IRemoteConfig> remoteConfigs = new();
         private List<FieldInfo> cachedRemoteConfigFields;
         private IRemoteConfigProvider remoteConfigProvider;
+        private bool allRemoteConfigsApplied;
         
         public IEnumerable<IRemoteConfig> RemoteConfigs => remoteConfigs;
         public IRemoteConfigProvider RemoteConfigProvider => remoteConfigProvider;
+        public bool AllRemoteConfigsApplied =>  allRemoteConfigsApplied;
 
-        protected virtual void OnRemoteConfigsApplied() { }
+        protected virtual void OnRemoteConfigsApplied()
+        {
+            allRemoteConfigsApplied = true;
+        }
 
         #region Unity Callbacks
         protected virtual void OnDestroy()

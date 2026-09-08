@@ -9,6 +9,7 @@ namespace Horcrux.Runtime.Abstractions.RemoteConfigSystem
     {
         public IEnumerable<IRemoteConfig> RemoteConfigs { get; }
         public IRemoteConfigProvider RemoteConfigProvider { get; }
+        public bool AllRemoteConfigsApplied { get; }
         
         public void Initialize();
     }

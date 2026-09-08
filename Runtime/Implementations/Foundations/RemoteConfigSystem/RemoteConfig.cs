@@ -13,7 +13,7 @@ namespace Horcrux.Runtime.Implementations.RemoteConfigSystem
         [SerializeField] private string firebaseKey;
         [SerializeField] private bool allowFetching = true;
         [SerializeField] private T value;
-        [NonSerialized, ShowInInspector] private bool fetched;
+        [NonSerialized, ShowInInspector, ReadOnly] private bool fetched;
 
         public string FirebaseKey => firebaseKey;
         public bool AllowFetching
