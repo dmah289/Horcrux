@@ -29,13 +29,11 @@ namespace Horcrux.Runtime.Implementations.RemoteConfigSystem
         protected virtual void OnRemoteConfigsApplied() { }
 
         #region Unity Callbacks
-
         protected virtual void OnDestroy()
         {
             if (remoteConfigProvider != null)
                 remoteConfigProvider.OnFetched -= OnRemoteConfigFetched;
         }
-
         #endregion
 
         private List<FieldInfo> GetRemoteConfigFields()

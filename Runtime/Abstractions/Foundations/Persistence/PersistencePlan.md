@@ -17,8 +17,9 @@ Máy móc    (BaseSaveCollection               abstract · quét field · kiểm
             + SaveDriver)                    đoạn · PlayerPrefs.Save() một lần mỗi lượt · hỏng → default + log
             SDK, Implementations
 
-Domain     (IGameSave + GameSave)            model + key + giá trị mặc định + property có kiểu + [Service] ×2,
+Domain     (IGameSave + GameSave)            model + key + giá trị mặc định + property có kiểu + [Service],
             dự án, com.FelixFelicis          khai lúc authoring — không type nào của nó lộ vào SDK
+                                             partial: mỗi feature một cặp file class + interface
 ```
 
 **Tech Stack:** C#, UniTask, `Sisus.Init` (`[Service]`), Odin Inspector (`[Button]`, `[GUIColor]` — DLL precompiled, mọi asmdef tự reference), Newtonsoft.Json (package `com.unity.nuget.newtonsoft-json`), PlayerPrefs, `System.Reflection`. Unity 6000.3. **Không** đụng asmdef của SDK, **không** thêm package nào, **không** Addressables, **không** toán.
@@ -41,10 +42,10 @@ Domain     (IGameSave + GameSave)            model + key + giá trị mặc đ�
 
 | Nhóm | Chốt |
 |---|---|
-| **Ai gọi** | Dự án khai mọi `SaveEntry` trên `GameSave` — một `sealed class` dẫn xuất từ `BaseSaveCollection`, nằm trong assembly của dự án — và phơi chúng ra qua `IGameSave` (cùng khuôn với `RemoteConfigCollectionPlan.md`) · gameplay và UI gán `Value`, hoặc mutate model rồi `MarkDirty()`, hoặc subscribe `Changed` · hệ SDK **nhận vào** entry của mình qua Init, không tự khai · `FlushAll` hệ tự gọi (autosave + pause/quit); game gọi `Flush(entry)` để chốt sổ một entry sớm |
+| **Ai gọi** | Dự án khai mọi `SaveEntry` trên `GameSave` — một `sealed partial class` dẫn xuất từ `BaseSaveCollection`, nằm trong assembly của dự án — và phơi chúng ra qua `IGameSave` (cùng khuôn với `RemoteConfigSystem.md`) · gameplay và UI gán `Value`, hoặc mutate model rồi `MarkDirty()`, hoặc subscribe `Changed` · hệ SDK **nhận vào** entry của mình qua Init, không tự khai · `FlushAll` hệ tự gọi (autosave + pause/quit); game gọi `Flush(entry)` để chốt sổ một entry sớm |
 | **Mục tiêu** | Một nơi duy nhất nhìn thấy mọi thứ game lưu · trùng key bắt được **lúc authoring** · mọi giá trị persist được đều nằm trong vòng flush, không có ngoại lệ · quên khởi tạo không làm mất tiến độ · thêm entry mới không sửa SDK và không đụng entry khác · **model của dự án không bị biên dịch vào assembly SDK**, nên submodule commit được một mình |
 | **Ngân sách** | Gán hoặc `MarkDirty`: mỗi tương tác, phải rẻ — chỉ cờ + event · serialize + `PlayerPrefs.Save()`: mỗi chu kỳ autosave, pause, quit, và mỗi lần `Flush(entry)` · reflection + load: một lần mỗi phiên. Không hot path mỗi frame |
-| **Ranh giới** | SDK: `ISaveEntry`, `SaveEntry<T>`, `ISaveCollection`, `BaseSaveCollection`, `SaveDriver`, `SaveBootStep` tuỳ chọn, nút Editor, và `KeyPrefix` (wire format). Dự án: model, key, giá trị mặc định, interval, `IGameSave`, `GameSave`, hai dòng `[Service]`, `[CreateAssetMenu]`, đường dẫn Resources |
+| **Ranh giới** | SDK: `ISaveEntry`, `SaveEntry<T>`, `ISaveCollection`, `BaseSaveCollection`, `SaveDriver`, `SaveBootStep`, nút Editor, và `KeyPrefix` (wire format). Dự án: model, key, giá trị mặc định, interval, `IGameSave`, `GameSave`, một dòng `[Service]`, `[CreateAssetMenu]`, đường dẫn Resources, và kéo asset vào `SaveBootStep` |
 | **Hướng phát triển thật** | Chuyển kho sang file trên đĩa khi chạm một trong ba giới hạn ở mục ngay dưới. Entry chỉ nói bằng **chuỗi payload** và không biết `PlayerPrefs` tồn tại, nên việc đó sửa nội bộ `BaseSaveCollection` — không đụng entry, không đụng code game |
 
 **Những gì cố ý KHÔNG làm, kèm lý do** (*xoá nó đi thì hỏng ở đâu*):
@@ -52,7 +53,8 @@ Domain     (IGameSave + GameSave)            model + key + giá trị mặc đ�
 | Không làm | Vì sao |
 |---|---|
 | `partial class SaveCollection` trong SDK + `.asmref` phía dự án | Mọi phần của một `partial` phải cùng một assembly, nên nửa của dự án buộc phải biên dịch vào `com.horcrux.runtime` — và type nó **gọi tên** (`SaveEntry<PlayerProgress>`) cũng phải nằm trong đó, kéo theo cả chuỗi phụ thuộc của model. Kết quả: file nằm trong thư mục dự án nhưng domain thuộc về SDK, và một model cần thứ gì của `com.FelixFelicis` là bế tắc — chiều ngược lại là circular reference. Ràng buộc §0.10 |
-| Cho `ISaveCollection` derive `IService<ISaveCollection>` | Interface của dự án derive cả nó lẫn `IService<IGameSave>` sẽ thừa hưởng **hai** thành viên `Service` → mọi lần đọc `IGameSave.Service` là lỗi biên dịch CS0229. Ràng buộc §0.10 |
+| Cho `ISaveCollection` derive `IService<ISaveCollection>` | Interface của dự án derive cả nó lẫn `IService<IGameSave>` sẽ thừa hưởng **hai** thành viên `Service` → mọi lần đọc `IGameSave.Service` là lỗi biên dịch CS0229. Ràng buộc §0.10 ② |
+| Đăng ký `ISaveCollection` thành service thứ hai | Chỗ duy nhất trong SDK cần collection là `SaveBootStep`, mà nó là MonoBehaviour nên **nhận reference kéo thả** được — "step này flush collection nào" là quyết định lúc authoring, không phải lúc chạy. Một dòng `[Service]` là đủ, đúng bằng `GameRemoteConfigCollection`, và bề mặt bẫy CS0229 biến mất khỏi phía dự án |
 | Khái niệm `Prefs<T>` riêng cho giá trị lẻ | Giá trị lẻ và model chỉ khác nhau ở **một bước** — cách biến thành chuỗi. Dựng bộ máy thứ hai cho một bước là đặt giá trị lẻ ra **ngoài** cờ dirty và ngoài `PlayerPrefs.Save()`, tức là ra ngoài chính bảo đảm mà hệ tuyên bố |
 | `ISerializer` | Hệ này có **đúng một** format. Interface cho một implementation là một lớp phải đọc mà đầu kia không có ai đứng |
 | `ISaveStore` | Đúng một chỗ lưu đang có thật. Ranh giới "entry chỉ nói bằng chuỗi payload" đã đủ để đổi chỗ lưu sau này mà không đụng entry — đó là chỗ đáng phòng xa, và nó tốn 0 dòng |
@@ -69,7 +71,8 @@ Domain     (IGameSave + GameSave)            model + key + giá trị mặc đ�
 | Cái có sẵn | Kết luận |
 |---|---|
 | `IService<T>` (`Abstractions/Foundations/IService.cs`) | **Dùng lại**, nhưng ở **phía dự án**: `IGameSave` derive nó, `ISaveCollection` thì không (§0.10). Save là hệ **bắt buộc** — thiếu asset trong `Resources/Config/` là lỗi cấu hình, phải lộ ngay lần Play đầu, nên `IService` (throw) chứ không `IOptionalService` |
-| `BaseRemoteConfigCollection` + `RCVariable<T>` + `RegisteredRCVar` (`RemoteConfigCollectionPlan.md`) | **Dùng lại khuôn**, không dùng lại code: cùng cơ chế abstract base trong SDK + subclass của dự án + attribute + reflection quét field + hai dòng `[Service]`. Hai hệ cố ý dùng **một** khuôn, nên bốn ràng buộc §0.10 là ràng buộc chung của cả hai. Ba chỗ cố ý đảo ngược so với `RCVariable<T>` nằm ở bảng trong Task 1 — lý do gốc của chúng là *"cho developer thấy giá trị fetch về ngay trong asset"*, lý do đó không còn đúng khi thứ được lưu là dữ liệu của người chơi |
+| `BaseRemoteConfigCollection` + `RemoteConfig<T>` + `MarkedRemoteConfig` (`RemoteConfigSystem.md`) | **Dùng lại khuôn**, không dùng lại code: cùng cơ chế abstract base trong SDK + subclass `sealed partial` của dự án + attribute + reflection quét field + một dòng `[Service]` + `partial` chia entry theo feature. Hai hệ cố ý dùng **một** khuôn, nên bốn ràng buộc §0.10 là ràng buộc chung của cả hai, và mọi chỗ hai bên khác nhau phải là chỗ **cố ý** kèm lý do. Ba chỗ cố ý đảo ngược so với `RemoteConfig<T>` nằm ở bảng trong Task 1 — lý do gốc của chúng là *"cho developer thấy giá trị fetch về ngay trong asset"*, lý do đó không còn đúng khi thứ được lưu là dữ liệu của người chơi. Hai chỗ Persistence **thêm** so với khuôn cũ: cặp hook `ResetDerivedState`/`OnEntriesLoaded` (§0.7) và `EnsureInitialized` (§0.9) |
+| `SplitterAttribute` (`Runtime/Utilities/Attribute/`) | **Dùng lại** — `[Splitter("Economy")]` kẻ tiêu đề nhóm trong Inspector, đúng thứ `GameRemoteConfigCollection` đang dùng để một asset 27 biến còn đọc được. Không cần thêm cơ chế gom nhóm nào khác |
 | `BootStep` + `BootstrapRunner` | **Dùng lại** cho `SaveBootStep` tuỳ chọn ở nhánh Composites. `BootStep` đã có sẵn `OnAppPause`/`OnAppQuit`, và runner fan-out **ngược thứ tự** cho cả hai — đó chính là thứ magic method của một MonoBehaviour lẻ không hứa được |
 | `EventBus` (Utilities) | **Không dùng** — `Changed` là event nội bộ một entry, listener wire trực tiếp |
 | `MonoSingleton` | **Không dùng** — đăng ký qua `[Service]` trên class của dự án, cùng khuôn `BaseRemoteConfigCollection` |
@@ -107,7 +110,7 @@ Ba hệ quả đi thẳng vào thiết kế:
 
 1. **Toàn bộ kho là một khối.** Mỗi lần persist là ghi lại **cả** file, và một file hỏng là mất **mọi** khoá của game cùng lúc. Đây là cái giá lớn nhất của cách lưu này.
 2. **Toàn bộ kho nằm trong RAM suốt phiên.** Trên Android, `SharedPreferences` được đọc và parse XML **một lần ở lần truy cập đầu tiên** rồi giữ trong bộ nhớ.
-3. **Không gian khoá là phẳng và dùng chung với mọi hệ khác.** `RCVariable` trong chính SDK này ghi cache của remote config vào PlayerPrefs bằng **key thô, không tiền tố**; SDK quảng cáo và analytics cũng ghi vào đó. Tiền tố `"save."` vì thế không phải trang trí — nó là thứ chặn một firebase key trùng tên đè lên tiến độ người chơi. Đổi tiền tố này sau khi ship là mọi save đang có ngoài đời thành mồ côi.
+3. **Không gian khoá là phẳng và dùng chung với mọi hệ khác.** `RemoteConfig<T>` trong chính SDK này ghi cache của remote config vào PlayerPrefs bằng **key thô, không tiền tố**; SDK quảng cáo và analytics cũng ghi vào đó. Tiền tố `"save."` vì thế không phải trang trí — nó là thứ chặn một firebase key trùng tên đè lên tiến độ người chơi. Đổi tiền tố này sau khi ship là mọi save đang có ngoài đời thành mồ côi.
 
 ### 0.2. Android kill không báo trước — `OnApplicationQuit` không phải chỗ dựa
 
@@ -158,32 +161,58 @@ Chuỗi JSON trong PlayerPrefs có thể hỏng: một bản build cũ ghi model
 
 Luật ở đây: try/catch quanh đọc + deserialize **của từng entry**, hỏng thì giữ giá trị mặc định và `LogError` **nêu đúng key**. Người chơi mất một entry nhưng vào được game, các entry khác không bị kéo theo, và lần flush kế ghi đè bằng dữ liệu lành.
 
-### 0.7. ScriptableObject không chết giữa hai lần Play — ba thứ phải reset
+### 0.7. ScriptableObject không chết giữa hai lần Play — bốn thứ phải reset
 
-Asset của một ScriptableObject được Unity load một lần và **giữ nguyên qua các lần Play trong Editor**. Với Enter Play Mode Settings tắt domain reload, mọi field `[NonSerialized]` mang giá trị của phiên trước sang phiên sau. Ba thứ hỏng theo:
+Asset của một ScriptableObject được Unity load một lần và **giữ nguyên qua các lần Play trong Editor**. Với Enter Play Mode Settings tắt domain reload, mọi field `[NonSerialized]` mang giá trị của phiên trước sang phiên sau. Bốn thứ hỏng theo:
 
-| Thứ sống sót | Triệu chứng |
-|---|---|
-| Listener của `Changed` | listener đăng ký ở phiên trước trỏ vào GameObject đã huỷ → `MissingReferenceException` ở lần đổi giá trị đầu tiên của phiên mới |
-| Giá trị runtime | xoá save ngoài đĩa rồi Play lại vẫn thấy giá trị cũ — chỉ xảy ra trong Editor, nên nó là bug lộ ra ở máy developer và **biến mất** trên build, loại khó tin nhất |
-| Cờ dirty | flush đầu phiên ghi lại thứ không ai đổi |
+| Thứ sống sót | Ai sở hữu | Triệu chứng |
+|---|---|---|
+| Listener của `Changed` | entry | listener đăng ký ở phiên trước trỏ vào GameObject đã huỷ → `MissingReferenceException` ở lần đổi giá trị đầu tiên của phiên mới |
+| Giá trị runtime | entry | xoá save ngoài đĩa rồi Play lại vẫn thấy giá trị cũ — chỉ xảy ra trong Editor, nên nó là bug lộ ra ở máy developer và **biến mất** trên build, loại khó tin nhất |
+| Cờ dirty | entry | flush đầu phiên ghi lại thứ không ai đổi |
+| **Cache do subclass dựng từ giá trị entry** | **dự án** | lookup, `HashSet`, cờ "đã parse xong" mang số liệu phiên trước — cùng loại khó tin nhất ở hàng trên, nhưng `ResetRuntimeState()` của entry **không** với tới được |
 
-Chặn bằng cấu trúc: `Initialize()` gọi `ResetRuntimeState()` cho **mọi** entry trước khi load — nó xoá listener, đưa giá trị về một bản sao mới của mặc định, và tắt dirty. Bắt từng hệ tự `-=` là chặn bằng kỷ luật, và sẽ vỡ ở hệ thứ hai.
+Ba hàng đầu chặn bằng `Initialize()` gọi `ResetRuntimeState()` cho **mọi** entry trước khi load — nó xoá listener, đưa giá trị về một bản sao mới của mặc định, và tắt dirty. Bắt từng hệ tự `-=` là chặn bằng kỷ luật, và sẽ vỡ ở hệ thứ hai.
+
+Hàng thứ tư cần một cửa riêng, vì base không biết subclass cache những gì. Đó là cặp hook `ResetDerivedState()` (trước khi load, xoá cache) và `OnEntriesLoaded()` (sau khi load, dựng lại) ở Task 2.
+
+*Đã sai một lần — hệ Remote Config, cùng khuôn, thiếu đúng cái hook thứ nhất:* `BaseRemoteConfigCollection.Initialize()` reset `ResetFetchedState()` cho từng biến nhưng không có hook nào cho subclass. Nên `GameRemoteConfigCollection` khai `private bool _hasAppliedRemoteValues`, chỉ được bật trong `OnRemoteConfigsApplied()` và **không ai tắt** — cờ mang trạng thái phiên trước sang phiên sau. Cái giá không phải một lần sửa: một hệ khác đã phải viết workaround quanh nó, và ghi lý do vào comment — *"không dùng `HasAppliedRemoteValues` — cờ đó quan sát được là mang trạng thái cũ qua các lần Play trong Editor, bật sớm khi fetch chưa về."* Một cờ không reset được đã làm một hệ hạ tầng mất tư cách làm điều kiện chờ.
+
+Lưu ý về **thứ tự**: `OnRemoteConfigsApplied()` là hook "sau", và khuôn cũ **chỉ** có nó — đó chính là chỗ hở. Hook "sau" dựng lại cache, nhưng nếu load lần này không chạm tới một entry (chưa có gì trong kho) thì cache cũ vẫn nằm đó. Nên hook "trước" là cái không bỏ được, không phải cái tuỳ chọn.
 
 ### 0.8. Asset là dữ liệu authoring — tiến độ người chơi không được chạm vào nó
 
-`[SerializeField]` trên một field nghĩa là Unity ghi giá trị của nó vào file `.asset` trong project. Hai chỗ phải cẩn thận, và cả hai đều là chỗ khuôn `RCVariable<T>` **cố ý** làm ngược:
+`[SerializeField]` trên một field nghĩa là Unity ghi giá trị của nó vào file `.asset` trong project. Hai chỗ phải cẩn thận, và cả hai đều là chỗ khuôn `RemoteConfig<T>` **cố ý** làm ngược:
 
-1. **Giá trị runtime phải `[NonSerialized]`.** `RCVariable<T>` khai `[SerializeField] private T value` và `ApplyRemoteValue` ghi thẳng vào đó — chủ ý, để developer thấy giá trị fetch về ngay trong asset. Bê nguyên sang save là mỗi lần Play trong Editor, tiến độ người chơi được ghi vào asset của project rồi đi vào version control.
+1. **Giá trị runtime phải `[NonSerialized]`.** `RemoteConfig<T>` khai `[SerializeField] private T value` và `ApplyRemoteValue` ghi thẳng vào đó — chủ ý, để developer thấy giá trị fetch về ngay trong asset. Bê nguyên sang save là mỗi lần Play trong Editor, tiến độ người chơi được ghi vào asset của project rồi đi vào version control.
+
+   **Nhưng "không serialize" không có nghĩa là "không nhìn thấy" — đó là hai trục, và Unity dán chúng vào nhau.** Unity vẽ Inspector *từ* dữ liệu đã serialize, nên `[NonSerialized]` trơn là ẩn hẳn. Tách hai trục bằng `[ShowInInspector]` của Odin: nó đọc field sống qua reflection và vẽ, không cần Unity biết field đó tồn tại.
+
+   | Trục | Ai quyết | `value` và `isDirty` chọn gì |
+   |---|---|---|
+   | Có ghi vào file `.asset` không | `[SerializeField]` / `[NonSerialized]` | **không** — đây là dữ liệu người chơi |
+   | Có hiện trong Inspector không | Unity chỉ vẽ field đã serialize · Odin `[ShowInInspector]` vẽ bất kể | **có** — nghiệm thu của hệ này bắt kiểm `IsDirty` ở sáu ca |
+   | Sửa được bằng tay không | Odin `[ReadOnly]` | **không** — xem đoạn dưới |
+
+   ⚠️ **Đường sai mà ai cũng nghĩ ra đầu tiên: `[SerializeField]` bọc trong `#if UNITY_EDITOR`.** Editor biên dịch field đó vào layout và ghi asset kèm nó; build strip field đi nên layout ngắn hơn; build đọc asset là lệch byte → **crash native** `Read N bytes but expected M bytes`. Không lộ ở Editor, chỉ nổ trên build, ở tầng không có stack trace C#. Đã có người trả tiền cho ca này rồi — comment còn nguyên trong `RemoteConfig.cs`, và `RemoteConfigSystem.md` đưa nó vào bảng Bẫy.
+
+   ⚠️ **`[ShowInInspector]` trên private field làm nó SỬA ĐƯỢC — nên phải kèm `[ReadOnly]`.** Sửa `value` bằng tay trong Inspector là gán vào field mà **không** đi qua setter: không `MarkDirty()`, không bắn `Changed`. Giá trị đổi trên màn hình, rồi flush không thấy entry nào dirty nên không ghi gì, và không có dòng log nào — đúng loại đường "chạy no-op âm thầm" mà bất biến ⑤ cấm. `RemoteConfig<T>` để `fetched` sửa được là vô hại vì không logic nào đọc nó; `value` của save thì không. Đường sửa giá trị bằng tay đã có, và nó đi qua cửa đúng: nút `ImportPayload`.
 2. **Giá trị mặc định phải được sao chép, không được trả thẳng.** `defaultValue` là một object sống trong asset. Gán `value = defaultValue` cho một model class là để game mutate thẳng vào asset. Cách chặn: một vòng round-trip qua serializer, chạy **một lần mỗi entry lúc `Initialize`** — đủ rẻ, và là bản sao đúng cho mọi `T`, kể cả struct có `List` bên trong.
 
 ### 0.9. Bước khởi tạo bắt buộc mà quên gọi thì mất dữ liệu — không được để nó phụ thuộc trí nhớ
 
-*Đã sai một lần — chính repo này:* `BaseRemoteConfigCollection.Initialize()` được tài liệu hướng dẫn game tự gọi, và grep cả `Assets` cho `.Initialize()` hiện **không ra caller nào** ngoài hai kết quả thuộc Odin. Hệ dựng xong, không ai bấm nút khởi động, và không có gì báo.
+`BaseRemoteConfigCollection.Initialize()` là bước SDK **không** tự gọi: dự án phải gọi một lần lúc boot, và trong repo này dòng đó nằm ở `ServiceInit.Initialization()` — một file của **dự án**, không của SDK. Khuôn đó chạy được, nhưng nó đặt một bảo đảm của hệ vào một dòng mà mỗi host mới phải tự nhớ viết lại.
 
-Với remote config, cái giá của việc quên là giá trị rơi về default. Với save, cái giá là **người chơi mất tiến độ** — và mất theo kiểu tệ nhất: entry chưa load nên mang giá trị mặc định, rồi flush kế tiếp ghi đè giá trị mặc định đó lên save thật.
+Cái quyết định hình dạng ở đây là **bất đối xứng về giá của việc quên**:
 
-Nên `Initialize()` ở hệ này có **hai lối vào cùng chạy một thân idempotent**: gọi tường minh từ `SaveBootStep` để trả chi phí load ở nơi có màn hình loading, hoặc không gọi thì `EnsureInitialized()` ở mọi cửa vào công khai tự lo. Đây là chỗ cố ý đi khác khuôn `BaseRemoteConfigCollection`.
+| Hệ | Quên gọi `Initialize()` thì sao |
+|---|---|
+| Remote Config | biến rơi về giá trị author trong asset. Sai, nhưng **hồi được**: fetch lần sau đúng, và không dữ liệu nào bị phá |
+| Save | entry mang giá trị mặc định, rồi flush kế tiếp **ghi đè mặc định đó lên save thật**. Mất tiến độ người chơi, và mất **không hồi được** |
+
+Một bảo đảm mà cái giá của việc phá là không hồi được thì không được đứng trên trí nhớ của người viết dòng wire (§3.8 — chặn bằng cấu trúc, không bằng kỷ luật).
+
+Nên `Initialize()` ở hệ này có **hai lối vào cùng chạy một thân idempotent**: gọi tường minh từ `SaveBootStep` để trả chi phí load ở nơi có màn hình loading và để lỗi save lộ ra trong pha boot, hoặc không gọi thì `EnsureInitialized()` ở mọi cửa vào công khai tự lo. Đây là chỗ cố ý đi khác khuôn `BaseRemoteConfigCollection`, và lý do đi khác là bảng ngay trên.
 
 ### 0.10. Ranh giới assembly — bốn sự thật quyết định vì sao khuôn là kế thừa, không phải `partial`
 
@@ -201,11 +230,15 @@ var x = IGameSave.Service;
 // error CS0229: Ambiguity between 'IService<ISaveCollection>.Service' and 'IService<IGameSave>.Service'
 ```
 
-Đây là lỗi **biên dịch**, và nó nổ ở đúng thứ khuôn này tồn tại để giữ: call site không cast. Nên `ISaveCollection` là interface thuần, và chỉ `IGameSave` derive `IService<>`. Code SDK cần contract thì viết `IService<ISaveCollection>.Service` — chạy được vì `IService<T>.Service` chỉ là `Service.Get<T>()`, không đòi `T` phải derive nó. Đổi lại, dự án phải đăng ký **cả hai** service type (Task 5).
+Đây là lỗi **biên dịch**, và nó nổ ở đúng thứ khuôn này tồn tại để giữ: call site không cast. Nên `ISaveCollection` là interface thuần, và chỉ `IGameSave` derive `IService<>` — giống `IRemoteConfigCollection` với `IGameRemoteConfigCollection`.
 
-**③ `[Service]` không di truyền.** `ServiceAttribute` khai `AllowMultiple = true, Inherited = false`. `Inherited = false` nghĩa là một `[Service]` viết trên `BaseSaveCollection` **không** áp cho subclass: service không được đăng ký, và `Service.Get<>()` ném exception ở lần chạm đầu tiên. Nên `[Service]`, `[CreateAssetMenu]` và đường dẫn Resources đều thuộc dự án. `AllowMultiple = true` là thứ cho phép ②: một class dẫn xuất mang hai dòng `[Service]` cùng một `ResourcePath`, và `Resources.Load` trả về **cùng một** instance asset nên không sinh hai object.
+Hệ quả: **không gì trong SDK resolve `ISaveCollection` qua service locator.** Chỗ duy nhất trong SDK cần collection là `SaveBootStep`, và nó nhận reference kéo thả (Task 6) — nên phía dự án chỉ có **một** dòng `[Service]`, đúng bằng `GameRemoteConfigCollection`. `ISaveCollection` vẫn có người dùng: `IGameSave` derive nó, nên call site của dự án thấy `Initialize`, `FlushAll`, `Flush`, `Entries`. Nó là **hợp đồng để derive**, không phải service type để tra.
 
-**④ Reflection thấy private field của subclass, không thấy của base.** `GetType()` trả về type **thật lúc chạy**, nên `GetEntryFields()` viết trong `BaseSaveCollection` lấy đúng những `private` field mà `GameSave` khai. Mặt còn lại: `GetFields` **không** trả về private field khai trên chính base class. Nên `BaseSaveCollection` không thể tự khai một entry private rồi mong nó vào danh sách — nó sẽ bị bỏ qua **không có lỗi nào**. Hôm nay SDK không khai entry nào nên không ảnh hưởng; ngày nào cần thì field đó phải là `protected`.
+**③ `[Service]` không di truyền.** `ServiceAttribute` khai `AllowMultiple = true, Inherited = false`. `Inherited = false` nghĩa là một `[Service]` viết trên `BaseSaveCollection` **không** áp cho subclass: service không được đăng ký, và `Service.Get<>()` ném exception ở lần chạm đầu tiên. Nên `[Service]`, `[CreateAssetMenu]` và đường dẫn Resources đều thuộc dự án — đúng ba thứ mà `RemoteConfigSystem.md` cũng liệt kê là "SDK không khai hộ được".
+
+**④ Reflection thấy private field của subclass, không thấy của base.** `GetType()` trả về type **thật lúc chạy**, nên `GetEntryFields()` viết trong `BaseSaveCollection` lấy đúng những `private` field mà `GameSave` khai — kể cả khi field đó khai ở một file `partial` khác, vì mọi phần `partial` là **cùng một** type. Mặt còn lại: `GetFields` **không** trả về private field khai trên chính base class. Nên `BaseSaveCollection` không thể tự khai một entry private rồi mong nó vào danh sách — nó sẽ bị bỏ qua **không có lỗi nào**. Hôm nay SDK không khai entry nào nên không ảnh hưởng; ngày nào cần thì field đó phải là `protected`.
+
+Kèm theo là **convention của field entry: `private` + `[SerializeField]`**, giống `RemoteConfigSystem.md` ("field để `private`: `public` là cho mọi caller gán được cả tham chiếu biến, việc chỉ authoring được làm"). Vì convention đã chốt vậy, scan chỉ quét `NonPublic | Instance` — thêm `Public` là mở cửa cho một hình dạng field mà convention cấm, và mở im lặng.
 
 **Một bẫy đi kèm, không có trong bản `partial`:** magic method của Unity bị subclass che. Với `partial` chỉ có một class nên không có gì che nhau; với kế thừa, một `OnDestroy` hay `OnDisable` khai trên `GameSave` sẽ che bản của base, Unity gọi bản của subclass, và việc dọn dẹp của base **không chạy** — im lặng. Hệ này hôm nay không dùng magic method nào trên collection, nên chưa chạm; nếu về sau thêm thì khai `protected virtual` để `override` là đường duy nhất.
 
@@ -237,8 +270,8 @@ Thứ tự: **1 → 2 → 3 → 4 → 5 → 6**. Task 4 sửa file của Task 2.
 - **Delete:** `Assets/Horcrux/Runtime/Abstractions/Foundations/Persistence/ISaveUnit.cs` (+ `.meta`)
 
 **Interfaces:**
-- Consumes: `IService<T>` (`Abstractions/Foundations/IService.cs`) · `Newtonsoft.Json.JsonConvert`.
-- Produces: `ISaveEntry` (2 property + 4 method) · `SaveEntry<T>` (dự án khai) · `interface ISaveCollection` (1 property + 3 method, **không** derive `IService<>`).
+- Consumes: `IService<T>` (`Abstractions/Foundations/IService.cs`) · `Newtonsoft.Json.JsonConvert` · Odin `[ShowInInspector]`, `[ReadOnly]` ở **scope runtime** (an toàn: `Sirenix.OdinInspector.Attributes.dll` là assembly runtime, và `RemoteConfig<T>` đã khai `[NonSerialized, ShowInInspector]` ngoài `#if UNITY_EDITOR`) + `[Button]`, `[MultiLineProperty]` trong khối `#if UNITY_EDITOR`.
+- Produces: `ISaveEntry` (2 property + 4 method) · `SaveEntry<T>` (dự án khai) + 1 nút Editor `ImportPayload` · `interface ISaveCollection` (1 property + 3 method, **không** derive `IService<>`).
 
 **Quyết định thiết kế:**
 
@@ -249,11 +282,15 @@ Thứ tự: **1 → 2 → 3 → 4 → 5 → 6**. Task 4 sửa file của Task 2.
 | `ISaveEntry` non-generic + `SaveEntry<T>` generic | Collection cần một `List<ISaveEntry>` đồng nhất; phần typed nằm ở lớp game khai. Game **không** implement `ISaveEntry` trực tiếp |
 | Bốn method của `ISaveEntry` cài **explicit** | `ResetRuntimeState`, `ReadPayload`, `WritePayload`, `ClearDirty` chỉ collection được gọi. Explicit interface implementation làm chúng **biến mất** khỏi IntelliSense của game — chặn bằng cấu trúc, không bằng dòng doc "chỉ collection gọi" |
 | Entry chỉ nói bằng **chuỗi payload**, không biết `PlayerPrefs` | Đây là chỗ duy nhất đáng phòng xa, và nó tốn 0 dòng: chuyển kho sang file sau này chỉ sửa nội bộ collection |
-| `[NonSerialized] T value`, `[SerializeField] T defaultValue` | Đảo ngược có chủ ý so với `RCVariable<T>` — lý do gốc của khuôn cũ là cho developer thấy giá trị fetch về trong asset, lý do đó không còn đúng khi thứ được lưu là tiến độ người chơi |
+| `[NonSerialized] T value`, `[SerializeField] T defaultValue` | Ranh giới sở hữu chia theo **nguồn** của giá trị: `defaultValue` do developer đặt lúc authoring nên nó thuộc asset và thuộc git; `value` do người chơi sinh ra nên nó thuộc máy người chơi. Đảo ngược có chủ ý so với `RemoteConfig<T>` — lý do gốc của khuôn cũ là cho developer thấy giá trị fetch về trong asset, lý do đó không còn đúng khi thứ được lưu là tiến độ người chơi |
+| `value` và `isDirty` thêm `[ShowInInspector, ReadOnly]` | Không serialize **và** vẫn nhìn thấy — hai trục khác nhau (§0.8). Sáu ca nghiệm thu của hệ này bắt developer kiểm `IsDirty`, ẩn nó đi là để log làm đường duy nhất. `[ReadOnly]` vì `[ShowInInspector]` trên private field làm nó sửa được, mà sửa tay là bỏ qua setter → không `MarkDirty`, không `Changed`, flush không ghi gì, **không log gì** (bất biến ⑤) |
 | `CloneDefault()` round-trip qua serializer, một nhánh duy nhất | `defaultValue` sống trong asset; trả thẳng nó ra là để game mutate vào asset. Round-trip là bản sao đúng cho **mọi** `T` — kể cả struct chứa `List` — nên không cần nhánh riêng cho value type |
 | `(object)x == null` thay vì `x == null` | `==` trên type parameter không ràng buộc **không compile được**. Cast về `object` là cách kiểm null hợp lệ duy nhất ở đây |
 | `Value` có setter, **và** có `MarkDirty()` | Gán cả giá trị là nhịp tự nhiên của giá trị lẻ; mutate rồi báo là nhịp tự nhiên của model. Một kiểu phục vụ cả hai mà không cần biết mình đang là loại nào |
-| `implicit operator T` | Tiền lệ `RCVariable<T>` đã có, và nó làm call site đọc gọn: `if (collection.HasRated)` |
+| `implicit operator T` | Tiền lệ `RemoteConfig<T>` đã có, và nó làm call site đọc gọn: `if (collection.HasRated)`. **Bẫy đi kèm:** `entry == null` so **giá trị** chứ không so entry — với `SaveEntry<string>` thì đó là `string == null`. Muốn kiểm chính field thì `ReferenceEquals(entry, null)`. Cùng bẫy `RemoteConfig<T>` đã ghi, vì cùng operator |
+| Nút `ImportPayload` trên **từng entry**, chỉ chạy trong Play mode | Nhu cầu thật: tái lập bug ở một trạng thái tiến độ cụ thể, mà hiện không có đường nào ngoài chơi lại từ đầu. Đi qua setter `Value` nên nó vẫn `MarkDirty` + bắn `Changed`, và `PlayerPrefs.SetString` vẫn chỉ có **một** cửa duy nhất trong collection (bất biến ④). Chặn ngoài Play mode vì `value` là `[NonSerialized]` — import ở đó là ghi vào field sẽ biến mất |
+| **Không** làm nút xoá riêng từng entry | Chưa có nhu cầu gọi được tên; `Delete all save data` ở Task 4 đang phủ. Ghi ở mục "Mở rộng sau" |
+| **Không** làm đường CSV như `RemoteConfig<T>` | Save là dữ liệu **người chơi**, không phải dữ liệu author — đường qua spreadsheet không có người dùng |
 | `Changed` là `event Action<T>`, fan-out qua `GetInvocationList` + try/catch từng listener | Đăng ký thưa nên `event` là đúng mức. Một listener ném exception không được kéo cả hệ chết. Alloc theo nhịp tương tác, không theo frame |
 | `ReadPayload` cũng bắn `Changed` | "Value đổi thì `Changed` bắn" là **một** luật không ngoại lệ |
 | `ISaveCollection` là interface **thuần** — không `partial`, không derive `IService<>` | `partial` không đi qua ranh giới assembly nên nửa của dự án sẽ kéo cả model vào SDK; và derive `IService<>` ở đây làm `IGameSave.Service` nhập nhằng, lỗi CS0229 (§0.10 ① và ②). Property có kiểu của dự án nằm trên `IGameSave` ở Task 5 |
@@ -297,6 +334,7 @@ namespace Horcrux.Runtime.Abstractions.Persistence
 ```csharp
 using System;
 using Newtonsoft.Json;
+using Sirenix.OdinInspector;
 using UnityEngine;
 
 namespace Horcrux.Runtime.Abstractions.Persistence
@@ -321,9 +359,16 @@ namespace Horcrux.Runtime.Abstractions.Persistence
         [SerializeField, Tooltip("The value before anything is stored. Authored here; never written to at runtime.")]
         private T defaultValue;
 
-        // Runtime only. Serializing these would write the player's progress into the project asset.
-        [NonSerialized] private T value;
-        [NonSerialized] private bool isDirty;
+        // Runtime only, and visible without being stored — two separate axes.
+        // NonSerialized: serializing these would write the player's progress into the project asset, and into git.
+        //   A [SerializeField] wrapped in #if UNITY_EDITOR is NOT the way to get them on screen: the Editor would
+        //   store the field while the build strips it, and reading the asset then dies natively on a byte mismatch.
+        // ShowInInspector: the six acceptance cases of this system ask a developer to check IsDirty, so hiding it
+        //   leaves the log as the only way to see it.
+        // ReadOnly: a hand edit here would bypass the setter — no MarkDirty, no Changed, so the value changes on
+        //   screen and the next flush finds nothing dirty and writes nothing, silently. ImportPayload is the door.
+        [NonSerialized, ShowInInspector, ReadOnly] private T value;
+        [NonSerialized, ShowInInspector, ReadOnly] private bool isDirty;
 
         public string Key => key;
 
@@ -395,6 +440,43 @@ namespace Horcrux.Runtime.Abstractions.Persistence
                 catch (Exception e) { Debug.LogException(e); }
             }
         }
+
+#if UNITY_EDITOR
+        // Not authored data and not player data — just an Editor input box, so it shows without being stored.
+        [NonSerialized, ShowInInspector, MultiLineProperty]
+        private string payloadToImport;
+
+        /// <summary>Replaces the live value with the pasted payload, so a bug can be reproduced at an exact progress.</summary>
+        /// <remarks>Play mode only: outside it the live value is not loaded and is not stored, so an import there
+        /// would write to a field that vanishes. Goes through MarkDirty like any other change, which keeps
+        /// PlayerPrefs.SetString to the one door inside the collection.</remarks>
+        [Button]
+        private void ImportPayload()
+        {
+            if (!Application.isPlaying)
+            {
+                Debug.LogWarning($"[Save] Import into '{key}' needs Play mode — the live value only exists then.");
+                return;
+            }
+
+            if (string.IsNullOrEmpty(payloadToImport))
+            {
+                Debug.LogWarning($"[Save] Import into '{key}' skipped: the payload box is empty.");
+                return;
+            }
+
+            try
+            {
+                Value = JsonConvert.DeserializeObject<T>(payloadToImport);   // setter marks dirty and fires Changed
+                Debug.Log($"[Save] Imported into '{key}'. It reaches storage on the next flush.");
+            }
+            catch (Exception e)
+            {
+                Debug.LogError($"[Save] Import into '{key}' failed — the value is unchanged.");
+                Debug.LogException(e);
+            }
+        }
+#endif
     }
 }
 ```
@@ -408,16 +490,16 @@ namespace Horcrux.Runtime.Abstractions.Persistence
 {
     /// <summary>The one place every saved value lives. A game project derives its own service interface from this one.</summary>
     /// <remarks>
-    /// The project side owns the entries: it declares an interface deriving both this one and
-    /// <see cref="IService{T}"/> closed over itself, holding one typed property per entry, and a sealed class
-    /// deriving BaseSaveCollection that implements it. That is what keeps every model and key inside the project's
-    /// own assembly while a call site still reads a value with no cast. Registered as a REQUIRED service by that
-    /// class: a missing asset is a setup error, not a runtime case.
+    /// The project side owns the entries: it declares a partial interface deriving both this one and
+    /// <see cref="IService{T}"/> closed over itself, holding one typed property per entry, and a sealed partial
+    /// class deriving BaseSaveCollection that implements it. That is what keeps every model and key inside the
+    /// project's own assembly while a call site still reads a value with no cast. Registered as a REQUIRED service
+    /// by that class under its OWN interface: a missing asset is a setup error, not a runtime case.
     /// <para>
     /// This interface must NOT derive <see cref="IService{T}"/>. A project interface deriving both would inherit
-    /// two static Service members, and every read of it fails to compile with CS0229, ambiguity. Code that needs
-    /// this contract and nothing else asks <see cref="IService{T}"/> closed over this type, which resolves for any
-    /// type whether or not that type derives it.
+    /// two static Service members, and every read of it fails to compile with CS0229, ambiguity. So this is a
+    /// contract to DERIVE, never a service type to look up — nothing in the SDK resolves it, and SaveBootStep
+    /// takes the collection as a serialized reference instead.
     /// </para>
     /// </remarks>
     public interface ISaveCollection
@@ -455,7 +537,7 @@ namespace Horcrux.Runtime.Abstractions.Persistence
 
 **Interfaces:**
 - Consumes: `ISaveEntry` · `ISaveCollection` (Task 1) · `PlayerPrefs` · `System.Reflection`.
-- Produces: `RegisteredSave` (attribute) · `abstract class BaseSaveCollection : ScriptableObject, ISaveCollection` — `Initialize()` · `FlushAll()` · `Flush(ISaveEntry)` · `Entries` · `AutosaveIntervalSeconds` · `const string KeyPrefix`.
+- Produces: `RegisteredSave` (attribute) · `abstract class BaseSaveCollection : ScriptableObject, ISaveCollection` — `Initialize()` · `FlushAll()` · `Flush(ISaveEntry)` · `Entries` · `AutosaveIntervalSeconds` · `const string KeyPrefix` · `protected virtual ResetDerivedState()` · `protected virtual OnEntriesLoaded()`.
 
 **Quyết định thiết kế:**
 
@@ -464,7 +546,7 @@ namespace Horcrux.Runtime.Abstractions.Persistence
 | ScriptableObject, không MonoBehaviour trong scene | Không phải đặt GameObject vào scene entry, sống qua mọi lần đổi scene, và key hiện trong Inspector của một asset tra được bằng Project window. Cùng khuôn `BaseRemoteConfigCollection` |
 | `abstract`, và **không** mang `[Service]`, `[CreateAssetMenu]`, hay đường dẫn Resources | `Inherited = false` nên `[Service]` viết ở đây không tới được subclass; `[CreateAssetMenu]` trên type abstract tạo ra một menu item luôn thất bại; đường dẫn asset là quyết định của dự án (§0.10 ③). Ba thứ đó nằm ở Task 5 |
 | `KeyPrefix` **ở lại** SDK | Nó là **wire format**, không phải cấu hình của dự án: đổi nó là mọi save đang có trên máy người chơi thành mồ côi. Để mỗi dự án tự đặt là mời mỗi dự án tự tạo ra một lần đổi không hồi lại được |
-| `GetEntryFields()` dùng `Public \| NonPublic \| Instance` | Quét trên `GetType()` nên nó thấy private field mà subclass khai. Nó **không** thấy private field khai trên chính base — nên base không được tự khai entry (§0.10 ④) |
+| `GetEntryFields()` dùng `NonPublic \| Instance` | Khớp `BaseRemoteConfigCollection` — hai khî̀n phải quét giống nhau, lệch là hai luật từ một luật. Quét trên `GetType()` nên nó thấy private field mà subclass khai, kể cả khai ở file `partial` khác. Nó **không** thấy private field khai trên chính base — nên base không được tự khai entry (§0.10 ④) |
 | `Initialize()` public **và** `EnsureInitialized()` lazy ở mọi cửa vào | Quên gọi thì entry mang giá trị mặc định và flush kế **ghi đè giá trị mặc định lên save thật**. Đây là chỗ cố ý khác khuôn cũ: hai lối vào, một thân idempotent |
 | `ScanEntries()` là **một** thân dùng chung cho `Initialize` và nút `Validate keys` | Hai bản kiểm sẽ lệch nhau, và lệch kiểu nguy hiểm nhất: nút báo sạch trong khi runtime vẫn bỏ entry. Cùng một hàm thì không thể lệch |
 | Kiểm ba thứ: field chưa gán · key rỗng · trùng key — mỗi lỗi một `LogError` nêu **tên field** | Nêu key thôi thì không đủ để mở Inspector tìm; tên field là thứ developer nhìn thấy trên màn hình |
@@ -473,7 +555,8 @@ namespace Horcrux.Runtime.Abstractions.Persistence
 | `Flush(entry)` từ chối entry collection không sở hữu | Ghi một entry chưa đăng ký là tạo một khoá **không ai load lại lúc boot** — dữ liệu ghi ra rồi biến mất, không có gì báo. Đây thường là dấu hiệu quên `[RegisteredSave]` |
 | `PlayerPrefs.Save()` gọi **một lần** cho cả lượt, chỉ khi có entry vừa ghi | Save ghi lại toàn bộ kho, nên gọi n lần cho n entry là ghi cả kho n lần. Không entry nào dirty thì không gọi — flush rỗng phải thật sự không chạm đĩa |
 | `pendingClear` là field `List<ISaveEntry>` tái dùng, `Clear()` trong `finally` | Danh sách sống trong đúng một lượt flush; tái dùng thì không alloc theo chu kỳ, và `finally` đảm bảo lượt sau bắt đầu từ rỗng kể cả khi persist ném exception |
-| Reflection quét field có cache `List<FieldInfo>` | Chạy một lần mỗi phiên. LINQ ở đây không phải hot path, và đọc dễ hơn vòng lặp tay |
+| Reflection quét field có cache `List<FieldInfo>`, vòng lặp tay | Chạy một lần mỗi phiên nên LINQ cũng đủ rẻ; chọn vòng lặp tay vì `BaseRemoteConfigCollection` viết thế, và hai bản của một khî̀n đọc cạnh nhau mới đối chiếu được |
+| Cặp hook `ResetDerivedState()` / `OnEntriesLoaded()` | Base reset được trạng thái của **entry**, không với tới cache mà subclass dựng từ giá trị entry. Thiếu cửa này là cách hệ Remote Config đã sinh ra một cờ mang trạng thái phiên trước (§0.7). Phải đủ **cả hai** nửa: chỉ có hook "sau" thì lượt load không chạm entry nào — đúng lần chạy đầu — vẫn để cache cũ sống |
 | `Entries` không hứa thứ tự khai báo | `Type.GetFields` không đảm bảo thứ tự. Hứa một thứ tự không có là mở đường cho code sau dựa vào nó |
 | Flush khi 0 entry → `LogWarning` đúng một lần | Một hệ save không bao giờ được no-op trong im lặng |
 
@@ -484,9 +567,9 @@ namespace Horcrux.Runtime.Abstractions.Persistence
 ```csharp
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Reflection;
 using Horcrux.Runtime.Abstractions.Persistence;
+using Sirenix.OdinInspector;
 using UnityEngine;
 
 namespace Horcrux.Runtime.Implementations.Persistence
@@ -549,10 +632,25 @@ namespace Horcrux.Runtime.Implementations.Persistence
             for (int i = 0; i < entries.Count; i++)
                 entries[i].ResetRuntimeState();
 
+            ResetDerivedState();       // before the load: whatever the subclass cached is now from a dead session
             isInitialized = true;      // set before loading: nothing below may re-enter through a guarded member
             LoadAll();
+            OnEntriesLoaded();         // after the load: every entry now holds what storage had
             EnsureDriver();
         }
+
+        /// <summary>Override to drop anything cached from entry values. Runs on every Initialize, BEFORE the load.</summary>
+        /// <remarks>
+        /// A ScriptableObject outlives a play session, so a lookup or an "already parsed" flag left here carries last
+        /// session's numbers into this one — wrong only on a developer's machine, the hardest kind to believe.
+        /// Resetting the entries cannot reach this: only the subclass knows what it derived from them.
+        /// The pair must be BOTH halves. Clearing only in OnEntriesLoaded leaves a stale cache alive whenever
+        /// this load touches no entry, which is exactly the first run.
+        /// </remarks>
+        protected virtual void ResetDerivedState() { }
+
+        /// <summary>Override to rebuild those caches. Runs once per Initialize, after every entry has its stored value.</summary>
+        protected virtual void OnEntriesLoaded() { }
 
         public void FlushAll() => FlushInternal(null);
 
@@ -626,12 +724,23 @@ namespace Horcrux.Runtime.Implementations.Persistence
             return rejected;
         }
 
+        /// <summary>The entry fields the derived class declares, cached for the session.</summary>
+        /// <remarks>NonPublic only, matching BaseRemoteConfigCollection: an entry field is private + [SerializeField]
+        /// by convention, so scanning public as well would quietly accept a shape that convention forbids.</remarks>
         private List<FieldInfo> GetEntryFields()
         {
-            return cachedEntryFields ??= GetType()
-                .GetFields(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
-                .Where(field => field.IsDefined(typeof(RegisteredSave), false))
-                .ToList();
+            if (cachedEntryFields != null) return cachedEntryFields;
+
+            FieldInfo[] allFields = GetType().GetFields(BindingFlags.NonPublic | BindingFlags.Instance);
+            var entryFields = new List<FieldInfo>();
+
+            for (int i = 0; i < allFields.Length; i++)
+            {
+                if (allFields[i].IsDefined(typeof(RegisteredSave), false))
+                    entryFields.Add(allFields[i]);
+            }
+
+            return cachedEntryFields = entryFields;
         }
 
         private void LoadAll()
@@ -740,6 +849,8 @@ namespace Horcrux.Runtime.Implementations.Persistence
 | `Flush(entry)` với một `SaveEntry` mới `new` ngoài collection | `LogError` nêu key, **không** ghi gì |
 | Gọi `FlushAll` trước khi ai đó gọi `Initialize` | tự initialize, load đúng, không `NullReferenceException` |
 | Gọi `Initialize()` hai lần | kết quả y hệt một lần; không nhân đôi entry, không tạo driver thứ hai |
+| Subclass override `ResetDerivedState` + `OnEntriesLoaded`, log một dòng mỗi hook | thứ tự log đúng: `ResetDerivedState` → (load) → `OnEntriesLoaded`, và cả hai chạy **mỗi** lần `Initialize` |
+| Subclass cache một lookup từ entry, Play → đổi giá trị → Stop → Play lại (domain reload tắt) | lookup dựng lại từ giá trị vừa load, **không** mang số của phiên trước |
 
 - [ ] **Step 3: Commit** — `feat(sdk): add BaseSaveCollection (scan, validate, load, two-phase flush)`
 
@@ -860,12 +971,13 @@ namespace Horcrux.Runtime.Implementations.Persistence
 | `PrintAllPayloads` in cả độ dài từng payload và tổng | Đây là con số duy nhất trả lời được "đã chạm ngưỡng vài chục KB chưa" |
 | Cả ba nút chạy được **ngoài Play mode** | Chúng đọc field qua reflection, không đọc `entries` — nên trùng key lộ ra lúc đang dựng, đúng lúc còn sửa rẻ |
 | Ba nút ở lại base, không chuyển sang subclass của dự án | Chúng chỉ chạm `ScanEntries` và `KeyPrefix`, không chạm type nào của dự án. Odin vẽ `[Button]` khai ở base trên Inspector của asset dẫn xuất, nên chuyển sang dự án là bắt mỗi dự án chép lại ba nút giống nhau |
+| Attribute Odin viết tên trần + `using Sirenix.OdinInspector;` ở đầu file | Khớp `BaseRemoteConfigCollection`, kể cả chi tiết `using` nằm ngoài `#if UNITY_EDITOR` trong khi `[Button]` chỉ dùng bên trong — một `using` không dùng tới trong build là vô hại, còn hai bản của một khuôn viết khác style thì đọc cạnh nhau không đối chiếu được |
 
 - [ ] **Step 1: thêm vào cuối `BaseSaveCollection`, trước dấu `}` của class**
 
 ```csharp
 #if UNITY_EDITOR
-        [Sirenix.OdinInspector.Button, Sirenix.OdinInspector.GUIColor("cyan")]
+        [Button, GUIColor("cyan")]
         private void ValidateKeys()
         {
             // Runs the very scan Initialize runs, so a clean result here means a clean load at runtime.
@@ -878,7 +990,7 @@ namespace Horcrux.Runtime.Implementations.Persistence
                 Debug.LogError($"[Save] {rejected} of {scratch.Count + rejected} declared entries were rejected; see the errors above.", this);
         }
 
-        [Sirenix.OdinInspector.Button]
+        [Button]
         private void PrintAllPayloads()
         {
             var scratch = new List<ISaveEntry>();
@@ -900,7 +1012,7 @@ namespace Horcrux.Runtime.Implementations.Persistence
             Debug.Log(report.ToString(), this);
         }
 
-        [Sirenix.OdinInspector.Button, Sirenix.OdinInspector.GUIColor("red")]
+        [Button, GUIColor("red")]
         private void DeleteAllSaveData()
         {
             if (!UnityEditor.EditorUtility.DisplayDialog(
@@ -968,9 +1080,14 @@ namespace Horcrux.Runtime.Implementations.Persistence
 | Quyết định | Lý do |
 |---|---|
 | `IGameSave : ISaveCollection, IService<IGameSave>` | Derive contract để game gọi được `Flush(entry)` và `FlushAll()`; derive `IService<chính mình>` để có `Service` không nhập nhằng. Đây là nửa còn lại của §0.10 ②: contract không derive, dự án thì derive |
-| Hai dòng `[Service]` trên `GameSave`, cùng một `ResourcePath` | Một asset trả lời cho cả hai cửa: game hỏi `IGameSave` để có property có kiểu, `SaveBootStep` trong SDK hỏi `ISaveCollection`. Thiếu dòng thứ hai thì Task 6 ném exception lúc boot. `AllowMultiple = true` cho phép, và `Resources.Load` trả cùng một instance nên không sinh hai object (§0.10 ③) |
+| **Một** dòng `[Service]`, dưới `IGameSave` | Khớp `GameRemoteConfigCollection`. Không gì trong SDK tra `ISaveCollection` qua service locator — `SaveBootStep` nhận reference kéo thả (Task 6). Bỏ được dòng thứ hai cũng là bỏ luôn bề mặt bẫy CS0229 khỏi phía dự án (§0.10 ②) |
+| `sealed partial class` + `partial interface`, chia entry theo feature | Đúng khuôn `GameRemoteConfigCollection` đang chạy: một asset, nhưng khai báo nằm ở nhiều file. `partial` **trong cùng một assembly** không đụng ràng buộc §0.10 ① — cái bị cấm là `partial` **bắt qua** ranh giới SDK–dự án |
+| `RESOURCE_PATH` viết SCREAMING_SNAKE | Khớp `GameRemoteConfigCollection.RESOURCE_PATH`. Hai file sẽ nằm cạnh nhau trong cùng dự án |
+| `[Splitter("…")]` gom nhóm Inspector | Đồ có sẵn trong SDK (`Runtime/Utilities/Attribute/`), đang là thứ giữ cho asset 27 biến của Remote Config còn đọc được. Không dựng cơ chế gom nhóm thứ hai |
 | `sealed` | Không có implementation thứ hai và không có lý do để có. Một chain ba tầng khi chưa ai cần là thêm một bậc người đọc phải leo |
 | Hai file, không một | `IGameSave` là thứ mọi call site đọc; `GameSave` là chi tiết triển khai. Thêm một entry là sửa hai chỗ liền nhau, và IntelliSense ở call site chỉ thấy phần nó cần |
+| Feature cần đọc có kiểu nhiều entry của riêng nó thì tách **interface**, không tách asset | `interface IEconomySave { SaveEntry<int> Coins { get; } … }`, rồi `IGameSave : ISaveCollection, IEconomySave, IService<IGameSave>`. Code Economy phụ thuộc `IEconomySave`, không thấy entry feature khác (`I` của SOLID). ⚠️ `IEconomySave` **không được** derive `IService<>` — `IGameSave` derive cả hai thì lại hai thành viên `Service`, CS0229. Muốn tra riêng thì thêm một dòng `[Service(typeof(IEconomySave), ResourcePath = RESOURCE_PATH)]` và đọc `IService<IEconomySave>.Service` |
+| Feature tách interface xong thì đọc qua `IService<IEconomySave>.Service`, hoặc **nhận vào** qua Init | Hai đường đều giữ được `I`; chọn đường nào là việc của call site. Cách một hệ **SDK** lấy giá trị save thì khác — xem dòng cần phân xử ở "Ghi chú thực thi" |
 | `DemoProgress` khai ngay trong `IGameSave.cs` | Ở demo thì gọn hơn. Một dự án thật đặt model ở file riêng trong thư mục của feature sở hữu nó — model là dữ liệu của feature, không phải của collection |
 | Model là `class` dữ liệu thuần, public field | `JsonConvert` là đường duy nhất vào và ra. Không `UnityEngine.Object` (tham chiếu engine không thuộc về một save) và không struct của Unity (`Vector3.normalized` làm serializer đệ quy vô hạn) |
 
@@ -988,8 +1105,13 @@ namespace FelixFelicis.Save
     /// Deriving IService here — and NOT on ISaveCollection — is what keeps Service unambiguous. Adding an entry
     /// means one property here and one field on GameSave; both are required, since nothing outside the class can
     /// reach a private field.
+    /// <para>
+    /// Partial so entries split by feature: one pair of files per feature, IGameSave.Economy.cs beside
+    /// GameSave.Economy.cs, same namespace. That is what keeps a 30-entry collection reviewable, and keeps two
+    /// people adding entries to different features out of each other's files.
+    /// </para>
     /// </remarks>
-    public interface IGameSave : ISaveCollection, IService<IGameSave>
+    public partial interface IGameSave : ISaveCollection, IService<IGameSave>
     {
         SaveEntry<DemoProgress> DemoProgress { get; }
         SaveEntry<bool> DemoHasRated { get; }
@@ -1011,22 +1133,26 @@ namespace FelixFelicis.Save
 ```csharp
 using Horcrux.Runtime.Abstractions.Persistence;
 using Horcrux.Runtime.Implementations.Persistence;
+using Horcrux.Runtime.Utilities;
 using Sisus.Init;
 using UnityEngine;
 
 namespace FelixFelicis.Save
 {
     /// <summary>This game's saved values. Lives in the game assembly so no save model reaches the SDK.</summary>
-    /// <remarks>Registered twice on purpose: the game reads IGameSave for typed access, SaveBootStep reads
-    /// ISaveCollection for the contract, and both resolve to this one asset.</remarks>
-    [Service(typeof(IGameSave), ResourcePath = ResourcePath)]
-    [Service(typeof(ISaveCollection), ResourcePath = ResourcePath)]
+    /// <remarks>
+    /// One Service registration, under this project's own interface: nothing in the SDK looks ISaveCollection up,
+    /// because SaveBootStep takes the collection as a serialized reference instead.
+    /// Partial, matching IGameSave: each feature adds GameSave.Feature.cs next to IGameSave.Feature.cs.
+    /// </remarks>
+    [Service(typeof(IGameSave), ResourcePath = RESOURCE_PATH)]
     [CreateAssetMenu(menuName = "FelixFelicis/SaveCollection", fileName = "SaveCollection")]
-    public sealed class GameSave : BaseSaveCollection, IGameSave
+    public sealed partial class GameSave : BaseSaveCollection, IGameSave
     {
         // Must match where the asset sits under a Resources folder, or the service never resolves.
-        private const string ResourcePath = "Config/SaveCollection";
+        private const string RESOURCE_PATH = "Config/SaveCollection";
 
+        [Splitter("Demo")]                 // optional: draws a group header in the Inspector
         [RegisteredSave, SerializeField] private SaveEntry<DemoProgress> demoProgress;
         [RegisteredSave, SerializeField] private SaveEntry<bool> demoHasRated;
 
@@ -1123,10 +1249,15 @@ namespace FelixFelicis.Save
 
 | Kiểm | Cách làm | Kỳ vọng |
 |---|---|---|
-| Unity serialize được `SaveEntry<T>` khai trên subclass | mở asset trong Inspector | vẽ đủ `key` và `defaultValue` của cả hai entry; `value` và `isDirty` **không** hiện vì `[NonSerialized]` |
+| Unity serialize được `SaveEntry<T>` khai trên subclass | mở asset trong Inspector | vẽ đủ `key` và `defaultValue` của cả hai entry, và cả hai **sửa được** |
+| `value` và `isDirty` hiện mà không được ghi vào asset | mở asset ngoài Play mode | thấy cả hai, **xám / không sửa được** (`[ReadOnly]`). Play → đổi giá trị → Stop → mở lại: asset **không** bị Unity đánh dấu dirty, và `git status` không thấy `SaveCollection.asset` đổi. Thấy asset đổi nghĩa là `value` đã lỡ mang `[SerializeField]` — tiến độ người chơi đang đi vào version control |
+| Đọc được `isDirty` ngay trên Inspector lúc Play | Play, `Add 10 coins`, nhìn asset | `Is Dirty` bật `true` ngay, rồi tự về `false` sau chu kỳ autosave — sáu ca nghiệm thu ở Step 7 kiểm bằng cửa sổ này thay vì đọc log |
 | Nút Editor khai ở base hiện trên asset dẫn xuất | mở asset | thấy đủ ba nút `Validate keys`, `Print all payloads`, `Delete all save data` |
+| Nút khai trên `SaveEntry<T>` hiện trong từng entry | mở asset, bung một entry | thấy ô `payloadToImport` và nút `Import payload`; bấm ngoài Play mode → `LogWarning`, không đổi gì |
+| Entry khai ở file `partial` khác vẫn vào danh sách (§0.10 ④) | tách `demoHasRated` sang `GameSave.Demo.cs`, bấm `Validate keys` | vẫn báo đúng **2** entry — `partial` là cùng một type nên reflection thấy đủ |
 | Scan thấy private field của subclass (§0.10 ④) | bấm `Validate keys` | báo đúng **2** entry |
-| Hai service type trỏ cùng một object (§0.10 ②③) | trong `Start` của `DemoSaveDriver`, so `ReferenceEquals(IGameSave.Service, IService<ISaveCollection>.Service)` | `true`. `false` hoặc exception nghĩa là thiếu một dòng `[Service]`, và Task 6 sẽ chết lúc boot |
+| `IGameSave.Service` resolve được với **một** dòng `[Service]` (§0.10 ②③) | trong `Start` của `DemoSaveDriver`, đọc `IGameSave.Service` | trả về asset, không exception. Exception nghĩa là `RESOURCE_PATH` không khớp đường dẫn sau `Resources/` |
+| `SaveBootStep` lấy được collection **không** qua service locator | mở GameObject có `SaveBootStep`, xem ô reference | ô đã trỏ vào asset; `grep -rn --include=*.cs "IService<ISaveCollection>" Assets/Horcrux` **không** ra kết quả nào |
 
 - [ ] **Step 6: Nghiệm thu tự động** (agent tự chạy — năm thứ mắt người sót):
 
@@ -1135,7 +1266,7 @@ namespace FelixFelicis.Save
 | Round-trip mọi kiểu dùng thật | `SaveEntry<T>` với `int` · `bool` · `float` · `string` · một enum · `DemoProgress` có `List`: gán, `WritePayload`, `ReadPayload` vào một entry mới, so giá trị | bằng nhau từng field |
 | **Không còn cửa ghi thứ hai** | `grep -rn "PlayerPrefs.Set" Assets/Horcrux/Runtime` | trong hệ Persistence ra **đúng một** kết quả runtime, nằm trong `FlushInternal`; kết quả trong nút Editor là cố ý và phải đếm riêng. `DemoSaveDriver` nằm ngoài `Assets/Horcrux` nên không lọt vào phép grep này — kiểm nó riêng |
 | Không còn dấu vết kiến trúc cũ | `grep -rn "ISaveUnit\|SaveUnit\|Prefs<\|PrefsBool\|PrefsInt\|SaveRegistry" Assets` | không kết quả nào |
-| **SDK không mang domain của dự án** | `grep -rn --include=*.cs "FelixFelicis\|DemoProgress\|IGameSave\|GameSave" Assets/Horcrux` và `find . -name "*.asmref"` | không kết quả nào. Giới hạn vào `*.cs` là cố ý: plan này nằm trong `Assets/Horcrux` và có nhắc các tên đó, nhưng tài liệu nói **về** dự án không phải SDK phụ thuộc dự án. Đây là phép kiểm của chính mục tiêu mới trong Goal, và là thứ duy nhất chứng minh submodule commit được một mình |
+| **SDK không mang domain của dự án** | `grep -rn --include=*.cs "FelixFelicis\|DemoProgress\|IGameSave\|GameSave" Assets/Horcrux` và `find . -name "*.asmref"` | không kết quả nào. Giới hạn vào `*.cs` là cố ý: plan này nằm trong `Assets/Horcrux` và có nhắc các tên đó, nhưng tài liệu nói **về** dự án không phải SDK phụ thuộc dự án. Đây là phép kiểm của chính mục tiêu mới trong Goal, và là thứ duy nhất chứng minh submodule commit được một mình. **Thay tên theo host**: `FelixFelicis.Save` / `com.FelixFelicis` là tên của host viết plan này. Trong color-loop, namespace phía dự án theo lối đường dẫn (`_TheGame.Runtime.…`) — grep phải dùng tên của host đang triển khai, không dùng nguyên tên trong plan |
 | `defaultValue` không bị mutate | lấy `Value`, mutate sâu vào nó (`coins = 999`, `unlockedSkins.Add`), gọi `Initialize()` lại, đọc `Value` | về đúng mặc định đã author; asset không bị đánh dấu dirty |
 | Dirty không tắt trước khi xuống đĩa | dựng ca `PlayerPrefs.Save()` ném exception | mọi entry vừa ghi **còn** dirty, log nêu rõ, lượt sau thử lại |
 
@@ -1143,76 +1274,112 @@ namespace FelixFelicis.Save
 
 | Mục | Nội dung |
 |---|---|
-| Vào đâu | Scene `PersistenceDemo`, bấm Play |
+| Vào đâu | Scene `PersistenceDemo`, bấm Play. **Để asset `SaveCollection` mở sẵn trong Inspector** — `Value` và `Is Dirty` của từng entry hiện ngay ở đó, nên phần lớn ca dưới nhìn được mà không phải đọc log |
 | Làm gì | ① chuột phải `DemoSaveDriver` → `Add 10 coins` ×3, rồi bấm `Print all payloads` trên asset **ngay lập tức** · ② chờ quá 5 giây → `Print all payloads` lần nữa · ③ Stop rồi Play lại · ④ `Toggle 'has rated'` → Stop → Play lại · ⑤ `Add 10 coins` rồi `Flush ONLY progress` · ⑥ `Flush an entry the collection does not own` · ⑦ `Corrupt the progress payload` → Stop → Play lại · ⑧ `Add 10 coins` rồi bấm nút Pause của Editor · ⑨ trên asset, đổi key của `Demo Has Rated` thành `demo_progress` → `Validate keys` |
 | Nhìn cái gì | ① log `dirty=True` ngay khi add, nhưng payload in ra vẫn là giá trị **cũ** · ② payload đã thành `coins=30`, log `dirty=False` · ③ log đầu tiên của phiên mới đã là `coins=30`, không phải `0` · ④ `rated` giữ nguyên qua phiên — **đây là ca thiết kế cũ làm mất, giờ nó nằm trong cùng vòng flush với model** · ⑤ chỉ payload của `demo_progress` đổi · ⑥ `LogError` nêu key và nhắc `[RegisteredSave]`, không ghi gì · ⑦ vẫn vào được demo, `LogError` nêu đúng `demo_progress`, `coins=0`, còn `rated` **vẫn đúng** · ⑧ payload cập nhật ngay lúc pause · ⑨ `LogError` nêu cả hai tên field, **ngay trong Editor, không cần Play** |
 | Khác trước ra sao | Ở thiết kế cũ, giá trị lẻ như `rated` đi một đường riêng không có cờ dirty, và `PlayerPrefs.Save()` chỉ chạy khi có model dirty — nên ca ④ với app bị kill không qua pause là **mất giá trị**. Trùng key chỉ lộ lúc Play và chỉ giữa các model; ca ⑨ giờ lộ lúc authoring và phủ mọi entry |
-| Dấu hiệu hỏng | coins về 0 sau restart bình thường (mất save) · `dirty=True` còn mãi sau khi payload đã đổi (`ClearDirty` không chạy) · ca ① payload đã đổi ngay khi vừa add (serialize đang bám nhịp tương tác) · ca ④ `rated` về mặc định (giá trị lẻ lại rơi ra ngoài vòng flush) · ca ⑦ exception đỏ không ai bắt, hoặc `rated` cũng mất theo (một entry hỏng kéo cả lượt) · ca ② payload không đổi sau khi chờ (thiếu `PlayerPrefs.Save()`) · ca ⑨ phải Play mới thấy lỗi |
+| Dấu hiệu hỏng | coins về 0 sau restart bình thường (mất save) · `dirty=True` còn mãi sau khi payload đã đổi (`ClearDirty` không chạy) · ca ① payload đã đổi ngay khi vừa add (serialize đang bám nhịp tương tác) · ca ④ `rated` về mặc định (giá trị lẻ lại rơi ra ngoài vòng flush) · ca ⑦ exception đỏ không ai bắt, hoặc `rated` cũng mất theo (một entry hỏng kéo cả lượt) · ca ② payload không đổi sau khi chờ (thiếu `PlayerPrefs.Save()`) · ca ⑨ phải Play mới thấy lỗi · **ô `Value` trên Inspector sửa được** (thiếu `[ReadOnly]` → có cửa đổi giá trị mà không `MarkDirty`) · **Stop xong `git status` thấy `SaveCollection.asset` đổi** (`value` đã lỡ được serialize → tiến độ người chơi đang vào version control) |
 
 - [ ] **Step 8: Commit** — `feat(game): add GameSave collection + persistence acceptance scene`
 
 ---
 
-### Task 6: `SaveBootStep` — flush có thứ tự, tuỳ chọn
+### Task 6: `SaveBootStep` — flush có thứ tự, và là đường wire chuẩn
 
 **Files:**
 - Create: `Assets/Horcrux/Runtime/Implementations/Composites/Persistence/SaveBootStep.cs`
 
 **Interfaces:**
-- Consumes: `BootStep` (`Abstractions/Foundations/Bootstrap/BootStep.cs`) · `ISaveCollection` (Task 1) · `IService<T>` (`Abstractions/Foundations/IService.cs`).
-- Produces: `SaveBootStep : BootStep`.
+- Consumes: `BootStep` (`Abstractions/Foundations/Bootstrap/BootStep.cs`) · `BaseSaveCollection` (Task 2).
+- Produces: `SaveBootStep : BootStep` — một field `[SerializeField]`, không API công khai nào.
+
+**Hệ vẫn chạy được nếu thiếu step này** — `EnsureInitialized` và `SaveDriver` phủ hết. Nhưng nó là **đường wire chuẩn**, vì hai thứ chỉ nó cho được, và thứ hai mới là thứ quan trọng:
+
+1. Flush **có thứ tự** ở pause và quit, cái mà magic method của một MonoBehaviour lẻ không hứa được.
+2. `Initialize()` chạy **trong pha boot**, nên "subscribe `Changed` sau `Initialize`" đúng theo **cấu trúc** chứ không theo trí nhớ. Không có step này thì thời điểm `Initialize` phụ thuộc ai chạm collection trước, và một listener đăng ký trước đó bị `ResetRuntimeState()` xoá **im lặng** (§0.7 — xem bảng bẫy dưới).
 
 **Quyết định thiết kế:**
 
 | Quyết định | Lý do |
 |---|---|
 | Nằm ở nhánh **Composites**, không phải Foundations | Nó phụ thuộc cả Bootstrap lẫn Persistence. Lõi Persistence ở Foundations vẫn chạy được ở project không dùng Bootstrap |
-| Resolve bằng `IService<ISaveCollection>.Service`, không `ISaveCollection.Service` | `ISaveCollection` là interface thuần nên nó không có thành viên `Service` nào — và nó thuần vì derive `IService<>` ở đó làm call site của dự án nhập nhằng (§0.10 ②). Dạng đóng tường minh này chạy với **bất kỳ** `T` vì `IService<T>.Service` chỉ là `Service.Get<T>()` |
-| Đây là **chỗ duy nhất** trong SDK cần collection | Nên nó cũng là chỗ duy nhất buộc dự án phải viết dòng `[Service(typeof(ISaveCollection), …)]` thứ hai ở Task 5. Thiếu dòng đó thì step này ném exception ngay pha boot — và ném là đúng: save là hệ bắt buộc, thiếu đăng ký là lỗi cấu hình |
-| Là **tuỳ chọn**, không thay driver | Driver vẫn chạy autosave. Step này chỉ thêm đường flush **có thứ tự** cho pause và quit |
-| `InitializeAsync` gọi `Initialize()` | Trả chi phí reflection và load ở nơi có màn hình loading, và làm lỗi save lộ ra trong pha boot thay vì giữa gameplay |
+| Nhận collection qua `[SerializeField]`, **không** tra service locator | "Step này flush collection nào" là quyết định lúc **authoring** (§3.3), và nó hiện ra trong Inspector chứ không nằm trong một lượt tra lúc chạy. Đổi lại, phía dự án chỉ còn **một** dòng `[Service]` — khớp `GameRemoteConfigCollection` — và bề mặt bẫy CS0229 biến mất |
+| Kiểu field là `BaseSaveCollection`, không phải `ISaveCollection` | Unity chỉ serialize được reference tới `UnityEngine.Object`; một field kiểu interface không hiện ra ô kéo thả nào. `BaseSaveCollection : ScriptableObject` nên nó kéo được, và step vốn đã sống trong nhánh Implementations |
+| Ô trống thì `LogError` rồi thoát, không ném | Thiếu wire là lỗi cấu hình lộ ngay pha boot — nhưng ném ở đây sẽ chặn cả chain boot vì một thứ mà `EnsureInitialized` vẫn cứu được. Log nêu tên GameObject là đủ đỏ để không ai bỏ qua |
+| `InitializeAsync` gọi `Initialize()` | Trả chi phí reflection và load ở nơi có màn hình loading, làm lỗi save lộ ra trong pha boot thay vì giữa gameplay, và cố định thời điểm `Changed` bị reset |
 | Chạy hai đường flush cùng lúc là chấp nhận được | Flush là idempotent: đường nào chạy trước cũng đúng, và đường chạy sau bắt nốt phần vừa sinh ra. Lượt không thấy gì dirty không chạm đĩa |
-| Đặt `Order` **thấp** (init sớm) để flush **muộn** | Fan-out pause và quit đi **ngược** chiều init. Step init sớm nhất sẽ flush muộn nhất — đó mới là thứ ta muốn: chốt sổ sau khi mọi hệ đã ghi xong |
+| Đặt `Order` **thấp** (init sớm) để flush **muộn** | Đã kiểm trong `BootstrapRunner`: pause và quit đều chạy `for (i = stepCount-1; i >= 0; i--)`, init chạy xuôi. Nên step init sớm nhất flush muộn nhất — chốt sổ sau khi mọi hệ đã ghi xong |
 
 **Editor setup — bước thật:**
 
 1. Trên GameObject có `BootstrapRunner`: add component `SaveBootStep`.
-2. Đặt `Order` **thấp** — vì fan-out pause/quit đi ngược, step init sớm sẽ flush **muộn nhất**, sau khi mọi hệ khác đã ghi xong.
-3. Kéo `SaveBootStep` vào danh sách steps của `BootstrapRunner` nếu runner dùng danh sách tường minh.
+2. **Kéo asset `SaveCollection` vào ô `Collection`** — thiếu bước này thì step `LogError` rồi tự thoát ở pha boot.
+3. Đặt `Order` **thấp** — vì fan-out pause/quit đi ngược, step init sớm sẽ flush **muộn nhất**, sau khi mọi hệ khác đã ghi xong.
+4. Kéo `SaveBootStep` vào danh sách steps của `BootstrapRunner` nếu runner dùng danh sách tường minh.
 
 - [ ] **Step 1: `SaveBootStep.cs`**
 
 ```csharp
 using System.Threading;
 using Cysharp.Threading.Tasks;
-using Horcrux.Runtime.Abstractions;
 using Horcrux.Runtime.Abstractions.Bootstrap;
-using Horcrux.Runtime.Abstractions.Persistence;
+using UnityEngine;
 
 namespace Horcrux.Runtime.Implementations.Persistence
 {
-    /// <summary>Optional: moves the save load into boot, and gives pause and quit an ORDERED flush.</summary>
+    /// <summary>Moves the save load into boot, and gives pause and quit an ORDERED flush.</summary>
     /// <remarks>
     /// The runner walks steps backwards on pause and quit, so a step that initializes EARLY flushes LAST — after
     /// every system above it has written. That is the ordering a MonoBehaviour's own magic methods cannot promise.
+    /// <para>
+    /// Initializing here also fixes WHEN the collection resets its entries, and that reset drops every Changed
+    /// listener. So this step is what makes "subscribe after Initialize" true by construction rather than by
+    /// memory: without it, a listener wired before the first touch of the collection is dropped in silence.
+    /// </para>
+    /// <para>
+    /// The collection comes in as a serialized reference, not from a service lookup: which collection this step
+    /// flushes is an authoring decision, and it stays visible in the Inspector. The field is typed
+    /// BaseSaveCollection because Unity only serializes UnityEngine.Object references — an interface field draws
+    /// no slot at all.
+    /// </para>
     /// This does not replace SaveDriver: the driver still runs the autosave timer, and the second flush of a pause
     /// finds nothing dirty and never reaches storage.
     /// </remarks>
     public sealed class SaveBootStep : BootStep
     {
+        [SerializeField, Tooltip("The save collection to initialize at boot and flush on pause and quit.")]
+        private BaseSaveCollection collection;
+
         public override UniTask InitializeAsync(CancellationToken ct)
         {
             // Pays the reflection scan and the load here, where a loading screen is up and a broken save is visible.
-            IService<ISaveCollection>.Service.Initialize();
+            if (HasCollection) collection.Initialize();
             return UniTask.CompletedTask;
         }
 
         public override void OnAppPause(bool isPaused)
         {
-            if (isPaused) IService<ISaveCollection>.Service.FlushAll();
+            if (isPaused && HasCollection) collection.FlushAll();
         }
 
-        public override void OnAppQuit() => IService<ISaveCollection>.Service.FlushAll();
+        public override void OnAppQuit()
+        {
+            if (HasCollection) collection.FlushAll();
+        }
+
+        /// <summary>False with an error when the slot is empty — a setup mistake, surfaced without killing boot.</summary>
+        private bool HasCollection
+        {
+            get
+            {
+                if (collection != null) return true;
+
+                Debug.LogError($"[Save] {nameof(SaveBootStep)} on '{name}' has no collection assigned — " +
+                               "drag the save collection asset into its slot. Boot continues, but the load and " +
+                               "the ordered flush are both skipped.", this);
+                return false;
+            }
+        }
     }
 }
 ```
@@ -1225,16 +1392,39 @@ namespace Horcrux.Runtime.Implementations.Persistence
 | Một `BootStep` khác `Order` cao hơn ghi vào một entry trong `OnAppPause` | giá trị đó **có** trong payload sau khi pause — chứng minh thứ tự đúng |
 | Pause với cả driver lẫn step | flush chạy hai lần, lần sau không chạm đĩa (không log gì thêm) |
 | Play **không** có `SaveBootStep` | hệ vẫn chạy đủ; load xảy ra ở lần chạm đầu tiên |
-| Bỏ dòng `[Service(typeof(ISaveCollection), …)]` khỏi `GameSave` rồi Play | exception ngay pha boot nêu `ISaveCollection` chưa đăng ký — **không** phải im lặng bỏ qua bước load. Trả dòng đó lại rồi Play tiếp |
+| Để trống ô `Collection` rồi Play | `LogError` nêu tên GameObject ngay pha boot, **boot vẫn đi tiếp**, và load rơi về `EnsureInitialized` ở lần chạm đầu tiên |
+| Subscribe `Changed` trong `Start` của một MonoBehaviour, có step này trong chain | listener **còn sống** — `Initialize` đã chạy xong trong pha boot nên `ResetRuntimeState` không xoá nó |
+| `grep -rn --include=*.cs "IService<ISaveCollection>" Assets/Horcrux` | không kết quả nào — SDK không tra collection qua service locator ở bất cứ đâu |
 
-- [ ] **Step 3: Commit** — `feat(sdk): add optional SaveBootStep for ordered flush`
+- [ ] **Step 3: Commit** — `feat(sdk): add SaveBootStep for ordered flush and boot-time load`
 
 ---
 
 ## Ghi chú thực thi
 
 - **Nghiệm thu cuối = Step 5, 6 và 7 của Task 5.** Sáu mục tiêu ở "Ngữ cảnh đã chốt" map vào đó: một-nơi-nhìn-thấy-mọi-thứ (nút `Print all payloads` liệt kê đủ) · trùng-key-bắt-lúc-authoring (ca ⑨) · mọi-giá-trị-trong-vòng-flush (ca ④ cộng phép grep "không còn cửa ghi thứ hai") · quên-khởi-tạo-không-mất-tiến-độ (bảng Task 2, hàng "gọi `FlushAll` trước `Initialize`") · thêm-entry-không-sửa-SDK (`GameSave.cs` là bằng chứng sống — 2 dòng cho một entry mới, và không dòng nào trong `Assets/Horcrux`) · model-không-vào-SDK (hàng cuối bảng Step 6).
-- **Sau khi implement xong:** viết `Persistence.md` (tài liệu thiết kế cho agent) cạnh `Implementations/Foundations/Persistence/`, rồi sinh `.html` từ nó. Chuyển mười mục `§0` sang mục quyết định thiết kế của tài liệu đó — bốn mục "đã sai một lần" (§0.4, §0.5, §0.6, §0.9) là loại tri thức không đọc ra được từ code, và §0.10 là loại người đọc sau sẽ **vô tình phá** nếu không thấy lý do viết sẵn.
+- **Sau khi implement xong:** viết `Persistence.md` (tài liệu thiết kế cho agent) cạnh `Implementations/Foundations/Persistence/`, rồi sinh `.html` từ nó. Chuyển mười mục `§0` sang mục quyết định thiết kế của tài liệu đó — bốn mục "đã sai một lần" (§0.4, §0.5, §0.6, §0.7) là loại tri thức không đọc ra được từ code, và §0.10 là loại người đọc sau sẽ **vô tình phá** nếu không thấy lý do viết sẵn.
+- **`Persistence.md` soi theo cấu trúc mục của `RemoteConfigSystem.md`**: Hai phía · Đường đi của một giá trị · Vòng đời · Inspector · Nút Editor · **Bẫy và quyết định thiết kế** · Chữ ký · Cấu trúc file. Hai hệ là hai bản của một khuôn, nên giá trị lớn nhất của tài liệu là **đối chiếu được với nhau** — chỗ nào Persistence khác thì người đọc thấy ngay đó là chỗ cố ý.
+- **Hai dòng bẫy phải có trong `Persistence.md`, và trong XML doc của chính API:**
+  - `Changed` bị `ResetRuntimeState()` xoá, nên **mọi listener đăng ký trước `Initialize()` mất im lặng**. Không có detector tự động nào đúng được ở đây: trong Editor với domain reload tắt, listener của phiên trước (ca hợp lệ §0.7) và listener vừa bị xoá oan (ca bug) đều chỉ là `Changed != null`. Cách chặn duy nhất là cấu trúc — `SaveBootStep` cố định `Initialize` vào pha boot (Task 6).
+  - `entry == null` so **giá trị**, không so entry, vì `implicit operator T` chạy trước phép so. Với `SaveEntry<string>` đó là `string == null`. Kiểm chính field thì `ReferenceEquals(entry, null)`.
 - **Khoá `"save." + Key` và định dạng JSON của payload là hợp đồng ra ngoài.** Dữ liệu trên máy người chơi bám vào đúng hai thứ đó. Đổi tiền tố hay đổi định dạng sau khi ship là mọi save cũ thành mồ côi — không có gì báo, chỉ là một ngày tất cả người chơi cũ mở game lên thấy tiến độ về 0.
-- **Hệ dùng tiếp:** Audio (volume), Haptics, Economy (coin và lives), Rating, LiveOps. Cả năm **nhận vào** `SaveEntry<T>` của mình qua Init chứ không tự khai — dự án khai entry trên `GameSave` rồi nối vào, nên một hệ SDK vẫn bê lẻ sang project không dùng Persistence được.
-- **Khuôn "abstract base trong SDK + subclass của dự án" dùng chung với hệ Remote Config** — xem `Abstractions/Foundations/RemoteConfigSystem/RemoteConfigCollectionPlan.md`. Hai hệ cố ý giống nhau đến từng chi tiết: cùng ràng buộc §0.10, cùng hai dòng `[Service]`, cùng cách reflection quét field. Sửa một bên mà không sửa bên kia là làm hai khuôn từ một khuôn.
+- **Hệ dùng tiếp:** Audio (volume), Haptics, Economy (coin và lives), Rating, LiveOps. Không hệ nào tự khai entry — dự án khai trên `GameSave` rồi nối vào, nên một hệ SDK vẫn bê lẻ sang project không dùng Persistence được.
+- **⚠️ CẦN DEVELOPER PHÂN XỬ — một hệ SDK lấy giá trị save bằng cách nào.** Hai tài liệu đang nói ngược nhau, và cả hai đều là ranh giới do developer đặt nên plan này không tự chọn:
+
+  | Nguồn | Nói gì | Hệ quả |
+  |---|---|---|
+  | Plan này, mục "Ai gọi" và "SOLID" | hệ SDK **nhận vào `SaveEntry<T>`** của mình qua Init | module compile-depend vào namespace Persistence; bê sang project không có Persistence là không biên dịch được |
+  | `HapticSystem.md` · `AudioSystem.md` | module phơi **field thường** (`IsEnabled`, `IsSfxOn`), dự án đọc save rồi **set vào** lúc bootstrap; *"SDK cố tình không sở hữu hệ save"* | module không phụ thuộc gì thuộc Persistence; entry giữ bản gốc, field module là bản chiếu, glue một chiều qua `Changed` |
+
+  Chốt bản nào thì sửa **dòng cũ** ở cả ba chỗ đang nhắc ("Ai gọi", "SOLID", và dòng "Hệ dùng tiếp" ngay trên), không thêm dòng thứ hai nói ngược. Hai tài liệu module đã qua vòng cắt phạm vi (`Haptics` cố ý loại `IHapticSettings` vì 0 implementation), nên bản của chúng có vẻ là bản mới hơn — nhưng đó là suy đoán, không phải chốt.
+- **Khuôn "abstract base trong SDK + subclass của dự án" dùng chung với hệ Remote Config** — xem `Abstractions/Foundations/RemoteConfigSystem/RemoteConfigSystem.md`. Hai hệ cố ý giống nhau đến từng chi tiết: cùng ràng buộc §0.10 · **một** dòng `[Service]` dưới interface của dự án · `sealed partial class` + `partial interface` chia theo feature · `RESOURCE_PATH` · reflection quét `NonPublic | Instance` bằng vòng lặp tay · `[Splitter]` gom nhóm Inspector · magic method khai `protected virtual` · `abstract` base không mang `[CreateAssetMenu]`. Sửa một bên mà không sửa bên kia là làm hai khuôn từ một khuôn.
+- **Ba chỗ Persistence cố ý đi khác khuôn Remote Config**, mỗi chỗ một lý do gọi được tên — đây là danh sách đóng, thêm chỗ thứ tư thì phải viết lý do vào đây:
+
+  | Chỗ khác | Lý do |
+  |---|---|
+  | `EnsureInitialized()` ở mọi cửa vào công khai | quên `Initialize()` ở RC là giá trị về default, hồi được; ở Save là ghi đè default lên save thật, không hồi được (§0.9) |
+  | Cặp hook `ResetDerivedState()` / `OnEntriesLoaded()` | RC chỉ có hook "sau" (`OnRemoteConfigsApplied`), và chính chỗ hở đó sinh ra cờ mang trạng thái phiên trước (§0.7) |
+  | `[NonSerialized] value` + `[SerializeField] defaultValue` | RC cố ý serialize giá trị fetch về để developer thấy trong asset; ở Save thứ được lưu là tiến độ **người chơi**, ghi vào asset là đưa nó vào version control (§0.8). Khác ở **trục serialize**, không khác ở trục nhìn thấy: cả hai hệ đều phơi trạng thái runtime bằng `[NonSerialized, ShowInInspector]`, Save thêm `[ReadOnly]` vì `value` sửa tay được là một cửa no-op âm thầm còn `fetched` của RC thì vô hại |
+
+- **Hai chỗ Remote Config nên học lại từ Persistence**, ghi ra để khỏi trôi mất — **không** thuộc phạm vi plan này, cần developer quyết trước khi làm: `IRemoteConfigCollection.RemoteConfigs` nên là `IReadOnlyList<>` thay vì `IEnumerable<>` (indexable, không boxing enumerator) · `RemoteConfig<T>` ghi cache PlayerPrefs bằng **key thô không tiền tố**, mà cache thì bỏ đi được, nên thêm tiền tố `"rc."` chỉ tốn một lượt fetch nguội và làm sạch cả không gian khoá dùng chung (§0.1).
