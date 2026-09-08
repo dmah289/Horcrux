@@ -284,8 +284,8 @@ Thứ tự: **1 → 2 → 3 → 4 → 5 → 6**. Task 4 sửa file của Task 2.
 | Entry chỉ nói bằng **chuỗi payload**, không biết `PlayerPrefs` | Đây là chỗ duy nhất đáng phòng xa, và nó tốn 0 dòng: chuyển kho sang file sau này chỉ sửa nội bộ collection |
 | `[NonSerialized] T value`, `[SerializeField] T defaultValue` | Ranh giới sở hữu chia theo **nguồn** của giá trị: `defaultValue` do developer đặt lúc authoring nên nó thuộc asset và thuộc git; `value` do người chơi sinh ra nên nó thuộc máy người chơi. Đảo ngược có chủ ý so với `RemoteConfig<T>` — lý do gốc của khuôn cũ là cho developer thấy giá trị fetch về trong asset, lý do đó không còn đúng khi thứ được lưu là tiến độ người chơi |
 | `value` và `isDirty` thêm `[ShowInInspector, ReadOnly]` | Không serialize **và** vẫn nhìn thấy — hai trục khác nhau (§0.8). Sáu ca nghiệm thu của hệ này bắt developer kiểm `IsDirty`, ẩn nó đi là để log làm đường duy nhất. `[ReadOnly]` vì `[ShowInInspector]` trên private field làm nó sửa được, mà sửa tay là bỏ qua setter → không `MarkDirty`, không `Changed`, flush không ghi gì, **không log gì** (bất biến ⑤) |
-| `CloneDefault()` round-trip qua serializer, một nhánh duy nhất | `defaultValue` sống trong asset; trả thẳng nó ra là để game mutate vào asset. Round-trip là bản sao đúng cho **mọi** `T` — kể cả struct chứa `List` — nên không cần nhánh riêng cho value type |
-| `(object)x == null` thay vì `x == null` | `==` trên type parameter không ràng buộc **không compile được**. Cast về `object` là cách kiểm null hợp lệ duy nhất ở đây |
+| `CloneDefault()` round-trip qua serializer, **không** nhánh nào | `defaultValue` sống trong asset; trả thẳng nó ra là để game mutate vào asset. Round-trip là bản sao đúng cho **mọi** `T` — kể cả struct chứa `List` — nên không cần nhánh riêng cho value type. `defaultValue` null cũng không cần nhánh: serialize null ra chuỗi `null`, đọc lại ra null, mà null **là** `default(T)`. Hai nhánh trả cùng một giá trị, nên nhánh thứ hai chỉ là một chỗ phải đọc và giữ đúng mãi mãi. Ca duy nhất tới được đây là `T` mà Unity không serialize được — `Dictionary` là một — hoặc entry `new` trong code, không phải đường asset |
+| Check null nằm ở `ReadPayload`, **không** ở `CloneDefault` | Kho chứa được đúng chuỗi `null`: `WritePayload` ghi ra thế khi `value` null, và đó là JSON **hợp lệ** nên không exception nào tới `try/catch` của `LoadAll`. Với reference type nó đọc lại thành null im lặng, và `isDirty` là `false` nên lần flush kế không ghi đè — entry null **vĩnh viễn**. Đây là cửa thứ tư của bảo đảm "không bao giờ null khi đã author default", và là cửa duy nhất không ai khác giữ |
 | `Value` có setter, **và** có `MarkDirty()` | Gán cả giá trị là nhịp tự nhiên của giá trị lẻ; mutate rồi báo là nhịp tự nhiên của model. Một kiểu phục vụ cả hai mà không cần biết mình đang là loại nào |
 | `implicit operator T` | Tiền lệ `RemoteConfig<T>` đã có, và nó làm call site đọc gọn: `if (collection.HasRated)`. Bẫy đi kèm — **bất đối xứng khi so sánh** — ở bảng bẫy cuối Task 1 |
 | Giữ guard `entry != null` trong operator, dù ca đó gần như không xảy ra | Ca duy nhất làm nó null là field `[RegisteredSave]` chưa gán, mà Unity dựng instance cho field `[SerializeField]` của class `[Serializable]` nên nó **không** null trên đường asset; còn nếu có thì `ScanEntries` đã `LogError` ở nút `Validate keys` **và** ở `Initialize` trước khi call site kịp đọc. Bỏ guard không mua được gì, mà thành chỗ thứ tư "cố ý đi khác khuôn" — giữ để khớp `RemoteConfig<T>`. Nhưng phải biết nó làm gì khi chạy: đổi một `NullReferenceException` ồn ào thành `default(T)` im lặng, tức **0 coin** (cùng họ bất biến ⑤) — chấp nhận được **chỉ vì** ca đó đã kêu hai lần trước đó |
@@ -295,6 +295,21 @@ Thứ tự: **1 → 2 → 3 → 4 → 5 → 6**. Task 4 sửa file của Task 2.
 | `Changed` là `event Action<T>`, fan-out qua `GetInvocationList` + try/catch từng listener | Đăng ký thưa nên `event` là đúng mức. Một listener ném exception không được kéo cả hệ chết. Alloc theo nhịp tương tác, không theo frame |
 | `ReadPayload` cũng bắn `Changed` | "Value đổi thì `Changed` bắn" là **một** luật không ngoại lệ |
 | `ISaveCollection` là interface **thuần** — không `partial`, không derive `IService<>` | `partial` không đi qua ranh giới assembly nên nửa của dự án sẽ kéo cả model vào SDK; và derive `IService<>` ở đây làm `IGameSave.Service` nhập nhằng, lỗi CS0229 (§0.10 ① và ②). Property có kiểu của dự án nằm trên `IGameSave` ở Task 5 |
+
+**Chính sách null của Newtonsoft không đồng nhất theo kiểu — đó là lý do check null nằm ở một chỗ, không hai.** Đo bằng chính `Newtonsoft.Json.dll` của project (`Library/PackageCache/com.unity.nuget.newtonsoft-json@*/Runtime/`), chạy trên `dotnet`:
+
+| Gọi gì | Kết quả |
+|---|---|
+| `SerializeObject((Progress)null)` | chuỗi `null` — payload **hợp lệ**, 4 ký tự |
+| `DeserializeObject<T>("null")`, `T` là class · `string` · `List<>` · `Dictionary<,>` | `null`, **không throw** |
+| `DeserializeObject<T>("null")`, `T` là `int` · `bool` · struct | **throws** `JsonSerializationException` |
+| `DeserializeObject<Progress>("")` và `("   ")` | `null`, không throw |
+| Round-trip một null **không** guard, mọi `T` ở hàng thứ hai | ra `null` — đúng bằng `default(T)` |
+| Round-trip một `defaultValue` **có thật**, mutate bản clone | bản gốc không đổi, và `ReferenceEquals` hai `List` bên trong là `False` — deep copy thật, kể cả khi `T` là struct chứa `List` |
+
+Ba hệ quả: reference type để null đi qua **im lặng** nên `ReadPayload` phải bắt · value type thì `try/catch` của `LoadAll` bắt hộ, và `defaultValue` của nó không null được · hàng thứ năm là lý do `CloneDefault` không có nhánh, hàng cuối là lý do nó tồn tại.
+
+**Kiểm null trên `T` không cần cast `(object)`** — ghi ra vì đây là chỗ dễ bị thêm cast lại "cho chắc". Đo ở C# 9, đúng bản Unity 6 dùng: `loaded == null` trên `T` **không ràng buộc** biên dịch sạch, 0 warning, và cho kết quả **y hệt** `(object)loaded == null` ở mọi `T` đã thử — `string` · `List<>` · `int?` null ra `True`; `int` · `bool` · struct · `int?` có giá trị ra `False`. Compiler box rồi so tham chiếu, nên value type không bao giờ ra `True`. `CS0019 Operator '==' cannot be applied to operands of type 'T' and '<null>'` chỉ nổ khi `T` **có** ràng buộc `where T : struct`, mà `SaveEntry<T>` không có ràng buộc nào.
 
 **Bẫy của `implicit operator T` — bất đối xứng khi so sánh.** `entry == null` **an toàn**: nó là phép so **tham chiếu**, operator không tham gia. Lý do là luật của C# — tập candidate operator lấy từ **các kiểu toán hạng**, mà `SaveEntry<T>` không khai `operator ==` và literal `null` không có kiểu, nên tập rỗng và phép so tham chiếu có sẵn được dùng. Nhưng so với một toán hạng **có kiểu `T`** thì `T.op_Equality` vào tập, phép so tham chiếu bị **loại**, và entry bị convert:
 
@@ -427,7 +442,10 @@ namespace Horcrux.Runtime.Abstractions.Persistence
         void ISaveEntry.ReadPayload(string payload)
         {
             T loaded = JsonConvert.DeserializeObject<T>(payload);
-            value = (object)loaded == null ? CloneDefault() : loaded;
+            // A stored "null" is valid JSON, so nothing throws and LoadAll's catch never sees it. This is the
+            // only door holding "never null once a default was authored" — and a null read back is not dirty,
+            // so no later flush would overwrite it.
+            value = loaded == null ? CloneDefault() : loaded;
             isDirty = false;                       // just read back — memory and storage agree
             RaiseChanged();
         }
@@ -439,12 +457,9 @@ namespace Horcrux.Runtime.Abstractions.Persistence
         /// <summary>A fresh copy of the authored default. Handing out the field itself would let the game mutate the asset.</summary>
         /// <remarks>A round-trip is the one copy that is correct for every T, a struct holding a List included.
         /// It runs once per entry at Initialize, so the cost never reaches a play session.</remarks>
+        // A null default needs no branch: "null" round-trips back to null, which is default(T) already.
         private T CloneDefault()
-        {
-            // '== null' does not compile on an unconstrained type parameter; the cast to object does.
-            if ((object)defaultValue == null) return default;
-            return JsonConvert.DeserializeObject<T>(JsonConvert.SerializeObject(defaultValue));
-        }
+            => JsonConvert.DeserializeObject<T>(JsonConvert.SerializeObject(defaultValue));
 
         private void RaiseChanged()
         {

@@ -8,7 +8,7 @@
         /// </summary>
         bool IsDirty { get; }
         void ResetRuntimeState();
-        void ReadPayload();
+        void ReadPayload(string payload);
         string WritePayload();
         void ClearDirty();
     }

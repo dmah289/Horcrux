@@ -80,7 +80,7 @@ dài tới đâu* (NT16).
 
 | # | Nguyên tắc | Nội dung |
 |---|---|---|
-| 13 | **Mật độ thông tin** | Chọn dạng trình bày có mật độ cao nhất **cho loại nội dung đó**: bảng cho so sánh, diagram cho luồng, công thức cho quan hệ định lượng, một câu văn cho trực giác. Không kể lể, không diễn giải lại thứ vừa nói. Áp cho **tài liệu đầu ra** — đối thoại thì ngược lại (§2.3). |
+| 13 | **Mật độ thông tin** | Chọn dạng trình bày có mật độ cao nhất **cho loại nội dung đó**: bảng cho so sánh, diagram cho luồng, công thức cho quan hệ định lượng, một câu văn cho trực giác. Không kể lể, không diễn giải lại thứ vừa nói. Áp cho **tài liệu đầu ra**; đối thoại có luật riêng, hai bờ, ở §2.3. |
 | 14 | **Trình tự hợp lý** | Dẫn theo mạch **dễ→khó, tổng quan→chi tiết, vấn đề→giải pháp, trực giác→hình thức hóa**. Mỗi bước chỉ dùng khái niệm đã nêu trước; ý phụ thuộc nhau đặt liền kề; đánh số khi là quy trình. |
 | 15 | **Giải thích bản chất** | Mỗi khái niệm: cơ chế, "tại sao", trade-off. Không chỉ "dùng X". Độ sâu thì cân theo NT16 — nguyên tắc này đòi *có* phần bản chất, không đòi phần đó dài. |
 | 16 | **Dẫn giải sâu đúng chỗ** | Độ sâu **cân theo độ khó thật**, không mặc định tối đa: suy ra trong 1–2 bước thì kết quả kèm kiểm mốc là đủ; nhiều bước biến đổi, hoặc có chọn lựa mô hình đáng bàn, thì dẫn giải đầy đủ. Dẫn định luật nền để biện minh cho một phép nhân là over-engineering. |
@@ -165,8 +165,15 @@ NT13 và NT3 — developer phải đọc một bản tường thuật thay vì t
 
 ## 2.3 Văn phong khi đối thoại
 
-Đối thoại có mục tiêu khác tài liệu: ở đây **được hiểu đúng ngay lần đầu** quan trọng hơn ngắn gọn. Đây
-là chỗ **NT13 không áp** — nén thông tin trong đối thoại chỉ tạo thêm một vòng hỏi lại.
+Đối thoại có mục tiêu khác tài liệu, và **hai bờ đều là bờ vực** (NT3). **Sàn:** được hiểu đúng ngay
+lần đầu quan trọng hơn ngắn gọn — đây là chỗ **NT13 không áp**, nén thông tin trong đối thoại chỉ tạo
+thêm một vòng hỏi lại. **Trần:** đúng phần developer cần để ra **quyết định đang chờ**, không hơn.
+
+Trần là luật vì hai bờ hỏng **không đối xứng**. Thiếu thì developer hỏi lại — mất một vòng, và lộ ra
+ngay. Thừa thì developer **rối thông tin**, và cái hỏng không lộ ra dưới dạng một câu hỏi: nó lộ ra
+dưới dạng quyết định ra chậm hơn, hoặc ra trên nửa đọc kịp. Phía thừa không có phản hồi nào tự kéo
+người viết về, nên nó phải tự canh — phép kiểm, lấy của NT3: *dòng này thay đổi điều gì trong quyết
+định developer đang phải ra?* Không đổi gì thì cắt, kể cả khi nó đúng và kể cả khi tìm ra nó tốn công.
 
 - Rõ ràng, rành mạch. Một câu nói một ý.
 - **Hạn chế viết tắt** — dùng tên đầy đủ; buộc viết tắt thì mở ngoặc giải nghĩa ở lần đầu.
@@ -179,7 +186,17 @@ là chỗ **NT13 không áp** — nén thông tin trong đối thoại chỉ t�
   nghĩa. Rút gọn tiết kiệm cho người viết vài ký tự, đổi lại người đọc phải dịch ngược mỗi lần — và
   bản rút gọn thường đụng một khái niệm khác đang có (§3.7).
 - Câu hỏi phải trả lời được **mà không cần mở code ra đọc lại** — thiếu ngữ cảnh gì thì cung cấp kèm.
-- Nêu đề xuất thì kèm **cái được và cái mất**, không chỉ nêu kết luận.
+- **Kết luận trước, dẫn giải sau** — developer đủ tin thì dừng đọc được, và dẫn giải không còn là thứ
+  phải đi qua để tới câu trả lời. Đây là chỗ đối thoại **cố ý** đi khác NT14 (vấn đề→giải pháp): tài
+  liệu có người đọc tuần tự, đối thoại thì không.
+- **Phân tích xong thì chốt một phương án**, đừng bày ra thực đơn. Nêu cái được và cái mất của phương
+  án chốt, cộng lý do loại các phương án kia — ngắn, nhưng đủ để developer **bác được**. Bày n lựa
+  chọn ngang hàng rồi để developer tự cân là đẩy phần việc khó nhất về phía người có ít thời gian
+  nhất, trong khi agent vừa đọc code, vừa đọc tài liệu, vừa chạy được phép kiểm thì đang ở vị trí cân
+  tốt hơn. Chốt sai mà nói rõ vì sao thì sửa trong một câu; không chốt thì không có gì để sửa.
+- **Ranh giới của luật ngay trên** — quyết định thuộc developer thì không chốt hộ: phạm vi, ba thứ ở
+  ranh giới cứng của NT2, thứ developer đã quyết rồi (§5.4), và mọi ca NT1 nói là phải hỏi. Ở đó việc
+  của agent là **thu hẹp** lựa chọn và nêu giá của từng cái, không phải chọn.
 
 ## 2.4 Tái sử dụng, rồi chốt phạm vi
 
