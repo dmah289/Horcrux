@@ -27,11 +27,7 @@ namespace Horcrux.Runtime.Implementations.RemoteConfigSystem
         public IEnumerable<IRemoteConfig> RemoteConfigs => remoteConfigs;
         public IRemoteConfigProvider RemoteConfigProvider => remoteConfigProvider;
         public bool AllRemoteConfigsApplied =>  allRemoteConfigsApplied;
-
-        protected virtual void OnRemoteConfigsApplied()
-        {
-            allRemoteConfigsApplied = true;
-        }
+        
 
         #region Unity Callbacks
         protected virtual void OnDestroy()
@@ -60,6 +56,7 @@ namespace Horcrux.Runtime.Implementations.RemoteConfigSystem
 
         public void Initialize()
         {
+            allRemoteConfigsApplied = false;
             remoteConfigs.Clear();
             
             List<FieldInfo> rcFields = GetRemoteConfigFields();
@@ -96,6 +93,11 @@ namespace Horcrux.Runtime.Implementations.RemoteConfigSystem
                 remoteConfigs[i].ApplyRemoteValue(remoteConfigProvider);
 
             OnRemoteConfigsApplied();
+        }
+        
+        protected virtual void OnRemoteConfigsApplied()
+        {
+            allRemoteConfigsApplied = true;
         }
 
 #if UNITY_EDITOR
