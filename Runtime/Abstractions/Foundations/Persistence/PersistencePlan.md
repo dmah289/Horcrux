@@ -287,13 +287,31 @@ Thứ tự: **1 → 2 → 3 → 4 → 5 → 6**. Task 4 sửa file của Task 2.
 | `CloneDefault()` round-trip qua serializer, một nhánh duy nhất | `defaultValue` sống trong asset; trả thẳng nó ra là để game mutate vào asset. Round-trip là bản sao đúng cho **mọi** `T` — kể cả struct chứa `List` — nên không cần nhánh riêng cho value type |
 | `(object)x == null` thay vì `x == null` | `==` trên type parameter không ràng buộc **không compile được**. Cast về `object` là cách kiểm null hợp lệ duy nhất ở đây |
 | `Value` có setter, **và** có `MarkDirty()` | Gán cả giá trị là nhịp tự nhiên của giá trị lẻ; mutate rồi báo là nhịp tự nhiên của model. Một kiểu phục vụ cả hai mà không cần biết mình đang là loại nào |
-| `implicit operator T` | Tiền lệ `RemoteConfig<T>` đã có, và nó làm call site đọc gọn: `if (collection.HasRated)`. **Bẫy đi kèm:** `entry == null` so **giá trị** chứ không so entry — với `SaveEntry<string>` thì đó là `string == null`. Muốn kiểm chính field thì `ReferenceEquals(entry, null)`. Cùng bẫy `RemoteConfig<T>` đã ghi, vì cùng operator |
+| `implicit operator T` | Tiền lệ `RemoteConfig<T>` đã có, và nó làm call site đọc gọn: `if (collection.HasRated)`. Bẫy đi kèm — **bất đối xứng khi so sánh** — ở bảng bẫy cuối Task 1 |
+| Giữ guard `entry != null` trong operator, dù ca đó gần như không xảy ra | Ca duy nhất làm nó null là field `[RegisteredSave]` chưa gán, mà Unity dựng instance cho field `[SerializeField]` của class `[Serializable]` nên nó **không** null trên đường asset; còn nếu có thì `ScanEntries` đã `LogError` ở nút `Validate keys` **và** ở `Initialize` trước khi call site kịp đọc. Bỏ guard không mua được gì, mà thành chỗ thứ tư "cố ý đi khác khuôn" — giữ để khớp `RemoteConfig<T>`. Nhưng phải biết nó làm gì khi chạy: đổi một `NullReferenceException` ồn ào thành `default(T)` im lặng, tức **0 coin** (cùng họ bất biến ⑤) — chấp nhận được **chỉ vì** ca đó đã kêu hai lần trước đó |
 | Nút `ImportPayload` trên **từng entry**, chỉ chạy trong Play mode | Nhu cầu thật: tái lập bug ở một trạng thái tiến độ cụ thể, mà hiện không có đường nào ngoài chơi lại từ đầu. Đi qua setter `Value` nên nó vẫn `MarkDirty` + bắn `Changed`, và `PlayerPrefs.SetString` vẫn chỉ có **một** cửa duy nhất trong collection (bất biến ④). Chặn ngoài Play mode vì `value` là `[NonSerialized]` — import ở đó là ghi vào field sẽ biến mất |
 | **Không** làm nút xoá riêng từng entry | Chưa có nhu cầu gọi được tên; `Delete all save data` ở Task 4 đang phủ. Ghi ở mục "Mở rộng sau" |
 | **Không** làm đường CSV như `RemoteConfig<T>` | Save là dữ liệu **người chơi**, không phải dữ liệu author — đường qua spreadsheet không có người dùng |
 | `Changed` là `event Action<T>`, fan-out qua `GetInvocationList` + try/catch từng listener | Đăng ký thưa nên `event` là đúng mức. Một listener ném exception không được kéo cả hệ chết. Alloc theo nhịp tương tác, không theo frame |
 | `ReadPayload` cũng bắn `Changed` | "Value đổi thì `Changed` bắn" là **một** luật không ngoại lệ |
 | `ISaveCollection` là interface **thuần** — không `partial`, không derive `IService<>` | `partial` không đi qua ranh giới assembly nên nửa của dự án sẽ kéo cả model vào SDK; và derive `IService<>` ở đây làm `IGameSave.Service` nhập nhằng, lỗi CS0229 (§0.10 ① và ②). Property có kiểu của dự án nằm trên `IGameSave` ở Task 5 |
+
+**Bẫy của `implicit operator T` — bất đối xứng khi so sánh.** `entry == null` **an toàn**: nó là phép so **tham chiếu**, operator không tham gia. Lý do là luật của C# — tập candidate operator lấy từ **các kiểu toán hạng**, mà `SaveEntry<T>` không khai `operator ==` và literal `null` không có kiểu, nên tập rỗng và phép so tham chiếu có sẵn được dùng. Nhưng so với một toán hạng **có kiểu `T`** thì `T.op_Equality` vào tập, phép so tham chiếu bị **loại**, và entry bị convert:
+
+```csharp
+var e = new SaveEntry<string>();   // entry có thật, value == null
+string s = null;
+
+e == null    // false — so tham chiếu, entry object tồn tại
+e == s       // TRUE  — so chuỗi: (string)e là null, s là null
+e == "abc"   // cũng đi qua operator
+```
+
+Hai dòng đầu trông như nhau và trả lời **ngược nhau**. `ReferenceEquals(entry, null)` không cần thiết — `== null` đã làm đúng việc đó.
+
+Guard `entry != null` **bên trong** operator cũng là so tham chiếu, nên nó không đệ quy, và gọi operator với đối số null trả `default(T)` chứ không throw.
+
+**Phép kiểm** (chạy lại được, không cần Unity): biên dịch một bản rút gọn của `SaveEntry<T>` bằng Roslyn kèm Unity — `Editor/Data/DotNetSdkRoslyn/csc.dll` chạy trên `Editor/Data/NetCoreRuntime/dotnet.exe` — với ca phân biệt là *entry không null nhưng `value` bên trong null*. Kết quả: `e == null` → `False` (nếu đi qua operator thì `(string)e` là null nên phải ra `True`) · `e == s` → `True` · `SaveEntry<int> == null` biên dịch được và ra `False` (convert sang `int` thì `int == null` phải lifted mới hợp lệ).
 
 - [ ] **Step 1: `ISaveEntry.cs`**
 
@@ -1407,7 +1425,7 @@ namespace Horcrux.Runtime.Implementations.Persistence
 - **`Persistence.md` soi theo cấu trúc mục của `RemoteConfigSystem.md`**: Hai phía · Đường đi của một giá trị · Vòng đời · Inspector · Nút Editor · **Bẫy và quyết định thiết kế** · Chữ ký · Cấu trúc file. Hai hệ là hai bản của một khuôn, nên giá trị lớn nhất của tài liệu là **đối chiếu được với nhau** — chỗ nào Persistence khác thì người đọc thấy ngay đó là chỗ cố ý.
 - **Hai dòng bẫy phải có trong `Persistence.md`, và trong XML doc của chính API:**
   - `Changed` bị `ResetRuntimeState()` xoá, nên **mọi listener đăng ký trước `Initialize()` mất im lặng**. Không có detector tự động nào đúng được ở đây: trong Editor với domain reload tắt, listener của phiên trước (ca hợp lệ §0.7) và listener vừa bị xoá oan (ca bug) đều chỉ là `Changed != null`. Cách chặn duy nhất là cấu trúc — `SaveBootStep` cố định `Initialize` vào pha boot (Task 6).
-  - `entry == null` so **giá trị**, không so entry, vì `implicit operator T` chạy trước phép so. Với `SaveEntry<string>` đó là `string == null`. Kiểm chính field thì `ReferenceEquals(entry, null)`.
+  - `implicit operator T` **bất đối xứng khi so sánh**: `entry == null` là so **tham chiếu** và an toàn, còn `entry == s` với `s` kiểu `T` thì đi **qua** operator và so giá trị — hai dòng trông như nhau, trả lời ngược nhau khi `value` là null. Chi tiết và phép kiểm ở bảng bẫy cuối bảng quyết định Task 1.
 - **Khoá `"save." + Key` và định dạng JSON của payload là hợp đồng ra ngoài.** Dữ liệu trên máy người chơi bám vào đúng hai thứ đó. Đổi tiền tố hay đổi định dạng sau khi ship là mọi save cũ thành mồ côi — không có gì báo, chỉ là một ngày tất cả người chơi cũ mở game lên thấy tiến độ về 0.
 - **Hệ dùng tiếp:** Audio (volume), Haptics, Economy (coin và lives), Rating, LiveOps. Không hệ nào tự khai entry — dự án khai trên `GameSave` rồi nối vào, nên một hệ SDK vẫn bê lẻ sang project không dùng Persistence được.
 - **⚠️ CẦN DEVELOPER PHÂN XỬ — một hệ SDK lấy giá trị save bằng cách nào.** Hai tài liệu đang nói ngược nhau, và cả hai đều là ranh giới do developer đặt nên plan này không tự chọn:
