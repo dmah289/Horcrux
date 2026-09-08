@@ -2,9 +2,12 @@
 
 namespace Horcrux.Runtime.Abstractions.RemoteConfigSystem
 {
-    public partial interface IRCVariableCollection : IService<IRCVariableCollection>
+    /// <summary>
+    /// An interface in game project implements this.
+    /// </summary>
+    public interface IRemoteConfigCollection
     {
-        public IEnumerable<IRCVariable> RCVariables { get; }
+        public IEnumerable<IRemoteConfig> RemoteConfigs { get; }
         public IRemoteConfigProvider RemoteConfigProvider { get; }
         
         public void Initialize();

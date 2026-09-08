@@ -8,7 +8,7 @@ using UnityEngine;
 namespace Horcrux.Runtime.Implementations.RemoteConfigSystem
 {
     [Serializable]
-    public class RCVariable<T> : IRCVariable
+    public class RemoteConfig<T> : IRemoteConfig
     {
         [SerializeField] private string firebaseKey;
         [SerializeField] private bool allowFetching = true;
@@ -23,7 +23,7 @@ namespace Horcrux.Runtime.Implementations.RemoteConfigSystem
         }
         public T Value => value;
         
-        public static implicit operator T(RCVariable<T> variable) => variable != null ? variable.Value : default;
+        public static implicit operator T(RemoteConfig<T> variable) => variable != null ? variable.Value : default;
 
         public void ResetFetchedState()
         {
@@ -108,7 +108,7 @@ namespace Horcrux.Runtime.Implementations.RemoteConfigSystem
         {
             string json = JsonConvert.SerializeObject(value, Formatting.Indented);
             GUIUtility.systemCopyBuffer = json;
-            Debug.Log($"Copied RCVariable with key {firebaseKey} to clipboard:\n{json}");
+            Debug.Log($"Copied remote config with key {firebaseKey} to clipboard:\n{json}");
         }
 
         [Button]
@@ -122,13 +122,13 @@ namespace Horcrux.Runtime.Implementations.RemoteConfigSystem
         [Button]
         private void CopyCsvToClipboard()
         {
-            if (!RCVariableCsv.TryFormat(typeof(T), value, out string csv, out string error))
+            if (!RemoteConfigCsv.TryFormat(typeof(T), value, out string csv, out string error))
             {
-                Debug.LogError($"RCVariable {firebaseKey} has no CSV form: {error}");
+                Debug.LogError($"Remote config {firebaseKey} has no CSV form: {error}");
                 return;
             }
             GUIUtility.systemCopyBuffer = csv;
-            Debug.Log($"Copied RCVariable with key {firebaseKey} to clipboard as CSV:\n{csv}");
+            Debug.Log($"Copied remote config with key {firebaseKey} to clipboard as CSV:\n{csv}");
         }
 
         /// <summary>Reads the import box as CSV instead of JSON.</summary>
@@ -136,13 +136,13 @@ namespace Horcrux.Runtime.Implementations.RemoteConfigSystem
         [Button]
         private void ImportCsv()
         {
-            if (!RCVariableCsv.TryParse(typeof(T), valueToImport, out object parsed, out string report))
+            if (!RemoteConfigCsv.TryParse(typeof(T), valueToImport, out object parsed, out string report))
             {
-                Debug.LogError($"RCVariable {firebaseKey} CSV import aborted, nothing written: {report}");
+                Debug.LogError($"Remote config {firebaseKey} CSV import aborted, nothing written: {report}");
                 return;
             }
             value = (T)parsed;
-            Debug.Log($"Imported {report} into RCVariable with key {firebaseKey} from CSV");
+            Debug.Log($"Imported {report} into remote config with key {firebaseKey} from CSV");
         }
 #endif
     }

@@ -1,6 +1,6 @@
 ﻿namespace Horcrux.Runtime.Abstractions.RemoteConfigSystem
 {
-    public interface IRCVariable
+    public interface IRemoteConfig
     {
         public string FirebaseKey { get;}
         public bool AllowFetching { get; set; }

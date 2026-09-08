@@ -9,9 +9,9 @@ using UnityEngine;
 
 namespace Horcrux.Runtime.Implementations.RemoteConfigSystem
 {
-    /// <summary>CSV text to and from an RCVariable value: scalars, one flat object, or a list of them.</summary>
+    /// <summary>CSV text to and from a RemoteConfig value: scalars, one flat object, or a list of them.</summary>
     /// <remarks>Editor authoring only. JSON stays the wire format with Remote Config.</remarks>
-    internal static class RCVariableCsv
+    internal static class RemoteConfigCsv
     {
         private const string CommentPrefix = "#";
         private const string AltCommentPrefix = "//";
@@ -349,7 +349,7 @@ namespace Horcrux.Runtime.Implementations.RemoteConfigSystem
         private static bool IsNotApplicableToken(string cell)
             => cell.Length == 0 || cell == "-" || string.Equals(cell, "None", StringComparison.OrdinalIgnoreCase);
 
-        /// <summary>Type name a reader recognises: List<DebtCurvePoint>, not List`1.</summary>
+        /// <summary>Type name a reader recognises: List<Row>, not List`1.</summary>
         private static string Describe(Type type)
         {
             if (!type.IsGenericType)
