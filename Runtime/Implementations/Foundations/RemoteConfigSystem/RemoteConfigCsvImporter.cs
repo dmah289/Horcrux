@@ -11,7 +11,7 @@ namespace Horcrux.Runtime.Implementations.RemoteConfigSystem
 {
     /// <summary>CSV text to and from a RemoteConfig value: scalars, one flat object, or a list of them.</summary>
     /// <remarks>Editor authoring only. JSON stays the wire format with Remote Config.</remarks>
-    internal static class RemoteConfigCsv
+    internal static class RemoteConfigCsvImporter
     {
         private const string CommentPrefix = "#";
         private const string AltCommentPrefix = "//";

@@ -122,7 +122,7 @@ namespace Horcrux.Runtime.Implementations.RemoteConfigSystem
         [Button]
         private void CopyCsvToClipboard()
         {
-            if (!RemoteConfigCsv.TryFormat(typeof(T), value, out string csv, out string error))
+            if (!RemoteConfigCsvImporter.TryFormat(typeof(T), value, out string csv, out string error))
             {
                 Debug.LogError($"Remote config {firebaseKey} has no CSV form: {error}");
                 return;
@@ -136,7 +136,7 @@ namespace Horcrux.Runtime.Implementations.RemoteConfigSystem
         [Button]
         private void ImportCsv()
         {
-            if (!RemoteConfigCsv.TryParse(typeof(T), valueToImport, out object parsed, out string report))
+            if (!RemoteConfigCsvImporter.TryParse(typeof(T), valueToImport, out object parsed, out string report))
             {
                 Debug.LogError($"Remote config {firebaseKey} CSV import aborted, nothing written: {report}");
                 return;
