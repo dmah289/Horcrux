@@ -9,7 +9,7 @@ namespace Horcrux.Runtime.Abstractions.Persistence
     /// All types are stored in string.
     /// </summary>
     [Serializable]
-    public class SaveEntry<T> : ISaveEntry
+    public partial class SaveEntry<T> : ISaveEntry
     {
         [SerializeField] private string key;
         [SerializeField] private T defaultValue;
@@ -19,10 +19,11 @@ namespace Horcrux.Runtime.Abstractions.Persistence
         
         public event Action<T> OnValueChanged;
         
-        public static implicit operator T(SaveEntry<T> entry) => entry != null ? entry.Value : default;
         
+        public static implicit operator T(SaveEntry<T> entry) => entry != null ? entry.Value : default;
 
         public string Key => key;
+        
         public bool IsDirty => isDirty;
 
         public T Value
@@ -63,12 +64,11 @@ namespace Horcrux.Runtime.Abstractions.Persistence
             }
         }
         
-        
         public void ResetRuntimeState()
         {
             OnValueChanged = null;
             isDirty = false;
-            
+            value = CloneDefault();
         }
 
         public void ReadPayload(string payload)
