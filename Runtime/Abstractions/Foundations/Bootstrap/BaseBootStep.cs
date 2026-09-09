@@ -5,7 +5,7 @@ using UnityEngine;
 namespace Horcrux.Runtime.Abstractions.Bootstrap
 {
     /// <summary>One step of the game's init chain.</summary>
-    public abstract class BootStep : MonoBehaviour
+    public abstract class BaseBootStep : MonoBehaviour
     {
         [SerializeField, Tooltip("Lower runs first. On a tie, the step listed earlier on the runner runs first.")]
         private int order;
@@ -22,9 +22,8 @@ namespace Horcrux.Runtime.Abstractions.Bootstrap
         /// <summary>Sync stage that runs once every step has reinitialized</summary>
         public virtual void AfterReinitialize(CancellationToken ct) {}
 
-        /// <summary>Called on pause and resume. Pause walks the steps backwards, resume walks them forwards like init.</summary>
-        /// <param name="isPaused">True on pause, false on resume.</param>
-        public virtual void OnAppPause(bool isPaused) {}
+        /// <summary>True when the app goes to background, false when it comes back — pause and focus loss folded into one signal, fired once per trip. Background walks the steps backwards, foreground forwards.</summary>
+        public virtual void OnGoToBackground(bool inBackground) {}
 
         /// <summary>Called on app quit, walking the steps backwards.</summary>
         public virtual void OnAppQuit() {}

@@ -15,25 +15,26 @@ namespace Horcrux.Runtime.Implementations.Bootstrap
         private const string InitPhaseName = "Initialize";
         private const string ReinitPhaseName = "Reinitialize";
         private const string AfterReinitPhaseName = "AfterReinitialize";
-        private const string OnAppPausePhaseName = "OnAppPause";
+        private const string OnGoToBackgroundPhaseName = "OnGoToBackground";
         private const string OnAppQuitPhaseName = "OnAppQuit";
         
         /// <summary>Fires before each step.</summary>
         public event Action<BootProgress> ProgressChanged;
         
-        [SerializeField, Tooltip("Every BootStep of the game. On an Order tie, the step listed earlier runs first.")]
-        private List<BootStep> steps = new();
+        [SerializeField, Tooltip("Every boot step of the game. On an Order tie, the step listed earlier runs first.")]
+        private List<BaseBootStep> steps = new();
         
-        private static readonly Func<BootStep, CancellationToken, UniTask> InitializeStep =
+        private static readonly Func<BaseBootStep, CancellationToken, UniTask> InitializeStep =
             static (step, ct) => step.InitializeAsync(ct);
-        private static readonly Func<BootStep, CancellationToken, UniTask> ReinitializeStep =
+        private static readonly Func<BaseBootStep, CancellationToken, UniTask> ReinitializeStep =
             static (step, ct) => step.ReinitializeAsync(ct);
         
         private readonly UniTaskCompletionSource initializedSource = new();
         private UniTask initializedTask;
         private CancellationTokenSource lifecycleCts;
         private bool isPhaseRunning;
-        
+        private bool isInBackground;
+
         /// <inheritdoc />
         public bool IsInitialized { get; private set; }
 
@@ -59,23 +60,30 @@ namespace Horcrux.Runtime.Implementations.Bootstrap
             lifecycleCts = null;
         }
 
-        // Pause walks backwards, resume forwards.
-        private void OnApplicationPause(bool isPaused)
+        // Unity fires BOTH of these on every background trip, on Android and on iOS alike.
+        private void OnApplicationPause(bool isPaused) => HandleGoToBackground(isPaused);
+
+        private void OnApplicationFocus(bool hasFocus) => HandleGoToBackground(!hasFocus);
+
+        // whichever arrives first flips it, the second is a no-op.
+        private void HandleGoToBackground(bool inBackground)
         {
             // Android fires resume as the app opens; a half-initialized step must not take the hook.
-            if (!IsInitialized)
+            if (!IsInitialized || inBackground == isInBackground)
                 return;
 
+            isInBackground = inBackground;
+
             int stepCount = steps.Count;
-            if (isPaused)
+            if (inBackground)
             {
-                for(int i = stepCount-1 ; i >= 0; i--)
-                    SafePause(steps[i], true);
+                for (int i = stepCount - 1; i >= 0; i--)
+                    SafeGoToBackground(steps[i], true);
             }
             else
             {
-                for(int i = 0;  i < stepCount; i++)
-                    SafePause(steps[i], false);
+                for (int i = 0; i < stepCount; i++)
+                    SafeGoToBackground(steps[i], false);
             }
         }
 
@@ -145,7 +153,7 @@ namespace Horcrux.Runtime.Implementations.Bootstrap
                 int stepCount = steps.Count;
                 for (int i = 0; i < stepCount; i++)
                 {
-                    BootStep step = steps[i];
+                    BaseBootStep step = steps[i];
                     try
                     {
                         step.AfterReinitialize(ct);
@@ -179,7 +187,7 @@ namespace Horcrux.Runtime.Implementations.Bootstrap
 
         private void SortStepsStably()
         {
-            List<(BootStep step, int idx)> stepsWithIdx = new();
+            List<(BaseBootStep step, int idx)> stepsWithIdx = new();
             int cnt = steps.Count;
             for (int i = 0; i < cnt; i++)
                 stepsWithIdx.Add((steps[i], i));
@@ -215,7 +223,7 @@ namespace Horcrux.Runtime.Implementations.Bootstrap
             lifecycleCts = new();
         }
 
-        private async UniTask RunPhaseAsync(Func<BootStep, CancellationToken, UniTask> runStep,
+        private async UniTask RunPhaseAsync(Func<BaseBootStep, CancellationToken, UniTask> runStep,
             string phaseName, CancellationToken ct)
         {
             int stepCount = steps.Count;
@@ -224,7 +232,7 @@ namespace Horcrux.Runtime.Implementations.Bootstrap
                 if (ct.IsCancellationRequested)
                     return;
                 
-                BootStep step = steps[i];
+                BaseBootStep step = steps[i];
                 RaiseProgress(new BootProgress(i, stepCount, step.name));
                 try
                 {
@@ -267,19 +275,19 @@ namespace Horcrux.Runtime.Implementations.Bootstrap
             }
         }
 
-        private void SafePause(BootStep step, bool isPaused)
+        private void SafeGoToBackground(BaseBootStep step, bool inBackground)
         {
             try
             {
-                step.OnAppPause(isPaused);
+                step.OnGoToBackground(inBackground);
             }
             catch (Exception e)
             {
-                LogStepFailure(step, OnAppPausePhaseName, e);
+                LogStepFailure(step, OnGoToBackgroundPhaseName, e);
             }
         }
         
-        private void LogStepFailure(BootStep step, string phaseName, Exception e)
+        private void LogStepFailure(BaseBootStep step, string phaseName, Exception e)
         {
             Debug.LogError($"[Bootstrap] : {step.name} failed at {phaseName}. Skip (fail-open)", step);
             Debug.LogException(e, step);
