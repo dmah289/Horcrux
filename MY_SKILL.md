@@ -46,11 +46,11 @@ nghĩa và phép kiểm*, dẫn giải đầy đủ ở mục § ghi cuối ô.
 
 | # | Nguyên tắc | Nội dung |
 |---|---|---|
-| 3 | **Vừa đủ** | Đơn giản là **mặc định**; mỗi lớp phức tạp thêm phải trả giá bằng **một nhu cầu đang có thật** — "phòng khi cần", "cho đầy đủ", "chuẩn hơn" **không** phải nhu cầu. Kiểm nhanh: *xoá nó đi thì hỏng ở đâu* — không gọi được tên chỗ hỏng thì bỏ. Áp cho cả **số lượng** lẫn **độ phức tạp của cách giải**: chỉ chuyển sang bản phức tạp khi bản đơn giản **chỉ ra được là không đạt** (NT10). Hai bờ vực đều sai: **thừa** (đúng, nhưng không ai cần) và **thiếu** (cắt vào mục đích ban đầu — mục đích là **sàn**). → **§2.4** |
+| 3 | **Vừa đủ** | Đơn giản là **mặc định**; mỗi lớp phức tạp thêm phải trả giá bằng **một nhu cầu đang có thật** — "phòng khi cần", "cho đầy đủ", "chuẩn hơn" **không** phải nhu cầu. Kiểm nhanh: *xoá nó đi thì hỏng ở đâu* — không gọi được tên chỗ hỏng thì bỏ. **Giá của một dòng code không nằm ở lúc viết ra nó** mà ở mọi lần sau: có người phải đọc nó, phải hiểu vì sao nó ở đó, phải nhớ nó khi sửa chỗ khác, phải giữ nó đúng. Agent sinh code gần như miễn phí nên hay bỏ quên vế giá này — đó là gốc của over-engineering. Áp cho cả **số lượng** lẫn **độ phức tạp của cách giải**: chỉ chuyển sang bản phức tạp khi bản đơn giản **chỉ ra được là không đạt** (NT10). Hai bờ vực đều sai: **thừa** (đúng, nhưng không ai cần) và **thiếu** (cắt vào mục đích ban đầu — mục đích là **sàn**). → **§2.4** |
 | 4 | **Đủ hôm nay, mở đường mai** | Triển khai đúng phạm vi đã chốt, **không code sẵn** thứ chưa ai cần (NT3); nhưng hình dạng phải để bước kế tiếp là **thêm vào**, không phải **đập ra làm lại**. Đây là **cách sắp xếp**, không phải **thêm số lượng** — chi phí hôm nay gần bằng 0. **Phòng xa dồn vào chữ ký và ranh giới trách nhiệm**: một hàm thêm sau tốn hai phút, giữ nó trong API từ đầu tốn mãi mãi; ngược lại chữ ký sai thì sửa sau rất đắt. Nghiệm thu: gọi được tên bước kế tiếp, và chỉ ra được nó là "thêm" chứ không phải "sửa". |
 | 5 | **Không lặp** | *Tài liệu:* một khái niệm giải thích một nơi, sau đó trỏ về; đã giải ở tài liệu hệ khác thì trỏ sang. *Code:* **một chức năng cài đặt một nơi** — có sẵn thì dùng lại (§2.4); có người dùng thứ hai thì nâng thành tái sử dụng được (§3.2). Luật này áp cho **tri thức trùng nhau**, không áp cho **code trông giống nhau**. Phân xử với luật "để lặp" của §2.4 bằng một câu hỏi: **hai bên lệch nhau thì có hỏng ngay không?** Hỏng ngay — đo lệch vẽ, vẽ lệch hit-test — thì gộp về một nguồn là **bắt buộc** (§3.4), kể cả khi công thức hiển nhiên. Không hỏng, chỉ là hai luật độc lập tình cờ giống nhau hôm nay, thì **để lặp**. |
 | 6 | **Một luồng đọc một mạch** | Chi phí thật của một thiết kế là **số file người đọc sau phải mở để lần hết một luồng**, trả mãi mãi. Hai bờ vực: **xé vụn** — một tính năng rải qua nhiều component, nhiều lớp, hay một cây composite; mỗi mảnh đúng nhưng không mảnh nào nói được hành vi, phải chạy mới biết · **gom bừa** — một class ôm nhiều lý do thay đổi. Mặc định là **bậc thấp nhất còn đọc được**; leo bậc chỉ khi bậc dưới không còn đạt, và phải **gọi được tên thứ bậc dưới không làm được**. Composite còn là chi phí runtime — dispatch ảo, con trỏ nhảy, message của engine nhân theo số mảnh (NT8). Ba hình dạng composite phải viết lý do tại chỗ trước khi dùng: **§3.1**. |
-| 7 | **Editor-first** | Thứ gì quyết được lúc authoring thì đừng đẩy sang runtime: **code lo *hành vi*, Editor lo *cấu hình và kết nối*** (§3.6). |
+| 7 | **Editor-first** | Thứ gì quyết được lúc authoring thì đừng đẩy sang runtime: **code lo *hành vi*, Editor lo *cấu hình và kết nối***. Việc bắt buộc làm **trước khi build** — tạo asset, dựng GameObject, gán reference — là **một bước ghi trong tài liệu**, không phải code canh lúc chạy. → **§3.6** |
 
 ## 1.3 Hai ràng buộc vận hành đứng trên
 
@@ -83,7 +83,7 @@ nghĩa và phép kiểm*, dẫn giải đầy đủ ở mục § ghi cuối ô.
 
 | # | Nguyên tắc | Nội dung |
 |---|---|---|
-| 15 | **Mật độ, trình tự, và bản chất** | Chọn dạng trình bày có mật độ cao nhất **cho loại nội dung đó**: bảng cho so sánh, diagram cho luồng, công thức cho quan hệ định lượng, một câu văn cho trực giác. Không kể lể, không diễn giải lại thứ vừa nói. Dẫn theo mạch **dễ→khó, tổng quan→chi tiết, vấn đề→giải pháp**; mỗi bước chỉ dùng khái niệm đã nêu trước; đánh số khi là quy trình. Mỗi khái niệm phải **có** phần cơ chế, "tại sao", trade-off — nhưng độ sâu **cân theo độ khó thật**: suy ra trong 1–2 bước thì kết quả kèm kiểm mốc là đủ; dẫn định luật nền để biện minh một phép nhân là over-engineering. Áp cho **tài liệu đầu ra** — **đối thoại có luật riêng ở §2.3**. |
+| 15 | **Mật độ, trình tự, và bản chất** | Chọn dạng trình bày có mật độ cao nhất **cho loại nội dung đó**: bảng cho so sánh, diagram cho luồng, công thức cho quan hệ định lượng, một câu văn cho trực giác. Không kể lể, không diễn giải lại thứ vừa nói. Dẫn theo mạch **dễ→khó, tổng quan→chi tiết, vấn đề→giải pháp**; mỗi bước chỉ dùng khái niệm đã nêu trước; đánh số khi là quy trình. Mỗi khái niệm phải **có** phần cơ chế, "tại sao", trade-off — nhưng độ sâu **cân theo độ khó thật**: suy ra trong 1–2 bước thì kết quả kèm kiểm mốc là đủ; dẫn định luật nền để biện minh một phép nhân là over-engineering. **Mặc định một khẳng định = một câu lý do**; phải viết cả đoạn mới xong là dấu hiệu chưa hiểu đủ để nén, hoặc đang biện minh cho thứ không cần có. Áp cho **tài liệu đầu ra** — **đối thoại có luật riêng ở §2.3**. |
 
 ## 1.8 Ranh giới dễ nhầm
 
@@ -134,8 +134,7 @@ thể do người khác viết, viết từ lâu, hoặc đã trôi khỏi thi�
 2. **Tôi hiểu ý định là gì** — phát biểu lại bằng lời mình, rồi hỏi thẳng: có khớp thiết kế ban đầu không?
 3. **Developer đã biết chỗ này chưa** — nếu chưa, là chủ ý hay chỗ đã trôi cần xử lý?
 
-Chỉ nêu thứ **ảnh hưởng đến quyết định đang bàn**; kể lại toàn bộ code vừa đọc là bắt developer đọc
-tường thuật thay vì trả lời một câu hỏi (NT15, NT3).
+Kể lại toàn bộ code vừa đọc là bắt developer đọc tường thuật thay vì trả lời một câu hỏi (NT15, NT3).
 
 ## 2.3 Văn phong khi đối thoại
 
@@ -166,8 +165,7 @@ Cách viết:
   gì · mất gì*. Rồi **chốt một phương án và nói vì sao nó thắng**. Tiêu chí chốt là **hợp tư tưởng
   trong file này nhất** — vừa đủ (NT3), đọc một mạch (NT6), khai được nhịp (NT8), mang đi được (NT9),
   mở đường mai (NT4) — không phải "dễ làm nhất" hay "nhiều tính năng nhất"; phương án thắng vì lý do
-  nào thì gọi tên lý do đó ra. Bỏ phần chốt là đẩy việc khó nhất về phía người có ít thời gian nhất;
-  bỏ phần bày phương án là lấy mất dữ kiện để developer bác lại. Chốt sai mà nói rõ vì sao thì sửa
+  nào thì gọi tên lý do đó ra. Bỏ phần chốt là đẩy việc khó nhất về phía developer; bỏ phần bày phương án là lấy mất dữ kiện để developer bác lại. Chốt sai mà nói rõ vì sao thì sửa
   trong một câu.
 - **Ranh giới của luật ngay trên** — quyết định thuộc developer thì **thu hẹp lựa chọn và nêu giá từng
   cái, không chốt hộ**: phạm vi, ba thứ ở ranh giới cứng của NT2, thứ developer đã quyết rồi (§5.4),
@@ -199,7 +197,8 @@ trừu tượng — qua cùng một luật: **có nhu cầu thật ngay bây gi�
 |---|---|
 | Interface hoặc abstract | có **implementation thứ hai** |
 | Tham số | có **call site truyền khác mặc định** |
-| Guard hoặc nhánh biên | có **input thật chạm được biên** đó |
+| Guard, nhánh biên, hoặc `try/catch` | có **input thật chạm được biên** — hoặc **gọi được tên thứ ném ra** (§3.4) |
+| Code canh — hoặc tự tạo — thứ dựng được lúc authoring | **không có nhu cầu nào cả**: đó là bước setup, viết vào tài liệu (§3.6) |
 | Tối ưu làm code khó đọc hơn | **hot path đã xác nhận** bằng số đo (NT8) |
 | Tách lớp, tách class, tách component | **trách nhiệm thật sự khác** — khác lý do thay đổi (NT6) |
 | Chương, mục, demo | có người đọc cần nó để **làm được một việc cụ thể** |
@@ -269,10 +268,9 @@ phía: dựng lệnh cho thứ chỉ chơi thử mới biết, hoặc đẩy v�
 | Đúng–sai xác định được, mà người làm tay thì chậm, sót, hoặc không thấy được | vét cạn theo bảng dưới | agent, **tự đề xuất** |
 | Cảm giác chơi, nhịp, độ khó, hình ảnh | **chơi thử** | **developer** |
 
-**Cảm giác chơi — DỪNG và giao, không dựng proxy.** Agent không chơi được game nên không tự tạo ra
-được bằng chứng loại này. Ép nó về một lệnh chạy được là **đo thứ dễ đo thay cho thứ cần biết**: tốn
-công, cho cảm giác an toàn giả, mà developer vẫn phải chơi lại từ đầu. Báo thẳng *"phần này chưa
-nghiệm thu được, cần chơi thử"* là trung thực. Giao thì kèm **kịch bản chơi thử**: *vào đâu* (level
+**Cảm giác chơi — DỪNG và giao, không dựng proxy.** Ép nó về một lệnh chạy được là **đo thứ dễ đo
+thay cho thứ cần biết**: tốn công, cho cảm giác an toàn giả, mà developer vẫn phải chơi lại từ đầu.
+Báo thẳng *"phần này chưa nghiệm thu được, cần chơi thử"*, kèm **kịch bản chơi thử**: *vào đâu* (level
 nào, cần bật cờ hoặc dữ liệu gì trước) · *làm gì* (chuỗi thao tác **ngắn nhất** tái lập được) · *nhìn
 cái gì* (hiện tượng cụ thể, không phải "xem có ổn không") · *khác trước ra sao* · *dấu hiệu hỏng*.
 
@@ -282,10 +280,10 @@ yêu cầu.
 
 | Máy hơn người ở | Dấu hiệu nhận ra | Người làm tay hỏng ở đâu |
 |---|---|---|
-| **Sức** | không gian đầu vào lớn · phải lặp lại nhiều lần | chậm, và sót vì mỏi — chơi thử không bao giờ chạm tới trường hợp thứ 137 |
+| **Sức** | không gian đầu vào lớn · phải lặp lại nhiều lần | chậm, và sót vì mỏi |
 | **Thiên kiến** | trường hợp biên khó nghĩ ra hết | chỉ thử được thứ mình nghĩ ra, mà chỗ hỏng nằm đúng ở chỗ không ai nghĩ tới |
 | **Tầm nhìn** | phải chứng minh **sự vắng mặt**: không còn tham chiếu, không còn caller, không sót tên cũ · trạng thái nội bộ sai trong khi màn hình vẫn đúng (§3.4) · thứ chỉ lộ sau hàng nghìn vòng: rò rỉ, phình dần, pool không trả về | mắt không thấy được thứ *không có*; chơi thử thấy màn hình đúng là tin đã đúng |
-| **Nhất quán chéo** | nhiều bản buộc phải khớp nhau mà không suy từ một nguồn được (§3.4) · hành vi trước–sau một lần refactor phải trùng (ranh giới cứng NT2) | phải mở nhiều nguồn cạnh nhau so từng dòng — việc chán nhất, và sót nhiều nhất |
+| **Nhất quán chéo** | nhiều bản buộc phải khớp nhau mà không suy từ một nguồn được (§3.4) · hành vi trước–sau một lần refactor phải trùng (ranh giới cứng NT2) | phải mở nhiều nguồn cạnh nhau so từng dòng — sót nhiều nhất |
 
 Riêng nhánh **thiên kiến**, phần đắt giá là **liệt kê biên có hệ thống trước khi chạy**: rỗng · đúng
 một phần tử · chạm giới hạn trên và dưới · trùng nhau · ngoài dải · thứ tự đảo · hai sự kiện cùng lúc ·
@@ -339,7 +337,7 @@ và mỗi lần dùng phải gọi tên được thứ bậc thấp hơn không 
 | **Một tính năng xé thành nhiều MonoBehaviour** | thứ tự `Awake`/`Update` giữa các mảnh **không định trước**, wire thiếu chỉ lộ lúc chạy, và mỗi mảnh là một lần engine gọi message | các mảnh **thật sự lắp lẫn được** giữa nhiều prefab khác nhau, và **tổ hợp đó đang tồn tại thật** — không phải "mỗi việc một component cho sạch" |
 | **Hệ dựng chồng lên nhiều hệ khác** (hệ kết hợp) | không rời đi một mình được — mất tính mang sang dự án khác (NT9) | không tách nổi thành các hệ độc lập cộng một lớp nối mỏng; và khi đó vẫn phải chỉ ra đường tách (§3.2) |
 
-Bờ vực ngược lại cũng sai: class ôm nhiều lý do thay đổi thì tách theo `S`. **Thước đo là phạm vi bài
+**Thước đo là phạm vi bài
 toán, không phải số khái niệm nghĩ ra được** — cùng một cách chia có thể đúng ở hệ nhiều người chạm và
 thừa ở một tính năng cục bộ. Hỏi *"người đọc sau phải mở bao nhiêu file để lần hết một luồng?"* trước
 khi tách; phân vân thì áp kiểm nhanh của NT3 — gộp xuống bậc dưới thì hỏng ở đâu?
@@ -433,7 +431,7 @@ Bất biến giữ bằng "mọi người nhớ làm đúng" sẽ vỡ ở đún
 | **Một cờ chỉ được tiêu thụ ở đúng MỘT nơi** | có nơi thứ hai thì nơi chạy sau không bao giờ thấy cờ bật — cache của nó đứng im, không có gì báo |
 | **Hai phép tính buộc phải khớp thì suy từ MỘT nguồn** | đo–vẽ, vẽ–hit-test, điều kiện ẩn–hiện: cùng một hàm, hoặc cùng một biểu thức copy nguyên — không viết hai bản "giống nhau", kể cả khi công thức hiển nhiên. Hai bản sẽ lệch, và lệch kiểu nhìn-vẫn-đúng-bấm-thì-trượt. Ranh giới với luật "để lặp" của §2.4: xem NT5 |
 | **Cửa hẹp là thân chung của cửa rộng** | hai đường làm gần cùng một việc (bản đầy đủ và bản giữ-lại-một-phần) thì bản hẹp gọi vào thân bản rộng — hai bên không thể lệch nhau |
-| **Một bảo đảm phải phủ MỌI đường vào** | hệ tuyên bố "mất không quá X", "luôn hợp lệ", "luôn đúng thứ tự" thì **mọi** cửa ghi phải đi qua đúng chỗ tạo ra bảo đảm đó. Một cửa thứ hai đi vòng không làm bảo đảm sai — nó làm bảo đảm **chỉ còn đúng cho một nửa hệ**, trong khi tài liệu vẫn phát biểu nguyên câu; nửa kia hỏng im lặng, đúng vào lúc người ta tin nhất |
+| **Một bảo đảm phải phủ MỌI đường vào** | hệ tuyên bố "mất không quá X", "luôn hợp lệ", "luôn đúng thứ tự" thì **mọi** cửa ghi phải đi qua đúng chỗ tạo ra bảo đảm đó. Một cửa thứ hai đi vòng không làm bảo đảm sai — nó làm bảo đảm **chỉ còn đúng cho một nửa hệ**, trong khi tài liệu vẫn phát biểu nguyên câu; nửa kia hỏng im lặng |
 
 **Phép kiểm của luật cuối — đếm cửa trước, đọc thân sau.** Đường phụ sinh ra sau, cho một cỡ dữ liệu
 khác hoặc một tiện ích nhỏ, và người viết chúng không nghĩ mình đang chạm vào bảo đảm nào. Phải **liệt
@@ -457,6 +455,14 @@ thì guard đầy đủ: reference chỉ có lúc runtime · ô null ở một p
 nhiều scene · sai chỉ hiện ở một tổ hợp cấu hình · thứ thành null sau một lần `Destroy`. Dữ liệu từ
 ngoài (import, server, save) luôn thuộc nhóm này — §3.8.
 
+**`try/catch` đi qua đúng cửa đó.** Chỉ bọc khi **gọi được tên thứ ném ra**: API thật sự ném (I/O,
+parse, network, reflection, dữ liệu từ ngoài — §3.8), hoặc code của người khác chạy trong vòng lặp
+của mình (§3.5). Không gọi tên được thì bỏ — một khối `catch` cho ca không bao giờ xảy ra vẫn bắt
+người đọc sau dừng lại đọc, và nó **nói dối** rằng chỗ này có rủi ro (NT3). Bắt rồi thì phải **làm gì
+đó**: xử lý, hoặc log kèm ngữ cảnh rồi ném lại. Nuốt exception rồi chạy tiếp với trạng thái hỏng là
+biến một lỗi tỏ thành lỗi âm thầm — đúng thứ bảng trên tồn tại để chặn. `catch (Exception)` trần chỉ
+ở **biên trên cùng**: một vòng dispatch, một entry point của tool.
+
 **Quy ước chỉ thay được guard khi nó viết ra ở chỗ người vi phạm đang nhìn** — Tooltip, XML doc của
 chính API đó, dòng trong tài liệu module — không phải chỉ nói trong một lượt chat.
 
@@ -477,7 +483,8 @@ Tiêu chí: **hủy được** (việc dừng theo owner của nó) · **giải 
 > | Data lớn | `NativeArray` / `NativeList` | khi cần truyền GPU hoặc Job System; `StructLayout(Sequential)` khi phải khớp layout GPU hoặc native |
 > | Tài nguyên nặng | cache `RenderTexture`, `Texture2D`… | có đường dọn dẹp trong `OnDestroy()` |
 
-**Sổ tay** — cô lập lỗi listener: try/catch quanh từng callback trong vòng dispatch.
+**Sổ tay** — cô lập lỗi listener: `try/catch` quanh từng callback trong vòng dispatch. Đây là một
+trong hai ca `try/catch` được phép; luật chọn lọc ở §3.4.
 
 ## 3.6 Editor-first
 
@@ -495,6 +502,14 @@ phơi ra Inspector · preset thành ScriptableObject · wire sẵn trong prefab 
 **Ngoại lệ tự nhiên** là thứ chưa tồn tại lúc authoring: object spawn runtime, số lượng động, dữ liệu
 từ server — ngoại lệ nằm ở *thời điểm biết được*, không phải ở *độ tiện khi viết code*. Plan chạm scene
 hoặc prefab thì mô tả thao tác Editor **như một bước thật**, không lặng lẽ thay bằng code.
+
+**Điều kiện dựng hệ thì ghi vào tài liệu, không sinh code canh.** Tạo asset, dựng GameObject bắt
+buộc, gán reference, đặt layer/tag, thêm scene vào build — người dựng làm **một lần** lúc authoring.
+Viết thành một bước ở mục **"Trước khi chạy"** của tài liệu module (§5.1) thì tốn một dòng, đọc một
+lần rồi thôi. Sinh code tự kiểm hoặc tự tạo thì tốn mãi mãi: một nhánh nằm trong build, phải đọc,
+phải test, phải giữ đúng qua mọi lần refactor (NT3). **Tự tạo tệ hơn tự kiểm** — nó giấu mất việc
+setup còn thiếu, và dựng nguồn sự thật thứ hai cạnh bản authoring (§3.4). Thiếu setup thì **để nó
+nổ** ở lần Play đầu; đó đã là báo lỗi đủ rõ, và là đúng chỗ dừng của ngưỡng dưới ở §3.4.
 
 ## 3.7 Naming — self-documenting code
 
@@ -554,8 +569,7 @@ bảng này không áp; tiêu chí ở trên vẫn giữ.
 - **Vùng UI phải nói lên ranh giới** — thứ khác vai trò (ghi vào dữ liệu / chỉ đổi cách xem / dùng ở
   mọi lúc) không nằm chung một vùng. Đặt vùng mới thì hỏi *"người dùng đang nghĩ gì lúc đi tìm nó?"*.
   Ranh giới nào phải giải thích bằng một cột trong hướng dẫn là ranh giới người dùng sẽ nhầm.
-- **Điều kiện vẽ và điều kiện bấm được suy từ một nguồn** (§3.4) — phá thì nút đang hiện mà bấm không
-  có gì xảy ra, bug khó báo cáo nhất.
+- **Điều kiện vẽ và điều kiện bấm được suy từ một nguồn** (§3.4) — phá thì nút đang hiện mà bấm không có gì xảy ra.
 - **Không giấu thứ có thật**: điều kiện vẽ là *"có dữ liệu"*, không phải *"tra được tài nguyên để
   vẽ"* — tra thiếu thì vẽ dạng báo lỗi kèm id, đừng để dữ liệu biến mất khỏi màn hình trong khi vẫn
   được xử lý và ghi ra file. Field chỉ-đọc vẫn phải hiện, khác kiểu với field sửa được.
@@ -653,7 +667,8 @@ từ `.md` → khi được yêu cầu thì viết Plan.
 **Chuỗi sự thật một chiều `code → .md → .html`** (một dạng của "hai bản buộc khớp thì suy từ một
 nguồn", §3.4): code là chuẩn, cả hai tài liệu phản ánh **100% thiết kế đang chạy trong code**. **Không
 gộp, không xóa** — kể cả khi hai bản trông như nói cùng một thứ. Lệch thì sửa xuôi theo chuỗi: `.html`
-lệch → đối chiếu `.md` với code trước, rồi đồng bộ `.html` từ `.md`; không sửa ngược rồi để `.md` trôi.
+lệch → đối chiếu `.md` với code trước, rồi đồng bộ `.html` từ `.md`; không sửa ngược rồi để `.md` trôi. **"100%" là không mất nội dung khi chuyển bản, không phải viết
+cho nhiều** — trần độ dài do §5.4 canh, canh trên cả hai bản.
 
 **Sổ tay** — checklist mỗi lần đồng bộ: soát hai luật "không viết theo trí nhớ" và "ở thì hiện tại"
 của §5.4 · đổi tên hay xóa file tài liệu thì grep quét **tham chiếu chết** trong code comment, file
@@ -666,10 +681,13 @@ Tổ chức theo **đường đi của dữ liệu** (input → processing → o
 trích nguyên văn, không viết lại. Bảng metrics tổng kết đặt cuối.
 
 **Sổ tay** — luồng dữ liệu vẽ bằng ASCII vì `.md` được đọc bằng nhiều công cụ; công cụ nào chắc chắn
-render được mermaid thì dùng mermaid cũng được (NT2). Các mục thường có, chọn mục hợp hệ thống chứ
-không điền cho đủ: Data structures · Core algorithm · Lifecycle · Implementation details · Framework
-integration · Design decisions · Safety và error · Platform issues · Architecture (file tree kèm vai
-trò) · Testing · Extension · Performance.
+render được mermaid thì dùng mermaid cũng được (NT2).
+
+**Kho mục để chọn, không phải form để điền.** Mỗi mục đưa vào phải gọi tên được **câu hỏi của người
+đọc** mà nó trả lời; không gọi tên được thì bỏ. Hệ nhỏ có ba mục là bình thường. Kho: **Trước khi
+chạy** (bước setup bắt buộc, §3.6) · Data structures · Core algorithm · Lifecycle · Implementation
+details · Framework integration · Design decisions · Safety và error · Platform issues · Architecture
+(file tree kèm vai trò) · Testing · Extension · Performance.
 
 **Nghiệm thu:** lần theo được một giá trị từ input tới output mà không nhảy section · mỗi so sánh
 nhiều lựa chọn đều thấy được **tiêu chí** và **kết luận** · dựng được `.html` 100% từ file này mà
@@ -682,11 +700,9 @@ nhiều lựa chọn đều thấy được **tiêu chí** và **kết luận** 
 
 ## 5.2 `.html` — tài liệu chính
 
-Giữ **cấu trúc section của `.md`** để hai bản đối chiếu được. Ba tiêu chí: **đủ 100% nội dung `.md`**
-— đây là bản developer và game designer thật sự đọc, và luật "không viết theo trí nhớ" (§5.4) áp cả
-cho **số liệu trong demo** · **để hiểu, không để chép code** — chữ ký API thì thành bảng, chỉ giữ code
-khi bản thân đoạn code *là* thứ cần minh họa · **zero idle cost** — trang mở ra mà không tương tác thì
-không tốn CPU.
+Giữ **cấu trúc section của `.md`** để hai bản đối chiếu được. Đây là bản developer và game designer
+thật sự đọc, nên luật "không viết theo trí nhớ" (§5.4) áp cả cho **số liệu trong demo**. **Để hiểu,
+không để chép code**: chữ ký API thành bảng, chỉ giữ code khi bản thân đoạn code *là* thứ cần minh hoạ.
 
 Trực quan hóa **theo loại nội dung**: so sánh thì bảng · luồng dữ liệu thì diagram · quan hệ định
 lượng thì công thức · giá trị biến thiên liên tục thì Canvas · quá trình nhiều bước thì step. Demo chỉ
@@ -722,10 +738,14 @@ Tiêu chí: **tự chứa**. Developer code lại được từ đầu đến cu
 mở tài liệu khác. Các task xếp theo **thứ tự phụ thuộc**, mỗi task chỉ cần thứ đã có ở task trước.
 **Nếu** hệ có lõi toán (§4.1) thì mục `§0` của chính Plan dẫn giải tại chỗ theo mạch §4.2.
 
-**Sổ tay** — mỗi task thường gồm: Files (đường dẫn chính xác) · Interfaces (consumes và produces, chữ
-ký đầy đủ) · bảng "toán → code" trỏ về `§0` · bảng lý do cho mỗi quyết định thiết kế và tối ưu ·
-**code hoàn chỉnh dán được** với comment trỏ công thức nguồn · **Editor setup** khi chạm scene hoặc
-prefab (§3.6) · bảng kiểm chứng input → kỳ vọng.
+**Sổ tay** — kho phần cho mỗi task, **chỉ lấy phần task này cần**: Files (đường dẫn chính xác) ·
+Interfaces (consumes và produces, chữ ký đầy đủ) · bảng "toán → code" trỏ về `§0` · bảng lý do cho
+mỗi quyết định thiết kế và tối ưu · **code hoàn chỉnh dán được** với comment trỏ công thức nguồn ·
+**Editor setup** khi chạm scene hoặc prefab (§3.6) · bảng kiểm chứng input → kỳ vọng. Task không có
+toán thì không có bảng toán→code; không chạm scene thì không có Editor setup.
+
+**Plan không thuật lại code.** Bảng lý do ghi *quyết định và vì sao chọn nó*, không kể *code làm gì*
+— code nằm ngay đó rồi (§5.4).
 
 **Code trong plan — năm đảm bảo:** **vừa đủ** (NT3) · **mở đường mai** (NT4) · **đúng với công thức đã
 chốt** (khớp 100% công thức `§0`, mỗi nghiệm đã kiểm mốc; là "code khớp công thức", **không** phải
@@ -735,6 +755,17 @@ chốt** (khớp 100% công thức `§0`, mỗi nghiệm đã kiểm mốc; là 
 xa chữ ký nói được ra (NT4) · công thức đã đối chiếu với code (§4.3).
 
 ## 5.4 Kỷ luật viết và bảo trì — áp cho mọi loại tài liệu
+
+**Cắt trước khi giao — bắt buộc, không phải tuỳ chọn.** Bản đầu luôn có nước. Cắt theo thứ tự này,
+không cần cân nhắc: câu dẫn *"phần này sẽ nói về…"* · tóm tắt lại thứ vừa nói · câu chuyển tiếp ·
+nhận xét về chất lượng thiết kế · ẩn dụ và câu chốt có vần · cùng một ý viết hai lần cho chắc · phần
+lý do dài hơn một câu cho một khẳng định hiển nhiên (NT15). Cắt xong mà vẫn dài thì nội dung thật sự
+lớn — **tách file**, đừng nén chữ cho vừa.
+
+**Luật câu chữ của §2.3 áp cho tài liệu**: một câu một ý · hạn chế thuật ngữ · gọi khái niệm đúng tên
+nó có trong code · kết luận trước, dẫn giải sau. Câu nhiều mệnh đề lồng nhau là chỗ người đọc phải
+đọc hai lần. Chỉ khác nhau ở **trần**: đối thoại canh theo quyết định đang chờ, tài liệu canh theo
+**việc người đọc phải làm được sau khi đọc**.
 
 | Luật | Nghĩa là |
 |---|---|
