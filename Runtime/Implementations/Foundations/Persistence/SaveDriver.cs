@@ -9,22 +9,20 @@ namespace Horcrux.Runtime.Implementations.Persistence
 {
     public class SaveDriver : MonoBehaviour<BaseSaveCollection>
     {
+        private bool inBackground;
+        
         [SerializeField] private float intervalSeconds;
 
+#region Unity Callbacks
         private void Start()
             => AutoSaveLoopAsync(destroyCancellationToken).Forget();
 
         private void OnApplicationFocus(bool hasFocus)
-        {
-            if (!hasFocus)
-                saveCollection.FlushAll();
-        }
+            => HandleOnGoToBackground(!hasFocus);
 
-        private void OnApplicationPause(bool pauseStatus)
-        {
-            if(pauseStatus)
-                saveCollection.FlushAll();
-        }
+        private void OnApplicationPause(bool pauseStatus) 
+            => HandleOnGoToBackground(pauseStatus);
+#endregion
 
         private async UniTask AutoSaveLoopAsync(CancellationToken ct)
         {
@@ -38,6 +36,15 @@ namespace Horcrux.Runtime.Implementations.Persistence
                 
                 saveCollection.FlushAll();
             }
+        }
+
+        private void HandleOnGoToBackground(bool isInBg)
+        {
+            if (isInBg == inBackground) 
+                return;
+            
+            inBackground = isInBg;
+            saveCollection.FlushAll();
         }
 
         private BaseSaveCollection saveCollection;
