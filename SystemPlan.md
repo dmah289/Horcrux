@@ -141,7 +141,7 @@ Mỗi hệ chỉ coi là xong khi đủ 5 điều: ① contract tách khỏi imp
 | 2 | Persistence (save-unit + cloud) 📄 | Foundation | Bắt buộc | 1 | — |
 | 3 | Scene Flow & Loading | Foundation | Bắt buộc | 1 | Pooling *(tuỳ chọn: warm-up)* |
 | 4a | Ticker (nguồn tick trung tâm) | Foundation | Bắt buộc | 1 | — |
-| 4b | Time Service (server time + countdown) | Foundation | Bắt buộc | 3 | 4a *(nhịp)* |
+| 4b | Time Service (server time + countdown) 📄 | Foundation | Bắt buộc | 3 | 4a *(nhịp)* |
 | 5 | Stack State Machine | Foundation | Cao | 1 | — |
 | 6 | Safe-Area & Responsive Canvas | Foundation | Bắt buộc | 1 | — |
 | 7 | **UI Navigator** (Page/Popup/Sheet) | Composite | Bắt buộc | 2 | Pooling, Tweening |
@@ -151,13 +151,13 @@ Mỗi hệ chỉ coi là xong khi đủ 5 điều: ① contract tách khỏi imp
 | 11 | Toast & Notification Badge | Composite | Bắt buộc | 2 | §7, Pooling, EventBus |
 | 12 | Analytics (contract + taxonomy) | Foundation | Bắt buộc | 2 | — |
 | 13 | Monetization Boundary | Foundation | Bắt buộc | 2 | — |
-| 14 | Economy (Currency/Lives/Reward) | Composite | Bắt buộc | 3 | §2, 4a, 4b, §7, Tweening |
+| 14 | Economy (Currency/Lives/Reward) 📄 *(14c)* | Composite | Bắt buộc | 3 | §2, 4a, 4b, §7, Tweening |
 | 15 | Level Library (runtime) | Composite | Bắt buộc | 3 | §2, RemoteConfig |
 | 16 | Tutorial / FTUE | Composite | Bắt buộc | 3 | §7, Tweening, RemoteConfig |
 | 17 | Tab Navigation / Scroll-Snap | Composite | Trung bình | 3 | Tweening |
 | 18 | In-Game Rating | Composite | Cao | 3 | §7, §2 |
 | 19 | 💎 Adaptive Difficulty (Glicko-2) | Foundation *(lõi toán)* + Composite *(áp dụng)* | Thấp — **IP cao** | 4 | §2, 4b, §15 |
-| 20 | 💎 LiveOps Module Host | Composite | Bắt buộc | 4 | §2, 4b, §7, §12, §13, §14 |
+| 20 | 💎 LiveOps Module Host 📄 | Composite | Bắt buộc | 4 | §2, 4b, §7, §12, §13, §14 |
 | 21 | 💎 Ads Pacing & Monetization Scenario | Composite | Thấp — **port dễ** | 4 | §13, 4b, RemoteConfig |
 | 22 | **Feedback Orchestrator** (cue → đa giác quan) 📄 | Composite | Cao | 3 | 4a, §8, §9 *(2 sau là optional)* |
 | 23 | **Combo** (streak · tier · multiplier) 📄 | Composite | Trung bình | 4 | 4a · §22 *(optional)* |
@@ -177,6 +177,9 @@ Bảy hệ dưới đây đã được viết plan tự chứa, có code dán-đ
 | §8 Audio | `Implementations/Foundations/Audio/AudioSystem.md` | ⚠️ **SFX 2D + `pitchScale`** (xem cảnh báo ở §8), catalog SO, throttle theo clip, voice gán ở Inspector. 6 file | **SFX 3D** (`PlaySfxAt`), music + crossfade, `PauseAll/ResumeAll`, `EAudioSelectMode`, `IAudioSettings`, mixer group |
 | §22 Feedback | `Implementations/Composites/Feedback/FeedbackSystem.md` | `FeedbackCue {Id, Step}` + dispatcher + 4 kênh (audio · haptic · hitstop · **shake**); **kèm** `TraumaShake`. Tham số cue serialize **trên chính kênh** — không asset trung gian. 12 file | zoom punch (thêm `IFeedbackCameraZoom` **riêng** theo ISP — không sửa interface cũ), `FeedbackCue.Intensity`, bảng cue dạng SO, kênh particle/text/ripple, slow-mo dài, kênh thêm lúc runtime |
 | §23 Combo | `Implementations/Composites/Combo/ComboSystem.md` | `ComboTracker` (C# thuần), 3 window policy, hệ số nhân Linear, bậc = `int[]` trên Inspector, bridge, `ComboMeter`, demo driver. 11 file | nhãn/hệ số/cue riêng theo bậc (thay `int[]` bằng SO + interface), đường nhân điểm khác, multi-track, lưu kỷ lục, telemetry, `ChainReaction` |
+| 4b Time | `Implementations/Foundations/Time/TimeSystem.md` | `ITimeService.UtcNowUnix` không lùi (mốc lớn nhất từng thấy, field `protected internal` trong `BasePersistenceDataCollection`) + `IServerTimeProvider` contract (chưa impl). 3 file + 1 field | `Countdown`, `TimeFormatter`, resync khi resume, gate `IsServerTimeTrusted`, nhịp qua Ticker |
+| 14c Reward | `Implementations/Foundations/Reward/RewardSystem.md` | `RewardData{TypeId, Amount}` + `IRewardHandler` (1 member) + `IRewardService.Register(typeId, handler)/Grant` sync. 4 file | `GrantAsync` + fly, claim popup, `IRewardIconProvider`, 14a Currency, 14b Lives |
+| 20 LiveOps | `Implementations/Composites/LiveOps/LiveOpsHost.md` | `LiveOpsModuleState` 3 trạng thái · `WeeklySchedule.Resolve` thuần · `LiveOpsModuleBase` (một thân `Refresh` cho init + tick) · `LiveOpsHost` chờ save, tick 1 Hz, `LiveOpsSecondTick`. 8 file. Module đầu: Collection (`Assets/LiveOps/Collection/Collection_Plan.md`) | `IOptionalService`, tick thích ứng, `EActivationTiming`, `#define` per module, asset preload, lịch chu kỳ N ngày, cheat-time |
 
 > ⚠️ **2/7 file plan đã bị xoá trong commit `clean` của repo Horcrux** — `TickerSystem.md` và
 > `FeedbackSystem.md` (4 plan còn trên đĩa: Bootstrap, Haptics, Audio, Combo). Nội dung khôi phục được từ git
