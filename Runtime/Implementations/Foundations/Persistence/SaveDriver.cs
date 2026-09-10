@@ -1,56 +1,52 @@
-﻿using System;
-using System.Threading;
-using Cysharp.Threading.Tasks;
+﻿using Cysharp.Threading.Tasks;
 using Horcrux.Runtime.Abstractions.Persistence;
 using Sisus.Init;
 using UnityEngine;
 
 namespace Horcrux.Runtime.Implementations.Persistence
 {
-    public class SaveDriver : MonoBehaviour<BaseSaveCollection>
+    public class SaveDriver : MonoBehaviour<BasePersistenceDataCollection>
     {
         private bool inBackground;
-        
-        [SerializeField] private float intervalSeconds;
 
-#region Unity Callbacks
+        #region Unity Callbacks
+
         private void Start()
-            => AutoSaveLoopAsync(destroyCancellationToken).Forget();
+        {
+            saveCollection.Initialize();
+            saveCollection.RunAutosaveAsync(destroyCancellationToken).Forget();
+        }
 
         private void OnApplicationFocus(bool hasFocus)
             => HandleOnGoToBackground(!hasFocus);
 
-        private void OnApplicationPause(bool pauseStatus) 
+        private void OnApplicationPause(bool pauseStatus)
             => HandleOnGoToBackground(pauseStatus);
-#endregion
 
-        private async UniTask AutoSaveLoopAsync(CancellationToken ct)
-        {
-            while (!ct.IsCancellationRequested)
-            {
-                await UniTask.Delay(TimeSpan.FromSeconds(intervalSeconds), 
-                    DelayType.Realtime, cancellationToken: ct);
-                
-                if (ct.IsCancellationRequested)
-                    return;
-                
-                saveCollection.FlushAll();
-            }
-        }
+        private void OnApplicationQuit()
+            => saveCollection.FlushAll();
 
+        #endregion
+
+        #region Class Methods
         private void HandleOnGoToBackground(bool isInBg)
         {
-            if (isInBg == inBackground) 
+            if (isInBg == inBackground)
                 return;
             
             inBackground = isInBg;
-            saveCollection.FlushAll();
+            if(inBackground)
+                saveCollection.FlushAll();
         }
-
-        private BaseSaveCollection saveCollection;
-        protected override void Init(BaseSaveCollection argument)
+        #endregion
+        
+        #region DI
+        private BasePersistenceDataCollection saveCollection;
+        
+        protected override void Init(BasePersistenceDataCollection argument)
         {
             saveCollection = argument;
         }
+        #endregion
     }
 }

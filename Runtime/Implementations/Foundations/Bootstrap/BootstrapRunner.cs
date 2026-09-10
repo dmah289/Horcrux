@@ -65,28 +65,6 @@ namespace Horcrux.Runtime.Implementations.Bootstrap
 
         private void OnApplicationFocus(bool hasFocus) => HandleGoToBackground(!hasFocus);
 
-        // whichever arrives first flips it, the second is a no-op.
-        private void HandleGoToBackground(bool inBackground)
-        {
-            // Android fires resume as the app opens; a half-initialized step must not take the hook.
-            if (!IsInitialized || inBackground == isInBackground)
-                return;
-
-            isInBackground = inBackground;
-
-            int stepCount = steps.Count;
-            if (inBackground)
-            {
-                for (int i = stepCount - 1; i >= 0; i--)
-                    SafeGoToBackground(steps[i], true);
-            }
-            else
-            {
-                for (int i = 0; i < stepCount; i++)
-                    SafeGoToBackground(steps[i], false);
-            }
-        }
-
         private void OnApplicationQuit()
         {
             if (IsInitialized)
@@ -272,6 +250,28 @@ namespace Horcrux.Runtime.Implementations.Bootstrap
                 {
                     Debug.LogException(e, this);
                 }
+            }
+        }
+        
+        // whichever arrives first flips it, the second is a no-op.
+        private void HandleGoToBackground(bool inBackground)
+        {
+            // Android fires resume as the app opens; a half-initialized step must not take the hook.
+            if (!IsInitialized || inBackground == isInBackground)
+                return;
+
+            isInBackground = inBackground;
+
+            int stepCount = steps.Count;
+            if (inBackground)
+            {
+                for (int i = stepCount - 1; i >= 0; i--)
+                    SafeGoToBackground(steps[i], true);
+            }
+            else
+            {
+                for (int i = 0; i < stepCount; i++)
+                    SafeGoToBackground(steps[i], false);
             }
         }
 

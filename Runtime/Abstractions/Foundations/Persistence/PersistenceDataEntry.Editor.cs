@@ -5,10 +5,10 @@ using UnityEngine;
 
 namespace Horcrux.Runtime.Abstractions.Persistence
 {
-    public partial class SaveEntry<T>
+    public partial class PersistenceDataEntry<T>
     {
 #if UNITY_EDITOR
-        [NonSerialized, ShowInInspector, MultiLineProperty]
+        [ShowInInspector, MultiLineProperty]
         private string payloadToImport;
 
         [Button]
@@ -16,13 +16,13 @@ namespace Horcrux.Runtime.Abstractions.Persistence
         {
             if (!Application.isPlaying)
             {
-                Debug.LogWarning("[SaveCollection]: Live value must be imported in Play Mode.");
+                Debug.LogWarning("[PersistenceDataCollection]: Live value must be imported in Play Mode.");
                 return;
             }
 
             if (string.IsNullOrEmpty(payloadToImport))
             {
-                Debug.LogWarning($"[SaveCollection]: Import to {key} skipped because payload is empty.");
+                Debug.LogWarning($"[PersistenceDataCollection]: Import to {key} skipped because payload is empty.");
                 return;
             }
 
@@ -32,7 +32,7 @@ namespace Horcrux.Runtime.Abstractions.Persistence
             }
             catch (Exception e)
             {
-                Debug.LogError($"[SaveCollection]: Import into {key} failed.");
+                Debug.LogError($"[PersistenceDataCollection]: Import into {key} failed.");
                 Debug.LogException(e);
             }
         }

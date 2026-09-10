@@ -6,11 +6,14 @@ using Sisus.Init;
 
 namespace Horcrux.Runtime.Implementations.Persistence
 {
-    public class SaveBootstep : BaseBootStep, IInitializable<BaseSaveCollection>
+    public class SaveBootstep : BaseBootStep, IInitializable<BasePersistenceDataCollection>
     {
         public override UniTask InitializeAsync(CancellationToken ct)
         {
             saveCollection.Initialize();
+            // Own lifetime, not the phase token: the runner cancels that one at every level load.
+            saveCollection.RunAutosaveAsync(destroyCancellationToken).Forget();
+
             return UniTask.CompletedTask;
         }
 
@@ -22,8 +25,14 @@ namespace Horcrux.Runtime.Implementations.Persistence
                 saveCollection.FlushAll();
         }
 
-        private BaseSaveCollection saveCollection;
-        public void Init(BaseSaveCollection argument)
+        public override void OnAppQuit()
+        {
+            base.OnAppQuit();
+            saveCollection.FlushAll();
+        }
+
+        private BasePersistenceDataCollection saveCollection;
+        public void Init(BasePersistenceDataCollection argument)
         {
             saveCollection = argument;
         }

@@ -347,6 +347,27 @@ chỉ được phép có **một bản** là bất biến của vòng lặp — 
 thoát khi bị huỷ — chứ không phải thân biến thể. Nhân vòng lặp ra n bản, hoặc cắm `if` biến thể vào
 giữa, là nhân bất biến ra n bản (NT5).
 
+**Nhiều host chung một nhịp: thân về nơi giữ bảo đảm, đời sống ở lại host.** Khi n host cùng chạy một
+vòng lặp trên một hệ, chia theo *cái mỗi bên có mà bên kia không có*. **Thân vòng lặp và con số cấu
+hình** về nơi giữ bảo đảm mà nhịp đó phục vụ — nhịp là một phần của bảo đảm, và con số nằm cạnh dữ
+liệu nó chi phối thì đọc một chỗ ra hết. **Token** ở lại host, vì host là thứ **có đời sống**; chiều
+này không đảo được — một `ScriptableObject` hay một plain class không có mốc kết thúc tin được, nên
+không được tự mở `CancellationTokenSource`: không ai đóng nó, và ở Editor tắt domain reload thì mỗi
+lần Play là một loop nữa xếp lên loop cũ. Loop nhận token của một pha ngắn hơn đời nó thì chết im
+lặng — hình dạng thứ ba ở §3.4.
+
+**Sổ tay** — hình dạng file và class đang dùng trong bộ này:
+
+| Chỗ | Cách làm |
+|---|---|
+| Code chỉ có ở Editor | file `*.Editor.cs` khai `partial` của cùng class, **bên trong vẫn** `#if UNITY_EDITOR`. File runtime không bị khối `#if` cắt ngang, và nút Editor đọc thẳng private member của class |
+| Thứ tự region | `Unity Callbacks` trên cùng · `Properties` · `API` (thứ người ngoài gọi) · `Class Methods` (thân private) · `DI` **cuối class**, gói field nhận vào cùng `Init` |
+| Nhận phụ thuộc | `MonoBehaviour<T>` cho component thường · `IInitializable<T>` khi class đã kế thừa base khác · không service locator bên trong hệ |
+| Dựng host | hệ **không** tự `new GameObject` — host là component kéo tay vào scene, chu kỳ và collection đọc được trong Inspector (§3.6) |
+| Log | mọi dòng mở bằng `[TênHệ]: ` để filter console theo hệ; kèm `this` làm context object để bấm vào ra đúng asset |
+| Hàm một biểu thức | expression-bodied (`=>`), kể cả method `void` |
+| Ẩn method của contract | mặc định `public` — tin người dùng hệ. Chuyển sang explicit interface implementation **đúng những method mà gọi sai gây mất dữ liệu im lặng**, không phải mọi method chỉ dùng nội bộ |
+
 ## 3.2 Module — độc lập trước, kết hợp là ngoại lệ
 
 Ranh giới hệ thống phải **nhìn thấy được** trong cấu trúc dự án, không chỉ trong đầu người viết; mỗi
@@ -455,6 +476,21 @@ thì guard đầy đủ: reference chỉ có lúc runtime · ô null ở một p
 nhiều scene · sai chỉ hiện ở một tổ hợp cấu hình · thứ thành null sau một lần `Destroy`. Dữ liệu từ
 ngoài (import, server, save) luôn thuộc nhóm này — §3.8.
 
+**Bỏ guard vì "developer sẽ setup" chỉ đúng khi thiếu setup LỘ RA — phải kiểm, không được giả định.**
+Câu "để nó nổ" đứng được nhờ vế *nổ*. Mất vế đó, nó thành thiếu-setup-chạy-tiếp-sai-âm-thầm — đúng
+thứ ngưỡng dưới tồn tại để chặn. Ba hình dạng nó **không** nổ, và cách trả từng cái về chỗ nổ:
+
+| Hình dạng | Vì sao im lặng | Trả về chỗ nổ bằng |
+|---|---|---|
+| **Giá trị mặc định của kiểu là giá trị hợp lệ** — `float` 0, `bool` false, list rỗng, enum phần tử đầu | Ô trống trong Inspector **không phân biệt được** với ô người ta cố ý điền giá trị đó; không có gì để null-check | **Authoring, không phải guard runtime**: cho default ngay trong khai báo field, kẹp dải bằng `[Min]`/`[Range]`. Ô chưa ai chạm khi đó ra số dùng được, và số vô lý không gõ vào được |
+| **Host bắt lỗi fail-open** — một vòng dispatch, một chain boot log rồi bỏ qua step lỗi | Thiếu wire thành **một dòng log lúc boot** rồi cả phiên chạy như bình thường nhưng thiếu hẳn một hệ; QA và build release không ai đọc dòng đó | Không phải thêm guard: hoặc hệ tự đứng được không cần host đó, hoặc thiếu nó phải hỏng ở **cửa mà người chơi chạm** |
+| **Vòng lặp nhận sai token** — nhịp gắn vào token của một pha ngắn hơn đời của nó | Framework hủy token đúng như hợp đồng của nó, thư viện async coi hủy là bình thường nên **không log**; loop dừng, phần còn lại vẫn chạy như thường | Editor không bắt được, phải đọc code: mỗi loop chỉ ra được **token của nó là đời của ai**, và đời đó dài đúng bằng nhịp (§3.1) |
+
+*Đã sai một lần, và là nguồn của hai hàng trên:* một hệ save có `[SerializeField] float intervalSeconds;`
+không default — quên điền ra 0, thành flush cả kho xuống đĩa **mỗi frame**; cùng hệ đó gắn loop autosave
+vào token của pha boot, mà runner refresh token mỗi lần load level — autosave chết từ level thứ hai.
+Cả hai không một dòng log.
+
 **`try/catch` đi qua đúng cửa đó.** Chỉ bọc khi **gọi được tên thứ ném ra**: API thật sự ném (I/O,
 parse, network, reflection, dữ liệu từ ngoài — §3.8), hoặc code của người khác chạy trong vòng lặp
 của mình (§3.5). Không gọi tên được thì bỏ — một khối `catch` cho ca không bao giờ xảy ra vẫn bắt
@@ -509,7 +545,15 @@ Viết thành một bước ở mục **"Trước khi chạy"** của tài liệ
 lần rồi thôi. Sinh code tự kiểm hoặc tự tạo thì tốn mãi mãi: một nhánh nằm trong build, phải đọc,
 phải test, phải giữ đúng qua mọi lần refactor (NT3). **Tự tạo tệ hơn tự kiểm** — nó giấu mất việc
 setup còn thiếu, và dựng nguồn sự thật thứ hai cạnh bản authoring (§3.4). Thiếu setup thì **để nó
-nổ** ở lần Play đầu; đó đã là báo lỗi đủ rõ, và là đúng chỗ dừng của ngưỡng dưới ở §3.4.
+nổ** ở lần Play đầu; đó đã là báo lỗi đủ rõ, và là đúng chỗ dừng của ngưỡng dưới ở §3.4 — nhưng phải kiểm
+rằng nó nổ thật, ba hình dạng im lặng ở ngay dưới đó.
+
+**Bước setup bằng tay là cách developer HIỂU hệ, không chỉ là đường rẻ hơn.** Đây là lý do thứ hai,
+độc lập với chi phí: người tự kéo asset vào ô, tự bật component, tự đặt số thì giữ được trong đầu
+**các mảnh rời của hệ và chỗ chúng nối vào nhau** — thứ duy nhất dùng được khi hệ hỏng lúc 2 giờ sáng.
+Hệ tự wire để không ai phải biết gì thì đúng lúc cần, không ai biết gì. Nói ngắn: **hệ không gánh lỗi
+quên setup của người dùng nó.** Đổi lại, hệ **nợ** người dùng một mục "Trước khi chạy" đủ để dựng
+lại từ 0 (§5.1) — bỏ code canh mà không viết bước setup thì chỉ là đẩy việc, không phải Editor-first.
 
 ## 3.7 Naming — self-documenting code
 
@@ -683,11 +727,19 @@ trích nguyên văn, không viết lại. Bảng metrics tổng kết đặt cu�
 **Sổ tay** — luồng dữ liệu vẽ bằng ASCII vì `.md` được đọc bằng nhiều công cụ; công cụ nào chắc chắn
 render được mermaid thì dùng mermaid cũng được (NT2).
 
-**Kho mục để chọn, không phải form để điền.** Mỗi mục đưa vào phải gọi tên được **câu hỏi của người
-đọc** mà nó trả lời; không gọi tên được thì bỏ. Hệ nhỏ có ba mục là bình thường. Kho: **Trước khi
-chạy** (bước setup bắt buộc, §3.6) · Data structures · Core algorithm · Lifecycle · Implementation
-details · Framework integration · Design decisions · Safety và error · Platform issues · Architecture
-(file tree kèm vai trò) · Testing · Extension · Performance.
+**Một mục bắt buộc: "Trước khi chạy", với mọi hệ cần wire tay.** Hệ nào không dựng được chỉ bằng cách
+tham chiếu code — phải tạo asset, add component, kéo reference, điền số — thì mục này là **hợp đồng đi
+kèm** của việc hệ không tự setup hộ (§3.6), không phải mục tuỳ chọn. Nghiệm thu: người chưa từng mở hệ
+dựng lại được **từ 0** chỉ bằng mục này, theo thứ tự, không phải đọc code hay hỏi ai. Viết bằng **thao
+tác và nhãn thật trên UI** — đường dẫn menu, tên ô trong Inspector, thứ kéo vào ô nào — và mỗi bước
+kèm *"thiếu bước này thì hỏng ở đâu"*, vì đó là thứ chặn người dựng bỏ qua nó. Hệ chạy được mà không
+cần wire gì thì không có mục này.
+
+**Còn lại là kho mục để chọn, không phải form để điền.** Mỗi mục đưa vào phải gọi tên được **câu hỏi
+của người đọc** mà nó trả lời; không gọi tên được thì bỏ. Hệ nhỏ có ba mục là bình thường. Kho: Data
+structures · Core algorithm · Lifecycle · Implementation details · Framework integration · Design
+decisions · Safety và error · Platform issues · Architecture (file tree kèm vai trò) · Testing ·
+Extension · Performance.
 
 **Nghiệm thu:** lần theo được một giá trị từ input tới output mà không nhảy section · mỗi so sánh
 nhiều lựa chọn đều thấy được **tiêu chí** và **kết luận** · dựng được `.html` 100% từ file này mà
