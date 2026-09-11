@@ -706,6 +706,12 @@ tài liệu trong cùng lần làm** — riêng `.html` theo nhịp mốc.
 | **Plan** (khi developer yêu cầu) | để developer **tự code lại** nhằm học | luôn là `.md`; vòng đời theo task |
 | **Manual** (khi tool có người dùng không phải developer) | người dùng đọc để **thao tác** — luật viết ở §5.4 | sống cùng tool |
 
+**Ai viết: agent, cả bốn loại.** Phân công với developer là *developer viết code lõi và làm bước
+Editor · agent viết test và tài liệu*; hai vế sau cùng một lý do — nghiệm thu chúng là **đối chiếu máy
+móc với code**, mở lại từng tên, từng chữ ký, từng hằng số ("không viết theo trí nhớ", §5.4), đúng chỗ
+máy hơn người ở sức và nhất quán chéo (§2.8). Developer **chốt nội dung**: dòng nào lệch thiết kế thì
+developer phân xử, agent sửa.
+
 **Quy trình:** phỏng vấn ngữ cảnh (§2.1) và đối chiếu hiểu biết về code với developer (§2.2) → đọc
 **tất cả** source, hiểu 100% data flow, lifecycle, lý do của mỗi quyết định → viết `.md` → sinh `.html`
 từ `.md` → khi được yêu cầu thì viết Plan.
@@ -792,8 +798,9 @@ Tiêu chí: **tự chứa**. Developer code lại được từ đầu đến cu
 mở tài liệu khác. Các task xếp theo **thứ tự phụ thuộc**, mỗi task chỉ cần thứ đã có ở task trước.
 **Nếu** hệ có lõi toán (§4.1) thì mục `§0` của chính Plan dẫn giải tại chỗ theo mạch §4.2.
 
-**Phân công: lõi developer viết, test agent viết.** Code lõi trong Plan là bản để developer đọc và gõ
-lại, không phải bản để agent commit. Test thì ngược: agent viết và chạy (§2.8), nên Plan **chỉ có danh
+**Phân công: lõi developer viết, test agent viết** — chính file Plan thì agent viết như mọi tài liệu
+khác (§5); mục này chia phần **nội dung bên trong** nó. Code lõi trong Plan là bản để developer đọc và
+gõ lại, không phải bản để agent commit. Test thì ngược: agent viết và chạy (§2.8), nên Plan **chỉ có danh
 sách case sẽ kiểm**, không có code test — developer không gõ lại test nên code test ở đây là công bỏ
 đi. **Nhịp:** developer code xong lõi → agent đọc code thật rồi mới viết test, vì chữ ký lúc viết Plan
 còn là bản nháp. Danh sách case là chỗ developer veto hoặc thêm case trước khi agent viết.

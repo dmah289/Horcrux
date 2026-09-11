@@ -1,6 +1,7 @@
 # LiveOps Host — Plan (bản tối thiểu)
 
-> **Loại tài liệu:** Plan — developer tự code. Module đầu tiên: Collection (`Assets/LiveOps/Collection/Collection_Plan.md`). Phần còn lại ở §5.
+> **Loại tài liệu:** Plan — **developer viết code lõi; agent viết test, chạy và báo kết quả.** Plan chỉ ghi
+> bảng case, không dán code test. Module đầu tiên: Collection (`Assets/LiveOps/Collection/Collection_Plan.md`). Phần còn lại ở §5.
 
 **Mục tiêu:** module live-ops là component tự chứa; host chỉ làm ba việc — chờ save load, gọi `Initialize` một lần, gọi `Tick` mỗi giây với **cùng một `now`** cho mọi module.
 
@@ -92,6 +93,7 @@ Mốc kiểm (anchor Monday 08:01 UTC, duration 604740). `2026-09-07` là Thứ 
 | 1788768000 | Mon 08:00:00 | 1788163260 | false |
 | 1788739200 − 60 | Sun 23:59:00 | 1788163260 | true, `SecondsLeft` = 28860 |
 | bất kỳ, `durationSeconds = 9e9` | duration vượt tuần | — | `End − Start` = 604800 |
+| −5 | trước epoch — mod phải ra dương | `Start ≤ −5` và `Start + WeekSeconds > −5` | — |
 
 Tự tính mốc khác bằng `DateTimeOffset.ToUnixTimeSeconds()` trong test, không gõ tay.
 
@@ -166,11 +168,14 @@ Unregister: modules.Remove(m)
 
 ## Kiểm
 
-| Ca | Kỳ vọng |
-|---|---|
-| EditMode `WeeklySchedule.Resolve` | bảng §2 |
-| Đổi giờ máy qua mốc anchor rồi mở app | module rollover một lần, `State` đúng |
-| Đứng ở Home qua mốc `EndUnix` | tick kế → `Inactive`, `SecondsLeft` = 0, không số âm |
+| Ca | Kỳ vọng | Ai chạy |
+|---|---|---|
+| EditMode `WeeklySchedule.Resolve` | bảng §2 — mỗi dòng một case | **agent** |
+| Đổi giờ máy qua mốc anchor rồi mở app | module rollover một lần, `State` đúng | **developer** — Play mode |
+| Đứng ở Home qua mốc `EndUnix` | tick kế → `Inactive`, `SecondsLeft` = 0, không số âm | **developer** — Play mode |
+
+`LiveOpsModuleBase` và `LiveOpsHost` không có test tự động: cả hai là MonoBehaviour buộc vào nhịp Unity và
+save đã load. Agent kiểm chúng bằng biên dịch; hành vi kiểm ở hai dòng Play mode trên.
 
 ## §5 Để sau
 

@@ -1,6 +1,7 @@
 # Time System — Plan (bản tối thiểu)
 
-> **Loại tài liệu:** Plan — developer tự code. Chỉ phần LiveOps Collection cần; phần còn lại ở §5.
+> **Loại tài liệu:** Plan — **developer viết code lõi; agent viết test, chạy và báo kết quả.** Plan chỉ ghi
+> bảng case, không dán code test. Chỉ phần LiveOps Collection cần; phần còn lại ở §5.
 
 **Mục tiêu:** một nguồn giờ UTC **không lùi** cho mọi logic theo thời gian. Không hệ nào gọi `DateTime.UtcNow` để tính logic.
 
@@ -94,11 +95,15 @@ ResyncAsync:
 
 ## Kiểm
 
-| Ca | Kỳ vọng |
-|---|---|
-| Play lần đầu | `UtcNowUnix` ≈ giờ máy; sau 60s PlayerPrefs có `persistence_<key>` |
-| Lùi giờ máy 1 ngày rồi mở lại | `UtcNowUnix` = mốc cuối, không lùi |
-| Tiến giờ máy | `UtcNowUnix` theo giờ máy (không chống tiến — cần server time) |
+| Ca | Kỳ vọng | Ai chạy |
+|---|---|---|
+| Play lần đầu | `UtcNowUnix` ≈ giờ máy; sau 60s PlayerPrefs có `persistence_<key>` | **developer** — Play mode |
+| Lùi giờ máy 1 ngày rồi mở lại | `UtcNowUnix` = mốc cuối, không lùi | **developer** — Play mode |
+| Tiến giờ máy | `UtcNowUnix` theo giờ máy (không chống tiến — cần server time) | **developer** — Play mode |
+
+Hệ này không có test tự động: luật chống lùi nằm trong getter của một MonoBehaviour và đọc
+`save.IsInitialized`, nên cả ba ca đều cần Play mode và một lần đổi giờ máy. Phần của agent ở đây là
+biên dịch và soát code theo §3.
 
 ## §5 Để sau
 

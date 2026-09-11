@@ -1,6 +1,7 @@
 # Reward System — Plan (bản tối thiểu)
 
-> **Loại tài liệu:** Plan — developer tự code. Là phần 14c của Economy, tách riêng vì đứng độc lập được; phần còn lại ở §4.
+> **Loại tài liệu:** Plan — **developer viết code lõi; agent viết test, chạy và báo kết quả.** Plan chỉ ghi
+> bảng case, không dán code test. Là phần 14c của Economy, tách riêng vì đứng độc lập được; phần còn lại ở §4.
 
 **Mục tiêu:** một cửa `Grant(reward, placement)` cho mọi nguồn thưởng; game cắm handler theo loại, SDK không biết coin/booster là gì.
 
@@ -69,11 +70,15 @@ public sealed class RewardService : MonoBehaviour, IRewardService
 
 ## Kiểm
 
-| Ca | Kỳ vọng |
-|---|---|
-| Grant type có handler | ví đổi đúng amount, placement tới analytics của ví |
-| Grant type không handler | một dòng `LogError`, không exception |
-| Register trùng | `LogError`, handler đầu giữ |
+| # | Ca | Input | Kỳ vọng | Ai chạy |
+|---|---|---|---|---|
+| 1 | Grant tới handler đã đăng ký | `Register(7, h)` · `Grant(new RewardData(7, 30), "test")` | `h` nhận `TypeId 7`, `Amount 30`, `placement "test"`, đúng **một** lần | **agent** |
+| 2 | Grant typeId không có handler | service trống · `Grant(new RewardData(99, 1), "test")` | đúng một `LogError`, không exception | **agent** |
+| 3 | Grant amount ≤ 0 | `Register(1, h)` · `Grant(new RewardData(1, 0), "test")` | đúng một `LogError`, `h` **không** được gọi | **agent** |
+| 4 | Register trùng typeId | `Register(1, a)` · `Register(1, b)` · `Grant(new RewardData(1, 5), "t")` | `LogError` ở lần register thứ hai; `a` được gọi, `b` không | **agent** |
+| 5 | Grant thật trong game | handler của game đã `Register` | ví đổi đúng amount, placement tới analytics của ví | **developer** — Play mode |
+
+Log mở bằng `[RewardService]: ` nên test khớp dòng lỗi bằng tên hệ, không khớp nguyên văn câu.
 
 ## §4 Để sau
 
