@@ -253,7 +253,7 @@ cache của phiên trước sống.
 | `Key` để rỗng | `ScanEntries` loại entry đó kèm `LogError`; nó không lưu gì |
 | `Default Value` để rỗng | người chơi mới bắt đầu bằng giá trị mặc định của kiểu (`0`, `false`, list rỗng) — mà ô trống **không phân biệt được** với ô cố ý điền số đó, nên không có gì báo |
 | Không wire asset vào host | `saveCollection` là null → `NullReferenceException` ở `Initialize()`. Ở `SaveDriver` thì đỏ console và `Start()` dừng; ở `SaveBootstep` thì `BootstrapRunner` **fail-open** — đỏ một dòng rồi cả phiên chạy tiếp **không có** persistence |
-| Đặt `SaveDriver` trên object không sống suốt phiên | scene chứa nó unload là `destroyCancellationToken` hủy → autosave **chết im lặng**, UniTask coi hủy là bình thường nên không log gì. Chỉ còn flush lúc pause/quit |
+| ~~Đặt `SaveDriver` trên object không sống suốt phiên~~ — nay chặn bằng cấu trúc | `SaveDriver.OnAwake` tự gọi `DontDestroyOnLoad(gameObject)`, nên scene unload không còn hủy `destroyCancellationToken` nữa. Giữ dòng này vì nó là **lý do** của câu lệnh đó: token hủy thì autosave **chết im lặng** — UniTask coi hủy là bình thường nên không log gì, chỉ còn flush lúc pause/quit |
 | Không bấm `ValidateKeys` trước khi Play | khoá trùng, khoá rỗng, field mark mà chưa gán, kiểu payload chạm `UnityEngine` — cả bốn chỉ báo lúc `Initialize()` chạy, hoặc muộn hơn nữa |
 
 ## Hai host — chọn một, không dùng cả hai
@@ -261,7 +261,7 @@ cache của phiên trước sống.
 | | `SaveDriver` | `SaveBootstep` |
 |---|---|---|
 | Dùng khi | dự án **không** có Bootstrap | dự án có `BootstrapRunner` |
-| Là gì | `MonoBehaviour<BasePersistenceDataCollection>` kéo tay vào scene | `BaseBootStep`, chạy trong pha boot |
+| Là gì | `MonoBehaviour<IPersistenceDataCollection>` kéo tay vào scene, tự `DontDestroyOnLoad` ở `OnAwake` | `BaseBootStep, IInitializable<IPersistenceDataCollection>`, chạy trong pha boot |
 | Gọi `Initialize()` | `Start()` | `InitializeAsync()` |
 | Chạy autosave | `RunAutosaveAsync(destroyCancellationToken)` | `RunAutosaveAsync(destroyCancellationToken)` — **không** phải token của pha, runner refresh token đó mỗi lần load level |
 | Flush | cạnh vào background (`OnApplicationFocus` / `OnApplicationPause`, một lần cho mỗi lần vào) + `OnApplicationQuit` | `OnGoToBackground(true)` + `OnAppQuit` |
@@ -276,6 +276,11 @@ Vì sao thân vòng lặp và `autosaveIntervalSeconds` nằm ở **collection**
 liệu nó chi phối thì đọc một chỗ ra hết. Còn **token** ở lại host, vì host là thứ có đời sống — một
 `ScriptableObject` không có mốc kết thúc tin được, nên nó không được tự mở `CancellationTokenSource`:
 không ai đóng, và ở Editor tắt domain reload thì mỗi lần Play là một loop nữa xếp lên loop cũ.
+
+`RunAutosaveAsync` nằm trên **`IPersistenceDataCollection`** chứ không chỉ trên base, vì `SaveDriver` nhận
+`IPersistenceDataCollection` — host không còn compile-depend vào `BasePersistenceDataCollection`, nên một dự án
+có collection không kế thừa base vẫn cắm được vào host. `SaveBootstep` nhận cùng kiểu đó — **hai host một hợp đồng**, đổi host
+không phải đổi gì khác.
 
 ## Vòng đời
 
@@ -388,18 +393,18 @@ bên thì sửa cả bên kia. Danh sách khác biệt là **đóng** — thêm 
 | Type | Thành viên |
 |---|---|
 | `IPersistenceDataEntry` | `string Key { get; }` · `bool IsDirty { get; }` · `void Setup(IPersistenceDataCollection)` · `void ReadPayload(string)` · `string WritePayload()` · `void ClearDirty()` |
-| `IPersistenceDataCollection` | `IReadOnlyList<IPersistenceDataEntry> Entries { get; }` · `bool IsInitialized { get; }` · `void Initialize()` · `void FlushAll()` · `void Flush(IPersistenceDataEntry)` |
+| `IPersistenceDataCollection` | `IReadOnlyList<IPersistenceDataEntry> Entries { get; }` · `bool IsInitialized { get; }` · `void Initialize()` · `void FlushAll()` · `void Flush(IPersistenceDataEntry)` · `UniTask RunAutosaveAsync(CancellationToken)` |
 | `PersistenceDataEntry<T> : IPersistenceDataEntry` | `[Serializable]` · `T Value { get; set; }` · `event Action<T> OnValueChanged` · `void MarkDirty()` · `void FlushNow()` · `implicit operator T` (null → `default`) · nút `ImportPayload` |
 | `MarkedPersistence : Attribute` | `[AttributeUsage(AttributeTargets.Field)]` — đánh dấu field để scan nhận |
-| `BasePersistenceDataCollection : ScriptableObject, IPersistenceDataCollection` | `abstract` · `UniTask RunAutosaveAsync(CancellationToken)` · `protected virtual void ResetDerivedState()` · `protected virtual void OnEntriesLoaded()` · nút `ValidateKeys` |
+| `BasePersistenceDataCollection : ScriptableObject, IPersistenceDataCollection` | `abstract` · thân `RunAutosaveAsync` (impl của interface) · `protected virtual void ResetDerivedState()` · `protected virtual void OnEntriesLoaded()` · nút `ValidateKeys` |
 | `BasePersistenceDataCollection` — phần `partial` `.TimeService.cs` | `protected internal PersistenceDataEntry<long> lastSeenUtcSeconds` · `PersistenceDataEntry<long> LastSeenUtcSeconds { get; }` — entry **duy nhất** base tự khai, `TimeService` sở hữu (xem `TimeSystem.md`). `protected internal` chứ không `private`: `TimeService` cùng assembly mà không kế thừa, còn scan `GetFields(NonPublic | Instance)` trên type con vẫn thấy field kế thừa không-private. `Key` và `Default Value` điền ở **asset con** như mọi entry khác |
 
 **`Horcrux.Runtime.Implementations.Persistence`**
 
 | Type | Vai trò |
 |---|---|
-| `SaveDriver : MonoBehaviour<BasePersistenceDataCollection>` | `Start` init + autosave · flush ở cạnh vào background và `OnApplicationQuit` |
-| `SaveBootstep : BaseBootStep, IInitializable<BasePersistenceDataCollection>` | `InitializeAsync` init + autosave · flush ở `OnGoToBackground(true)` và `OnAppQuit` |
+| `SaveDriver : MonoBehaviour<IPersistenceDataCollection>` | `OnAwake` `DontDestroyOnLoad` · `Start` init + autosave · flush ở cạnh vào background và `OnApplicationQuit` |
+| `SaveBootstep : BaseBootStep, IInitializable<IPersistenceDataCollection>` | `InitializeAsync` init + autosave · flush ở `OnGoToBackground(true)` và `OnAppQuit` |
 
 **`Horcrux.Runtime.Abstractions`** — `IService<out T>`: `static T Service` · `static bool TryGet(out T)`.
 

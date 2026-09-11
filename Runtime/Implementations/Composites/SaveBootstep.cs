@@ -6,7 +6,7 @@ using Sisus.Init;
 
 namespace Horcrux.Runtime.Implementations.Persistence
 {
-    public class SaveBootstep : BaseBootStep, IInitializable<BasePersistenceDataCollection>
+    public class SaveBootstep : BaseBootStep, IInitializable<IPersistenceDataCollection>
     {
         public override UniTask InitializeAsync(CancellationToken ct)
         {
@@ -31,8 +31,8 @@ namespace Horcrux.Runtime.Implementations.Persistence
             saveCollection.FlushAll();
         }
 
-        private BasePersistenceDataCollection saveCollection;
-        public void Init(BasePersistenceDataCollection argument)
+        private IPersistenceDataCollection saveCollection;
+        public void Init(IPersistenceDataCollection argument)
         {
             saveCollection = argument;
         }
