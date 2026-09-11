@@ -13,6 +13,13 @@ namespace Horcrux.Runtime.Abstractions.Persistence
     
     public abstract partial class BasePersistenceDataCollection : ScriptableObject, IPersistenceDataCollection
     {
+        private enum EntryLoadResult
+        {
+            Loaded,
+            Seeded,
+            Failed,
+        }
+        
         private const string KeyPrefix = "persistence_";
 
         [Splitter("Self Configs")]
@@ -23,6 +30,7 @@ namespace Horcrux.Runtime.Abstractions.Persistence
         private readonly List<IPersistenceDataEntry> pendingClearDirtyEntries = new();
         private bool isInitialized;
         private List<FieldInfo> cachedMarkedPersistenceFields;
+        
 
         #region Properties
         public IReadOnlyList<IPersistenceDataEntry> Entries => entries;
@@ -40,11 +48,19 @@ namespace Horcrux.Runtime.Abstractions.Persistence
             
             for(int i = 0; i < entries.Count; i++)
                 entries[i].Setup(this);
-            isInitialized = true;
             ResetDerivedState();
+            isInitialized = true;
 
-            LoadAll();
+            int seededCount = LoadAllEntries();
             OnEntriesLoaded();
+
+            if (seededCount == 0)
+                return;
+
+            // first launch, or an update that adds an entry.
+            Debug.LogWarning($"[PersistenceDataCollection]: {seededCount}/{entries.Count} entries had no stored key" +
+                      " — first time using, writing their default values.", this);
+            FlushInternal(null);
         }
         
         public void FlushAll()
@@ -65,31 +81,52 @@ namespace Horcrux.Runtime.Abstractions.Persistence
             }
         }
 
-        private void LoadAll()
+        /// <summary>Reads every entry from storage.</summary>
+        /// <returns>How many entries were seeded, so the caller knows whether to flush.</returns>
+        private int LoadAllEntries()
         {
+            int seededCount = 0;
+
             for (int i = 0; i < entries.Count; i++)
             {
-                IPersistenceDataEntry entry =  entries[i];
-                string storageKey = GetFinalKey(entry.Key);
-                
-                // keeps default value
-                if (!PlayerPrefs.HasKey(storageKey))
-                    continue;
-                
-                string payload = PlayerPrefs.GetString(storageKey);
-                
-                if(string.IsNullOrEmpty(payload))
-                    continue;
+                if (LoadEntry(entries[i]) == EntryLoadResult.Seeded)
+                    seededCount++;
+            }
 
-                try
-                {
-                    entry.ReadPayload(payload);
-                }
-                catch (Exception e)
-                {
-                    Debug.LogError($"[PersistenceDataCollection]: Reading entry '{entry.Key}' failed — using its default", this);
-                    Debug.LogException(e, this);
-                }
+            return seededCount;
+        }
+
+        private EntryLoadResult LoadEntry(IPersistenceDataEntry entry)
+        {
+            string storageKey = GetFinalKey(entry.Key);
+
+            // first use of this entry, keep the default.
+            if (!PlayerPrefs.HasKey(storageKey))
+            {
+                entry.MarkDirty();
+                return EntryLoadResult.Seeded;
+            }
+
+            string payload = PlayerPrefs.GetString(storageKey);
+
+            // Key exists but carries nothing readable — same as first use, and no data to lose.
+            if (string.IsNullOrEmpty(payload))
+            {
+                entry.MarkDirty();
+                return EntryLoadResult.Seeded;
+            }
+
+            try
+            {
+                entry.ReadPayload(payload);
+                return EntryLoadResult.Loaded;
+            }
+            catch (Exception e)
+            {
+                // Not seeded on purpose: overwriting a broken payload destroys the only copy of it.
+                Debug.LogError($"[PersistenceDataCollection]: Reading entry '{entry.Key}' failed — using its default", this);
+                Debug.LogException(e, this);
+                return EntryLoadResult.Failed;
             }
         }
         

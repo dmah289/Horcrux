@@ -1,0 +1,10 @@
+{
+    "name": "Horcrux.EditModeTests",
+    "rootNamespace": "Horcrux.Tests",
+    "references": [ "com.horcrux.runtime", "UniTask", "UnityEngine.TestRunner", "UnityEditor.TestRunner" ],
+    "includePlatforms": [ "Editor" ],
+    "overrideReferences": true,
+    "precompiledReferences": [ "nunit.framework.dll" ],
+    "autoReferenced": false,
+    "defineConstraints": [ "UNITY_INCLUDE_TESTS" ]
+}

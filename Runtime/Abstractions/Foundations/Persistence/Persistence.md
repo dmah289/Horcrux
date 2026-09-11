@@ -1,4 +1,4 @@
-# Persistence System
+﻿# Persistence System
 
 Mỗi thứ lưu được là một `PersistenceDataEntry<T>`: một khoá, một giá trị mặc định, giá trị đang chạy và
 cờ dirty. Mọi entry là field của **một** `ScriptableObject` dẫn xuất `BasePersistenceDataCollection`;
@@ -53,7 +53,9 @@ defaultValue   ├─► Initialize()                        (một lần, do ho
                │     Setup(this)    value = CloneDefault(), dirty = false, listener = null
                │     ResetDerivedState()                ← hook, dự án override
                │     LoadAll()      PlayerPrefs.GetString("persistence_" + key) ─► ReadPayload
+               │                    khoá chưa có ─► MarkDirty()   (lần đầu dùng entry)
                │     OnEntriesLoaded()                  ← hook, dự án override
+               │     FlushInternal() chỉ khi có entry vừa seed ─► khoá có mặt từ phiên đầu
                │
 game code      ├─► entry.Value = x  ─► MarkDirty()  ─► OnValueChanged
                │   (đọc: entry.Value, hoặc implicit operator T)
@@ -251,7 +253,7 @@ cache của phiên trước sống.
 | `[MarkedPersistence]` trên field entry | entry **không tồn tại** với hệ: đọc/ghi vẫn chạy trong RAM, không bao giờ xuống đĩa, **không một dòng log** |
 | Khai field entry ở class base thay vì class dẫn xuất | reflection quét `GetType()` với `NonPublic` + `Instance` — **không thấy** private field của base. Muốn khai ở base thì phải `protected` |
 | `Key` để rỗng | `ScanEntries` loại entry đó kèm `LogError`; nó không lưu gì |
-| `Default Value` để rỗng | người chơi mới bắt đầu bằng giá trị mặc định của kiểu (`0`, `false`, list rỗng) — mà ô trống **không phân biệt được** với ô cố ý điền số đó, nên không có gì báo |
+| `Default Value` để rỗng | người chơi mới bắt đầu bằng giá trị mặc định của kiểu (`0`, `false`, list rỗng) — mà ô trống **không phân biệt được** với ô cố ý điền số đó, nên không có gì báo. Nay mặc định đó **xuống đĩa ngay phiên đầu**, nên điền sai là điền sai vào save thật |
 | Không wire asset vào host | `saveCollection` là null → `NullReferenceException` ở `Initialize()`. Ở `SaveDriver` thì đỏ console và `Start()` dừng; ở `SaveBootstep` thì `BootstrapRunner` **fail-open** — đỏ một dòng rồi cả phiên chạy tiếp **không có** persistence |
 | ~~Đặt `SaveDriver` trên object không sống suốt phiên~~ — nay chặn bằng cấu trúc | `SaveDriver.OnAwake` tự gọi `DontDestroyOnLoad(gameObject)`, nên scene unload không còn hủy `destroyCancellationToken` nữa. Giữ dòng này vì nó là **lý do** của câu lệnh đó: token hủy thì autosave **chết im lặng** — UniTask coi hủy là bình thường nên không log gì, chỉ còn flush lúc pause/quit |
 | Không bấm `ValidateKeys` trước khi Play | khoá trùng, khoá rỗng, field mark mà chưa gán, kiểu payload chạm `UnityEngine` — cả bốn chỉ báo lúc `Initialize()` chạy, hoặc muộn hơn nữa |
@@ -286,12 +288,13 @@ không phải đổi gì khác.
 
 | Lúc | Chuyện gì xảy ra |
 |---|---|
-| `Initialize()` | `ScanEntries` (quét field, kiểm khoá) → `Setup(this)` từng entry: `value = CloneDefault()`, `isDirty = false`, **`OnValueChanged = null`** → `ResetDerivedState()` → `LoadAll()` → `OnEntriesLoaded()` |
+| `Initialize()` | `ScanEntries` (quét field, kiểm khoá) → `Setup(this)` từng entry: `value = CloneDefault()`, `isDirty = false`, **`OnValueChanged = null`** → `ResetDerivedState()` → `LoadAll()` → `OnEntriesLoaded()` → **flush nếu `LoadAll` seed entry nào** |
 | `Initialize()` lần hai | thoát ngay ở dòng đầu — **idempotent**: không load lại, không xoá listener đã đăng ký |
 | `entry.Value = x` hoặc `MarkDirty()` | bật `isDirty`, phát `OnValueChanged` (mỗi callback một try/catch riêng — một handler ném không kéo theo handler khác). Không serialize, không chạm `PlayerPrefs` |
 | Mỗi `autosaveIntervalSeconds` | `FlushAll()`. Chạy bằng `DelayType.Realtime` nên vẫn tick khi `timeScale = 0` — chủ ý: người chơi ngồi ở popup pause vẫn được lưu |
 | Vào background · quit · `FlushNow()` · `FlushAll()` | flush hai giai đoạn: `SetString` mọi entry dirty → **một** `PlayerPrefs.Save()` → rồi mới `ClearDirty()`. Không entry nào dirty thì giai đoạn hai **không chạy** |
-| `LoadAll` | mỗi entry: không có khoá trong `PlayerPrefs`, hoặc payload rỗng → **giữ mặc định** (đúng, không phải lỗi). Payload hỏng → `LogError` nêu đúng khoá, giữ mặc định, entry khác không bị kéo theo, flush kế ghi đè bằng dữ liệu lành |
+| `LoadAll` | ba kết cục cho mỗi entry, enum `EntryLoadResult` đặt tên cho cả ba: **`Loaded`** payload đọc được → entry mang nó · **`Seeded`** chưa có khoá, hoặc có khoá mà payload rỗng → giữ mặc định **và `MarkDirty()`** · **`Failed`** payload hỏng → `LogError` nêu đúng khoá, giữ mặc định, **không** ghi đè, entry khác không bị kéo theo |
+| Lần đầu một entry chạy (`Seeded`) | `Initialize` đếm số entry seed; > 0 thì gọi `FlushInternal(null)` **sau** `OnEntriesLoaded()`, kèm một dòng `Log`. Khoá vì thế có mặt trong `PlayerPrefs` ngay phiên đầu với đúng `Default Value`, không phải chờ tới lần game đổi giá trị đầu tiên. Giá: **một** `PlayerPrefs.Save()` thêm ở boot, chỉ ở lần cài đầu và ở bản update có thêm entry mới |
 | `FlushAll()` **trước** `Initialize()` | `entries` còn rỗng → không ghi gì. Quên `Initialize()` **không** ghi mặc định đè lên save thật; cái mất là dữ liệu chưa được load và game chạy trên default trong RAM |
 
 Không có đường reload giữa phiên: `LoadAll` chỉ chạy trong `Initialize()`. Sửa `PlayerPrefs` bằng tay lúc
@@ -334,6 +337,7 @@ khoá đang khai — khoá mồ côi của bản build cũ sống sót, mà mộ
 | **Dirty chỉ tắt sau khi storage nhận** | `FlushInternal` hai giai đoạn: ghi hết payload → `PlayerPrefs.Save()` một lần → **rồi mới** `ClearDirty()`. Tắt trước là mất tiến độ mà không có gì cho thấy: `SetString` chỉ đụng bản RAM của `PlayerPrefs`, `Save()` mới là thứ chạm đĩa |
 | **`ClearDirty` không gọi được từ game code** | explicit interface implementation trên `PersistenceDataEntry<T>` — chỉ collection với tay tới, và chỉ sau `Save()` |
 | **`SetString` / `Save()` chỉ xuất hiện ở một chỗ runtime** | `FlushInternal`. Cửa ghi thứ hai là một đường đi ra ngoài cờ dirty và ngoài bảo đảm của hệ |
+| **Khoá có mặt từ phiên đầu, và chỉ ghi khi chưa có** | `LoadAll` seed đúng entry mà storage **không** giữ gì đọc được. Entry đã có khoá thì không bao giờ bị seed, nên `Initialize` không ghi mặc định đè lên save thật được. Payload **hỏng** cũng không bị seed: ghi đè lên nó là xoá bản sao duy nhất của thứ duy nhất còn để đọc ra nguyên nhân |
 | **Một `PlayerPrefs.Save()` cho cả lượt** | trên Android nó là `SharedPreferences.commit()`: ghi **cả kho**, **đồng bộ trên main thread**. Vì vậy chu kỳ autosave có `[Min(5f)]`, và vì vậy giai đoạn hai chỉ chạy khi có entry vừa ghi |
 | **Khoá là wire format** | khoá thật trên đĩa là `"persistence_" + Key`, và định dạng payload là JSON. Đổi `Key`, đổi `KeyPrefix`, hay đổi hình dạng model sau khi ship = mọi save đã có thành mồ côi, người chơi mất tiến độ, **không có gì báo**. Không đổi theo bất kỳ lần refactor tên nào |
 | **Không có đường không-làm-gì âm thầm** | khoá trùng, khoá rỗng, field mark mà chưa gán hoặc sai kiểu, đọc payload hỏng, ghi payload hỏng, `Flush` một entry không thuộc collection — mỗi ca một `LogError` nêu đúng khoá hoặc tên field |
@@ -392,7 +396,7 @@ bên thì sửa cả bên kia. Danh sách khác biệt là **đóng** — thêm 
 
 | Type | Thành viên |
 |---|---|
-| `IPersistenceDataEntry` | `string Key { get; }` · `bool IsDirty { get; }` · `void Setup(IPersistenceDataCollection)` · `void ReadPayload(string)` · `string WritePayload()` · `void ClearDirty()` |
+| `IPersistenceDataEntry` | `string Key { get; }` · `bool IsDirty { get; }` · `void Setup(IPersistenceDataCollection)` · `void ReadPayload(string)` · `string WritePayload()` · `void MarkDirty()` · `void ClearDirty()` |
 | `IPersistenceDataCollection` | `IReadOnlyList<IPersistenceDataEntry> Entries { get; }` · `bool IsInitialized { get; }` · `void Initialize()` · `void FlushAll()` · `void Flush(IPersistenceDataEntry)` · `UniTask RunAutosaveAsync(CancellationToken)` |
 | `PersistenceDataEntry<T> : IPersistenceDataEntry` | `[Serializable]` · `T Value { get; set; }` · `event Action<T> OnValueChanged` · `void MarkDirty()` · `void FlushNow()` · `implicit operator T` (null → `default`) · nút `ImportPayload` |
 | `MarkedPersistence : Attribute` | `[AttributeUsage(AttributeTargets.Field)]` — đánh dấu field để scan nhận |
