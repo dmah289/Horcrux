@@ -30,7 +30,10 @@ namespace Horcrux.Runtime.Implementations.Persistence
             => HandleOnGoToBackground(pauseStatus);
 
         private void OnApplicationQuit()
-            => saveCollection.FlushAll();
+        {
+            saveCollection.FlushAll();
+            saveCollection.IsInitialized = false;
+        }
 
         #endregion
 

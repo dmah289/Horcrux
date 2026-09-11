@@ -34,25 +34,27 @@ namespace Horcrux.Runtime.Abstractions.Persistence
 
         #region Properties
         public IReadOnlyList<IPersistenceDataEntry> Entries => entries;
-        
-        public bool IsInitialized => isInitialized;
+
+        public bool IsInitialized
+        {
+            get => isInitialized;
+            set => isInitialized = value;
+        }
         #endregion
 
         #region API
         public void Initialize()
         {
-            if (isInitialized)
-                return;
-            
             ScanEntries(entries);
             
             for(int i = 0; i < entries.Count; i++)
                 entries[i].Setup(this);
             ResetDerivedState();
-            isInitialized = true;
 
             int seededCount = LoadAllEntries();
             OnEntriesLoaded();
+            
+            isInitialized = true;
 
             if (seededCount == 0)
                 return;

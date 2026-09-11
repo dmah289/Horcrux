@@ -10,7 +10,7 @@ namespace Horcrux.Runtime.Abstractions.Persistence
     public interface IPersistenceDataCollection
     {
         IReadOnlyList<IPersistenceDataEntry> Entries { get; }
-        bool IsInitialized { get; }
+        bool IsInitialized { get; set; }
         void Initialize();
         void FlushAll();
         void Flush(IPersistenceDataEntry entry);

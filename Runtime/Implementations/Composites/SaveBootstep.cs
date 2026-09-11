@@ -29,6 +29,7 @@ namespace Horcrux.Runtime.Implementations.Persistence
         {
             base.OnAppQuit();
             saveCollection.FlushAll();
+            saveCollection.IsInitialized = false;
         }
 
         private IPersistenceDataCollection saveCollection;
