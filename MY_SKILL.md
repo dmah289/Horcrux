@@ -358,12 +358,16 @@ không được tự mở `CancellationTokenSource`: không ai đóng nó, và �
 lần Play là một loop nữa xếp lên loop cũ. Loop nhận token của một pha ngắn hơn đời nó thì chết im
 lặng — hình dạng thứ ba ở §3.4.
 
+> **Nền tảng** — thứ tự region trong một class là **cố định**, để người mở một file lạ biết trước tìm
+> gì ở đâu: `Unity Callbacks` trên cùng · `Properties` · `API` (thứ người ngoài gọi) · `Class Methods`
+> (thân private) · `DI` **cuối class**, gói field nhận vào cùng `Init`. Trình tự đi từ **vòng đời →
+> mặt ngoài → thân**; phụ thuộc xuống cuối vì đó là thứ hỏi sau cùng.
+
 **Sổ tay** — hình dạng file và class đang dùng trong bộ này:
 
 | Chỗ | Cách làm |
 |---|---|
 | Code chỉ có ở Editor | file `*.Editor.cs` khai `partial` của cùng class, **bên trong vẫn** `#if UNITY_EDITOR`. File runtime không bị khối `#if` cắt ngang, và nút Editor đọc thẳng private member của class |
-| Thứ tự region | `Unity Callbacks` trên cùng · `Properties` · `API` (thứ người ngoài gọi) · `Class Methods` (thân private) · `DI` **cuối class**, gói field nhận vào cùng `Init` |
 | Nhận phụ thuộc | `MonoBehaviour<T>` cho component thường · `IInitializable<T>` khi class đã kế thừa base khác · không service locator bên trong hệ |
 | Dựng host | hệ **không** tự `new GameObject` — host là component kéo tay vào scene, chu kỳ và collection đọc được trong Inspector (§3.6) |
 | Log | mọi dòng mở bằng `[TênHệ]: ` để filter console theo hệ; kèm `this` làm context object để bấm vào ra đúng asset |
