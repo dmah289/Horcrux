@@ -1,4 +1,4 @@
-# LiveOps Host — Plan (bản tối thiểu)
+﻿# LiveOps Host — Plan (bản tối thiểu)
 
 > **Loại tài liệu:** Plan — **developer viết code lõi; agent viết test, chạy và báo kết quả.** Plan chỉ ghi
 > bảng case, không dán code test. Module đầu tiên: Collection (`Assets/LiveOps/Collection/Collection_Plan.md`). Phần còn lại ở §5.
@@ -127,19 +127,20 @@ public abstract class LiveOpsModuleBase : MonoBehaviour, ILiveOpsModule
 | `Initialize` và `Tick` cùng một thân `Refresh` | rollover tuần lúc app đang mở và lúc mở app là một luật; hai thân sẽ lệch |
 | Không generic `<TSave, TConfig>` | một module; host không cần biết type save/config |
 | Module là MonoBehaviour | giữ prefab/asset của UI; scene Services sống suốt phiên |
+| Host là boot step, không phải MonoBehaviour tự lo `Start` | `BootstrapRunner` trong `Services.unity` xếp `SaveBootstep` (0) → `TimeService` (10) → `LiveOpsHost` (20) bằng `Order`, nên host không phải hỏi cờ nào để biết save đã load. Runner tự lái trong `Start()` của nó; `GameManager` của game chạy độc lập |
 | `SetState` không publish EventBus | tên event là của module; base không mang vocabulary game |
 
 ## §4 `LiveOpsHost`
 
 ```csharp
 [Service(typeof(ILiveOpsHost), FindFromScene = true)]
-public sealed class LiveOpsHost : MonoBehaviour<BasePersistenceDataCollection>, ILiveOpsHost
+public sealed class LiveOpsHost : BaseBootStep, ILiveOpsHost, IInitializable<BasePersistenceDataCollection>
 ```
 
 ```
-Start:      RunAsync(destroyCancellationToken).Forget()
-RunAsync:   await UniTask.WaitUntil(() => save.IsInitialized, cancellationToken: ct)
-            now = ITimeService.Service.UtcNowUnix
+InitializeAsync(ct):  RunAsync(destroyCancellationToken).Forget()      ← token RIÊNG, không phải ct của pha
+                      return UniTask.CompletedTask
+RunAsync:   now = ITimeService.Service.UtcNowUnix                        ← save đã load: Order đảm bảo
             for m in modules: m.Initialize(now); ready = true
             loop while !ct:
                 await UniTask.Delay(1000, DelayType.Realtime, cancellationToken: ct)
@@ -152,7 +153,9 @@ Unregister: modules.Remove(m)
 
 | Quyết định | Vì |
 |---|---|
-| Chờ `save.IsInitialized` thay vì thứ tự `Start` | thứ tự `Start` giữa object không xác định |
+| Không còn chờ `save.IsInitialized` | host là **boot step** với `Order` **sau** `SaveBootstep`, nên save đã load lúc `InitializeAsync` chạy. Thứ tự do runner bảo đảm, không do cờ |
+| `InitializeAsync` **không** await vòng lặp | await là chuỗi boot đứng mãi ở step này. Nó bắn `.Forget()` rồi trả `CompletedTask` ngay |
+| Loop dùng `destroyCancellationToken`, **không** dùng `ct` của pha | runner refresh token mỗi lần `ReinitializeAsync`, tức mỗi lần load level — loop 1 Hz sẽ chết ngay ở level thứ hai. Đây là hình dạng thứ ba ở §3.4 của `MY_SKILL` |
 | Token = `destroyCancellationToken` của host | host sống suốt phiên trong scene Services; loop chết đúng khi host chết |
 | `Realtime` | countdown chạy khi `timeScale = 0` (Home pause level) |
 | Không bọc `try/catch` quanh `Tick` | một module; lỗi phải nổ lúc dev, không nuốt |
@@ -162,8 +165,9 @@ Unregister: modules.Remove(m)
 
 | Bước | Thiếu thì hỏng ở đâu |
 |---|---|
-| Scene Services: object `LiveOpsHost`, Init → kéo asset save của dự án | NRE trong `RunAsync` |
-| `TimeService` có trong scene (xem `TimeSystem.md`) | `ITimeService.Service` ném sau khi save load |
+| `Services.unity`: object `LiveOpsHost`, Init → kéo asset save của dự án | NRE trong `RunAsync` |
+| Kéo `LiveOpsHost` vào list `steps` của `BootstrapRunner`, `Order` **sau** `TimeService` (`RewardService` không phải step) | `InitializeAsync` không chạy → không module nào `Initialize`, không tick, widget im lặng không hiện |
+| `TimeService` có trong scene **và** trong `steps` (xem `TimeSystem.md`) | `ITimeService.Service` ném ở dòng `now` đầu tiên |
 | Module: component kế thừa `LiveOpsModuleBase` đặt trong cùng scene | không ai `Register` → module không bao giờ `Initialize` |
 
 ## Kiểm

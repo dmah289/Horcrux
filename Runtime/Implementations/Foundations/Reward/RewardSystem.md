@@ -1,4 +1,4 @@
-# Reward System — Plan (bản tối thiểu)
+﻿# Reward System — Plan (bản tối thiểu)
 
 > **Loại tài liệu:** Plan — **developer viết code lõi; agent viết test, chạy và báo kết quả.** Plan chỉ ghi
 > bảng case, không dán code test. Là phần 14c của Economy, tách riêng vì đứng độc lập được; phần còn lại ở §4.
@@ -60,6 +60,7 @@ public sealed class RewardService : MonoBehaviour, IRewardService
 | `Register(typeId, handler)` thay `handler.TypeId` | một handler phục vụ nhiều typeId (3 loại booster) không phải viết 3 class |
 | Sync, không `UniTask` | grant là ghi số vào ví; anim thuộc caller |
 | Handler đăng ký ở `Start` | `FindFromScene` resolve service khi scene đã load; `Awake` có thể sớm hơn object service |
+| **Không** phải `BaseBootStep` | hệ này không có gì để init: không đọc save, không nhịp, và không phụ thuộc thứ tụ với hai step kìa. Thêm nó vào `BootstrapRunner` chỉ để có một `InitializeAsync` rỗng là nói dối rằng có việc init. Nó chỉ cần **tồn tại** trong `Services.unity` để `FindFromScene` thấy |
 
 ## §3 Trước khi chạy
 

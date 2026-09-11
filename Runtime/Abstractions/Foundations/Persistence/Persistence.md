@@ -256,9 +256,10 @@ cache của phiên trước sống.
 | `Default Value` để rỗng | người chơi mới bắt đầu bằng giá trị mặc định của kiểu (`0`, `false`, list rỗng) — mà ô trống **không phân biệt được** với ô cố ý điền số đó, nên không có gì báo. Nay mặc định đó **xuống đĩa ngay phiên đầu**, nên điền sai là điền sai vào save thật |
 | Không wire asset vào host | `saveCollection` là null → `NullReferenceException` ở `Initialize()`. Ở `SaveDriver` thì đỏ console và `Start()` dừng; ở `SaveBootstep` thì `BootstrapRunner` **fail-open** — đỏ một dòng rồi cả phiên chạy tiếp **không có** persistence |
 | ~~Đặt `SaveDriver` trên object không sống suốt phiên~~ — nay chặn bằng cấu trúc | `SaveDriver.OnAwake` tự gọi `DontDestroyOnLoad(gameObject)`, nên scene unload không còn hủy `destroyCancellationToken` nữa. Giữ dòng này vì nó là **lý do** của câu lệnh đó: token hủy thì autosave **chết im lặng** — UniTask coi hủy là bình thường nên không log gì, chỉ còn flush lúc pause/quit |
+| Wire **hai** host, hoặc gọi `Initialize()` thêm một lần ở chỗ khác | tiến độ chưa flush về mặc định, listener đã đăng ký bị xoá — **không một dòng log**. Sáu đường sinh ra nó và cách kiểm từng đường: xem "Hai host" |
 | Không bấm `ValidateKeys` trước khi Play | khoá trùng, khoá rỗng, field mark mà chưa gán, kiểu payload chạm `UnityEngine` — cả bốn chỉ báo lúc `Initialize()` chạy, hoặc muộn hơn nữa |
 
-## Hai host — chọn một, không dùng cả hai
+## Hai host — **đúng một** trong cả dự án
 
 | | `SaveDriver` | `SaveBootstep` |
 |---|---|---|
@@ -269,9 +270,45 @@ cache của phiên trước sống.
 | Flush | cạnh vào background (`OnApplicationFocus` / `OnApplicationPause`, một lần cho mỗi lần vào) + `OnApplicationQuit` | `OnGoToBackground(true)` + `OnAppQuit` |
 | Thứ tự với hệ khác | **không có thứ tự** — Unity không hứa thứ tự magic method giữa các MonoBehaviour, nên flush có thể chạy trước một hệ khác kịp ghi dữ liệu trong pause hook của nó | **có thứ tự** — runner fan-out pause/quit **ngược** thứ tự step, nên step khởi tạo sớm được flush muộn |
 
-Cả hai gánh **đủ** trách nhiệm, nên chạy cả hai không hỏng dữ liệu (`Initialize()` idempotent, lượt flush
-thứ hai không thấy gì dirty nên không chạm đĩa) — nhưng là hai nhịp autosave chồng nhau, không có lý do
-để làm vậy.
+Cả hai gánh **đủ** trách nhiệm, nên chọn một là xong. Nhưng đây **không** phải lời khuyên về gọn gàng:
+`Initialize()` **không có guard**, nên host thứ hai là **mất dữ liệu**.
+
+### `Initialize()` lần thứ hai làm gì
+
+Nó chạy lại từ đầu. `ScanEntries` dựng lại danh sách, rồi `Setup()` từng entry:
+
+| Bước của `Setup` | Mất gì |
+|---|---|
+| `value = CloneDefault()` | mọi thay đổi của người chơi kể từ lần flush cuối — **về mặc định** |
+| `isDirty = false` | cờ nói rằng có gì đó cần lưu — **tắt**, nên lượt flush kế không ghi lại |
+| `OnValueChanged = null` | mọi listener đã đăng ký sau lần `Initialize` đầu — **xoá sạch**, view không còn nhận đổi giá trị |
+
+Không một dòng log. Không cách nào phát hiện lúc chạy. Và `LoadAll` sau đó đọc lại từ `PlayerPrefs`,
+nên trên đĩa vẫn là dữ liệu cũ — nhìn vào save không thấy gì bất thường, chỉ tiến độ trong RAM biến mất.
+
+Đây là lý do luật này là **tuyệt đối**, không phải sở thích.
+
+### Sáu đường sinh ra lần gọi thứ hai
+
+| Đường | Kiểm bằng |
+|---|---|
+| Hai `SaveDriver` | tìm component `SaveDriver` trong **mọi** scene và prefab — phải đúng một, hoặc không có |
+| Hai `SaveBootstep` | tìm component `SaveBootstep` — phải đúng một, hoặc không có |
+| Một `SaveDriver` **và** một `SaveBootstep` | hai lần tìm ở trên, tổng lại phải đúng **một** |
+| Cùng một `SaveBootstep` nằm **hai lần** trong list `steps` của `BootstrapRunner` | mở runner trong Inspector, đếm |
+| Game code gọi `IPersistenceDataCollection.Initialize()` | grep `.Initialize()` trên kiểu save — chỉ hai host được gọi |
+| Prefab mang host, instantiate nhiều lần lúc chạy | host phải là object **kéo tay vào scene**, không bao giờ là prefab spawn |
+
+Không có cờ nào chặn hộ, và **cố ý** không thêm: một cờ `if (isInitialized) return;` che được lần gọi
+thừa nhưng che luôn ca thật cần biết — hai host là hai vòng autosave chồng nhau, hai đường flush ở
+pause/quit, và một hình dạng wire sai mà không ai sửa. Chặn ở **cấu trúc** (§3.6): một object, kéo tay,
+đếm được trong Editor.
+
+### Dự án này
+
+Một `SaveDriver` trong `Start.unity`, không có `SaveBootstep` nào. Đang chuyển sang **một `SaveBootstep`
+trong `Services.unity`** làm step đầu của `BootstrapRunner` — khi dời thì `SaveDriver` phải **xoá khỏi
+`Start.unity`** trong cùng một lần sửa scene, không để lại rồi dọn sau.
 
 Vì sao thân vòng lặp và `autosaveIntervalSeconds` nằm ở **collection** chứ không ở host: cả hai host cần
 đúng một nhịp đó, mà bảo đảm "mất tối đa một chu kỳ" là bảo đảm của collection, còn con số nằm cạnh dữ
@@ -289,12 +326,13 @@ không phải đổi gì khác.
 | Lúc | Chuyện gì xảy ra |
 |---|---|
 | `Initialize()` | `ScanEntries` (quét field, kiểm khoá) → `Setup(this)` từng entry: `value = CloneDefault()`, `isDirty = false`, **`OnValueChanged = null`** → `ResetDerivedState()` → `LoadAll()` → `OnEntriesLoaded()` → **flush nếu `LoadAll` seed entry nào** |
-| `Initialize()` lần hai | thoát ngay ở dòng đầu — **idempotent**: không load lại, không xoá listener đã đăng ký |
+| `Initialize()` lần hai | **không có guard** — chạy lại từ đầu và mất tiến độ chưa flush cùng mọi listener. Xem "Hai host" |
 | `entry.Value = x` hoặc `MarkDirty()` | bật `isDirty`, phát `OnValueChanged` (mỗi callback một try/catch riêng — một handler ném không kéo theo handler khác). Không serialize, không chạm `PlayerPrefs` |
 | Mỗi `autosaveIntervalSeconds` | `FlushAll()`. Chạy bằng `DelayType.Realtime` nên vẫn tick khi `timeScale = 0` — chủ ý: người chơi ngồi ở popup pause vẫn được lưu |
 | Vào background · quit · `FlushNow()` · `FlushAll()` | flush hai giai đoạn: `SetString` mọi entry dirty → **một** `PlayerPrefs.Save()` → rồi mới `ClearDirty()`. Không entry nào dirty thì giai đoạn hai **không chạy** |
 | `LoadAll` | ba kết cục cho mỗi entry, enum `EntryLoadResult` đặt tên cho cả ba: **`Loaded`** payload đọc được → entry mang nó · **`Seeded`** chưa có khoá, hoặc có khoá mà payload rỗng → giữ mặc định **và `MarkDirty()`** · **`Failed`** payload hỏng → `LogError` nêu đúng khoá, giữ mặc định, **không** ghi đè, entry khác không bị kéo theo |
 | Lần đầu một entry chạy (`Seeded`) | `Initialize` đếm số entry seed; > 0 thì gọi `FlushInternal(null)` **sau** `OnEntriesLoaded()`, kèm một dòng `Log`. Khoá vì thế có mặt trong `PlayerPrefs` ngay phiên đầu với đúng `Default Value`, không phải chờ tới lần game đổi giá trị đầu tiên. Giá: **một** `PlayerPrefs.Save()` thêm ở boot, chỉ ở lần cài đầu và ở bản update có thêm entry mới |
+| Quit | host `FlushAll()` rồi đặt `IsInitialized = false`. Với `SaveBootstep` thì `BootstrapRunner` chỉ fan-out `OnAppQuit` **khi đã init xong**, nên quit giữa lúc cold boot chưa xong là **không flush và không reset** — chấp nhận có chủ đích, ca đó không có dữ liệu đáng mất |
 | `FlushAll()` **trước** `Initialize()` | `entries` còn rỗng → không ghi gì. Quên `Initialize()` **không** ghi mặc định đè lên save thật; cái mất là dữ liệu chưa được load và game chạy trên default trong RAM |
 
 Không có đường reload giữa phiên: `LoadAll` chỉ chạy trong `Initialize()`. Sửa `PlayerPrefs` bằng tay lúc
@@ -339,6 +377,7 @@ khoá đang khai — khoá mồ côi của bản build cũ sống sót, mà mộ
 | **`SetString` / `Save()` chỉ xuất hiện ở một chỗ runtime** | `FlushInternal`. Cửa ghi thứ hai là một đường đi ra ngoài cờ dirty và ngoài bảo đảm của hệ |
 | **Khoá có mặt từ phiên đầu, và chỉ ghi khi chưa có** | `LoadAll` seed đúng entry mà storage **không** giữ gì đọc được. Entry đã có khoá thì không bao giờ bị seed, nên `Initialize` không ghi mặc định đè lên save thật được. Payload **hỏng** cũng không bị seed: ghi đè lên nó là xoá bản sao duy nhất của thứ duy nhất còn để đọc ra nguyên nhân |
 | **Một `PlayerPrefs.Save()` cho cả lượt** | trên Android nó là `SharedPreferences.commit()`: ghi **cả kho**, **đồng bộ trên main thread**. Vì vậy chu kỳ autosave có `[Min(5f)]`, và vì vậy giai đoạn hai chỉ chạy khi có entry vừa ghi |
+| **Đúng một save host trong cả dự án** | `Initialize()` không có guard, nên lần gọi thứ hai `Setup()` lại mọi entry: tiến độ chưa flush về mặc định, listener bị xoá, **im lặng**. Không chặn bằng cờ — cờ che luôn ca hình dạng wire sai. Chặn bằng cấu trúc: một `SaveDriver` **hoặc** một `SaveBootstep`, kéo tay vào scene, đếm được. Xem "Hai host" cho sáu đường sinh ra lần gọi thứ hai |
 | **Khoá là wire format** | khoá thật trên đĩa là `"persistence_" + Key`, và định dạng payload là JSON. Đổi `Key`, đổi `KeyPrefix`, hay đổi hình dạng model sau khi ship = mọi save đã có thành mồ côi, người chơi mất tiến độ, **không có gì báo**. Không đổi theo bất kỳ lần refactor tên nào |
 | **Không có đường không-làm-gì âm thầm** | khoá trùng, khoá rỗng, field mark mà chưa gán hoặc sai kiểu, đọc payload hỏng, ghi payload hỏng, `Flush` một entry không thuộc collection — mỗi ca một `LogError` nêu đúng khoá hoặc tên field |
 
@@ -350,8 +389,8 @@ khoá đang khai — khoá mồ côi của bản build cũ sống sót, mà mộ
 |---|---|
 | **Mutate model tại chỗ mà không `MarkDirty()` thì không lưu gì** | `entry.Value = x` tự mark; nhưng `entry.Value.coins += 5` trên một model class thì entry không biết. `FlushNow()` cũng **không** cứu được: nó bỏ qua entry không dirty, cố tình — dirty-tracking không có ngoại lệ nào |
 | **Listener đăng ký trước `Initialize()` bị xoá im lặng** | `Setup()` gán `OnValueChanged = null`, vì `ScriptableObject` sống qua các lần Play khi tắt domain reload: listener của phiên trước trỏ vào GameObject đã huỷ → `MissingReferenceException` ở lần đổi giá trị đầu tiên. Không detector nào phân biệt được listener phiên trước (phải xoá) với listener vừa đăng ký (bị xoá oan) — cả hai chỉ là `OnValueChanged != null`. Chặn duy nhất bằng **cấu trúc**: gọi `Initialize()` trong pha boot, mọi subscribe đứng sau nó |
-| **Ba thứ nữa sống qua các lần Play** | `value` và `isDirty` — cả hai được `Setup()` reset. Thứ ba là **cache mà subclass dựng từ entry** (lookup, `HashSet`, cờ "đã parse"): entry không với tới được, nên có cặp hook `ResetDerivedState()` / `OnEntriesLoaded()`. *Đã sai một lần, ở Remote Config cùng khuôn nhưng thiếu hook "trước":* một cờ chỉ được bật, không ai tắt, mang trạng thái phiên trước sang phiên sau; một hệ khác phải viết workaround. Một cờ không reset được đã mất tư cách làm điều kiện chờ |
-| **Quên `Initialize()` có giá bất đối xứng** | Remote Config quên gọi thì rơi về giá trị author — sai nhưng **hồi được**, lần fetch sau đúng. Save quên gọi thì entry mang mặc định và mọi thứ người chơi làm nằm trong RAM rồi mất — **không hồi được**. Bảo đảm mà giá phá là không hồi được thì không đứng trên trí nhớ người viết dòng wire: nên `Initialize()` là **idempotent** và host gọi nó trong pha boot, chỗ lỗi lộ ra sớm nhất |
+| **Bốn thứ sống qua các lần Play** | `value` và `isDirty` — cả hai được `Setup()` reset. Thứ ba là **cache mà subclass dựng từ entry** (lookup, `HashSet`, cờ "đã parse"): entry không với tới được, nên có cặp hook `ResetDerivedState()` / `OnEntriesLoaded()`. *Đã sai một lần, ở Remote Config cùng khuôn nhưng thiếu hook "trước":* một cờ chỉ được bật, không ai tắt, mang trạng thái phiên trước sang phiên sau; một hệ khác phải viết workaround. Một cờ không reset được đã mất tư cách làm điều kiện chờ. Thứ tư là **`isInitialized`**: `Setup()` không với tới nó, nên host tự đặt lại `IsInitialized = false` ở `OnApplicationQuit` / `OnAppQuit` — đó là lý do duy nhất setter tồn tại trên hợp đồng. Trên device không cần: process chết là cờ chết. Nó chỉ cứu Editor khi tắt Domain Reload, và nó **fail-open** — quit không bắn thì cờ ở lại `true`, phiên sau thấy "đã load" trước khi `Initialize()` chạy |
+| **Quên `Initialize()` có giá bất đối xứng** | Remote Config quên gọi thì rơi về giá trị author — sai nhưng **hồi được**, lần fetch sau đúng. Save quên gọi thì entry mang mặc định và mọi thứ người chơi làm nằm trong RAM rồi mất — **không hồi được**. Bảo đảm mà giá phá là không hồi được thì không đứng trên trí nhớ người viết dòng wire: host gọi nó trong pha boot, chỗ lỗi lộ ra sớm nhất. Chiều ngược lại — gọi **hai** lần — cũng không hồi được, và cũng không có cờ nào chặn: xem "Hai host" |
 | **Reset dirty trước khi ghi** | *đã sai một lần, `PlayerSaveLoadService.Save()` của color-loop:* `if (force \|\| _isDirty) { _isDirty = false; }` rồi thân serialize + ghi nằm **ngoài** `if` → lần nào gọi cũng ghi, và một lần ghi lỗi là mất im lặng vì cờ đã tắt |
 | **Serialize theo nhịp đổi giá trị** | *đã sai một lần, `GameDataManager` của color-loop:* mỗi thay đổi bất kỳ field → `LateUpdate` frame đó `JsonUtility.ToJson` cả god-blob 25+ field + `PlayerPrefs.Save()` ngay trong frame. `JsonConvert` phải dồn về flush, và chỉ chạm entry dirty |
 | **Đường no-op im lặng** | *đã sai một lần, khung save "sạch" của color-loop:* `AssignService()` không có caller → autosave loop chạy đều mà không lưu gì, **không một dòng log**. Mọi đường không-làm-gì-được phải kêu lên |
@@ -397,7 +436,7 @@ bên thì sửa cả bên kia. Danh sách khác biệt là **đóng** — thêm 
 | Type | Thành viên |
 |---|---|
 | `IPersistenceDataEntry` | `string Key { get; }` · `bool IsDirty { get; }` · `void Setup(IPersistenceDataCollection)` · `void ReadPayload(string)` · `string WritePayload()` · `void MarkDirty()` · `void ClearDirty()` |
-| `IPersistenceDataCollection` | `IReadOnlyList<IPersistenceDataEntry> Entries { get; }` · `bool IsInitialized { get; }` · `void Initialize()` · `void FlushAll()` · `void Flush(IPersistenceDataEntry)` · `UniTask RunAutosaveAsync(CancellationToken)` |
+| `IPersistenceDataCollection` | `IReadOnlyList<IPersistenceDataEntry> Entries { get; }` · `bool IsInitialized { get; set; }` · `void Initialize()` · `void FlushAll()` · `void Flush(IPersistenceDataEntry)` · `UniTask RunAutosaveAsync(CancellationToken)` |
 | `PersistenceDataEntry<T> : IPersistenceDataEntry` | `[Serializable]` · `T Value { get; set; }` · `event Action<T> OnValueChanged` · `void MarkDirty()` · `void FlushNow()` · `implicit operator T` (null → `default`) · nút `ImportPayload` |
 | `MarkedPersistence : Attribute` | `[AttributeUsage(AttributeTargets.Field)]` — đánh dấu field để scan nhận |
 | `BasePersistenceDataCollection : ScriptableObject, IPersistenceDataCollection` | `abstract` · thân `RunAutosaveAsync` (impl của interface) · `protected virtual void ResetDerivedState()` · `protected virtual void OnEntriesLoaded()` · nút `ValidateKeys` |

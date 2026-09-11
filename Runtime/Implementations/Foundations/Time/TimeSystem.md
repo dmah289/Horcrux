@@ -1,4 +1,4 @@
-# Time System — Plan (bản tối thiểu)
+﻿# Time System — Plan (bản tối thiểu)
 
 > **Loại tài liệu:** Plan — **developer viết code lõi; agent viết test, chạy và báo kết quả.** Plan chỉ ghi
 > bảng case, không dán code test. Chỉ phần LiveOps Collection cần; phần còn lại ở §5.
@@ -22,6 +22,7 @@ Abstractions/Foundations/Persistence/BasePersistenceDataCollection.cs   + field 
 | Ai giữ mốc | `TimeService` — field nằm trong `BasePersistenceDataCollection` để mọi dự án có sẵn, không cần khai entry |
 | Server time | contract có, impl để trống; `IsServerTimeTrusted = false` cho tới khi có provider |
 | Caller | `LiveOpsHost` (mỗi giây, cấp `now` cho mọi module) · module khi cần `Refresh` ngoài nhịp (`CollectionModule`) |
+| Host | **boot step**, không phải MonoBehaviour tự lo `Start`. `BootstrapRunner` trong `Services.unity` chạy `SaveBootstep` (0) → `TimeService` (10) → `LiveOpsHost` (20) theo `Order`. Runner tự lái trong `Start()` của chính nó; `GameManager` của game chạy độc lập, không liên quan |
 
 ## §1 Contract
 
@@ -60,7 +61,7 @@ protected internal PersistenceDataEntry<long> lastSeenUtcSeconds;   // owned by 
 
 ```csharp
 [Service(typeof(ITimeService), FindFromScene = true)]
-public sealed class TimeService : MonoBehaviour<BasePersistenceDataCollection>, ITimeService
+public sealed class TimeService : BaseBootStep, ITimeService, IInitializable<BasePersistenceDataCollection>
 ```
 
 ```
@@ -71,8 +72,9 @@ UtcNowUnix (get):
   if device >= guard.Value + GuardWriteStepSeconds → guard.Value = device   ← ghi thưa: mỗi 60s một lần
   return Math.Max(device, guard.Value)
 
-Start:
+InitializeAsync(ct):                                        ← step của BootstrapRunner, Order sau SaveBootstep
   if IService<IServerTimeProvider>.TryGet(out provider) → ResyncAsync(provider, destroyCancellationToken).Forget()
+  return UniTask.CompletedTask                              ← token riêng, không phải ct của pha
 
 ResyncAsync:
   server = await provider.FetchUtcNowUnixAsync(ct)
@@ -84,6 +86,7 @@ ResyncAsync:
 | Ghi mốc mỗi `GuardWriteStepSeconds = 60` | mỗi giây một lần dirty là autosave ghi PlayerPrefs vô ích; lùi ≤ 60s không ai lợi được gì |
 | Lùi giờ → đứng tại mốc | đơn giản, không cần trạng thái "đang bị lùi"; countdown chỉ đứng, không âm |
 | Getter ghi mốc | hệ không có nhịp riêng; caller 1 Hz duy nhất là `LiveOpsHost`. Ghi chỉ xảy ra sau `IsInitialized` và thưa 60s nên getter vẫn rẻ |
+| **Giữ `if !save.IsInitialized`** dù đã là boot step | `Order` chỉ xếp thứ tự **trong** chuỗi boot. `UtcNowUnix` là getter công khai, caller ngoài chuỗi gọi được bất cứ lúc nào — `CollectionBridge` ở scene Game chẳng hạn. Bỏ guard là đọc mốc `0` rồi ghi mốc theo nó |
 | Không `event OffsetChanged` | không caller |
 
 ## §4 Trước khi chạy
@@ -91,7 +94,8 @@ ResyncAsync:
 | Bước | Thiếu thì hỏng ở đâu |
 |---|---|
 | Asset save của dự án: điền Key cho field `Last Seen Utc Seconds` (nhóm Time), ví dụ `time_last_seen_utc`; bấm **Validate keys** | `LogError` "empty key" lúc `Initialize`, mốc không lưu → không chống lùi |
-| Scene sống suốt phiên: object `TimeService`, Init → kéo asset save | `IService<ITimeService>.Service` ném ở caller đầu tiên |
+| `Services.unity`: object `TimeService`, Init → kéo asset save | `IService<ITimeService>.Service` ném ở caller đầu tiên |
+| Kéo `TimeService` vào list `steps` của `BootstrapRunner`, `Order` **sau** `SaveBootstep` | `ResyncAsync` không bao giờ chạy; giờ vẫn đúng nhờ guard trong getter, nhưng offset server không bao giờ áp |
 
 ## Kiểm
 
