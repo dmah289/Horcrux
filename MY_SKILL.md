@@ -144,7 +144,9 @@ nhiều nhất trên chữ của agent. Hai bờ đều là bờ vực (NT3):
 - **Sàn — đủ dữ kiện để developer tự phân tích lại, không phải chỉ đủ để tin.** Nêu *cái đang có*,
   *cái sẽ đổi*, *cái đánh đổi*, và số hoặc đường dẫn để kiểm. Thiếu dữ kiện thì developer chỉ còn hai
   lựa chọn là tin hoặc bỏ, và cả hai đều không phải phân tích. Đây là chỗ **mật độ của NT15 không áp**:
-  nén trong đối thoại chỉ tạo thêm một vòng hỏi lại.
+  nén trong đối thoại chỉ tạo thêm một vòng hỏi lại. **Ranh giới — sàn là dữ kiện, không phải dẫn
+  giải:** bước hiển nhiên đúng, hoặc thứ đã chốt ở lượt trước, thì **một hai câu nhắc lại là đủ**; dẫn
+  lại từ đầu bắt developer đọc hết mới biết không có gì mới.
 - **Trần — đúng phần cần cho quyết định đang chờ, không hơn.** Trần phải tự canh vì hai bờ hỏng không
   đối xứng: thiếu thì developer hỏi lại và lộ ra ngay; thừa thì chỉ lộ ra dưới dạng quyết định ra chậm
   hơn. Phép kiểm: *dòng này thay đổi điều gì trong quyết định developer đang phải ra?* Không đổi gì
@@ -790,11 +792,17 @@ Tiêu chí: **tự chứa**. Developer code lại được từ đầu đến cu
 mở tài liệu khác. Các task xếp theo **thứ tự phụ thuộc**, mỗi task chỉ cần thứ đã có ở task trước.
 **Nếu** hệ có lõi toán (§4.1) thì mục `§0` của chính Plan dẫn giải tại chỗ theo mạch §4.2.
 
+**Phân công: lõi developer viết, test agent viết.** Code lõi trong Plan là bản để developer đọc và gõ
+lại, không phải bản để agent commit. Test thì ngược: agent viết và chạy (§2.8), nên Plan **chỉ có danh
+sách case sẽ kiểm**, không có code test — developer không gõ lại test nên code test ở đây là công bỏ
+đi. **Nhịp:** developer code xong lõi → agent đọc code thật rồi mới viết test, vì chữ ký lúc viết Plan
+còn là bản nháp. Danh sách case là chỗ developer veto hoặc thêm case trước khi agent viết.
+
 **Sổ tay** — kho phần cho mỗi task, **chỉ lấy phần task này cần**: Files (đường dẫn chính xác) ·
 Interfaces (consumes và produces, chữ ký đầy đủ) · bảng "toán → code" trỏ về `§0` · bảng lý do cho
 mỗi quyết định thiết kế và tối ưu · **code hoàn chỉnh dán được** với comment trỏ công thức nguồn ·
-**Editor setup** khi chạm scene hoặc prefab (§3.6) · bảng kiểm chứng input → kỳ vọng. Task không có
-toán thì không có bảng toán→code; không chạm scene thì không có Editor setup.
+**Editor setup** khi chạm scene hoặc prefab (§3.6) · **bảng case kiểm thử** (input → kỳ vọng, kèm biên
+theo §2.8). Task không có toán thì không có bảng toán→code; không chạm scene thì không có Editor setup.
 
 **Plan không thuật lại code.** Bảng lý do ghi *quyết định và vì sao chọn nó*, không kể *code làm gì*
 — code nằm ngay đó rồi (§5.4).
@@ -804,7 +812,8 @@ chốt** (khớp 100% công thức `§0`, mỗi nghiệm đã kiểm mốc; là 
 "công thức phải khớp vật lý" — NT11) · **hiệu năng** theo NT8 và §3.3 · **self-document** theo §3.7.
 
 **Nghiệm thu riêng:** có mục "Ngữ cảnh đã chốt" (§2.5) · mọi hàm có caller thật, hoặc có lý do phòng
-xa chữ ký nói được ra (NT4) · công thức đã đối chiếu với code (§4.3).
+xa chữ ký nói được ra (NT4) · công thức đã đối chiếu với code (§4.3) · phần sẽ test có bảng case,
+không có code test.
 
 ## 5.4 Kỷ luật viết và bảo trì — áp cho mọi loại tài liệu
 
