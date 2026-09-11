@@ -5,11 +5,17 @@ using UnityEngine;
 
 namespace Horcrux.Runtime.Implementations.Persistence
 {
-    public class SaveDriver : MonoBehaviour<BasePersistenceDataCollection>
+    public class SaveDriver : MonoBehaviour<IPersistenceDataCollection>
     {
         private bool inBackground;
 
         #region Unity Callbacks
+
+        protected override void OnAwake()
+        {
+            base.OnAwake();
+            DontDestroyOnLoad(gameObject);
+        }
 
         private void Start()
         {
@@ -41,9 +47,9 @@ namespace Horcrux.Runtime.Implementations.Persistence
         #endregion
         
         #region DI
-        private BasePersistenceDataCollection saveCollection;
+        private IPersistenceDataCollection saveCollection;
         
-        protected override void Init(BasePersistenceDataCollection argument)
+        protected override void Init(IPersistenceDataCollection argument)
         {
             saveCollection = argument;
         }

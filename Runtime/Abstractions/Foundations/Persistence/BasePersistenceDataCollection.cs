@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Reflection;
 using System.Threading;
 using Cysharp.Threading.Tasks;
+using Horcrux.Runtime.Utilities;
 using UnityEngine;
 
 namespace Horcrux.Runtime.Abstractions.Persistence
@@ -14,6 +15,7 @@ namespace Horcrux.Runtime.Abstractions.Persistence
     {
         private const string KeyPrefix = "persistence_";
 
+        [Splitter("Self Configs")]
         [SerializeField, Min(5f)]
         private float autosaveIntervalSeconds = 10f;
 

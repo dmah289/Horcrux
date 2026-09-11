@@ -392,6 +392,7 @@ bên thì sửa cả bên kia. Danh sách khác biệt là **đóng** — thêm 
 | `PersistenceDataEntry<T> : IPersistenceDataEntry` | `[Serializable]` · `T Value { get; set; }` · `event Action<T> OnValueChanged` · `void MarkDirty()` · `void FlushNow()` · `implicit operator T` (null → `default`) · nút `ImportPayload` |
 | `MarkedPersistence : Attribute` | `[AttributeUsage(AttributeTargets.Field)]` — đánh dấu field để scan nhận |
 | `BasePersistenceDataCollection : ScriptableObject, IPersistenceDataCollection` | `abstract` · `UniTask RunAutosaveAsync(CancellationToken)` · `protected virtual void ResetDerivedState()` · `protected virtual void OnEntriesLoaded()` · nút `ValidateKeys` |
+| `BasePersistenceDataCollection` — phần `partial` `.TimeService.cs` | `protected internal PersistenceDataEntry<long> lastSeenUtcSeconds` · `PersistenceDataEntry<long> LastSeenUtcSeconds { get; }` — entry **duy nhất** base tự khai, `TimeService` sở hữu (xem `TimeSystem.md`). `protected internal` chứ không `private`: `TimeService` cùng assembly mà không kế thừa, còn scan `GetFields(NonPublic | Instance)` trên type con vẫn thấy field kế thừa không-private. `Key` và `Default Value` điền ở **asset con** như mọi entry khác |
 
 **`Horcrux.Runtime.Implementations.Persistence`**
 
@@ -413,11 +414,14 @@ Runtime/Abstractions/Foundations/Persistence/
 ├── BasePersistenceDataCollection.cs          abstract base + MarkedPersistence — scan, load,
 │                                             autosave, flush hai giai đoạn
 ├── BasePersistenceDataCollection.Editor.cs   nút ValidateKeys + kiểm kiểu payload
+├── BasePersistenceDataCollection.TimeService.cs  field lastSeenUtcSeconds — TimeService sở hữu
 └── Persistence.md                            tài liệu này
 
 Runtime/Implementations/Foundations/Persistence/
-├── SaveDriver.cs                             host cho dự án không có Bootstrap
-└── SaveBootstep.cs                           host trong pha boot
+└── SaveDriver.cs                             host cho dự án không có Bootstrap
+
+Runtime/Implementations/Composites/
+└── SaveBootstep.cs                           host trong pha boot — namespace vẫn Implementations.Persistence
 ```
 
 Phía dự án: `IGameSave.cs` · `GameSave.cs` (+ file `partial` theo feature) · model save · asset trong
@@ -431,10 +435,9 @@ Phía dự án: `IGameSave.cs` · `GameSave.cs` (+ file `partial` theo feature) 
   đọc save rồi set vào lúc bootstrap, glue một chiều qua `OnValueChanged` (module không phụ thuộc
   Persistence). `HapticSystem.md` và `AudioSystem.md` đang đi đường thứ hai và nói rõ *"SDK cố tình
   không sở hữu hệ save"*. Chốt đường nào thì **sửa dòng này**, không thêm dòng thứ hai nói ngược lại.
-- **Hệ sẽ dùng tiếp:** Audio (volume), Haptics, Economy (coin, lives), Rating, LiveOps. Không hệ nào tự
-  khai entry — dự án khai trên collection của mình rồi nối vào.
-- **`SaveBootstep` đang nằm ở `Implementations/Foundations/`** dù nó phụ thuộc Bootstrap; chỗ theo quy
-  ước là `Implementations/Composites/`. Chưa dời.
+- **Hệ sẽ dùng tiếp:** Audio (volume), Haptics, Economy (coin, lives), Rating, LiveOps. Dự án khai entry trên
+  collection của mình rồi nối vào. **Một ngoại lệ duy nhất:** `lastSeenUtcSeconds` — Time cần mốc chống lùi giờ ở
+  **mọi** dự án, nên base khai sẵn để không phải nhại lại mỗi nơi; xếp hạng ưu tiên theo NT9 (tính mang đi).
 - **Rẻ, thêm không sửa cũ:** nút xoá từng entry · kho file trên đĩa khi chạm một trong ba giới hạn ·
   migration version khi có model đổi schema · cloud sync khi backend chuẩn chung.
 - **Hai chỗ Remote Config nên học lại từ Persistence:** `IRemoteConfigCollection.RemoteConfigs` nên là

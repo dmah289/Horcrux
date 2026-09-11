@@ -1,4 +1,6 @@
 ﻿using System.Collections.Generic;
+using System.Threading;
+using Cysharp.Threading.Tasks;
 
 namespace Horcrux.Runtime.Abstractions.Persistence
 {
@@ -12,5 +14,6 @@ namespace Horcrux.Runtime.Abstractions.Persistence
         void Initialize();
         void FlushAll();
         void Flush(IPersistenceDataEntry entry);
+        UniTask RunAutosaveAsync(CancellationToken ct);
     }
 }
