@@ -96,7 +96,7 @@ ResyncAsync:
 | Asset save của dự án: điền Key cho field `Last Seen Utc Seconds` (nhóm Time), ví dụ `time_last_seen_utc`; bấm **Validate keys** | `LogError` "empty key" lúc `Initialize`, mốc không lưu → không chống lùi |
 | `Services.unity`: object `TimeService`, Init → kéo asset save | `IService<ITimeService>.Service` ném ở caller đầu tiên |
 | Kéo `TimeService` vào list `steps` của `BootstrapRunner`, `Order` **sau** `SaveBootstep` | `ResyncAsync` không bao giờ chạy; giờ vẫn đúng nhờ guard trong getter, nhưng offset server không bao giờ áp |
-| **`BootstrapRunner` phải có người gọi `InitializeAsync()`** — runner cố ý không tự boot; gọi qua `IBootstrapService.Service`, hoặc kế thừa runner và bắn trong `Awake` (class không `sealed`, `Awake` là `protected virtual`) | cả chuỗi boot nằm im: save không load, `ResyncAsync` không chạy — nhưng `UtcNowUnix` **vẫn trả giờ máy** nhờ guard `!save.IsInitialized`, nên hỏng kiểu này không lộ ra ở hệ Time mà lộ ở Collection |
+| **`BootstrapRunner` phải có người gọi `InitializeAsync()`** — runner cố ý không tự boot. Dự án này gọi `await IBootstrapService.Service.InitializeAsync()` trong `StartGame.Starting()`, ngay sau khi scene chứa runner đã load xong | cả chuỗi boot nằm im: save không load, `ResyncAsync` không chạy — nhưng `UtcNowUnix` **vẫn trả giờ máy** nhờ guard `!save.IsInitialized`, nên hỏng kiểu này không lộ ra ở hệ Time mà lộ ở Collection |
 | Nếu dời `TimeService` khỏi scene đầu: xác nhận `FindFromScene` thấy được scene nạp bằng Addressables | không thấy thì `ServiceInjector` chỉ `LogWarning "Service Not Found"` rồi trả `null`; `ITimeService.Service` ném NRE ở caller đầu |
 
 ## Kiểm

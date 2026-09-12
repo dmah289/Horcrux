@@ -3,10 +3,11 @@ using Cysharp.Threading.Tasks;
 using Horcrux.Runtime.Abstractions.Bootstrap;
 using Horcrux.Runtime.Abstractions.Persistence;
 using Sisus.Init;
+using UnityEngine;
 
 namespace Horcrux.Runtime.Implementations.Persistence
 {
-    public class SaveBootstep : BaseBootStep, IInitializable<IPersistenceDataCollection>
+    public class SaveBootstep : BaseBootStep, IInitializable<BasePersistenceDataCollection>
     {
         public override UniTask InitializeAsync(CancellationToken ct)
         {
@@ -32,8 +33,8 @@ namespace Horcrux.Runtime.Implementations.Persistence
             saveCollection.IsInitialized = false;
         }
 
-        private IPersistenceDataCollection saveCollection;
-        public void Init(IPersistenceDataCollection argument)
+        private BasePersistenceDataCollection saveCollection;
+        public void Init(BasePersistenceDataCollection argument)
         {
             saveCollection = argument;
         }

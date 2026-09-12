@@ -167,7 +167,7 @@ Unregister: modules.Remove(m)
 
 | Bước | Thiếu thì hỏng ở đâu |
 |---|---|
-| **`BootstrapRunner` phải có người gọi `InitializeAsync()`.** Runner cố ý không tự boot — nó không biết game muốn boot lúc nào. Hai đường: gọi `IBootstrapService.Service.InitializeAsync()` từ chỗ khởi động của game, hoặc kế thừa `BootstrapRunner` (class không `sealed`, `Awake` là `protected virtual`) và tự bắn trong `Awake` | **không step nào chạy**: save không load, host không `Initialize`, không tick — và không một dòng log nào nói vì sao |
+| **`BootstrapRunner` phải có người gọi `InitializeAsync()`.** Runner cố ý không tự boot — nó không biết game muốn boot lúc nào. Chỗ gọi phải đứng **sau** khi scene chứa runner đã load xong, vì `FindFromScene` chưa thấy gì trước đó; và `await` thay vì `.Forget()` để có thứ tự xác định với phần khởi động còn lại của game | **không step nào chạy**: save không load, host không `Initialize`, không tick — và không một dòng log nào nói vì sao |
 | `Services.unity`: object `LiveOpsHost`, Init → kéo asset save của dự án | NRE trong `RunAsync` |
 | **`FindFromScene` phải thấy được `Services.unity`** — scene này nạp bằng Addressables, tức **sau** khi InitArgs khởi tạo; tiền lệ đang chạy được của dự án nằm ở scene đầu | `ServiceInjector` chỉ `LogWarning "Service Not Found"` rồi trả `null`; `IService.Service` ném NRE ở caller đầu |
 | Kéo `LiveOpsHost` vào list `steps` của `BootstrapRunner`, `Order` **sau** `TimeService` (`RewardService` không phải step) | `InitializeAsync` không chạy → không module nào `Initialize`, không tick, widget im lặng không hiện |

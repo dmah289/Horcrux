@@ -5,7 +5,7 @@ using UnityEngine;
 
 namespace Horcrux.Runtime.Implementations.Persistence
 {
-    public class SaveDriver : MonoBehaviour<IPersistenceDataCollection>
+    public class SaveDriver : MonoBehaviour<BasePersistenceDataCollection>
     {
         private bool inBackground;
 
@@ -50,9 +50,9 @@ namespace Horcrux.Runtime.Implementations.Persistence
         #endregion
         
         #region DI
-        private IPersistenceDataCollection saveCollection;
+        private BasePersistenceDataCollection saveCollection;
         
-        protected override void Init(IPersistenceDataCollection argument)
+        protected override void Init(BasePersistenceDataCollection argument)
         {
             saveCollection = argument;
         }

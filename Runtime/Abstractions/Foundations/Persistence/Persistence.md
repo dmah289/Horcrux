@@ -226,7 +226,6 @@ derive `IService<chính mình>`.
 ```csharp
 // GamePersistenceDataCollection.cs
 [Service(typeof(IGamePersistenceDataCollection), ResourcePath = RESOURCE_PATH)]
-[Service(typeof(IPersistenceDataCollection),     ResourcePath = RESOURCE_PATH)]
 [Service(typeof(BasePersistenceDataCollection),  ResourcePath = RESOURCE_PATH)]
 [CreateAssetMenu(fileName = "PersistenceDataCollection", menuName = "Configs/PersistenceDataCollection")]
 public sealed partial class GamePersistenceDataCollection
@@ -237,14 +236,18 @@ public sealed partial class GamePersistenceDataCollection
 }
 ```
 
-Ba dòng `[Service]`, ba người dùng khác nhau — cùng `ResourcePath` nên `Resources.Load` trả **một**
-instance cho cả ba:
+Hai dòng `[Service]`, hai người đọc khác nhau — cùng `ResourcePath` nên `Resources.Load` trả **một**
+instance cho cả hai:
 
 | Dòng | Ai đọc nó |
 |---|---|
 | `IGamePersistenceDataCollection` | game code, qua `IGamePersistenceDataCollection.Service` |
-| `IPersistenceDataCollection` | `SaveDriver` — `MonoBehaviour<T>` tự nhận service vào `Init` (bước 4) |
-| `BasePersistenceDataCollection` | `TimeService`, để với tới `LastSeenUtcSeconds` |
+| `BasePersistenceDataCollection` | `SaveDriver` — `MonoBehaviour<T>` tự nhận service vào `Init` (bước 4) · `TimeService`, để với tới `LastSeenUtcSeconds` |
+
+**`IPersistenceDataCollection` không đăng ký làm service.** Cả hai host đều nhận
+`BasePersistenceDataCollection`, nên một dòng `[Service]` cho interface là đăng ký một kiểu **không ai
+nhận** — người đọc sau thấy nó rồi tưởng còn một đường lấy collection nữa, và phải mở cả hai host ra mới
+biết là không. Kiểu không có người nhận thì không đăng ký.
 
 `partial` để chia entry theo nhóm ra nhiều file (`GamePersistenceDataCollection.Economy.cs`,
 `.Progress.cs`…) — mỗi nhóm một cặp file class + interface, cùng namespace, **cùng assembly**.
@@ -287,12 +290,12 @@ derive thêm nó. ⚠️ `IEconomySave` **không** derive `IService<>`; muốn t
 
 ### 4. Chọn đúng MỘT host và cấp asset cho nó
 
-Xem bảng "Hai host" dưới để chọn. Kéo tay component host vào scene, rồi cấp `IPersistenceDataCollection`
-cho nó bằng **một** trong hai đường:
+Xem bảng "Hai host" dưới để chọn. Kéo tay component host vào scene, rồi cấp
+`BasePersistenceDataCollection` cho nó bằng **một** trong hai đường:
 
 | Đường | Làm gì | Dùng được cho |
 |---|---|---|
-| **Service** | không làm gì thêm — collection đã khai `[Service(typeof(IPersistenceDataCollection), …)]` ở bước 2, InitArgs tự đưa vào `Init` | chỉ `SaveDriver`, vì nó là `MonoBehaviour<T>`. **Đây là đường dự án này đang chạy** |
+| **Service** | không làm gì thêm — collection đã khai `[Service(typeof(BasePersistenceDataCollection), …)]` ở bước 2, InitArgs tự đưa vào `Init` | chỉ `SaveDriver`, vì nó là `MonoBehaviour<T>`. **Đây là đường dự án này đang chạy** |
 | **Initializer** | Inspector của host → mục **Init** → **Add Initializer** (hoặc chuột phải header component → **Generate Initializer**) → kéo asset vào ô argument | cả hai host. **Bắt buộc với `SaveBootstep`**: nó kế thừa `BaseBootStep` nên là MonoBehaviour thường, InitArgs chỉ tự inject `IInitializable<T>` cho thứ bản thân là service |
 
 Host là chỗ gọi `Initialize()` và chỗ giữ token cho vòng autosave. SDK **không** tự gọi.
@@ -333,7 +336,7 @@ cache của phiên trước sống.
 | Khai field entry ở class base thay vì class dẫn xuất | reflection quét `GetType()` với `NonPublic` + `Instance` — **không thấy** private field của base. Muốn khai ở base thì phải `protected` (xem `lastSeenUtcSeconds`) |
 | `Key` để rỗng | `ScanEntries` loại entry đó kèm `LogError`; nó không lưu gì |
 | `Default Value` để rỗng | người chơi mới bắt đầu bằng giá trị mặc định của kiểu (`0`, `false`, list rỗng) — mà ô trống **không phân biệt được** với ô cố ý điền số đó, nên không có gì báo. Mặc định đó **xuống đĩa ngay phiên đầu** (kịch bản 1), nên điền sai là điền sai vào save thật |
-| Không cấp asset cho host — thiếu cả dòng `[Service(typeof(IPersistenceDataCollection))]` lẫn Initializer | `saveCollection` là null → `NullReferenceException` ở `Initialize()`. Ở `SaveDriver` thì đỏ console và `Start()` dừng; ở `SaveBootstep` thì `BootstrapRunner` **fail-open** — đỏ một dòng rồi cả phiên chạy tiếp **không có** persistence |
+| Không cấp asset cho host — thiếu cả dòng `[Service(typeof(BasePersistenceDataCollection))]` lẫn Initializer | `saveCollection` là null → `NullReferenceException` ở `Initialize()`. Ở `SaveDriver` thì đỏ console và `Start()` dừng; ở `SaveBootstep` thì `BootstrapRunner` **fail-open** — đỏ một dòng rồi cả phiên chạy tiếp **không có** persistence |
 | Đặt host trên object không sống suốt phiên | `destroyCancellationToken` chết theo scene unload → autosave **chết im lặng**, UniTask coi hủy là bình thường nên không log gì, chỉ còn flush lúc pause/quit. `SaveDriver.OnAwake` tự `DontDestroyOnLoad(gameObject)` nên nó đã tự chặn; `SaveBootstep` dựa vào `BootstrapRunner` cũng `DontDestroyOnLoad` |
 | Wire **hai** host, hoặc gọi `Initialize()` thêm một lần ở chỗ khác | tiến độ chưa flush về mặc định, listener đã đăng ký bị xoá — **không một dòng log**. Sáu đường sinh ra nó: xem "Hai host" |
 | Không bấm `ValidateKeys` trước khi Play | bốn lỗi authoring chỉ báo lúc `Initialize()` chạy, hoặc muộn hơn nữa — xem "Nút Editor" |
@@ -343,7 +346,7 @@ cache của phiên trước sống.
 | | `SaveDriver` | `SaveBootstep` |
 |---|---|---|
 | Dùng khi | dự án **không** có Bootstrap | dự án có `BootstrapRunner` |
-| Là gì | `MonoBehaviour<IPersistenceDataCollection>` kéo tay vào scene, tự `DontDestroyOnLoad` ở `OnAwake` | `BaseBootStep, IInitializable<IPersistenceDataCollection>`, chạy trong pha boot |
+| Là gì | `MonoBehaviour<BasePersistenceDataCollection>` kéo tay vào scene, tự `DontDestroyOnLoad` ở `OnAwake` | `BaseBootStep, IInitializable<BasePersistenceDataCollection>`, chạy trong pha boot |
 | Nhận collection | service (tự động) **hoặc** Initializer | **chỉ** Initializer — xem bước 4 |
 | Gọi `Initialize()` | `Start()` | `InitializeAsync()` |
 | Chạy autosave | `RunAutosaveAsync(destroyCancellationToken)` | `RunAutosaveAsync(destroyCancellationToken)` — **không** phải token của pha, runner refresh token đó mỗi lần load level |
@@ -390,8 +393,8 @@ pause/quit, và một hình dạng wire sai mà không ai sửa. Chặn ở **c�
 `GamePersistenceDataCollection` (namespace `Runtime.Game.PersistenceDataCollection`), asset ở
 `Assets/_TheGame/Runtime/Game/Resources/Config/PersistenceDataCollection.asset`. Một `SaveDriver` trong
 `Start.unity`, **không có Initializer** — nó nhận collection qua dòng
-`[Service(typeof(IPersistenceDataCollection), …)]`. Chưa có `SaveBootstep` và chưa có `BootstrapRunner`
-trong scene nào. Ngoài `lastSeenUtcSeconds` mà base khai sẵn, collection chưa khai entry nào.
+`[Service(typeof(BasePersistenceDataCollection), …)]`. Chưa có `SaveBootstep` và chưa có
+`BootstrapRunner` trong scene nào. Ngoài `lastSeenUtcSeconds` mà base khai sẵn, collection chưa khai entry nào.
 
 Đang chuyển sang **một `SaveBootstep` trong `Services.unity`** làm step đầu của `BootstrapRunner` — khi
 dời thì `SaveDriver` phải **xoá khỏi `Start.unity`** trong cùng một lần sửa scene, không để lại rồi dọn
@@ -405,9 +408,10 @@ chỗ ra hết. **Token ở lại host**, vì host là thứ có đời sống �
 thúc tin được, nên không được tự mở `CancellationTokenSource`: không ai đóng, và ở Editor tắt domain
 reload thì mỗi lần Play là một loop nữa xếp lên loop cũ.
 
-`RunAutosaveAsync` khai trên **`IPersistenceDataCollection`** chứ không chỉ trên base, nên cả hai host
-chỉ compile-depend vào interface — **một hợp đồng cho hai host**, và một dự án có collection không kế
-thừa base vẫn cắm vào được.
+`RunAutosaveAsync` khai trên `IPersistenceDataCollection` và thân nằm ở base — hợp đồng ở interface để
+entry và collection nói chuyện với nhau. Nhưng **hai host nhận `BasePersistenceDataCollection`**, không
+nhận interface: `TimeService` phải với tới `lastSeenUtcSeconds`, entry mà chỉ base khai, nên dự án dùng
+bộ này đằng nào cũng có một collection kế thừa base.
 
 ## Inspector
 
@@ -491,7 +495,7 @@ Test authoring `key` và `defaultValue` qua `SerializedObject` — cùng cửa m
 | **`defaultValue` phải sao chép, không trả thẳng** | nó là object sống trong asset; gán `value = defaultValue` là để game mutate thẳng vào asset. `CloneDefault()` round-trip qua serializer một lần mỗi entry lúc `Initialize` — bản sao đúng cho mọi `T`, kể cả struct chứa `List` |
 | **`[SerializeField]` bọc trong `#if UNITY_EDITOR`** | Editor ghi field đó vào asset mà build strip nó đi → đọc asset lệch byte → **crash native** (`Read N bytes but expected M bytes`), không stack trace C#. Muốn hiện trong Inspector mà không serialize thì `[NonSerialized, ShowInInspector]` |
 | **`[ReadOnly]` trên `value` là cố ý** | sửa tay bỏ qua setter: không `MarkDirty`, không `OnValueChanged`, flush không ghi, không log — đúng định nghĩa một cửa no-op âm thầm. Cửa sửa tay đúng là nút `ImportPayload`, vì nó đi qua setter |
-| **`IPersistenceDataCollection` không được derive `IService<>`** | interface dự án derive cả nó lẫn `IService<chính mình>` sẽ thừa hưởng **hai** thành viên static `Service` → mọi lần đọc `.Service` là **CS0229 ambiguity**, lỗi biên dịch. Bản thân `IPersistenceDataCollection` vẫn **đăng ký được** làm service bằng một dòng `[Service]` trên class dự án — đó là hai chuyện khác nhau, và là cách `SaveDriver` nhận collection |
+| **`IPersistenceDataCollection` không được derive `IService<>`** | interface dự án derive cả nó lẫn `IService<chính mình>` sẽ thừa hưởng **hai** thành viên static `Service` → mọi lần đọc `.Service` là **CS0229 ambiguity**, lỗi biên dịch. Bản thân `IPersistenceDataCollection` vẫn **đăng ký được** làm service bằng một dòng `[Service]` trên class dự án — đó là hai chuyện khác nhau. Hôm nay **không** đăng ký, vì không host nào nhận interface (bước 2) |
 | **`[Service]` không di truyền** | `ServiceAttribute` khai `Inherited = false`. Khai ở `BasePersistenceDataCollection` là khai vào chỗ không ai đọc: service không đăng ký, `Service.Get<>()` ném ở lần chạm đầu. Nên cả ba dòng `[Service]` và `[CreateAssetMenu]` đều thuộc dự án — cũng là lý do base để `abstract`: một collection không có entry nào thì không có việc gì làm |
 | **`partial` không băng qua được ranh giới assembly** | mọi phần của một `partial` type phải **cùng assembly**. Nếu nửa dự án đi vào SDK bằng `.asmref` thì type nó gọi tên (`PersistenceDataEntry<PlayerProgress>`) phải tra được từ SDK → `PlayerProgress` và cả chuỗi phụ thuộc bị kéo vào; chiều ngược là circular reference. Vì vậy khuôn là **kế thừa**: subclass là type của dự án, chỉ gọi tên xuống SDK |
 | **`implicit operator T` bất đối xứng khi so sánh** | `entry == null` là so **THAM CHIẾU** và an toàn — `PersistenceDataEntry<T>` không khai `operator ==`, literal `null` không có kiểu, nên tập candidate operator rỗng. Nhưng so với toán hạng **có kiểu `T`** thì `T.op_Equality` vào tập và entry **bị convert**: với `PersistenceDataEntry<string>` mà `Value` là null, `entry == null` ra `false` còn `entry == s` (`s` là `string` null) ra `true`. Hai dòng trông như nhau, trả lời ngược nhau |
@@ -542,8 +546,8 @@ chúng, và không ca nào trong game code có lý do chạm tới.
 
 | Type | Vai trò |
 |---|---|
-| `SaveDriver : MonoBehaviour<IPersistenceDataCollection>` | `OnAwake` `DontDestroyOnLoad` · `Start` init + autosave · flush ở cạnh vào background và `OnApplicationQuit` |
-| `SaveBootstep : BaseBootStep, IInitializable<IPersistenceDataCollection>` | `InitializeAsync` init + autosave · flush ở `OnGoToBackground(true)` và `OnAppQuit` |
+| `SaveDriver : MonoBehaviour<BasePersistenceDataCollection>` | `OnAwake` `DontDestroyOnLoad` · `Start` init + autosave · flush ở cạnh vào background và `OnApplicationQuit` |
+| `SaveBootstep : BaseBootStep, IInitializable<BasePersistenceDataCollection>` | `InitializeAsync` init + autosave · flush ở `OnGoToBackground(true)` và `OnAppQuit` |
 
 **`Horcrux.Runtime.Abstractions`** — `IService<out T>`: `static T Service` · `static bool TryGet(out T)`.
 
