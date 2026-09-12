@@ -11,5 +11,8 @@ namespace Horcrux.Runtime.Abstractions.Bootstrap
         /// <summary>Waits until cold start is done. Awaitable many times, by many consumers.</summary>
         /// <param name="ct">The consumer's token. Cancels the wait only; boot keeps running.</param>
         public UniTask UntilInitializedAsync(CancellationToken ct = default);
+
+        UniTask InitializeAsync();
+        UniTask ReinitializeAsync();
     }
 }

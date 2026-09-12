@@ -60,13 +60,14 @@ public sealed class RewardService : MonoBehaviour, IRewardService
 | `Register(typeId, handler)` thay `handler.TypeId` | một handler phục vụ nhiều typeId (3 loại booster) không phải viết 3 class |
 | Sync, không `UniTask` | grant là ghi số vào ví; anim thuộc caller |
 | Handler đăng ký ở `Start` | `FindFromScene` resolve service khi scene đã load; `Awake` có thể sớm hơn object service |
-| **Không** phải `BaseBootStep` | hệ này không có gì để init: không đọc save, không nhịp, và không phụ thuộc thứ tụ với hai step kìa. Thêm nó vào `BootstrapRunner` chỉ để có một `InitializeAsync` rỗng là nói dối rằng có việc init. Nó chỉ cần **tồn tại** trong `Services.unity` để `FindFromScene` thấy |
+| **Không** phải `BaseBootStep` | hệ này không có gì để init: không đọc save, không nhịp, không ràng thứ tự với hai step kia. Thêm nó vào `BootstrapRunner` chỉ để có một `InitializeAsync` rỗng là nói dối rằng có việc init. Nó chỉ cần **tồn tại** trong scene để `FindFromScene` thấy |
 
 ## §3 Trước khi chạy
 
 | Bước | Thiếu thì hỏng ở đâu |
 |---|---|
 | Scene sống suốt phiên: object `RewardService` | `IService<IRewardService>.Service` ném ở caller đầu |
+| Nếu đặt ở `Services.unity`: xác nhận `FindFromScene` thấy được scene nạp bằng Addressables (xem `LiveOpsHost.md` mục "Trước khi chạy") | `ServiceInjector` chỉ `LogWarning "Service Not Found"` rồi trả `null` — handler `Register` xong vẫn không ai gọi `Grant` |
 | Game: mỗi `typeId` một dòng `Register` trong `Start` của handler | `LogError "no handler for type N"` lúc grant, thưởng không vào ví |
 
 ## Kiểm

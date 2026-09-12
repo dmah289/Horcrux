@@ -22,7 +22,7 @@ Abstractions/Foundations/Persistence/BasePersistenceDataCollection.cs   + field 
 | Ai giữ mốc | `TimeService` — field nằm trong `BasePersistenceDataCollection` để mọi dự án có sẵn, không cần khai entry |
 | Server time | contract có, impl để trống; `IsServerTimeTrusted = false` cho tới khi có provider |
 | Caller | `LiveOpsHost` (mỗi giây, cấp `now` cho mọi module) · module khi cần `Refresh` ngoài nhịp (`CollectionModule`) |
-| Host | **boot step**, không phải MonoBehaviour tự lo `Start`. `BootstrapRunner` trong `Services.unity` chạy `SaveBootstep` (0) → `TimeService` (10) → `LiveOpsHost` (20) theo `Order`. Runner tự lái trong `Start()` của chính nó; `GameManager` của game chạy độc lập, không liên quan |
+| Host | **boot step**, không phải MonoBehaviour tự lo `Start`. `BootstrapRunner` trong `Services.unity` chạy `SaveBootstep` (0) → `TimeService` (10) → `LiveOpsHost` (20) theo `Order`; `GameManager` của game chạy độc lập, không liên quan. Bản thân runner **cần người gọi `InitializeAsync()`** — xem §4 |
 
 ## §1 Contract
 
@@ -73,7 +73,7 @@ UtcNowUnix (get):
   return Math.Max(device, guard.Value)
 
 InitializeAsync(ct):                                        ← step của BootstrapRunner, Order sau SaveBootstep
-  if IService<IServerTimeProvider>.TryGet(out provider) → ResyncAsync(provider, destroyCancellationToken).Forget()
+  if IServerTimeProvider.TryGet(out provider) → ResyncAsync(provider, destroyCancellationToken).Forget()
   return UniTask.CompletedTask                              ← token riêng, không phải ct của pha
 
 ResyncAsync:
@@ -96,6 +96,8 @@ ResyncAsync:
 | Asset save của dự án: điền Key cho field `Last Seen Utc Seconds` (nhóm Time), ví dụ `time_last_seen_utc`; bấm **Validate keys** | `LogError` "empty key" lúc `Initialize`, mốc không lưu → không chống lùi |
 | `Services.unity`: object `TimeService`, Init → kéo asset save | `IService<ITimeService>.Service` ném ở caller đầu tiên |
 | Kéo `TimeService` vào list `steps` của `BootstrapRunner`, `Order` **sau** `SaveBootstep` | `ResyncAsync` không bao giờ chạy; giờ vẫn đúng nhờ guard trong getter, nhưng offset server không bao giờ áp |
+| **`BootstrapRunner` phải có người gọi `InitializeAsync()`** — runner cố ý không tự boot; gọi qua `IBootstrapService.Service`, hoặc kế thừa runner và bắn trong `Awake` (class không `sealed`, `Awake` là `protected virtual`) | cả chuỗi boot nằm im: save không load, `ResyncAsync` không chạy — nhưng `UtcNowUnix` **vẫn trả giờ máy** nhờ guard `!save.IsInitialized`, nên hỏng kiểu này không lộ ra ở hệ Time mà lộ ở Collection |
+| Nếu dời `TimeService` khỏi scene đầu: xác nhận `FindFromScene` thấy được scene nạp bằng Addressables | không thấy thì `ServiceInjector` chỉ `LogWarning "Service Not Found"` rồi trả `null`; `ITimeService.Service` ném NRE ở caller đầu |
 
 ## Kiểm
 

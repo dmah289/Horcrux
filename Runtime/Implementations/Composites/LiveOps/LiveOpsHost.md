@@ -112,7 +112,7 @@ public abstract class LiveOpsModuleBase : MonoBehaviour, ILiveOpsModule
     public void Tick(long nowUnix)       { LastNowUnix = nowUnix; Refresh(nowUnix); }
 
     /// <summary>One body for first evaluation and every tick: resolve window, roll cycle, set state.</summary>
-    protected abstract void Refresh(long nowUnix);          // must call SetState at the end
+    protected abstract void Refresh(long nowUnix);          // must set Window, then call SetState at the end
     protected void SetState(LiveOpsModuleState next)        // no-op when unchanged, else OnStateChanged
     protected virtual void OnStateChanged(LiveOpsModuleState previous, LiveOpsModuleState next) { }
 
@@ -125,10 +125,12 @@ public abstract class LiveOpsModuleBase : MonoBehaviour, ILiveOpsModule
 | Quyết định | Vì |
 |---|---|
 | `Initialize` và `Tick` cùng một thân `Refresh` | rollover tuần lúc app đang mở và lúc mở app là một luật; hai thân sẽ lệch |
+| `Window` là property của base, `Refresh` phải gán | `SecondsLeft` đọc thẳng `Window.SecondsLeft(LastNowUnix)`. Module giữ kết quả `Resolve` trong một biến cục bộ thì `Window` đứng ở `default` — `EndUnix = 0` — và mọi countdown hiện `0m 0s` cả phiên, không lỗi nào nổ |
 | Không generic `<TSave, TConfig>` | một module; host không cần biết type save/config |
 | Module là MonoBehaviour | giữ prefab/asset của UI; scene Services sống suốt phiên |
-| Host là boot step, không phải MonoBehaviour tự lo `Start` | `BootstrapRunner` trong `Services.unity` xếp `SaveBootstep` (0) → `TimeService` (10) → `LiveOpsHost` (20) bằng `Order`, nên host không phải hỏi cờ nào để biết save đã load. Runner tự lái trong `Start()` của nó; `GameManager` của game chạy độc lập |
+| Host là boot step, không phải MonoBehaviour tự lo `Start` | `BootstrapRunner` trong `Services.unity` xếp `SaveBootstep` (0) → `TimeService` (10) → `LiveOpsHost` (20) bằng `Order`, nên host không phải hỏi cờ nào để biết save đã load. Thứ tự do runner bảo đảm, không do cờ |
 | `SetState` không publish EventBus | tên event là của module; base không mang vocabulary game |
+| `ILiveOpsModule` **không** derive `IService<>` | module thứ hai sẽ khai `IXxxModule : ILiveOpsModule, IService<IXxxModule>`. Nếu `ILiveOpsModule` cũng derive `IService<ILiveOpsModule>` thì hai `static Service` cùng tên gặp nhau → CS0229, và chỉ lộ ra lúc có module thứ hai. Đây đúng là lý do `IPersistenceDataCollection` cũng không derive nó (xem `Persistence.md`) |
 
 ## §4 `LiveOpsHost`
 
@@ -155,17 +157,19 @@ Unregister: modules.Remove(m)
 |---|---|
 | Không còn chờ `save.IsInitialized` | host là **boot step** với `Order` **sau** `SaveBootstep`, nên save đã load lúc `InitializeAsync` chạy. Thứ tự do runner bảo đảm, không do cờ |
 | `InitializeAsync` **không** await vòng lặp | await là chuỗi boot đứng mãi ở step này. Nó bắn `.Forget()` rồi trả `CompletedTask` ngay |
-| Loop dùng `destroyCancellationToken`, **không** dùng `ct` của pha | runner refresh token mỗi lần `ReinitializeAsync`, tức mỗi lần load level — loop 1 Hz sẽ chết ngay ở level thứ hai. Đây là hình dạng thứ ba ở §3.4 của `MY_SKILL` |
+| Loop dùng `destroyCancellationToken`, **không** dùng `ct` của pha | runner refresh token mỗi lần `ReinitializeAsync`, tức mỗi lần load level — loop 1 Hz sẽ chết ngay ở level thứ hai. Đúng kể cả khi game **chưa** gọi `ReinitializeAsync` lần nào: hôm nay không ai gọi, ngày mai có, và loop không được phụ thuộc vào điều đó |
 | Token = `destroyCancellationToken` của host | host sống suốt phiên trong scene Services; loop chết đúng khi host chết |
 | `Realtime` | countdown chạy khi `timeScale = 0` (Home pause level) |
-| Không bọc `try/catch` quanh `Tick` | một module; lỗi phải nổ lúc dev, không nuốt |
+| Không bọc `try/catch` quanh `Tick` | một module; lỗi phải nổ lúc dev, không nuốt. **Giá phải trả, ghi ra để không ai ngạc nhiên:** một exception giết luôn vòng `while`, nên mất hẳn nhịp 1 Hz **cho tới hết phiên** — countdown đứng, rollover không chạy, `LiveOpsSecondTick` im. `.Forget()` có log đúng một dòng đỏ; nối được dòng đó với "countdown đứng từ lúc đó" là việc của người đọc log. Thêm module thứ hai thì đổi (§5) |
 | Module không được `Unregister` trong `Tick` | vòng lặp theo index; `OnDestroy` là cửa duy nhất |
 
 ## Trước khi chạy
 
 | Bước | Thiếu thì hỏng ở đâu |
 |---|---|
+| **`BootstrapRunner` phải có người gọi `InitializeAsync()`.** Runner cố ý không tự boot — nó không biết game muốn boot lúc nào. Hai đường: gọi `IBootstrapService.Service.InitializeAsync()` từ chỗ khởi động của game, hoặc kế thừa `BootstrapRunner` (class không `sealed`, `Awake` là `protected virtual`) và tự bắn trong `Awake` | **không step nào chạy**: save không load, host không `Initialize`, không tick — và không một dòng log nào nói vì sao |
 | `Services.unity`: object `LiveOpsHost`, Init → kéo asset save của dự án | NRE trong `RunAsync` |
+| **`FindFromScene` phải thấy được `Services.unity`** — scene này nạp bằng Addressables, tức **sau** khi InitArgs khởi tạo; tiền lệ đang chạy được của dự án nằm ở scene đầu | `ServiceInjector` chỉ `LogWarning "Service Not Found"` rồi trả `null`; `IService.Service` ném NRE ở caller đầu |
 | Kéo `LiveOpsHost` vào list `steps` của `BootstrapRunner`, `Order` **sau** `TimeService` (`RewardService` không phải step) | `InitializeAsync` không chạy → không module nào `Initialize`, không tick, widget im lặng không hiện |
 | `TimeService` có trong scene **và** trong `steps` (xem `TimeSystem.md`) | `ITimeService.Service` ném ở dòng `now` đầu tiên |
 | Module: component kế thừa `LiveOpsModuleBase` đặt trong cùng scene | không ai `Register` → module không bao giờ `Initialize` |

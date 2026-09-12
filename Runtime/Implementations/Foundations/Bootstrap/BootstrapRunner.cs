@@ -10,7 +10,7 @@ namespace Horcrux.Runtime.Implementations.Bootstrap
 {
     /// <summary>The game's single init path: sorts the steps, awaits them in order, survives a failing step, owns the lifecycle token.</summary>
     [Service(typeof(IBootstrapService), FindFromScene = true)]
-    public sealed class BootstrapRunner : MonoBehaviour, IBootstrapService
+    public class BootstrapRunner : MonoBehaviour, IBootstrapService
     {
         private const string InitPhaseName = "Initialize";
         private const string ReinitPhaseName = "Reinitialize";
@@ -40,7 +40,7 @@ namespace Horcrux.Runtime.Implementations.Bootstrap
 
         #region Unity callbacks
 
-        private void Awake()
+        protected virtual void Awake()
         {
             DontDestroyOnLoad(gameObject);
             initializedTask = initializedSource.Task.Preserve();
