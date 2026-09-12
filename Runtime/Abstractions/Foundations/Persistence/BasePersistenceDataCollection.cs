@@ -25,10 +25,11 @@ namespace Horcrux.Runtime.Abstractions.Persistence
         [Splitter("Self Configs")]
         [SerializeField, Min(5f)]
         private float autosaveIntervalSeconds = 10f;
+        [SerializeField] private bool isInitialized;
 
         private readonly List<IPersistenceDataEntry> entries = new();
         private readonly List<IPersistenceDataEntry> pendingClearDirtyEntries = new();
-        private bool isInitialized;
+        
         private List<FieldInfo> cachedMarkedPersistenceFields;
         
 

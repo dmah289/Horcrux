@@ -128,7 +128,7 @@ public abstract class LiveOpsModuleBase : MonoBehaviour, ILiveOpsModule
 | `Window` là property của base, `Refresh` phải gán | `SecondsLeft` đọc thẳng `Window.SecondsLeft(LastNowUnix)`. Module giữ kết quả `Resolve` trong một biến cục bộ thì `Window` đứng ở `default` — `EndUnix = 0` — và mọi countdown hiện `0m 0s` cả phiên, không lỗi nào nổ |
 | Không generic `<TSave, TConfig>` | một module; host không cần biết type save/config |
 | Module là MonoBehaviour | giữ prefab/asset của UI; scene Services sống suốt phiên |
-| Host là boot step, không phải MonoBehaviour tự lo `Start` | `BootstrapRunner` trong `Services.unity` xếp `SaveBootstep` (0) → `TimeService` (10) → `LiveOpsHost` (20) bằng `Order`, nên host không phải hỏi cờ nào để biết save đã load. Thứ tự do runner bảo đảm, không do cờ |
+| Host là boot step, không phải MonoBehaviour tự lo `Start` | `BootstrapRunner` trong `Services.unity` xếp `SaveBootstep` (0) → `LiveOpsHost` (20) bằng `Order`, nên host không phải hỏi cờ nào để biết save đã load. Thứ tự do runner bảo đảm, không do cờ. (`TimeService` **không** ở trong chuỗi này — nó là `MonoBehaviour<T>` thường, tự hỏi `IsInitialized` trong getter, xem `TimeSystem.md`) |
 | `SetState` không publish EventBus | tên event là của module; base không mang vocabulary game |
 | `ILiveOpsModule` **không** derive `IService<>` | module thứ hai sẽ khai `IXxxModule : ILiveOpsModule, IService<IXxxModule>`. Nếu `ILiveOpsModule` cũng derive `IService<ILiveOpsModule>` thì hai `static Service` cùng tên gặp nhau → CS0229, và chỉ lộ ra lúc có module thứ hai. Đây đúng là lý do `IPersistenceDataCollection` cũng không derive nó (xem `Persistence.md`) |
 
@@ -142,7 +142,7 @@ public sealed class LiveOpsHost : BaseBootStep, ILiveOpsHost, IInitializable<Bas
 ```
 InitializeAsync(ct):  RunAsync(destroyCancellationToken).Forget()      ← token RIÊNG, không phải ct của pha
                       return UniTask.CompletedTask
-RunAsync:   now = ITimeService.Service.UtcNowUnix                        ← save đã load: Order đảm bảo
+RunAsync:   now = ITimeService.Service.UtcNowUnix                        ← save đã load: Order đảm bảo (SaveBootstep 0 < host 20)
             for m in modules: m.Initialize(now); ready = true
             loop while !ct:
                 await UniTask.Delay(1000, DelayType.Realtime, cancellationToken: ct)
@@ -170,8 +170,8 @@ Unregister: modules.Remove(m)
 | **`BootstrapRunner` phải có người gọi `InitializeAsync()`.** Runner cố ý không tự boot — nó không biết game muốn boot lúc nào. Chỗ gọi phải đứng **sau** khi scene chứa runner đã load xong, vì `FindFromScene` chưa thấy gì trước đó; và `await` thay vì `.Forget()` để có thứ tự xác định với phần khởi động còn lại của game | **không step nào chạy**: save không load, host không `Initialize`, không tick — và không một dòng log nào nói vì sao |
 | `Services.unity`: object `LiveOpsHost`, Init → kéo asset save của dự án | NRE trong `RunAsync` |
 | **`FindFromScene` phải thấy được `Services.unity`** — scene này nạp bằng Addressables, tức **sau** khi InitArgs khởi tạo; tiền lệ đang chạy được của dự án nằm ở scene đầu | `ServiceInjector` chỉ `LogWarning "Service Not Found"` rồi trả `null`; `IService.Service` ném NRE ở caller đầu |
-| Kéo `LiveOpsHost` vào list `steps` của `BootstrapRunner`, `Order` **sau** `TimeService` (`RewardService` không phải step) | `InitializeAsync` không chạy → không module nào `Initialize`, không tick, widget im lặng không hiện |
-| `TimeService` có trong scene **và** trong `steps` (xem `TimeSystem.md`) | `ITimeService.Service` ném ở dòng `now` đầu tiên |
+| Kéo `LiveOpsHost` vào list `steps` của `BootstrapRunner`, `Order` **sau** `SaveBootstep` (`TimeService` và `RewardService` không phải step) | `InitializeAsync` không chạy → không module nào `Initialize`, không tick, widget im lặng không hiện |
+| `TimeService` có trong scene (xem `TimeSystem.md`) | `ITimeService.Service` ném ở dòng `now` đầu tiên |
 | Module: component kế thừa `LiveOpsModuleBase` đặt trong cùng scene | không ai `Register` → module không bao giờ `Initialize` |
 
 ## Kiểm
