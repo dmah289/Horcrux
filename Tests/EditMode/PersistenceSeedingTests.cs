@@ -14,6 +14,10 @@ namespace Horcrux.Tests
         private const string StorageKey = "persistence_" + EntryKey;
         private const int DefaultValue = 7;
 
+        // lastSeenUtcSeconds is inherited from the base; an unkeyed entry makes ScanEntries log an error.
+        private const string ClockGuardKey = "seeding_probe_clock";
+        private const string ClockGuardStorageKey = "persistence_" + ClockGuardKey;
+
         private ProbeCollection collection;
 
         #region Setup
@@ -21,6 +25,7 @@ namespace Horcrux.Tests
         public void SetUp()
         {
             PlayerPrefs.DeleteKey(StorageKey);
+            PlayerPrefs.DeleteKey(ClockGuardStorageKey);
             collection = ScriptableObject.CreateInstance<ProbeCollection>();
 
             // Authoring goes through Unity serialization, the same door the Inspector uses.
@@ -28,6 +33,7 @@ namespace Horcrux.Tests
             SerializedProperty entry = serialized.FindProperty("probe");
             entry.FindPropertyRelative("key").stringValue = EntryKey;
             entry.FindPropertyRelative("defaultValue").intValue = DefaultValue;
+            serialized.FindProperty("lastSeenUtcSeconds").FindPropertyRelative("key").stringValue = ClockGuardKey;
             serialized.ApplyModifiedPropertiesWithoutUndo();
         }
 
@@ -35,6 +41,7 @@ namespace Horcrux.Tests
         public void TearDown()
         {
             PlayerPrefs.DeleteKey(StorageKey);
+            PlayerPrefs.DeleteKey(ClockGuardStorageKey);
             PlayerPrefs.Save();
             Object.DestroyImmediate(collection);
         }

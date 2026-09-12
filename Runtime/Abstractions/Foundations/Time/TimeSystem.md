@@ -46,9 +46,11 @@ namespace Horcrux.Runtime.Abstractions.Time
 ## §2 Field trong `BasePersistenceDataCollection`
 
 ```csharp
-[Splitter("Time")]
+[Splitter("Time Service")]
 [MarkedPersistence, SerializeField]
 protected internal PersistenceDataEntry<long> lastSeenUtcSeconds;   // owned by TimeService
+
+public PersistenceDataEntry<long> LastSeenUtcSeconds => lastSeenUtcSeconds;
 ```
 
 | Quyết định | Vì |

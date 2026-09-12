@@ -453,7 +453,9 @@ khoá đang khai — khoá mồ côi của bản build cũ sống sót, mà mộ
 ## Kiểm thử
 
 `Assets/Horcrux/Tests/EditMode/PersistenceSeedingTests.cs` — bốn case phủ đúng ba kết cục của
-`EntryLoadResult`, chạy trên một `ProbeCollection` một entry:
+`EntryLoadResult`, chạy trên một `ProbeCollection` khai **một** entry riêng (`probe`) và mang thêm
+`lastSeenUtcSeconds` kế thừa từ base. Mọi khẳng định nhắm riêng khoá của `probe`, nên entry kế thừa
+không đụng vào ca nào — nhưng `SetUp` vẫn phải điền `Key` cho nó, xem bảng Bẫy:
 
 | Case | Khẳng định |
 |---|---|
@@ -484,6 +486,7 @@ Test authoring `key` và `defaultValue` qua `SerializedObject` — cùng cửa m
 
 | Chỗ | Sự thật |
 |---|---|
+| **Một entry khai ở base là nghĩa vụ điền `Key` cho MỌI collection dẫn xuất** | `ScanEntries` quét cả field kế thừa, nên `lastSeenUtcSeconds` có mặt trên mọi lớp con — kể cả một `ProbeCollection` dựng tạm trong test. Chưa điền `Key` là một `LogError` mỗi lần `Initialize()`, và trong EditMode thì Unity fail luôn test phát log đó dù assertion vẫn đúng. *Đã sai một lần:* thêm field vào base xong, bốn ca `PersistenceSeedingTests` đỏ hết ở dòng log chứ không ở khẳng định nào. Đây là bất biến "không có đường không-làm-gì âm thầm" chạy đúng, không phải lỗi — cái phải sửa là chỗ dựng collection, không phải cái guard |
 | **Mutate model tại chỗ mà không `MarkDirty()` thì không lưu gì** | kịch bản 4. `FlushNow()` không cứu được: nó bỏ qua entry không dirty, cố tình — dirty-tracking không có ngoại lệ nào |
 | **Listener đăng ký trước `Initialize()` bị xoá im lặng** | `Setup()` gán `OnValueChanged = null`, vì `ScriptableObject` sống qua các lần Play khi tắt domain reload: listener của phiên trước trỏ vào GameObject đã huỷ → `MissingReferenceException` ở lần đổi giá trị đầu tiên. Không detector nào phân biệt được listener phiên trước (phải xoá) với listener vừa đăng ký (bị xoá oan) — cả hai chỉ là `OnValueChanged != null`. Chặn duy nhất bằng **cấu trúc**: gọi `Initialize()` trong pha boot, mọi subscribe đứng sau nó |
 | **Bốn thứ sống qua các lần Play** | `value` và `isDirty` — cả hai được `Setup()` reset. Thứ ba là **cache mà subclass dựng từ entry** (lookup, `HashSet`, cờ "đã parse"): entry không với tới được, nên có cặp hook `ResetDerivedState()` / `OnEntriesLoaded()`. *Đã sai một lần, ở Remote Config cùng khuôn nhưng thiếu hook "trước":* một cờ chỉ được bật, không ai tắt, mang trạng thái phiên trước sang phiên sau; một hệ khác phải viết workaround. Một cờ không reset được đã mất tư cách làm điều kiện chờ. Thứ tư là **`isInitialized`**: `Setup()` không với tới, nên host tự đặt `IsInitialized = false` ở `OnApplicationQuit` / `OnAppQuit` — lý do duy nhất setter tồn tại trên hợp đồng. Chỉ cần ở Editor khi tắt Domain Reload (trên device process chết là cờ chết), và nó **fail-open**: quit không bắn thì cờ ở lại `true`. Hôm nay **chưa code nào đọc** cờ này |
