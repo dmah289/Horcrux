@@ -5,10 +5,10 @@
 
 **Mục tiêu:** một cửa `Grant(reward, placement)` cho mọi nguồn thưởng; game cắm handler theo loại, SDK không biết coin/booster là gì.
 
-**Kiến trúc:** 4 file.
+**Kiến trúc:** 2 file. Ba contract ở §1 nằm chung một file vì cùng một hệ và cộng lại chưa tới 30 dòng.
 
 ```
-Abstractions/Foundations/Reward/     RewardData.cs · IRewardHandler.cs · IRewardService.cs
+Abstractions/Foundations/Reward/     IRewardService.cs   (RewardData · IRewardHandler · IRewardService)
 Implementations/Foundations/Reward/  RewardService.cs
 ```
 
@@ -49,14 +49,53 @@ namespace Horcrux.Runtime.Abstractions.Reward
 ## §2 `RewardService`
 
 ```csharp
-[Service(typeof(IRewardService), FindFromScene = true)]
-public sealed class RewardService : MonoBehaviour, IRewardService
-```
+using System.Collections.Generic;
+using Horcrux.Runtime.Abstractions.Reward;
+using Sisus.Init;
+using UnityEngine;
 
-`Dictionary<int, IRewardHandler>`. `Grant`: `Amount <= 0` → `LogError` bỏ qua; `TryGetValue` → `handler.Grant(in reward, placement)`.
+namespace Horcrux.Runtime.Implementations.Reward
+{
+    [Service(typeof(IRewardService), FindFromScene = true)]
+    public class RewardService : MonoBehaviour, IRewardService
+    {
+        private readonly Dictionary<int, IRewardHandler> handlers = new();
+        
+        public void Register(int typeId, IRewardHandler handler)
+        {
+            if (handler == null)
+            {
+                Debug.LogError($"[RewardService]: Register null handler for type {typeId}.", this);
+                return;
+            }
+
+            if (!handlers.TryAdd(typeId, handler))
+                Debug.LogError($"[RewardService]: Type {typeId} already has a handler.", this);
+        }
+
+        public void Grant(in RewardData reward, string placement)
+        {
+            if (reward.Amount <= 0)
+            {
+                Debug.LogError($"[RewardService]: Invalid reward amount ({reward.Amount}) for type {reward.TypeId} at {placement}.", this);
+                return;
+            }
+
+            if (!handlers.TryGetValue(reward.TypeId, out IRewardHandler handler))
+            {
+                Debug.LogError($"[RewardService]: No handler for type {reward.TypeId} at {placement}.", this);
+                return;
+            }
+            
+            handler.Grant(reward, placement);
+        }
+    }
+}
+```
 
 | Quyết định | Vì |
 |---|---|
+| `Register` chặn `handler == null` | `TryAdd(typeId, null)` thành công, rồi `Grant` ném `NullReferenceException` đúng chỗ Chốt cấm throw. Chặn ở cửa vào để lỗi nổ lúc wiring, không phải lúc trao thưởng |
 | `Register(typeId, handler)` thay `handler.TypeId` | một handler phục vụ nhiều typeId (3 loại booster) không phải viết 3 class |
 | Sync, không `UniTask` | grant là ghi số vào ví; anim thuộc caller |
 | Handler đăng ký ở `Start` | `FindFromScene` resolve service khi scene đã load; `Awake` có thể sớm hơn object service |

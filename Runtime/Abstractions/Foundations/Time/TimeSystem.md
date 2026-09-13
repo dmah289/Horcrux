@@ -63,12 +63,12 @@ using Sisus.Init;
 
 namespace Horcrux.Runtime.Implementations.Time
 {
-    /// <summary>The one UTC clock game logic reads. Never goes backwards, across sessions. See TimeSystem.md.</summary>
     [Service(typeof(ITimeService), FindFromScene = true)]
-    public sealed class TimeService : MonoBehaviour<BasePersistenceDataCollection>, ITimeService
+    public class TimeService : MonoBehaviour<BasePersistenceDataCollection>, ITimeService
     {
-        /// <summary>How far past the stored mark the device must reach before the mark is written again.</summary>
-        private const long GuardWriteStepSeconds = 60;
+        private const int GuardWriteStepSecond = 60;
+
+        #region Properties
 
         public long UtcNowUnix
         {
@@ -76,29 +76,28 @@ namespace Horcrux.Runtime.Implementations.Time
             {
                 long device = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
 
-                // Nothing orders this getter: it is public and the save loads on its own schedule.
-                // Before that the mark still reads 0, and trusting it would pin the clock to the epoch.
                 if (!saveCollection.IsInitialized)
                     return device;
 
                 PersistenceDataEntry<long> guard = saveCollection.LastSeenUtcSeconds;
-
-                // Writing every second would dirty the entry for autosave with nothing to show for it.
-                if (device >= guard.Value + GuardWriteStepSeconds)
+                if (device >= guard + GuardWriteStepSecond)
                     guard.Value = device;
 
-                // Device clock moved back: stand on the mark rather than hand out a smaller number.
-                return Math.Max(device, guard.Value);
+                return Math.Max(device, guard);
             }
         }
+        
+        #endregion
 
         #region DI
+        
         private BasePersistenceDataCollection saveCollection;
-
+        
         protected override void Init(BasePersistenceDataCollection argument)
         {
             saveCollection = argument;
         }
+        
         #endregion
     }
 }
@@ -106,7 +105,7 @@ namespace Horcrux.Runtime.Implementations.Time
 
 | Quyết định | Vì |
 |---|---|
-| Ghi mốc mỗi `GuardWriteStepSeconds = 60` | mỗi giây một lần dirty là autosave ghi PlayerPrefs vô ích; lùi ≤ 60s không ai lợi được gì |
+| Ghi mốc mỗi `GuardWriteStepSecond = 60` | mỗi giây một lần dirty là autosave ghi PlayerPrefs vô ích; lùi ≤ 60s không ai lợi được gì |
 | Lùi giờ → đứng tại mốc | đơn giản, không cần trạng thái "đang bị lùi"; countdown chỉ đứng, không âm |
 | Getter ghi mốc | hệ không có nhịp riêng; caller 1 Hz duy nhất là `LiveOpsHost`. Ghi chỉ xảy ra sau `IsInitialized` và thưa 60s nên getter vẫn rẻ |
 | **`MonoBehaviour<T>`, không `BaseBootStep`** | Gỡ server time xong thì `InitializeAsync` rỗng, và một step rỗng trong `BootstrapRunner` là một mắt xích chỉ tồn tại để chờ việc chưa có. Base class trống ra thì dùng luôn `MonoBehaviour<T>` của Sisus — cùng kiểu với `SaveDriver`, và DI vào `Init` giống hệt. Hệ quả: `TimeService` **không** nằm trong list `steps`, **không** có `Order`, và `LiveOpsHost` chỉ cần đứng sau `SaveBootstep`. Không mất gì vì `UtcNowUnix` chưa bao giờ dựa vào thứ tự — nó tự hỏi `IsInitialized` |
