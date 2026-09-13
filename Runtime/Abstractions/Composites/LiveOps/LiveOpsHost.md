@@ -5,13 +5,16 @@
 
 **Mục tiêu:** module live-ops là component tự chứa; host chỉ làm ba việc — chờ save load, gọi `Initialize` một lần, gọi `Tick` mỗi giây với **cùng một `now`** cho mọi module.
 
-**Kiến trúc:** 8 file. Composite vì dựa trên Persistence + Time + EventBus.
+**Kiến trúc:** 5 file. Composite vì dựa trên Persistence + Time + EventBus.
 
 ```
-Abstractions/Composites/LiveOps/     LiveOpsModuleState.cs · LiveOpsWindow.cs · ILiveOpsModule.cs
-                                     ILiveOpsHost.cs · LiveOpsSecondTick.cs
-Implementations/Composites/LiveOps/  WeeklySchedule.cs · LiveOpsModuleBase.cs · LiveOpsHost.cs
+Abstractions/Composites/LiveOps/     ILiveOpsModule.cs   (LiveOpsModuleState · LiveOpsWindow · LiveOpsSecondTick · ILiveOpsModule)
+                                     ILiveOpsHost.cs · WeeklySchedule.cs
+Implementations/Composites/LiveOps/  LiveOpsModuleBase.cs · LiveOpsHost.cs
 ```
+
+`WeeklySchedule` ở `Abstractions/` dù có thân: hàm thuần, không phụ thuộc Unity, và là thứ module (cũng ở tầng
+trên) gọi thẳng — cùng lý do `BasePersistenceDataCollection` có thân mà vẫn ở `Abstractions/`.
 
 ## Ngữ cảnh đã chốt
 
@@ -26,18 +29,37 @@ Implementations/Composites/LiveOps/  WeeklySchedule.cs · LiveOpsModuleBase.cs �
 
 ## §1 Contract
 
+`ILiveOpsModule.cs`:
+
 ```csharp
-namespace Horcrux.Runtime.Abstractions.LiveOps
+using System;
+using Horcrux.Runtime.Utilities.EventBus;
+
+namespace Horcrux.Runtime.Abstractions.Composites.LiveOps
 {
     public enum LiveOpsModuleState { Inactive, Running, Finished }
 
+    /// <summary>[StartUnix, EndUnix) of one cycle. Immutable; a module replaces it, never edits it.</summary>
     public readonly struct LiveOpsWindow
     {
         public readonly long StartUnix;
         public readonly long EndUnix;                                    // exclusive
-        public LiveOpsWindow(long startUnix, long endUnix) { StartUnix = startUnix; EndUnix = endUnix; }
+
+        public LiveOpsWindow(long startUnix, long endUnix)
+        {
+            StartUnix = startUnix;
+            EndUnix = endUnix;
+        }
+
         public bool Contains(long now) => now >= StartUnix && now < EndUnix;
         public long SecondsLeft(long now) => Math.Max(0, EndUnix - now);
+    }
+
+    /// <summary>Published by the host once per second, after every module has ticked. For views.</summary>
+    public readonly struct LiveOpsSecondTick : IEvent
+    {
+        public readonly long NowUnix;
+        public LiveOpsSecondTick(long nowUnix) => NowUnix = nowUnix;
     }
 
     public interface ILiveOpsModule
@@ -47,17 +69,18 @@ namespace Horcrux.Runtime.Abstractions.LiveOps
         void Initialize(long nowUnix);      // once, after save is loaded
         void Tick(long nowUnix);            // every second while registered
     }
+}
+```
 
+`ILiveOpsHost.cs`:
+
+```csharp
+namespace Horcrux.Runtime.Abstractions.Composites.LiveOps
+{
     public interface ILiveOpsHost : IService<ILiveOpsHost>
     {
-        void Register(ILiveOpsModule module);
-        void Unregister(ILiveOpsModule module);
-    }
-
-    public readonly struct LiveOpsSecondTick : IEvent     // Horcrux EventBus, for views
-    {
-        public readonly long NowUnix;
-        public LiveOpsSecondTick(long nowUnix) => NowUnix = nowUnix;
+        void Register(ILiveOpsModule liveOpsModule);
+        void Unregister(ILiveOpsModule liveOpsModule);
     }
 }
 ```
@@ -65,23 +88,36 @@ namespace Horcrux.Runtime.Abstractions.LiveOps
 ## §2 `WeeklySchedule` — hàm thuần
 
 ```csharp
-public static class WeeklySchedule
-{
-    public const long WeekSeconds = 604800;
-    private const int EpochDayOfWeek = 4;            // 1970-01-01 is Thursday
+using System;
 
-    /// <summary>Window of the cycle containing <paramref name="nowUnix"/>; anchor is the cycle start.</summary>
-    public static LiveOpsWindow Resolve(long nowUnix, int anchorDayOfWeek, int anchorHourUtc,
-                                        int anchorMinuteUtc, long durationSeconds);
+namespace Horcrux.Runtime.Abstractions.Composites.LiveOps
+{
+    /// <summary>Weekly cycle windows. Pure: same inputs, same window. See LiveOpsHost.md §2.</summary>
+    public static class WeeklySchedule
+    {
+        public const long WeekSeconds = 604800;
+        private const long DaySeconds = 86400;
+        private const int EpochDayOfWeek = 4;            // 1970-01-01 is Thursday; DayOfWeek numbering, Sunday = 0
+
+        /// <summary>Window of the cycle containing <paramref name="nowUnix"/>; the anchor is the cycle start.</summary>
+        public static LiveOpsWindow Resolve(long nowUnix, int anchorDayOfWeek, int anchorHourUtc,
+                                            int anchorMinuteUtc, long durationSeconds)
+        {
+            long anchorOffset = ((anchorDayOfWeek - EpochDayOfWeek + 7) % 7) * DaySeconds
+                                + anchorHourUtc * 3600L + anchorMinuteUtc * 60L;
+
+            // C# % keeps the sign of the dividend: before the first anchor after the epoch it would go negative.
+            long sinceAnchor = ((nowUnix - anchorOffset) % WeekSeconds + WeekSeconds) % WeekSeconds;
+
+            long start = nowUnix - sinceAnchor;
+            long end = start + Math.Clamp(durationSeconds, 1, WeekSeconds);
+            return new LiveOpsWindow(start, end);
+        }
+    }
 }
 ```
 
-```
-anchorOffset = ((anchorDayOfWeek − EpochDayOfWeek + 7) % 7) * 86400 + anchorHourUtc * 3600 + anchorMinuteUtc * 60
-sinceAnchor  = ((nowUnix − anchorOffset) % WeekSeconds + WeekSeconds) % WeekSeconds      ← mod dương
-start        = nowUnix − sinceAnchor
-end          = start + Clamp(durationSeconds, 1, WeekSeconds)
-```
+`anchorDayOfWeek` theo `System.DayOfWeek`: Sunday 0 … Saturday 6. Monday 08:01 là `(1, 8, 1)`.
 
 Mốc kiểm (anchor Monday 08:01 UTC, duration 604740). `2026-09-07` là Thứ Hai, `00:00Z = 1788739200`.
 
@@ -100,27 +136,65 @@ Tự tính mốc khác bằng `DateTimeOffset.ToUnixTimeSeconds()` trong test, k
 ## §3 `LiveOpsModuleBase`
 
 ```csharp
-public abstract class LiveOpsModuleBase : MonoBehaviour, ILiveOpsModule
+using Horcrux.Runtime.Abstractions.Composites.LiveOps;
+using UnityEngine;
+
+namespace Horcrux.Runtime.Implementations.Composites.LiveOps
 {
-    public abstract string ModuleId { get; }
-    public LiveOpsModuleState State { get; private set; }
-    protected LiveOpsWindow Window { get; set; }
-    protected long LastNowUnix { get; private set; }
-    public long SecondsLeft => State == LiveOpsModuleState.Running ? Window.SecondsLeft(LastNowUnix) : 0;
+    /// <summary>Skeleton of one live-ops module: state, window, one Refresh body. See LiveOpsHost.md §3.</summary>
+    public abstract class LiveOpsModuleBase : MonoBehaviour, ILiveOpsModule
+    {
+        public abstract string ModuleId { get; }
+        public LiveOpsModuleState State { get; private set; }
+        public long SecondsLeft => State == LiveOpsModuleState.Running ? Window.SecondsLeft(LastNowUnix) : 0;
 
-    public void Initialize(long nowUnix) { LastNowUnix = nowUnix; Refresh(nowUnix); }
-    public void Tick(long nowUnix)       { LastNowUnix = nowUnix; Refresh(nowUnix); }
+        protected LiveOpsWindow Window { get; set; }
+        protected long LastNowUnix { get; private set; }
 
-    /// <summary>One body for first evaluation and every tick: resolve window, roll cycle, set state.</summary>
-    protected abstract void Refresh(long nowUnix);          // must set Window, then call SetState at the end
-    protected void SetState(LiveOpsModuleState next)        // no-op when unchanged, else OnStateChanged
-    protected virtual void OnStateChanged(LiveOpsModuleState previous, LiveOpsModuleState next) { }
+        public void Initialize(long nowUnix)
+        {
+            LastNowUnix = nowUnix;
+            Refresh(nowUnix);
+        }
 
-    protected virtual void Start()     => ILiveOpsHost.Service.Register(this);
-    protected virtual void OnDestroy() { if (ILiveOpsHost.TryGet(out var host)) host.Unregister(this); }
+        public void Tick(long nowUnix)
+        {
+            LastNowUnix = nowUnix;
+            Refresh(nowUnix);
+        }
+
+        /// <summary>
+        /// One body for the first evaluation and every tick: resolve the window, roll the cycle, set the state.
+        /// Must assign <see cref="Window"/> — <see cref="SecondsLeft"/> reads it, and a default window counts down from 0 —
+        /// then end with <see cref="SetState"/>.
+        /// </summary>
+        protected abstract void Refresh(long nowUnix);
+
+        protected void SetState(LiveOpsModuleState next)
+        {
+            if (next == State)
+                return;
+
+            LiveOpsModuleState previous = State;
+            State = next;
+            OnStateChanged(previous, next);
+        }
+
+        protected virtual void OnStateChanged(LiveOpsModuleState previous, LiveOpsModuleState next) { }
+
+        #region Unity callbacks
+        // Start, not Awake: FindFromScene resolves the host once the scene is loaded; Awake may run before the host object exists.
+        protected virtual void Start() => ILiveOpsHost.Service.Register(this);
+
+        protected virtual void OnDestroy()
+        {
+            if (ILiveOpsHost.TryGet(out ILiveOpsHost host))
+                host.Unregister(this);
+        }
+        #endregion
+    }
 }
 ```
-
 
 | Quyết định | Vì |
 |---|---|
@@ -135,26 +209,73 @@ public abstract class LiveOpsModuleBase : MonoBehaviour, ILiveOpsModule
 ## §4 `LiveOpsHost`
 
 ```csharp
-[Service(typeof(ILiveOpsHost), FindFromScene = true)]
-public sealed class LiveOpsHost : BaseBootStep, ILiveOpsHost, IInitializable<BasePersistenceDataCollection>
-```
+using System.Collections.Generic;
+using System.Threading;
+using Cysharp.Threading.Tasks;
+using Horcrux.Runtime.Abstractions.Bootstrap;
+using Horcrux.Runtime.Abstractions.Composites.LiveOps;
+using Horcrux.Runtime.Abstractions.Time;
+using Horcrux.Runtime.Utilities.EventBus;
+using Sisus.Init;
 
-```
-InitializeAsync(ct):  RunAsync(destroyCancellationToken).Forget()      ← token RIÊNG, không phải ct của pha
-                      return UniTask.CompletedTask
-RunAsync:   now = ITimeService.Service.UtcNowUnix                        ← save đã load: Order đảm bảo (SaveBootstep 0 < host 20)
-            for m in modules: m.Initialize(now); ready = true
-            loop while !ct:
-                await UniTask.Delay(1000, DelayType.Realtime, cancellationToken: ct)
-                now = ITimeService.Service.UtcNowUnix
-                for i in 0..modules.Count: modules[i].Tick(now)
-                EventBus<LiveOpsSecondTick>.Publish(new(now))
-Register:   modules.Add(m); if ready → m.Initialize(ITimeService.Service.UtcNowUnix)
-Unregister: modules.Remove(m)
+namespace Horcrux.Runtime.Implementations.Composites.LiveOps
+{
+    /// <summary>Gives every module the same clock: Initialize once after save, Tick once a second. See LiveOpsHost.md §4.</summary>
+    [Service(typeof(ILiveOpsHost), FindFromScene = true)]
+    public class LiveOpsHost : BaseBootStep, ILiveOpsHost
+    {
+        private const int TickMilliseconds = 1000;
+
+        private readonly List<ILiveOpsModule> modules = new();
+        private bool isReady;
+
+        public override UniTask InitializeAsync(CancellationToken ct)
+        {
+            // Own lifetime, not the phase token: the runner cancels that one at every level load.
+            // Not awaited: the loop never ends, and the boot chain must move on.
+            RunAsync(destroyCancellationToken).Forget();
+            return UniTask.CompletedTask;
+        }
+
+        public void Register(ILiveOpsModule liveOpsModule)
+        {
+            modules.Add(liveOpsModule);
+
+            // Late joiner (a scene loaded after boot): give it the first evaluation the others already had.
+            if (isReady)
+                liveOpsModule.Initialize(ITimeService.Service.UtcNowUnix);
+        }
+
+        public void Unregister(ILiveOpsModule liveOpsModule) => modules.Remove(liveOpsModule);
+
+        private async UniTaskVoid RunAsync(CancellationToken ct)
+        {
+            // Save is loaded: Order puts this step after SaveBootstep.
+            long now = ITimeService.Service.UtcNowUnix;
+            for (int i = 0; i < modules.Count; i++)
+                modules[i].Initialize(now);
+            isReady = true;
+
+            while (!ct.IsCancellationRequested)
+            {
+                await UniTask.Delay(TickMilliseconds, DelayType.Realtime, cancellationToken: ct);
+
+                // One read per tick: two modules must never disagree on which second it is.
+                now = ITimeService.Service.UtcNowUnix;
+                for (int i = 0; i < modules.Count; i++)
+                    modules[i].Tick(now);
+
+                EventBus<LiveOpsSecondTick>.Publish(new LiveOpsSecondTick(now));
+            }
+        }
+    }
+}
 ```
 
 | Quyết định | Vì |
 |---|---|
+| **Không** `IInitializable<BasePersistenceDataCollection>` | không dòng nào trong host đọc save: chờ `IsInitialized` đã bỏ, module tự giữ entry của mình. Inject vào rồi để đó là một field chết và một ô Init phải kéo trong scene. Cần lại thì thêm vào, cùng lúc với dòng code đọc nó |
+| `Register` sau khi loop đã chạy thì `Initialize` ngay | module ở scene nạp sau boot (Home load thêm) không được chờ tới tick kế mới có `State`; `isReady` lật một lần sau vòng `Initialize` đầu |
 | Không còn chờ `save.IsInitialized` | host là **boot step** với `Order` **sau** `SaveBootstep`, nên save đã load lúc `InitializeAsync` chạy. Thứ tự do runner bảo đảm, không do cờ |
 | `InitializeAsync` **không** await vòng lặp | await là chuỗi boot đứng mãi ở step này. Nó bắn `.Forget()` rồi trả `CompletedTask` ngay |
 | Loop dùng `destroyCancellationToken`, **không** dùng `ct` của pha | runner refresh token mỗi lần `ReinitializeAsync`, tức mỗi lần load level — loop 1 Hz sẽ chết ngay ở level thứ hai. Đúng kể cả khi game **chưa** gọi `ReinitializeAsync` lần nào: hôm nay không ai gọi, ngày mai có, và loop không được phụ thuộc vào điều đó |
@@ -168,7 +289,7 @@ Unregister: modules.Remove(m)
 | Bước | Thiếu thì hỏng ở đâu |
 |---|---|
 | **`BootstrapRunner` phải có người gọi `InitializeAsync()`.** Runner cố ý không tự boot — nó không biết game muốn boot lúc nào. Chỗ gọi phải đứng **sau** khi scene chứa runner đã load xong, vì `FindFromScene` chưa thấy gì trước đó; và `await` thay vì `.Forget()` để có thứ tự xác định với phần khởi động còn lại của game | **không step nào chạy**: save không load, host không `Initialize`, không tick — và không một dòng log nào nói vì sao |
-| `Services.unity`: object `LiveOpsHost`, Init → kéo asset save của dự án | NRE trong `RunAsync` |
+| `Services.unity`: object `LiveOpsHost`. **Không có Init** — host không đọc save, chỉ đứng sau `SaveBootstep` bằng `Order` | thiếu object thì dòng dưới; không có gì để kéo vào Init |
 | **`FindFromScene` phải thấy được `Services.unity`** — scene này nạp bằng Addressables, tức **sau** khi InitArgs khởi tạo; tiền lệ đang chạy được của dự án nằm ở scene đầu | `ServiceInjector` chỉ `LogWarning "Service Not Found"` rồi trả `null`; `IService.Service` ném NRE ở caller đầu |
 | Kéo `LiveOpsHost` vào list `steps` của `BootstrapRunner`, `Order` **sau** `SaveBootstep` (`TimeService` và `RewardService` không phải step) | `InitializeAsync` không chạy → không module nào `Initialize`, không tick, widget im lặng không hiện |
 | `TimeService` có trong scene (xem `TimeSystem.md`) | `ITimeService.Service` ném ở dòng `now` đầu tiên |
