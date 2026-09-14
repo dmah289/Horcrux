@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Threading;
 using Cysharp.Threading.Tasks;
 using Horcrux.Runtime.Abstractions.Bootstrap;
@@ -70,7 +69,7 @@ namespace Horcrux.Runtime.Implementations.Composites.LiveOps
         private ITimeService timeService;
         public void Init(ITimeService argument)
         {
-            throw new NotImplementedException();
+            timeService = argument;
         }
 
         #endregion
