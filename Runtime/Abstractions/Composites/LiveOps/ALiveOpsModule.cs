@@ -6,17 +6,20 @@ namespace Horcrux.Runtime.Abstractions.Composites.LiveOps
 {
     public abstract class ALiveOpsModule : MonoBehaviour<ILiveOpsHost>, ILiveOpsModule
     {
-        protected LiveOpsWindow Window { get; set; }
-        protected long LastNowUnix { get; private set; }
-        
         #region Properties
         
         public abstract string ModuleId { get; }
         
         public LiveOpsModuleState State { get; private set; }
         
-        public long SecondsLeft => State == LiveOpsModuleState.Running 
-            ? Window.SecondsLeft(LastNowUnix) : 0;
+        public long SecondsLeft => State == LiveOpsModuleState.Running
+            ? Window.SecondsLeft(LastUnix) : 0;
+        
+        protected bool IsInitialized { get; private set; }
+        
+        protected LiveOpsWindow Window { get;  private set; }
+        
+        protected long LastUnix { get; private set; }
         
         #endregion
 
@@ -34,8 +37,8 @@ namespace Horcrux.Runtime.Abstractions.Composites.LiveOps
         
         public void Initialize(long nowUnix)
         {
-            LastNowUnix = nowUnix;
-            Refresh(nowUnix);
+            IsInitialized = true;
+            Evaluate(nowUnix);
         }
 
         /// <summary>
@@ -43,8 +46,7 @@ namespace Horcrux.Runtime.Abstractions.Composites.LiveOps
         /// </summary>
         public void Tick(long nowUnix)
         {
-            LastNowUnix = nowUnix;
-            Refresh(nowUnix);
+            Evaluate(nowUnix);
         }
         
         #endregion
@@ -52,6 +54,8 @@ namespace Horcrux.Runtime.Abstractions.Composites.LiveOps
         #region Class Methods
 
         protected abstract void Refresh(long nowUnix);
+        
+        protected abstract LiveOpsWindow ResolveWindow(long nowUnix);
 
         protected virtual void OnStateChanged(LiveOpsModuleState oldState, 
             LiveOpsModuleState newState) {}
@@ -64,6 +68,13 @@ namespace Horcrux.Runtime.Abstractions.Composites.LiveOps
             LiveOpsModuleState oldState = State;
             State = nextState;
             OnStateChanged(oldState, nextState);
+        }
+        
+        private void Evaluate(long nowUnix)
+        {
+            LastUnix = nowUnix;
+            Window = ResolveWindow(nowUnix);
+            Refresh(nowUnix);
         }
 
         #endregion

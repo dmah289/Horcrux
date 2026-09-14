@@ -117,7 +117,7 @@ namespace Horcrux.Runtime.Implementations.Time
 |---|---|
 | Asset save của dự án: điền Key cho field `Last Seen Utc Seconds` (nhóm Time), ví dụ `time_last_seen_utc`; bấm **Validate keys** | `LogError` "empty key" lúc `Initialize`, mốc không lưu → không chống lùi |
 | `Services.unity`: object `TimeService`, Init → kéo asset save. **Không** kéo vào list `steps` của `BootstrapRunner` — nó không phải step | `IService<ITimeService>.Service` ném ở caller đầu tiên |
-| **Save phải được load** — `TimeService` không còn ở trong chuỗi boot, nhưng `SaveBootstep` thì có, và runner cố ý không tự boot. Dự án này gọi `await IBootstrapService.Service.InitializeAsync()` trong `StartGame.Starting()`, ngay sau khi scene chứa runner đã load xong | save không load → `IsInitialized` mãi `false` → `UtcNowUnix` **vẫn trả giờ máy** và không bao giờ chống lùi. Im lặng tuyệt đối: hỏng kiểu này không lộ ở hệ Time mà lộ ở Collection |
+| **Save phải được load** — `TimeService` không còn ở trong chuỗi boot, nhưng `SaveBootstep` thì có. Runner tự gọi `InitializeAsync()` trong `Start`, nên chuỗi chạy ngay khi scene chứa runner load xong | save không load → `IsInitialized` mãi `false` → `UtcNowUnix` **vẫn trả giờ máy** và không bao giờ chống lùi. Im lặng tuyệt đối: hỏng kiểu này không lộ ở hệ Time mà lộ ở Collection |
 | Nếu dời `TimeService` khỏi scene đầu: xác nhận `FindFromScene` thấy được scene nạp bằng Addressables | không thấy thì `ServiceInjector` chỉ `LogWarning "Service Not Found"` rồi trả `null`; `ITimeService.Service` ném NRE ở caller đầu |
 
 ## Kiểm

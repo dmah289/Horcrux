@@ -18,7 +18,7 @@ namespace Horcrux.Runtime.Abstractions.Composites.LiveOps
         }
         
         public bool Contains(long nowUnix)
-            => nowUnix >= StartUnix && nowUnix <= EndUnix;
+            => nowUnix >= StartUnix && nowUnix < EndUnix;
 
         public long SecondsLeft(long nowUnix)
             => Math.Max(0, EndUnix - nowUnix);

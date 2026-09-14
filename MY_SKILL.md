@@ -47,10 +47,10 @@ nghĩa và phép kiểm*, dẫn giải đầy đủ ở mục § ghi cuối ô.
 | # | Nguyên tắc | Nội dung |
 |---|---|---|
 | 3 | **Vừa đủ** | Đơn giản là **mặc định**; mỗi lớp phức tạp thêm phải trả giá bằng **một nhu cầu đang có thật** — "phòng khi cần", "cho đầy đủ", "chuẩn hơn" **không** phải nhu cầu. Kiểm nhanh: *xoá nó đi thì hỏng ở đâu* — không gọi được tên chỗ hỏng thì bỏ. **Giá của một dòng code không nằm ở lúc viết ra nó** mà ở mọi lần sau: có người phải đọc nó, phải hiểu vì sao nó ở đó, phải nhớ nó khi sửa chỗ khác, phải giữ nó đúng. Agent sinh code gần như miễn phí nên hay bỏ quên vế giá này — đó là gốc của over-engineering. Áp cho cả **số lượng** lẫn **độ phức tạp của cách giải**: chỉ chuyển sang bản phức tạp khi bản đơn giản **chỉ ra được là không đạt** (NT10). Hai bờ vực đều sai: **thừa** (đúng, nhưng không ai cần) và **thiếu** (cắt vào mục đích ban đầu — mục đích là **sàn**). → **§2.4** |
-| 4 | **Đủ hôm nay, mở đường mai** | Triển khai đúng phạm vi đã chốt, **không code sẵn** thứ chưa ai cần (NT3); nhưng hình dạng phải để bước kế tiếp là **thêm vào**, không phải **đập ra làm lại**. Đây là **cách sắp xếp**, không phải **thêm số lượng** — chi phí hôm nay gần bằng 0. **Phòng xa dồn vào chữ ký và ranh giới trách nhiệm**: một hàm thêm sau tốn hai phút, giữ nó trong API từ đầu tốn mãi mãi; ngược lại chữ ký sai thì sửa sau rất đắt. Nghiệm thu: gọi được tên bước kế tiếp, và chỉ ra được nó là "thêm" chứ không phải "sửa". |
+| 4 | **Đủ hôm nay, mở đường mai** | Triển khai đúng phạm vi đã chốt, **không code sẵn** thứ chưa ai cần (NT3); nhưng hình dạng phải để bước kế tiếp là **thêm vào**, không phải **đập ra làm lại**. Đây là **cách sắp xếp**, không phải **thêm số lượng** — chi phí hôm nay gần bằng 0. **Phòng xa dồn vào chữ ký và ranh giới trách nhiệm**: một hàm thêm sau tốn hai phút, giữ nó trong API từ đầu tốn mãi mãi; ngược lại chữ ký sai thì sửa sau rất đắt. **Nguyên tắc này cũng định thứ tự làm** — mốc đầu tiên của một tính năng là **lõi chạy được**, không phải bản đầy đủ; mở rộng phạm vi, phủ ca biên và tối ưu là các mốc sau, mỗi thứ vào lúc nó có nhu cầu thật (§2.4). Nghiệm thu: gọi được tên bước kế tiếp, và chỉ ra được nó là "thêm" chứ không phải "sửa". |
 | 5 | **Không lặp** | *Tài liệu:* một khái niệm giải thích một nơi, sau đó trỏ về; đã giải ở tài liệu hệ khác thì trỏ sang. *Code:* **một chức năng cài đặt một nơi** — có sẵn thì dùng lại (§2.4); có người dùng thứ hai thì nâng thành tái sử dụng được (§3.2). Luật này áp cho **tri thức trùng nhau**, không áp cho **code trông giống nhau**. Phân xử với luật "để lặp" của §2.4 bằng một câu hỏi: **hai bên lệch nhau thì có hỏng ngay không?** Hỏng ngay — đo lệch vẽ, vẽ lệch hit-test — thì gộp về một nguồn là **bắt buộc** (§3.4), kể cả khi công thức hiển nhiên. Không hỏng, chỉ là hai luật độc lập tình cờ giống nhau hôm nay, thì **để lặp**. |
 | 6 | **Một luồng đọc một mạch** | Chi phí thật của một thiết kế là **số file người đọc sau phải mở để lần hết một luồng**, trả mãi mãi. Hai bờ vực: **xé vụn** — một tính năng rải qua nhiều component, nhiều lớp, hay một cây composite; mỗi mảnh đúng nhưng không mảnh nào nói được hành vi, phải chạy mới biết · **gom bừa** — một class ôm nhiều lý do thay đổi. Mặc định là **bậc thấp nhất còn đọc được**; leo bậc chỉ khi bậc dưới không còn đạt, và phải **gọi được tên thứ bậc dưới không làm được**. Composite còn là chi phí runtime — dispatch ảo, con trỏ nhảy, message của engine nhân theo số mảnh (NT8). Ba hình dạng composite phải viết lý do tại chỗ trước khi dùng: **§3.1**. |
-| 7 | **Editor-first** | Thứ gì quyết được lúc authoring thì đừng đẩy sang runtime: **code lo *hành vi*, Editor lo *cấu hình và kết nối***. Việc bắt buộc làm **trước khi build** — tạo asset, dựng GameObject, gán reference — là **một bước ghi trong tài liệu**, không phải code canh lúc chạy. → **§3.6** |
+| 7 | **Editor-first** | Thứ gì **làm chắc chắn được lúc authoring** thì không sinh code cho nó: **code lo *hành vi*, Editor lo *cấu hình và kết nối***. Việc bắt buộc làm **trước khi build** — tạo asset, dựng GameObject, gán reference — là **một bước ghi trong tài liệu**, không phải code canh lúc chạy. → **§3.6** |
 
 ## 1.3 Hai ràng buộc vận hành đứng trên
 
@@ -122,6 +122,12 @@ hoặc wire format · thứ nằm ngoài version control.
 
 **Mở rộng phạm vi thì nêu ra kèm giá phải trả, không tự làm** — chỉ khi phạm vi hiện tại **chặn** khả
 năng phát triển. Thứ developer tự nêu thì hỏi lại **một lần** để cân đắt–lợi, rồi theo developer.
+
+**Gợi ý một hướng developer chưa nghĩ tới thì cứ nêu — đó là việc được mong đợi, không phải vượt
+rào.** Phân biệt nằm ở chỗ nó dừng lại ở đâu: nêu thành **một dòng kèm giá** để developer chọn thì
+đúng; tự đưa vào output vì "tiện thể làm luôn" thì sai (NT3). Trần của phần gợi ý là **phạm vi đang
+bàn** — gợi ý kéo task sang hệ khác thì để lại một dòng ở "Mở rộng sau" (§2.5), không mở ra trong
+lượt này.
 
 ## 2.2 Đọc code rồi phải đối chiếu lại với developer
 
@@ -209,6 +215,15 @@ Thứ chỉ "có thể cần sau" chia theo **giá của việc thêm sau**: **r
 cái cũ) thì **để lại**, ghi một dòng ở mục "Mở rộng sau" · **đắt** (sửa chữ ký, đập cấu trúc, đảo
 chiều phụ thuộc) thì làm ngay — chỗ **duy nhất** đáng phòng xa. **Tính mở rộng đến từ Open/Closed**,
 không đến từ việc viết sẵn thứ chưa ai cần.
+
+**Trong phạm vi đã chốt, thứ tự làm là lõi trước (NT4).** Mốc đầu tiên là **đường đi chính chạy được
+và kiểm được** — từ input tới kết quả quan sát được, kèm phép kiểm chứng minh nó chạy (§2.8). Ca biên
+chưa có input thật chạm tới, cấu hình chưa có call site, tối ưu chưa có số đo (NT8) là **mốc sau**. Lý
+do không phải là làm cho nhanh mà là **giữ kiểm soát**: mốc nhỏ thì hỏng ở đâu lộ ra ngay ở đó, còn
+một bản đầy đủ giao một lần thì lỗi nằm lẫn giữa phần lõi và phần chưa ai cần — và người đọc lại sau
+không còn phân biệt được hai phần đó nữa. **Ranh giới:** "lõi trước" cắt theo **chiều sâu**, không cắt
+vào mục đích — mục đích là sàn (NT3); giao một mốc **không chạy được** rồi hẹn mốc sau là **thiếu**,
+không phải là nhỏ gọn.
 
 **Ranh giới của "không lặp" — tri thức, không phải hình dạng code.** Phép thử: *hai chỗ này có cùng lý
 do thay đổi không?*
@@ -530,13 +545,16 @@ trong hai ca `try/catch` được phép; luật chọn lọc ở §3.4.
 
 ## 3.6 Editor-first
 
-Thứ gì quyết được lúc authoring thì để lúc authoring quyết. Đang viết code chỉ để **tìm, nối, hoặc
-gán** thứ vốn đã tồn tại lúc authoring thì code đó đặt sai chỗ. Dấu hiệu: `GetComponent` / `Find` /
-`AddComponent` / `Resources.Load` để lấy thứ đã có trên prefab · hằng số tinh chỉnh cảm giác hardcode
-· dựng hierarchy bằng code.
+Thứ gì **làm chắc chắn được lúc authoring** thì làm ở đó và **không sinh code cho nó** — phép kiểm là
+*chắc chắn*, không phải *tiện*. Đang viết code chỉ để **tìm, nối, hoặc gán** thứ vốn đã tồn tại lúc
+authoring thì code đó đặt sai chỗ. Dấu hiệu: `GetComponent` / `Find` / `AddComponent` /
+`Resources.Load` để lấy thứ đã có trên prefab · hằng số tinh chỉnh cảm giác hardcode · dựng hierarchy
+bằng code.
 
 > **Nền tảng** — lý do gốc, không phải sở thích: dữ liệu serialize sửa được **không cần compile**, ai
-> trong team cũng chỉnh được, và khi thiếu thì lộ ra ô trống trong Inspector chứ không nổ giữa gameplay.
+> trong team cũng chỉnh được, khi thiếu thì lộ ra ô trống trong Inspector chứ không nổ giữa gameplay,
+> và giá trị thật **đọc được bằng mắt ngay trên đối tượng** — không phải lần qua nhánh code mới biết
+> lúc chạy nó ra gì.
 
 **Sổ tay** — reference kéo thả vào `[SerializeField]` · component add sẵn trên prefab · số tinh chỉnh
 phơi ra Inspector · preset thành ScriptableObject · wire sẵn trong prefab rồi `Instantiate`.

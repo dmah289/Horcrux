@@ -388,18 +388,6 @@ thừa nhưng che luôn ca thật cần biết — hai host là hai vòng autosa
 pause/quit, và một hình dạng wire sai mà không ai sửa. Chặn ở **cấu trúc**: một object, kéo tay, đếm
 được trong Editor.
 
-### Dự án này
-
-`GamePersistenceDataCollection` (namespace `Runtime.Game.PersistenceDataCollection`), asset ở
-`Assets/_TheGame/Runtime/Game/Resources/Config/PersistenceDataCollection.asset`. Một `SaveDriver` trong
-`Start.unity`, **không có Initializer** — nó nhận collection qua dòng
-`[Service(typeof(BasePersistenceDataCollection), …)]`. Chưa có `SaveBootstep` và chưa có
-`BootstrapRunner` trong scene nào. Ngoài `lastSeenUtcSeconds` mà base khai sẵn, collection chưa khai entry nào.
-
-Đang chuyển sang **một `SaveBootstep` trong `Services.unity`** làm step đầu của `BootstrapRunner` — khi
-dời thì `SaveDriver` phải **xoá khỏi `Start.unity`** trong cùng một lần sửa scene, không để lại rồi dọn
-sau; và `SaveBootstep` phải có Initializer vì nó không tự nhận service được.
-
 ### Chia việc giữa host và collection
 
 **Thân vòng lặp và `autosaveIntervalSeconds` ở collection**: cả hai host cần đúng một nhịp đó, bảo đảm

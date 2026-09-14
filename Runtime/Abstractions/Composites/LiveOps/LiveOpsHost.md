@@ -10,7 +10,7 @@
 ```
 Abstractions/Composites/LiveOps/     ILiveOpsModule.cs   (LiveOpsModuleState · LiveOpsWindow · LiveOpsSecondTick · ILiveOpsModule)
                                      ILiveOpsHost.cs · WeeklySchedule.cs
-Implementations/Composites/LiveOps/  LiveOpsModuleBase.cs · LiveOpsHost.cs
+Implementations/Composites/LiveOps/  ALiveOpsModule.cs · LiveOpsHost.cs
 ```
 
 `WeeklySchedule` ở `Abstractions/` dù có thân: hàm thuần, không phụ thuộc Unity, và là thứ module (cũng ở tầng
@@ -133,42 +133,63 @@ Mốc kiểm (anchor Monday 08:01 UTC, duration 604740). `2026-09-07` là Thứ 
 
 Tự tính mốc khác bằng `DateTimeOffset.ToUnixTimeSeconds()` trong test, không gõ tay.
 
-## §3 `LiveOpsModuleBase`
+## §3 `ALiveOpsModule`
 
 ```csharp
-using Horcrux.Runtime.Abstractions.Composites.LiveOps;
-using UnityEngine;
+using Sisus.Init;
 
-namespace Horcrux.Runtime.Implementations.Composites.LiveOps
+namespace Horcrux.Runtime.Abstractions.Composites.LiveOps
 {
     /// <summary>Skeleton of one live-ops module: state, window, one Refresh body. See LiveOpsHost.md §3.</summary>
-    public abstract class LiveOpsModuleBase : MonoBehaviour, ILiveOpsModule
+    public abstract class ALiveOpsModule : MonoBehaviour<ILiveOpsHost>, ILiveOpsModule
     {
-        public abstract string ModuleId { get; }
-        public LiveOpsModuleState State { get; private set; }
-        public long SecondsLeft => State == LiveOpsModuleState.Running ? Window.SecondsLeft(LastNowUnix) : 0;
+        #region Properties
 
-        protected LiveOpsWindow Window { get; set; }
-        protected long LastNowUnix { get; private set; }
+        public abstract string ModuleId { get; }
+
+        public LiveOpsModuleState State { get; private set; }
+
+        public long SecondsLeft => State == LiveOpsModuleState.Running
+            ? Window.SecondsLeft(LastUnix) : 0;
+
+        /// <summary>False until the host calls Initialize. Gate for data an earlier boot step loads.</summary>
+        protected bool IsInitialized { get; private set; }
+
+        protected LiveOpsWindow Window { get; private set; }
+
+        protected long LastUnix { get; private set; }
+
+        #endregion
+
+        #region Unity Callbacks
+
+        protected virtual void Start() => liveOpsHost.Register(this);
+
+        protected virtual void OnDestroy() => liveOpsHost.Unregister(this);
+
+        #endregion
+
+        #region API
 
         public void Initialize(long nowUnix)
         {
-            LastNowUnix = nowUnix;
-            Refresh(nowUnix);
+            IsInitialized = true;
+            Evaluate(nowUnix);
         }
 
-        public void Tick(long nowUnix)
-        {
-            LastNowUnix = nowUnix;
-            Refresh(nowUnix);
-        }
+        public void Tick(long nowUnix) => Evaluate(nowUnix);
 
-        /// <summary>
-        /// One body for the first evaluation and every tick: resolve the window, roll the cycle, set the state.
-        /// Must assign <see cref="Window"/> — <see cref="SecondsLeft"/> reads it, and a default window counts down from 0 —
-        /// then end with <see cref="SetState"/>.
-        /// </summary>
+        #endregion
+
+        #region Class Methods
+
+        /// <summary>Window of the cycle holding nowUnix. The base stores it in Window before each Refresh.</summary>
+        protected abstract LiveOpsWindow ResolveWindow(long nowUnix);
+
+        /// <summary>Roll the cycle, then end with SetState. Window and LastUnix are already set.</summary>
         protected abstract void Refresh(long nowUnix);
+
+        protected virtual void OnStateChanged(LiveOpsModuleState previous, LiveOpsModuleState next) { }
 
         protected void SetState(LiveOpsModuleState next)
         {
@@ -180,17 +201,22 @@ namespace Horcrux.Runtime.Implementations.Composites.LiveOps
             OnStateChanged(previous, next);
         }
 
-        protected virtual void OnStateChanged(LiveOpsModuleState previous, LiveOpsModuleState next) { }
-
-        #region Unity callbacks
-        // Start, not Awake: FindFromScene resolves the host once the scene is loaded; Awake may run before the host object exists.
-        protected virtual void Start() => ILiveOpsHost.Service.Register(this);
-
-        protected virtual void OnDestroy()
+        // One body for the first evaluation and every tick: the rollover rule must not differ between them.
+        private void Evaluate(long nowUnix)
         {
-            if (ILiveOpsHost.TryGet(out ILiveOpsHost host))
-                host.Unregister(this);
+            LastUnix = nowUnix;
+            Window = ResolveWindow(nowUnix);
+            Refresh(nowUnix);
         }
+
+        #endregion
+
+        #region DI
+
+        private ILiveOpsHost liveOpsHost;
+
+        protected override void Init(ILiveOpsHost argument) => liveOpsHost = argument;
+
         #endregion
     }
 }
@@ -198,9 +224,11 @@ namespace Horcrux.Runtime.Implementations.Composites.LiveOps
 
 | Quyết định | Vì |
 |---|---|
-| `Initialize` và `Tick` cùng một thân `Refresh` | rollover tuần lúc app đang mở và lúc mở app là một luật; hai thân sẽ lệch |
-| `Window` là property của base, `Refresh` phải gán | `SecondsLeft` đọc thẳng `Window.SecondsLeft(LastNowUnix)`. Module giữ kết quả `Resolve` trong một biến cục bộ thì `Window` đứng ở `default` — `EndUnix = 0` — và mọi countdown hiện `0m 0s` cả phiên, không lỗi nào nổ |
+| `Initialize` và `Tick` cùng một thân `Evaluate` | rollover chu kỳ lúc app đang mở và lúc mở app là một luật; hai thân sẽ lệch |
+| **Module trả về cửa sổ, base gán — `Window` có setter `private`** | `SecondsLeft` đọc thẳng `Window.SecondsLeft(LastUnix)`, nên một `Refresh` quên gán `Window` cho countdown đứng `0m 0s` cả phiên mà **không lỗi nào nổ**. Khi `Refresh` vừa phải tính vừa phải nhớ gán thì cái quên đó là chuyện của kỷ luật; tách `ResolveWindow` ra thì module **không còn cửa để quên**, vì không trả về gì là không biên dịch được |
+| **`IsInitialized`** | module đọc dữ liệu do một boot step **trước** nó nạp. `Start` của module chạy lúc scene nạp, còn chuỗi boot chạy sau đó, và lệnh từ game có thể tới sớm hơn cả hai. Cờ nằm ở base vì mọi module đều gặp đúng khe hở này, và nó trả lời đúng một câu: *host đã gọi `Initialize` chưa* |
 | Không generic `<TSave, TConfig>` | một module; host không cần biết type save/config |
+| `MonoBehaviour<ILiveOpsHost>`, không `MonoBehaviour` thuần | InitArgs tiêm host vào `Init`, nên `Register`/`Unregister` không phải đi qua `ILiveOpsHost.Service`. Bớt một service-locator, và module nhận host giả được khi cần dựng thử |
 | Module là MonoBehaviour | giữ prefab/asset của UI; scene Services sống suốt phiên |
 | Host là boot step, không phải MonoBehaviour tự lo `Start` | `BootstrapRunner` trong `Services.unity` xếp `SaveBootstep` (0) → `LiveOpsHost` (20) bằng `Order`, nên host không phải hỏi cờ nào để biết save đã load. Thứ tự do runner bảo đảm, không do cờ. (`TimeService` **không** ở trong chuỗi này — nó là `MonoBehaviour<T>` thường, tự hỏi `IsInitialized` trong getter, xem `TimeSystem.md`) |
 | `SetState` không publish EventBus | tên event là của module; base không mang vocabulary game |
@@ -222,7 +250,7 @@ namespace Horcrux.Runtime.Implementations.Composites.LiveOps
 {
     /// <summary>Gives every module the same clock: Initialize once after save, Tick once a second. See LiveOpsHost.md §4.</summary>
     [Service(typeof(ILiveOpsHost), FindFromScene = true)]
-    public class LiveOpsHost : BaseBootStep, ILiveOpsHost
+    public class LiveOpsHost : BaseBootStep, ILiveOpsHost, IInitializable<ITimeService>
     {
         private const int TickMilliseconds = 1000;
 
@@ -243,7 +271,7 @@ namespace Horcrux.Runtime.Implementations.Composites.LiveOps
 
             // Late joiner (a scene loaded after boot): give it the first evaluation the others already had.
             if (isReady)
-                liveOpsModule.Initialize(ITimeService.Service.UtcNowUnix);
+                liveOpsModule.Initialize(timeService.UtcNowUnix);
         }
 
         public void Unregister(ILiveOpsModule liveOpsModule) => modules.Remove(liveOpsModule);
@@ -251,7 +279,7 @@ namespace Horcrux.Runtime.Implementations.Composites.LiveOps
         private async UniTaskVoid RunAsync(CancellationToken ct)
         {
             // Save is loaded: Order puts this step after SaveBootstep.
-            long now = ITimeService.Service.UtcNowUnix;
+            long now = timeService.UtcNowUnix;
             for (int i = 0; i < modules.Count; i++)
                 modules[i].Initialize(now);
             isReady = true;
@@ -261,19 +289,32 @@ namespace Horcrux.Runtime.Implementations.Composites.LiveOps
                 await UniTask.Delay(TickMilliseconds, DelayType.Realtime, cancellationToken: ct);
 
                 // One read per tick: two modules must never disagree on which second it is.
-                now = ITimeService.Service.UtcNowUnix;
+                now = timeService.UtcNowUnix;
                 for (int i = 0; i < modules.Count; i++)
                     modules[i].Tick(now);
 
                 EventBus<LiveOpsSecondTick>.Publish(new LiveOpsSecondTick(now));
             }
         }
+
+        #region DI
+
+        private ITimeService timeService;
+
+        public void Init(ITimeService argument) => timeService = argument;
+
+        #endregion
     }
 }
 ```
 
+Kèm một `LiveOpsHostInitializer : Initializer<LiveOpsHost, ITimeService>` trong cùng thư mục — `LiveOpsHost`
+kế thừa `BaseBootStep` nên không dùng được `MonoBehaviour<T>`, đó là ca mà InitArgs bảo khai class
+`*Initializer` riêng.
+
 | Quyết định | Vì |
 |---|---|
+| **`IInitializable<ITimeService>`, không `ITimeService.Service`** | host đọc đồng hồ ở ba chỗ, nên đây là phụ thuộc thật chứ không phải tiện tay. Inject thì phụ thuộc đó **nằm trong chữ ký** và hỏng lộ ra lúc wire; service-locator thì nó nấp trong thân hàm và hỏng lộ ra bằng NRE ở dòng `now` đầu tiên. Đổi lại phải có `LiveOpsHostInitializer` trên object |
 | **Không** `IInitializable<BasePersistenceDataCollection>` | không dòng nào trong host đọc save: chờ `IsInitialized` đã bỏ, module tự giữ entry của mình. Inject vào rồi để đó là một field chết và một ô Init phải kéo trong scene. Cần lại thì thêm vào, cùng lúc với dòng code đọc nó |
 | `Register` sau khi loop đã chạy thì `Initialize` ngay | module ở scene nạp sau boot (Home load thêm) không được chờ tới tick kế mới có `State`; `isReady` lật một lần sau vòng `Initialize` đầu |
 | Không còn chờ `save.IsInitialized` | host là **boot step** với `Order` **sau** `SaveBootstep`, nên save đã load lúc `InitializeAsync` chạy. Thứ tự do runner bảo đảm, không do cờ |
@@ -288,12 +329,12 @@ namespace Horcrux.Runtime.Implementations.Composites.LiveOps
 
 | Bước | Thiếu thì hỏng ở đâu |
 |---|---|
-| **`BootstrapRunner` phải có người gọi `InitializeAsync()`.** Runner cố ý không tự boot — nó không biết game muốn boot lúc nào. Chỗ gọi phải đứng **sau** khi scene chứa runner đã load xong, vì `FindFromScene` chưa thấy gì trước đó; và `await` thay vì `.Forget()` để có thứ tự xác định với phần khởi động còn lại của game | **không step nào chạy**: save không load, host không `Initialize`, không tick — và không một dòng log nào nói vì sao |
-| `Services.unity`: object `LiveOpsHost`. **Không có Init** — host không đọc save, chỉ đứng sau `SaveBootstep` bằng `Order` | thiếu object thì dòng dưới; không có gì để kéo vào Init |
+| **Runner tự boot.** Nó gọi `InitializeAsync()` trong `Start` của chính nó, nên chuỗi chạy ngay khi scene chứa runner load xong và không có cửa "quên gọi". Ở dự án này `Start` đó nằm trên lớp con `GameBootstrapRunner` | thiếu runner trong scene thì **không step nào chạy**: save không load, host không `Initialize`, không tick |
+| `Services.unity`: object `LiveOpsHost`, **kèm component `LiveOpsHostInitializer`** cấp `ITimeService` | thiếu Initializer thì `Init` không được gọi, `timeService` là `null`, và NRE nổ ở dòng `now` đầu tiên của `RunAsync` — tức ngay trong chuỗi boot, nơi `.Forget()` chỉ để lại một dòng đỏ |
 | **`FindFromScene` phải thấy được `Services.unity`** — scene này nạp bằng Addressables, tức **sau** khi InitArgs khởi tạo; tiền lệ đang chạy được của dự án nằm ở scene đầu | `ServiceInjector` chỉ `LogWarning "Service Not Found"` rồi trả `null`; `IService.Service` ném NRE ở caller đầu |
 | Kéo `LiveOpsHost` vào list `steps` của `BootstrapRunner`, `Order` **sau** `SaveBootstep` (`TimeService` và `RewardService` không phải step) | `InitializeAsync` không chạy → không module nào `Initialize`, không tick, widget im lặng không hiện |
 | `TimeService` có trong scene (xem `TimeSystem.md`) | `ITimeService.Service` ném ở dòng `now` đầu tiên |
-| Module: component kế thừa `LiveOpsModuleBase` đặt trong cùng scene | không ai `Register` → module không bao giờ `Initialize` |
+| Module: component kế thừa `ALiveOpsModule` đặt trong cùng scene | không ai `Register` → module không bao giờ `Initialize` |
 
 ## Kiểm
 
@@ -303,7 +344,7 @@ namespace Horcrux.Runtime.Implementations.Composites.LiveOps
 | Đổi giờ máy qua mốc anchor rồi mở app | module rollover một lần, `State` đúng | **developer** — Play mode |
 | Đứng ở Home qua mốc `EndUnix` | tick kế → `Inactive`, `SecondsLeft` = 0, không số âm | **developer** — Play mode |
 
-`LiveOpsModuleBase` và `LiveOpsHost` không có test tự động: cả hai là MonoBehaviour buộc vào nhịp Unity và
+`ALiveOpsModule` và `LiveOpsHost` không có test tự động: cả hai là MonoBehaviour buộc vào nhịp Unity và
 save đã load. Agent kiểm chúng bằng biên dịch; hành vi kiểm ở hai dòng Play mode trên.
 
 ## §5 Để sau
