@@ -471,10 +471,18 @@ chạy" đủ để dựng lại từ 0 — bỏ code canh mà không viết bư
 
 ## 3.7 Naming — self-documenting code
 
+- **Tên là lời giải thích thứ nhất, comment là phương án cuối.** Tên biến, hàm, class đạt khi
+  developer mới đọc hiểu ngay mà **không cần comment**; phải kèm comment mới hiểu nghĩa là tên chưa
+  đạt — đổi tên trước, không viết thêm chữ. Tên tự giải thích **mạnh** nhưng **không quá 5 từ**:
+  `currPresentedTokens`, `RefreshBoxesSelectability`, `CollectionConfigParser`. Quá 5 từ là khái niệm
+  chưa tách đủ — tách hàm/class, không viết tắt cho vừa.
 - Tên method nói rõ **mục đích**: `EnsureMaterial()`, `SwapWriteBuffer()`, `SolveAnalytic()`. Tên vô
   nghĩa cần thay: `Process`, `Handle`, `DoWork`, `Update2`.
 - Boolean đọc như một câu hỏi: `IsPickable`, `HasPendingInput`, `frameDataReady`.
-- Code tự giải thích được thì comment **chỉ** nói **tại sao**, không nói **cái gì**.
+- **Comment chỉ khi thật sự cần thiết — mặc định là không có.** Tự giải thích áp cho cả tên **và
+  logic**: đoạn nào cần comment mới theo dõi được thì tách hàm có tên, đảo điều kiện, đặt biến trung
+  gian có tên — sửa code, không chú thích code. Comment còn lại **chỉ** nói **tại sao** (quyết định
+  trái trực giác, bẫy đã sai một lần §3.4, công thức nguồn §4), không bao giờ nói **cái gì**.
 - API public có XML doc; `<param>` cho mọi tham số có contract không hiển nhiên.
 - **Comment, tooltip và XML doc là chỗ đọc nhanh** — cơ chế và trade-off thuộc tài liệu của hệ (§5).
   Trần: **17–20 từ** cho comment và tooltip · **35 từ** cho `<summary>` · **15 từ** cho `<param>`,
