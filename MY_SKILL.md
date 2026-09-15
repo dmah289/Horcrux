@@ -473,12 +473,31 @@ chạy" đủ để dựng lại từ 0 — bỏ code canh mà không viết bư
 
 - **Tên là lời giải thích thứ nhất, comment là phương án cuối.** Tên biến, hàm, class đạt khi
   developer mới đọc hiểu ngay mà **không cần comment**; phải kèm comment mới hiểu nghĩa là tên chưa
-  đạt — đổi tên trước, không viết thêm chữ. Tên tự giải thích **mạnh** nhưng **không quá 5 từ**:
-  `currPresentedTokens`, `RefreshBoxesSelectability`, `CollectionConfigParser`. Quá 5 từ là khái niệm
-  chưa tách đủ — tách hàm/class, không viết tắt cho vừa.
+  đạt — đổi tên trước, không viết thêm chữ. Tên tự giải thích **mạnh** nhưng gọn: trần là **5 từ
+  dài**; 6–7 từ ngắn đọc một mạch vẫn đạt (`elapsedSecondsSinceLastSave`). Từ dài thì **viết tắt quen
+  mắt** cho gọn — `curr` · `prev` · `max` · `min` · `Utc` — không tự chế cách viết tắt mới. Viết tắt rồi
+  vẫn vượt trần là khái niệm chưa tách đủ — tách hàm/class.
+- **Tên mang đủ ngữ nghĩa về giá trị nó giữ** — đọc tên biết ngay *cái gì*, *lúc nào*, *đã xảy ra gì*
+  với giá trị, không suy từ ngữ cảnh xung quanh:
+  - *Lúc nào / thứ tự*: `curr` · `last` · `prev` · `next` — `currLevelIndex`, không `levelIndex` (level
+    nào?). Các field cùng nói về một đối tượng dùng chung tiền tố: `CurrLevelIndex` · `CurrLevelScore`
+    · `CurrLevelGoal`.
+  - *Đếm hay vị trí*: hậu tố `Amount` cho số lượng, `Index` cho vị trí — `loadedAssetsAmount` vs
+    `currAssetIndex`. Danh từ số nhiều đứng một mình (`loadedAssets`) đọc như một danh sách.
+  - *Tổng dồn*: tiền tố `total` — `totalSpentCoins`.
+  - *Đã xảy ra gì*: quá khứ phân từ nói điều đã xảy ra **với giá trị, theo góc nhìn người chơi hay dữ
+    liệu** — `collected` · `animated` · `claimed` · `played`: `currAnimatedScore` (số người chơi đã thấy
+    chạy tới), `playedIntro`. Không dùng từ mờ (`introDone`) hay từ tả hành động của hệ
+    (`presentedScore`).
+  - *Biến cục bộ cùng luật*: `cumulativeWeight`, `visibleItemsAmount` — tính từ đứng một mình
+    (`cumulative`, `visible`) không phải tên. Tính từ đứng trước danh từ theo tiếng Anh:
+    `inclusiveEndIndex`, không `endIndexInclusive`.
+- **Tiền tố loại type**: interface `I…`, abstract class `A…` (`ALiveOpsModule`) — nhìn tên biết ngay
+  không `new` được và phải tìm subclass.
 - Tên method nói rõ **mục đích**: `EnsureMaterial()`, `SwapWriteBuffer()`, `SolveAnalytic()`. Tên vô
   nghĩa cần thay: `Process`, `Handle`, `DoWork`, `Update2`.
-- Boolean đọc như một câu hỏi: `IsPickable`, `HasPendingInput`, `frameDataReady`.
+- Boolean đọc như một câu hỏi: `IsPickable`, `HasPendingInput`, `frameDataReady`; `IsFinished`, không
+  `Finished`.
 - **Comment chỉ khi thật sự cần thiết — mặc định là không có.** Tự giải thích áp cho cả tên **và
   logic**: đoạn nào cần comment mới theo dõi được thì tách hàm có tên, đảo điều kiện, đặt biến trung
   gian có tên — sửa code, không chú thích code. Comment còn lại **chỉ** nói **tại sao** (quyết định
