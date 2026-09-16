@@ -720,6 +720,12 @@ theo §2.8).
 **Plan không thuật lại code.** Bảng lý do ghi *quyết định và vì sao chọn nó*, không kể *code làm gì*
 (§5.4).
 
+**Hai loại Plan, hai hình dạng code.** Hệ **chưa có code** thì mỗi khối là **một file trọn vẹn** để chép.
+Hệ **đang có code** thì Plan là **chuỗi chỗ đổi theo thứ tự**: mỗi bước một chỗ — file · dòng hiện tại ·
+đoạn cũ → đoạn mới; dòng không nhắc là dòng giữ nguyên. Chép nguyên khối chỉ khi gần mọi dòng của khối
+đều đổi, và kèm một dòng "so với cũ". Chép cả file cho hệ đang có là bắt developer tự so từng dòng để tìm
+chỗ khác — đúng việc Plan phải làm hộ.
+
 **Code trong plan — năm đảm bảo:** **vừa đủ** và **mở đường mai** (NT1) · **đúng với công thức đã
 chốt** — "code khớp công thức", không phải "công thức phải khớp vật lý" (NT9) · **hiệu năng** theo NT2
 và §3.3 · **self-document** theo §3.7.
