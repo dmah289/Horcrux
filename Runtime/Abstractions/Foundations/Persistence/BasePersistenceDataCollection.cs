@@ -121,8 +121,10 @@ namespace Horcrux.Runtime.Abstractions.Persistence
             catch (Exception e)
             {
                 // Not seeded on purpose: overwriting a broken payload destroys the only copy of it.
+                // Treating the default as stored keeps flush away until the player changes something.
                 entry.CacheStoredPayload(entry.WritePayload());
                 Debug.LogError($"[PersistenceDataCollection]: Reading entry '{entry.Key}' failed — using its default", this);
+                Debug.LogException(e, this);
                 return EntryLoadResult.Failed;
             }
         }
@@ -153,7 +155,7 @@ namespace Horcrux.Runtime.Abstractions.Persistence
         
         protected virtual void OnEntriesLoaded() { }
 
-        /// <summary>The one flush body. A null <paramref name="only"/> flushes every dirty entry, otherwise just that one.</summary>
+        /// <summary>The one flush body. A null <paramref name="only"/> flushes every changed entry, otherwise just that one.</summary>
         private void FlushInternal(IPersistenceDataEntry only)
         {
             writtenThisFlush.Clear();
@@ -170,10 +172,11 @@ namespace Horcrux.Runtime.Abstractions.Persistence
                 {
                     string payload = entry.WritePayload();
 
+                    // In-place edits never announce themselves; comparing payloads is the one check that sees them.
                     if (string.Equals(payload, entry.StoredPayload, StringComparison.Ordinal))
                         continue;
                     
-                    PlayerPrefs.SetString(GetFinalKey(entry.Key), entry.WritePayload());
+                    PlayerPrefs.SetString(GetFinalKey(entry.Key), payload);
                     writtenThisFlush.Add((entry, payload));
                 }
                 catch (Exception e)
@@ -187,7 +190,7 @@ namespace Horcrux.Runtime.Abstractions.Persistence
             if (writtenThisFlush.Count == 0)
                 return;
 
-            // Phase two: the only call that reaches storage. Dirty clears after it lands, never before.
+            // Phase two: the only call that reaches storage. StoredPayload updates after it lands, never before.
             PlayerPrefs.Save();
 
             for (int i = 0; i < writtenThisFlush.Count; i++)

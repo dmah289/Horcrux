@@ -84,9 +84,9 @@ namespace Horcrux.Runtime.Abstractions
 
 ## 0.3 Quy ước lưu trữ
 
-Mọi hệ có state đều lưu qua **save-unit riêng** của mình (§2), **không** dùng chung một blob toàn cục. Hệ chỉ khai báo model + implement `ISaveUnit`; registry lo dirty/autosave/crypto.
+State lưu qua **entry riêng** cho từng thứ (§2), **không** dùng chung một blob toàn cục. Dự án khai model dữ liệu thuần; collection lo scan field, load, autosave và flush.
 
-📄 Đã có plan, **hai bản thay thế nhau, chọn một**: `Abstractions/Foundations/Persistence/PersistenceV1.md` (lưu vào PlayerPrefs, model JSON-hoá bằng Newtonsoft, 7 file) · `Abstractions/Foundations/Persistence/PersistenceV2.md` (lưu ra file trên đĩa, format thay được qua `ISerializer`, 10 file, kèm bước nhập dữ liệu một chiều từ bản V1). Cả hai đều không crypto — decorator quanh serializer thêm sau.
+📄 Hệ đã dựng, tài liệu: `Abstractions/Foundations/Persistence/Persistence.md`. Mỗi thứ lưu được là một `PersistenceDataEntry<T>`, đặt làm field `[MarkedPersistence]` trên một `ScriptableObject` dẫn xuất `BasePersistenceDataCollection`. Kho là PlayerPrefs, payload là JSON Newtonsoft, và flush biết có gì đổi bằng cách **so chuỗi payload** với chuỗi kho đang giữ. Chưa có crypto — decorator thêm sau. **Hệ SDK lấy giá trị save bằng đường nào thì chưa chốt**, xem mục "Còn để mở" của `Persistence.md`.
 
 ## 0.4 Hiệu năng — luật áp cho mọi hệ dưới đây
 
@@ -129,7 +129,7 @@ Mỗi hệ chỉ coi là xong khi đủ 5 điều: ① contract tách khỏi imp
 |---|---|---|
 | **Ref-count + scope** | Nhiều nguồn cùng yêu cầu một trạng thái bật/tắt (chặn input §3, rung liên tục §9) ⇒ đếm tham chiếu, **không** dùng `bool`: nguồn đầu tiên nhả sẽ tắt sớm. Luôn kèm `IDisposable …Scope()` để `try/finally` không rò | §3 `IInteractionBlocker` |
 | **Thời gian = UTC qua `ITimeService`** | Không hệ nào được gọi `DateTime.Now`/`Time.time` để tính logic. Lưu `long` Unix-UTC; đổi sang local **chỉ** ở tầng hiển thị. Ngoại lệ duy nhất có chủ ý: Day Active (§21) | §4 |
-| **Dirty + gộp cuối frame** | Nguồn đổi → `MarkDirty()`; tính lại một lần ở `PlayerLoopTiming.LastUpdate`. N lần đổi trong 1 frame = 1 lần tính | §11b (cây badge), §2 (autosave) |
+| **Dirty + gộp cuối frame** | Nguồn đổi → `MarkDirty()`; tính lại một lần ở `PlayerLoopTiming.LastUpdate`. N lần đổi trong 1 frame = 1 lần tính | §11b (cây badge) |
 
 ---
 
@@ -171,7 +171,7 @@ Bảy hệ dưới đây đã được viết plan tự chứa, có code dán-đ
 | Hệ | File plan | Trong plan | **Ngoài** plan (vẫn ở tài liệu này) |
 |---|---|---|---|
 | 1 Bootstrap | `Implementations/Foundations/Bootstrap/BootstrapSystem.md` | `BootStep` (Order + 2 nhịp + 2 hook app) + `BootstrapRunner` (sort ổn định, fail-open, token vòng đời, `BootProgress`) + `IBootstrapService` (`IsInitialized` + `UntilInitialized`) + `IOptionalService<T>` (§0.2) + demo nghiệm thu. 7 file | manifest SO · parallel-in-phase · nhóm bước theo scene |
-| 2 Persistence | **hai bản, chọn một:** `Abstractions/Foundations/Persistence/PersistenceV1.md` · `Abstractions/Foundations/Persistence/PersistenceV2.md` | Chung cả hai bản: `ISaveUnit`/`SaveUnit<TModel>` (typed + dirty + on-change) + `SaveRegistry` (load-lúc-Register, autosave, flush pause/quit) + typed-prefs `Prefs<T>` + 4 chuyên biệt (§A.3) + demo nghiệm thu. **V1** lưu vào PlayerPrefs, JSON Newtonsoft cố định, 7 file. **V2** lưu ra file, ghi nguyên tử, `ISerializer` 2 impl (Newtonsoft JSON · MemoryPack qua versionDefines), nhập một chiều từ V1, 10 file. Phần API game chạm giống hệt nhau ở hai bản | crypto decorator · cloud (`ICloudSyncable` + merge rule) · migration version cho model · `PrefsDateTime`/`ForceRefresh`/`syncToServer` |
+| 2 Persistence | **đã dựng xong:** `Abstractions/Foundations/Persistence/Persistence.md` | `PersistenceDataEntry<T>` (typed + on-change + nhớ payload kho đang giữ) + `BasePersistenceDataCollection` (scan field `[MarkedPersistence]`, load lúc `Initialize`, autosave, flush hai giai đoạn so payload) + hai host `SaveDriver` / `SaveBootstep`, chọn đúng một. Kho PlayerPrefs, payload JSON Newtonsoft. 7 file abstraction + 2 host | crypto decorator · cloud sync · migration version cho model · kho file trên đĩa · `Prefs<T>` và `ISerializer` — cả hai **cố ý không làm**, lý do ở `Persistence.md` |
 | 4a Ticker (+4b Time) | `Implementations/Foundations/Ticker/TickerSystem.md` | `ITicker` + **2 nhịp** (`ITickable`, `IPauseAware`) + 1 `Update` duy nhất, `IOptionalService<T>` (§0.2), `DeferredList<T>`. 6 file | **nhịp 1 Hz** (`ISecondTickable`), `Destroyed` event, `ITimeService`, chống tua giờ, `Countdown`, `TimeFormatter` |
 | §9 Haptics | `Implementations/Foundations/Haptics/HapticSystem.md` | `PlayCustom(HapticPattern)` + `IHapticBackend` (**2 member**) + backend Android có **biên độ**. 6 file | **bộ preset** (`EHapticPreset` + `Play(preset)`), rung liên tục (`Begin/End` + ref-count), waveform, impl vendor, `IHapticSettings` |
 | §8 Audio | `Implementations/Foundations/Audio/AudioSystem.md` | ⚠️ **SFX 2D + `pitchScale`** (xem cảnh báo ở §8), catalog SO, throttle theo clip, voice gán ở Inspector. 6 file | **SFX 3D** (`PlaySfxAt`), music + crossfade, `PauseAll/ResumeAll`, `EAudioSelectMode`, `IAudioSettings`, mixer group |
@@ -299,7 +299,12 @@ init đồng bộ chen trước chuỗi async · lạm dụng service-locator l�
 
 ---
 
-## 2. Persistence — `Foundation` · *thiết kế mới trên bằng chứng*
+## 2. Persistence — `Foundation` · *đã dựng; mục này là bằng chứng và bài toán, không phải hình dạng đang chạy*
+
+> Hình dạng chốt lại khác mục này: không có `ISaveUnit` / `SaveRegistry` / `Prefs<T>` / `ISerializer`, và
+> không có cờ dirty — flush so chuỗi payload. Hình dạng đang chạy và lý do từng quyết định nằm ở
+> `Abstractions/Foundations/Persistence/Persistence.md`. Giữ mục này vì phần **bằng chứng từ 4 repo** và
+> phần **bài toán** vẫn đúng và không chép lại ở đâu khác.
 
 **Bài toán.** Lưu tiến độ người chơi phải **có kiểu**, **không mất khi app bị kill**, và **không biến
 thành god-blob** mọi hệ cùng thò tay vào. Bằng chứng cho thấy cả 4 repo **chưa có bản đúng tư tưởng nào
