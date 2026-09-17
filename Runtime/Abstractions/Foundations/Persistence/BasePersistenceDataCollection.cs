@@ -28,7 +28,7 @@ namespace Horcrux.Runtime.Abstractions.Persistence
         [SerializeField] private bool isInitialized;
 
         private readonly List<IPersistenceDataEntry> entries = new();
-        private readonly List<IPersistenceDataEntry> pendingClearDirtyEntries = new();
+        private readonly List<(IPersistenceDataEntry entry, string payload)> writtenThisFlush = new();
         
         private List<FieldInfo> cachedMarkedPersistenceFields;
         
@@ -103,21 +103,15 @@ namespace Horcrux.Runtime.Abstractions.Persistence
         {
             string storageKey = GetFinalKey(entry.Key);
 
-            // first use of this entry, keep the default.
+            // first use of this entry, next flush writes the default.
             if (!PlayerPrefs.HasKey(storageKey))
-            {
-                entry.MarkDirty();
                 return EntryLoadResult.Seeded;
-            }
 
             string payload = PlayerPrefs.GetString(storageKey);
 
             // Key exists but carries nothing readable — same as first use, and no data to lose.
             if (string.IsNullOrEmpty(payload))
-            {
-                entry.MarkDirty();
                 return EntryLoadResult.Seeded;
-            }
 
             try
             {
@@ -127,8 +121,8 @@ namespace Horcrux.Runtime.Abstractions.Persistence
             catch (Exception e)
             {
                 // Not seeded on purpose: overwriting a broken payload destroys the only copy of it.
+                entry.CacheStoredPayload(entry.WritePayload());
                 Debug.LogError($"[PersistenceDataCollection]: Reading entry '{entry.Key}' failed — using its default", this);
-                Debug.LogException(e, this);
                 return EntryLoadResult.Failed;
             }
         }
@@ -162,9 +156,9 @@ namespace Horcrux.Runtime.Abstractions.Persistence
         /// <summary>The one flush body. A null <paramref name="only"/> flushes every dirty entry, otherwise just that one.</summary>
         private void FlushInternal(IPersistenceDataEntry only)
         {
-            pendingClearDirtyEntries.Clear();
+            writtenThisFlush.Clear();
 
-            // Phase one: hand the payloads to PlayerPrefs. Dirty stays on — this is still memory.
+            // Phase one: hand changed payloads to PlayerPrefs. Still memory - not storage.
             for (int i = 0; i < entries.Count; i++)
             {
                 IPersistenceDataEntry entry = entries[i];
@@ -172,30 +166,32 @@ namespace Horcrux.Runtime.Abstractions.Persistence
                 if (only != null && !ReferenceEquals(entry, only))
                     continue;
 
-                if (!entry.IsDirty)
-                    continue;
-
                 try
                 {
+                    string payload = entry.WritePayload();
+
+                    if (string.Equals(payload, entry.StoredPayload, StringComparison.Ordinal))
+                        continue;
+                    
                     PlayerPrefs.SetString(GetFinalKey(entry.Key), entry.WritePayload());
-                    pendingClearDirtyEntries.Add(entry);
+                    writtenThisFlush.Add((entry, payload));
                 }
                 catch (Exception e)
                 {
                     Debug.LogError($"[PersistenceDataCollection]: Writing entry '{entry.Key}' failed" +
-                                   " — it stays dirty and retries next flush.", this);
+                                   " — it retries next flush.", this);
                     Debug.LogException(e, this);
                 }
             }
 
-            if (pendingClearDirtyEntries.Count == 0)
+            if (writtenThisFlush.Count == 0)
                 return;
 
             // Phase two: the only call that reaches storage. Dirty clears after it lands, never before.
             PlayerPrefs.Save();
 
-            for (int i = 0; i < pendingClearDirtyEntries.Count; i++)
-                pendingClearDirtyEntries[i].ClearDirty();
+            for (int i = 0; i < writtenThisFlush.Count; i++)
+                writtenThisFlush[i].entry.CacheStoredPayload(writtenThisFlush[i].payload);
         }
 
         private string GetFinalKey(string entryKey)

@@ -9,7 +9,7 @@ namespace Horcrux.Runtime.Abstractions.Persistence
     /// All types are stored in JSON string.
     /// </summary>
     /// <remarks>
-    /// <typeparamref name="T"/> must be plain data — no UnityEngine type. See Persistence.md.
+    /// <typeparamref name="T"/> must be plain data with stable serialization — no UnityEngine type. See Persistence.md.
     /// </remarks>
     [Serializable]
     public partial class PersistenceDataEntry<T> : IPersistenceDataEntry
@@ -21,18 +21,19 @@ namespace Horcrux.Runtime.Abstractions.Persistence
         private T defaultValue;
 
         [ShowInInspector, ReadOnly] private T value;
-        [ShowInInspector, ReadOnly] private bool isDirty;
+        [ShowInInspector, ReadOnly] private string storedPayload;
         
         public event Action<T> OnValueChanged;
 
 
         #region Properties
+        
         public static implicit operator T(PersistenceDataEntry<T> entry)
             => entry != null ? entry.Value : default;
 
         public string Key => key;
-        
-        public bool IsDirty => isDirty;
+
+        public string StoredPayload => storedPayload;
 
         public T Value
         {
@@ -40,23 +41,19 @@ namespace Horcrux.Runtime.Abstractions.Persistence
             set
             {
                 this.value = value;
-                MarkDirty();
+                RaiseChanged();
             }
         }
+        
         #endregion
 
         #region API
-        public void MarkDirty()
-        {
-            isDirty = true;
-            RaiseChanged();
-        }
         
         public void Setup(IPersistenceDataCollection owner)
         {
             _owner = owner;
             OnValueChanged = null;
-            isDirty = false;
+            storedPayload = null;
             value = CloneDefault();
         }
 
@@ -64,15 +61,19 @@ namespace Horcrux.Runtime.Abstractions.Persistence
         {
             T loaded = JsonConvert.DeserializeObject<T>(payload);
             value = loaded == null ? CloneDefault() : loaded;
-            isDirty = false;
+            storedPayload = payload;
             RaiseChanged();
         }
 
         public string WritePayload()
-            => JsonConvert.SerializeObject(value);
+        {
+            return JsonConvert.SerializeObject(value);
+        }
 
-        void IPersistenceDataEntry.ClearDirty()
-            => isDirty = false;
+        void IPersistenceDataEntry.CacheStoredPayload(string payload)
+        {
+            storedPayload = payload;
+        }
 
         public void FlushNow()
         {
@@ -88,6 +89,7 @@ namespace Horcrux.Runtime.Abstractions.Persistence
         #endregion
 
         #region Class Methods
+
         /// <summary>
         ///  Avoid reference issues by cloning the default value.
         /// </summary>
@@ -95,7 +97,9 @@ namespace Horcrux.Runtime.Abstractions.Persistence
         /// Return a new object with the same value as the default value.
         /// </returns>
         private T CloneDefault()
-            => JsonConvert.DeserializeObject<T>(JsonConvert.SerializeObject(defaultValue));
+        {
+            return JsonConvert.DeserializeObject<T>(JsonConvert.SerializeObject(defaultValue));
+        }
         
         private void RaiseChanged()
         {
@@ -118,6 +122,7 @@ namespace Horcrux.Runtime.Abstractions.Persistence
                 }
             }
         }
+        
         #endregion
     }
 }
