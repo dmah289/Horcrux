@@ -250,8 +250,17 @@ khi phân vân: **công sức đắt nhất trong nghiệm thu là của develop
 | **D** | **Consumer không tự `new` thứ nó phụ thuộc** — nó nhận vào (factory, pool, container thì đương nhiên phải `new`). `D` **không đòi interface**: **trong một hệ**, nhận vào class cụ thể vẫn là "nhận vào". **Qua ranh giới hệ** thì theo §3.2. |
 
 > **Nền tảng** — DI runtime mặc định là InitArgs (`Sisus.Init`): `[Service(typeof(T))]` để đăng ký,
-> `MonoBehaviour<TDep>` + `Init(TDep)` để nhận. Editor và tooling không bắt buộc dùng InitArgs —
-> constructor injection hoặc static factory ở đó là hợp lệ.
+> `MonoBehaviour<TDep>` + `Init(TDep)` để nhận. **Mỗi class chỉ có MỘT khe `Init` mà framework tự
+> gọi** — một base generic của thư viện đã tiêu khe đó thì một `IInitializable<…>` khai thêm ở class
+> con **không ai gọi**: đường tự tiêm còn lại thoát sớm với mọi class kế thừa base generic của
+> `Sisus.Init`, và dòng log báo việc đó nằm trong `#if DEV_MODE`. Ca này **bắt buộc** một
+> `*Initializer` kéo tay vào scene; nó không phá đường tiêm của base — hai đường độc lập. Editor và
+> tooling không bắt buộc dùng InitArgs — constructor injection hoặc static factory ở đó là hợp lệ.
+
+**Đổi từ resolve lười sang resolve sớm là dịch cửa sổ thất bại, không phải bỏ nó.** `Service.Get<T>()`
+gọi lúc dùng thì hỏng lúc dùng; nhận qua `Init` thì hỏng lúc khởi tạo. Đổi chiều nào cũng phải hỏi
+lại: **lúc đó thứ mình cần đã tồn tại chưa?** — thứ tự `Awake` giữa các object không định trước, và
+service tìm-từ-scene chỉ có sau khi scene chứa nó nạp xong.
 
 **Bậc cấu trúc leo từ dưới lên, mỗi bậc chỉ leo khi bậc dưới không còn đạt** (NT4). SOLID phục vụ
 **người đọc sau**: chia thiếu và chia thừa đều sai ở cùng một chỗ là **chi phí đọc**.
@@ -295,10 +304,10 @@ token của nó là đời của ai, và đời đó dài đúng bằng nhịp**
 loop **chết im lặng**: hủy là hành vi hợp đồng, thư viện async không log, phần còn lại vẫn chạy như
 thường. Editor không bắt được ca này, phải đọc code.
 
-> **Nền tảng** — thứ tự region trong một class là **cố định**: `Unity Callbacks` trên cùng ·
-> `Properties` · `API` (thứ người ngoài gọi) · `Class Methods` (thân private) · `DI` **cuối class**,
-> gói field nhận vào cùng `Init`. Trình tự **vòng đời → mặt ngoài → thân**; phụ thuộc xuống cuối vì đó
-> là thứ hỏi sau cùng.
+> **Nền tảng** — thứ tự region trong một class là **cố định**: `Properties` trên cùng ·
+> `Unity Callbacks` · `API` (thứ người ngoài gọi) · `Class Methods` (thân private) · `DI` **cuối
+> class**, gói field nhận vào cùng `Init`. Trình tự **trạng thái → vòng đời → mặt ngoài → thân**: mở
+> file ra là thấy class giữ gì trước khi thấy nó làm gì; phụ thuộc xuống cuối vì đó là thứ hỏi sau cùng.
 
 **Sổ tay** — hình dạng file và class đang dùng trong bộ này:
 
@@ -384,11 +393,39 @@ Bất biến giữ bằng "mọi người nhớ làm đúng" sẽ vỡ ở đún
 | **Cửa hẹp là thân chung của cửa rộng** | bản giữ-lại-một-phần gọi vào thân bản đầy đủ — hai bên không thể lệch nhau |
 | **Một bảo đảm phải phủ MỌI đường vào** | hệ tuyên bố "mất không quá X", "luôn hợp lệ" thì **mọi** cửa ghi phải đi qua chỗ tạo ra bảo đảm đó. Cửa thứ hai đi vòng làm bảo đảm **chỉ còn đúng cho một nửa hệ** trong khi tài liệu vẫn phát biểu nguyên câu |
 
+**Quyết định mà lý do là "phải nhớ đừng…" thì chỗ đặt sai, không phải tên sai.** Gặp một ràng buộc chỉ
+sống bằng trí nhớ, hỏi: **có chỗ đặt nào làm việc "đừng" đó bất khả thi không?** Thường có, và thường
+rẻ. *Đã sai một lần:* một helper tên `InstantiateAsync` khai trong class con của `MonoBehaviour` che
+**toàn bộ** overload cùng tên của `UnityEngine.Object` — chỗ gọi nhìn như API engine nhưng chạy hàm
+nhà. Đổi tên helper thì ràng buộc vẫn còn, chỉ đang được tuân thủ; đưa nó ra **extension method** thì
+ràng buộc biến mất, vì extension không bao giờ che được instance method. Helper không dùng state của
+class thì vốn không thuộc về class đó.
+
 **Phép kiểm của luật cuối — đếm cửa trước, đọc thân sau.** Đường phụ sinh ra sau, người viết không
 nghĩ mình đang chạm vào bảo đảm nào. **Liệt kê mọi cửa ghi vào cùng một kho** (grep API ghi của kho),
 rồi với từng cửa: chỉ ra nó đi qua chỗ tạo bảo đảm, hoặc **viết tại chỗ rằng cửa này không được bảo
 đảm**. Ép mọi cửa về **một** thân là cách rẻ nhất giữ phép kiểm còn đúng về sau (nhánh **tầm nhìn**,
 §2.8).
+
+**Một hệ quả bắt buộc thì đặt trong setter, đừng đặt trong method riêng.** `SetX(v)` cạnh một field
+`x` là **hai cửa ghi**; property có setter là một. Chỉ áp khi hệ quả **luôn phải xảy ra**, rẻ, và
+không ném — hệ quả tuỳ chọn hay tốn kém thì giữ method, vì sau dấu `=` người đọc không chờ đợi một cái
+giá. **Đổi method thành property là đổi hợp đồng ở hai nơi:** interface phải khai `{ get; set; }`, nếu
+không người ngoài cầm interface sẽ không ghi được — mà lỗi đó chỉ lộ khi viết tới consumer; và độ rộng
+của setter phải chọn lại, `internal void SetX` thành `public X { get; set; }` là nới quyền ghi ra cả
+assembly khác mà không ai để ý.
+
+**Chọn cấu trúc theo bảo đảm mà người dùng nó đang dựa vào, không theo thao tác thuận tay.** Gộp theo
+khoá thì `Dictionary` là phản xạ đúng khi kết quả để **tra cứu**, và sai khi kết quả là **danh sách để
+vẽ**: thứ tự duyệt `Dictionary` không có bảo đảm nào, UI sẽ đảo hàng giữa các lần chạy và không ai gọi
+đó là bug. Gộp tại chỗ vào `List` theo thứ tự gặp đầu tiên thì thứ tự là một bảo đảm viết ra được và
+test được.
+
+**Một danh sách vừa là lệnh vừa là thứ để vẽ thì hỏi hai vai có chung khoá gộp không.** Vai *thực thi*
+gộp theo khoá của hệ nhận lệnh, vai *hiển thị* gộp theo khoá người dùng nhìn thấy — hai khoá đó thường
+ánh xạ nhiều-về-một, nên gộp theo khoá của vai này là vai kia mất hàng. **Và tổng hợp đặt ở chỗ nhìn
+thấy đủ dữ liệu:** kho cộng dồn qua nhiều chu kỳ thì gộp lúc *ghi vào* không thấy chu kỳ trước, phải
+gộp lúc *đọc ra*.
 
 **Guard — một câu hỏi duy nhất: cái sai đó lộ ra lúc nào?** Đích là **bản build không có ca null hay
 ca sai nào**; guard hay không guard chỉ là hai đường tới cùng đích.
@@ -406,6 +443,7 @@ ca sai nào**; guard hay không guard chỉ là hai đường tới cùng đích
 | **Giá trị mặc định của kiểu là giá trị hợp lệ** — `float` 0, `bool` false, list rỗng, enum phần tử đầu | ô trống trong Inspector **không phân biệt được** với ô cố ý điền giá trị đó | **authoring, không phải guard runtime**: default ngay trong khai báo field, kẹp dải bằng `[Min]`/`[Range]` |
 | **Host bắt lỗi fail-open** — vòng dispatch, chain boot log rồi bỏ qua step lỗi | thiếu wire thành **một dòng log lúc boot** rồi cả phiên chạy thiếu hẳn một hệ | không thêm guard: hệ tự đứng được không cần host đó, hoặc thiếu nó phải hỏng ở **cửa mà người chơi chạm** |
 | **Vòng lặp nhận sai token** | hủy là hành vi hợp đồng, không log (§3.1) | mỗi loop chỉ ra được token của nó là đời của ai |
+| **Chỗ nổ nằm trong `#if DEBUG`** | Editor và dev build ném to, **bản release không có dòng đó** — cùng một ca thành null chạy tiếp rồi NRE ở chỗ khác, xa chỗ sai | đọc `#if` bao quanh mọi guard của thư viện ngoài trước khi tin vào nó |
 
 *Đã sai một lần, nguồn của hai hàng đầu:* một hệ lưu dữ liệu có field khoảng thời gian không default —
 quên điền ra 0, thành ghi đĩa **mỗi frame**; cùng hệ gắn loop tự lưu vào token của pha boot mà runner
@@ -444,7 +482,14 @@ trong vòng dispatch, ca được phép theo §3.4).
 Luật ở NT8; đây là nơi duy nhất dẫn giải. Phép kiểm là *chắc chắn*, không phải *tiện*. Đang viết code
 chỉ để **tìm, nối, hoặc gán** thứ vốn đã tồn tại lúc authoring thì code đó đặt sai chỗ. Dấu hiệu:
 `GetComponent` / `Find` / `AddComponent` / `Resources.Load` để lấy thứ đã có trên prefab · hằng số
-tinh chỉnh cảm giác hardcode · dựng hierarchy bằng code.
+tinh chỉnh cảm giác hardcode · dựng hierarchy bằng code · một API `Bind…` / `Attach…` nhận reference
+từ ngoài vào.
+
+**API nhận reference là code nối, dù nó mang hình dạng DI.** `Bind(Transform)` trông chính đáng vì
+giống tiêm phụ thuộc, nhưng nó chỉ chính đáng khi Inspector **thật sự không kéo được** — và câu đó
+phải **kiểm**, không phát biểu: cùng scene thì kéo được, khác scene hoặc prefab dựng lúc chạy thì
+không. Kéo được mà vẫn viết hàm bind là đổi một ô trống **nhìn thấy lúc authoring** lấy một lời gọi bị
+quên **không để lại dấu vết nào**.
 
 > **Nền tảng** — lý do gốc: dữ liệu serialize sửa được **không cần compile**, ai trong team cũng chỉnh
 > được, thiếu thì lộ ra ô trống trong Inspector chứ không nổ giữa gameplay, và giá trị thật **đọc được
@@ -489,6 +534,11 @@ chạy" đủ để dựng lại từ 0 — bỏ code canh mà không viết bư
     liệu** — `collected` · `animated` · `claimed` · `played`: `currAnimatedScore` (số người chơi đã thấy
     chạy tới), `playedIntro`. Không dùng từ mờ (`introDone`) hay từ tả hành động của hệ
     (`presentedScore`).
+  - *Số nhiều là lời hứa về số lượng*: type mang đúng một `ItemIndex` thì tên là `ItemClaimed`, không
+    `ItemsClaimed` — người đọc thấy số nhiều sẽ đi tìm một collection không tồn tại.
+  - *`-ing` là tiến trình, không phải trạng thái*: `IsPanelOpen` (đang ở trạng thái mở) khác
+    `IsPanelOpening` (đang mở dở). Dùng nhầm thì cờ trạng thái đọc như cờ tiến trình, và người sau sẽ
+    thêm một cờ thứ hai cho trạng thái thật.
   - *Biến cục bộ cùng luật*: `cumulativeWeight`, `visibleItemsAmount` — tính từ đứng một mình
     (`cumulative`, `visible`) không phải tên. Tính từ đứng trước danh từ theo tiếng Anh:
     `inclusiveEndIndex`, không `endIndexInclusive`.
@@ -750,6 +800,7 @@ chờ, tài liệu canh theo **việc người đọc phải làm được sau k
 | **Mỗi tài liệu một người đọc** | mỗi loại trả lời đúng câu hỏi của người đọc nó; chép nội dung loại này sang loại kia là sai cả hai. **Cặp `.md`–`.html` không thuộc lỗi này** (§5): cùng nội dung, hai người đọc. Tool có người dùng không phải developer thì có **Manual riêng**: viết theo **nhãn thật trên UI**, trả lời *"bấm gì ra gì, dùng khi nào"* — không tên class, không lý giải cách cài đặt |
 | **Không chép lại thứ người đọc đã cầm trong tay** | `.md` và `.html` viết cho người mở được **code** — cột "vai trò" nói lại đúng tên hàm, dòng bảo đảm mà một dòng `catch` đã nói hết, metrics `O(n log n)` của một `Sort`: **bỏ**. Plan viết cho người **chưa có code**, chuẩn là các task trước trong Plan; Manual cho người **không đọc code**, chuẩn là màn hình trước mặt. Phép kiểm (NT1): *xoá dòng này thì người đọc mất gì* — đáp án "mở file kia ra xem" thì bỏ. **Ngoại lệ giữ bằng mọi giá:** danh sách chữ ký API trong `.md`, vì `.html` dựng từ `.md` mà không mở source (§5.1) |
 | **Không viết theo trí nhớ** | mọi tên file, signature, hằng số, nhãn UI đều mở code đối chiếu lại trước khi ghi — kể cả khi vừa viết chính dòng code đó (NT9). Nguồn sai nhiều nhất của tài liệu |
+| **Code đã tồn tại thì khối code trong Plan là bản sao nguyên văn** | đồng bộ bằng cách chép file rồi **so sánh máy**, không gõ lại — gõ tay là mở lại đúng nguồn sai mà luật trên đang chặn. Lý do ở lại bảng quyết định dưới khối; đó mới là thứ code không tự nói được |
 | **Viết cho người đọc lần đầu, ở thì hiện tại** | NT11 áp cho tài liệu: mô tả hệ *như nó đang là*. **Ngoại lệ duy nhất:** sổ ghi bẫy *"đã sai một lần"* (§3.4) trong mục quyết định thiết kế — ghi **bài học**, không tường thuật thay đổi, và không lưu tên cũ (§3.7). **Sổ tay** — grep các cụm kể lịch sử ("trước đây", "bản cũ", "giờ đã") |
 | **Câu hỏi của người đọc là bằng chứng tài liệu chưa rõ** | trả lời xong phải để câu trả lời lại trong tài liệu, không để nó chết trong hội thoại |
 | **Mâu thuẫn thì SỬA dòng cũ** | không thêm dòng thứ hai nói ngược. **Riêng dòng cũ ghi quyết định hoặc ranh giới do developer đặt thì không tự sửa** — nêu chỗ lệch để developer phân xử (NT5) |
