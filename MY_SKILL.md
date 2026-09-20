@@ -204,6 +204,7 @@ phía: dựng lệnh cho thứ chỉ chơi thử mới biết, hoặc đẩy v�
 | Hiệu năng | số trước–sau tại chỗ đo (§3.3) | agent |
 | Đúng–sai xác định được, mà người làm tay thì chậm, sót, hoặc không thấy được | vét cạn theo bảng dưới | agent, **tự đề xuất** |
 | Cảm giác chơi, nhịp, độ khó, hình ảnh | **chơi thử** | **developer** |
+| Kịch bản hành vi trên build — event, kinh tế, save, tutorial | **chơi qua kịch bản**, cheat rút đường tới trạng thái cần kiểm (khối cuối mục) | **developer, QA** |
 
 **Cảm giác chơi — DỪNG và giao, không dựng proxy.** Ép nó về một lệnh chạy được là **đo thứ dễ đo
 thay cho thứ cần biết**. Báo thẳng *"phần này chưa nghiệm thu được, cần chơi thử"*, kèm **kịch bản
@@ -226,6 +227,26 @@ Riêng nhánh **thiên kiến**, phần đắt giá là **liệt kê biên có h
 một phần tử · chạm giới hạn trên và dưới · trùng nhau · ngoài dải · thứ tự đảo · hai sự kiện cùng lúc ·
 frame đầu tiên · đối tượng bị huỷ giữa chừng. Không dấu hiệu nào thì đọc code là xong (NT1). Cái neo
 khi phân vân: **công sức đắt nhất trong nghiệm thu là của developer**.
+
+**Cheat — mở đường tới kịch bản, không mở nắp kỹ thuật.** Chơi thử và kịch bản hành vi cần **tới được trạng thái**
+cần kiểm; cheat tồn tại đúng để rút ngắn đường đó, cho developer và QA. Một lệnh chỉ chính đáng khi kịch bản **không
+tới được bằng đường người chơi trong thời gian hợp lý**: thời gian (hết tuần, hết cửa sổ) · khối lượng (đủ điểm cho mốc
+cuối) · trạng thái ban đầu (save mới, tutorial chưa xem). Thứ chơi là tới — mở một màn, tăng một bậc, xem một số — thì
+QA đi đúng đường người chơi; cheat cho nó là kiểm kỹ thuật đội lốt kiểm hành vi, và mỗi nút là một dòng phải giữ đúng
+mãi (NT1). Hàng đọc chỉ cho **thứ màn hình không hiện** (một enum trạng thái, một số thô để đối chiếu). Mặt cheat đọc
+qua API **sẵn có** của hệ — **không sinh property `Debug*` bọc lại thứ đã public**; lệnh riêng chỉ khi phải chạm
+`private` (đổi save, giả thời gian), và khi đó nó gọi đúng lệnh thật của hệ, không đi tắt qua state. Plan liệt kê
+cheat theo tiêu chí này (§5.3); developer bảo hệ cần thêm thì mới thêm.
+
+> **Nền tảng** — tab Options của SRDebugger, một category mỗi hệ. **Có trong bản build chính thức, không `#if`**, vì
+> QA kiểm trên đúng bản người chơi cầm. Cách **mở** panel là của developer từng dự án, giấu khỏi người chơi; agent
+> không thiết kế và không viết nó. Trigger của SRDebugger để `Off`, nên `Init()` không hiện gì.
+
+**Sổ tay** — partial `<Hệ>.Debug.cs` giữ lệnh (với tới `private`), plain class `<Hệ>DebugOptions` giữ hàng UI, nhận
+hệ qua constructor · `Init/Dispose` ở `Awake/OnDestroy` · container `internal sealed`, không public gì ngoài hàng vì
+SRDebugger quét mọi public member · hàng đọc là `string` read-only · lệnh có tham số = một property số + một method
+không tham số, ô nhập xếp ngay trên nút · `INotifyPropertyChanged` bắn `null` sau mỗi lệnh để hàng đọc cập nhật ·
+chưa có save thì hàng nói lý do (`-- no save bound`) thay vì NRE.
 
 ---
 
@@ -777,7 +798,7 @@ test, vì chữ ký lúc viết Plan còn là nháp. Danh sách case là chỗ d
 Interfaces (consumes và produces, chữ ký đầy đủ) · bảng "toán → code" trỏ về `§0` · bảng lý do cho
 mỗi quyết định thiết kế và tối ưu · **code hoàn chỉnh dán được** với comment trỏ công thức nguồn ·
 **Editor setup** khi chạm scene hoặc prefab (§3.6) · **bảng case kiểm thử** (input → kỳ vọng, kèm biên
-theo §2.8).
+theo §2.8) · **danh sách cheat** chọn theo tiêu chí cheat ở §2.8, kèm lý do từng lệnh.
 
 **Plan không thuật lại code.** Bảng lý do ghi *quyết định và vì sao chọn nó*, không kể *code làm gì*
 (§5.4).
