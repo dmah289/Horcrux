@@ -407,6 +407,14 @@ Trước khi cache hay tối ưu, hỏi ba câu theo thứ tự — "có" ở c�
 tính** nó không · tính **một lần lúc authoring** được không (§3.6) · đổi **cấu trúc dữ liệu** để câu
 hỏi tự biến mất được không? Hết ba câu mới tới kỹ thuật.
 
+**Nhịp không miễn trừ ba việc luôn làm của NT2.** Nhịp chỉ quyết định có phải *đo trước* cho tối ưu đánh
+đổi độ đọc hay không; ba việc miễn phí — đúng nhịp, không rác trong vòng lặp, không tính lại thứ không đổi
+— áp ở **mọi** nhịp, kể cả mỗi lần người chơi tap. Phép kiểm cho vế thứ ba: **đầu vào của phép tính đổi
+khi nào?** Chỉ đổi cùng cấu hình đọc một lần lúc init thì kết quả là **hằng của phiên** — dựng một lần,
+giữ trong field cạnh chỗ dùng; dựng lười ở lần dùng đầu khi đầu vào chưa có lúc `Awake`. *Đã sai một lần:*
+một chuỗi toast nội suy từ một số đọc từ remote config được để cấp phát lại mỗi lần tap, với lý do "tap là
+tương tác" — nhịp được đem ra miễn trừ đúng việc không cần miễn trừ.
+
 **Sổ tay** — kỹ thuật đã dùng:
 
 - *Giảm cấp phát:* pool thay `Instantiate`/`Destroy` lặp lại · pre-alloc capacity · reuse buffer bằng
@@ -433,6 +441,7 @@ Bất biến giữ bằng "mọi người nhớ làm đúng" sẽ vỡ ở đún
 | **Cache mới bám vào bất biến ĐÃ CÓ** | dùng lại dirty flag / version counter đang có, không dựng bất biến thứ hai song song — mỗi bất biến thêm là một điều mọi code sau phải nhớ |
 | **Một cờ chỉ được tiêu thụ ở đúng MỘT nơi** | có nơi thứ hai thì nơi chạy sau không bao giờ thấy cờ bật — cache của nó đứng im, không có gì báo |
 | **Hai phép tính buộc phải khớp thì suy từ MỘT nguồn** | cùng một hàm, hoặc cùng một biểu thức copy nguyên. Hai bản sẽ lệch, kiểu nhìn-vẫn-đúng-bấm-thì-trượt. Đây là ngoại lệ của luật "để lặp" (NT7) |
+| **Chuỗi định danh mà hai hệ phải khớp — placement, tên event, khoá — khai MỘT lần ở phía phát, phía nhận trỏ symbol** | literal chép sang phía nhận là bản thứ hai của cùng một sự thật: lệch một ký tự thì phép so trả `false` im lặng, không lỗi nào nổ. Trỏ symbol biến lệch thành lỗi biên dịch và grep ra hết mọi nơi dùng. Phía phát sở hữu vì chuỗi sinh ra ở đó; phía phát **chưa có hằng thì thêm hằng vào phía phát** rồi trỏ, không lấy đó làm lý do chép literal. Là trường hợp riêng của hàng trên, áp cho chuỗi thay cho công thức |
 | **Cửa hẹp là thân chung của cửa rộng** | bản giữ-lại-một-phần gọi vào thân bản đầy đủ — hai bên không thể lệch nhau |
 | **Một bảo đảm phải phủ MỌI đường vào** | hệ tuyên bố "mất không quá X", "luôn hợp lệ" thì **mọi** cửa ghi phải đi qua chỗ tạo ra bảo đảm đó. Cửa thứ hai đi vòng làm bảo đảm **chỉ còn đúng cho một nửa hệ** trong khi tài liệu vẫn phát biểu nguyên câu |
 
