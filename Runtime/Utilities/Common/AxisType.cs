@@ -1,4 +1,4 @@
-﻿namespace Horcrux.Runtime.Implementations.Utilities.Common
+﻿namespace Horcrux.Runtime.Utilities.Common
 {
     public enum AxisType
     {

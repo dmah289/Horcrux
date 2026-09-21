@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 
-namespace Horcrux.Runtime.Implementations.Utilities.Common
+namespace Horcrux.Runtime.Utilities.Common
 {
     /// <summary>
     /// Unique-entry set with stable indices: adding or removing while iterating never shifts anyone.

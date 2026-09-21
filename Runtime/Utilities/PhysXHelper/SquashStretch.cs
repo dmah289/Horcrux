@@ -1,5 +1,5 @@
 ﻿using System.Runtime.CompilerServices;
-using Horcrux.Runtime.Implementations.Utilities.Common;
+using Horcrux.Runtime.Utilities.Common;
 using Horcrux.Runtime.Tweening.Easing;
 using Unity.Mathematics;
 using UnityEngine;

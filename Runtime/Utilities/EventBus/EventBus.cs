@@ -1,5 +1,5 @@
 ﻿using System;
-using Horcrux.Runtime.Implementations.Utilities.Common;
+using Horcrux.Runtime.Utilities.Common;
 using UnityEngine;
 using Object = UnityEngine.Object;
 
