@@ -142,6 +142,19 @@ sát đâu và kết luận gì (NT8).
 hết thì đảo và ghi lý do ngay tại đó. *Đã sai một lần:* bê một khuôn cố ý serialize giá trị runtime
 vào asset sang bài toán lưu dữ liệu người chơi — tiến độ người chơi đi vào asset rồi vào version control.
 
+**Hệ nguồn đã trả về kiểu thì nhận kiểu, không nhận chuỗi rồi tự parse lại.** Chuỗi trung gian là parse cài
+đặt ở hai nơi (NT7): hệ nguồn đã có đường parse, log lỗi và fallback cho nó, bản thứ hai phía consumer vừa
+chép lại đúng công việc đó vừa che lỗi parse khỏi đường log của hệ nguồn, và bỏ mất kiểm tra biên dịch trên
+tên field. Phần còn lại phía consumer chỉ là **kiểm luật nghiệp vụ** trên object đã có kiểu — một hàm thuần
+nhận object, không phải một "parser". *Đã sai một lần:* khai biến remote config kiểu chuỗi rồi viết một
+class `*ConfigParser` bọc `JsonConvert` + `try/catch` — toàn bộ phần đó đã có sẵn trong hệ remote config.
+
+> **Nền tảng** — `RemoteConfig<T>` của bộ này ép kiểu sẵn: `string` · enum · số · còn lại qua `JsonConvert`
+> (xem `RemoteConfigSystem.md` mục "Kiểu T hỗ trợ"). Giá trị có cấu trúc thì khai `RemoteConfig<Model>` với
+> `Model` là class dữ liệu thuần và property phơi `Model`; **không** khai `RemoteConfig<string>` cho nó. JSON
+> hỏng thì `RemoteConfig<T>` tự `LogError` và giữ cache hoặc giá trị trong asset — consumer không `try/catch`.
+> Assembly khai biến phải tham chiếu được assembly của `Model`; chiều đó đúng vì collection RC là của dự án.
+
 Sau đó mới tới phạm vi. Mọi thứ định đưa vào qua cùng một luật: **có nhu cầu thật ngay bây giờ thì đưa
 vào** (NT1).
 
