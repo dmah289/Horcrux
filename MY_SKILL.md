@@ -99,6 +99,9 @@ phát biểu lại bằng lời mình rồi hỏi thẳng có khớp thiết k�
 này chưa** — chưa thì là chủ ý hay chỗ đã trôi cần xử lý. Kể lại toàn bộ code vừa đọc là bắt developer
 đọc tường thuật thay vì trả lời một câu hỏi (NT10).
 
+**Mỗi lượt review đọc lại file hiện tại.** Developer sửa giữa hai lượt, nên phát hiện của lượt trước là
+bản chết; báo lại lỗi đã sửa làm mất tin vào cả những phát hiện còn đúng.
+
 ## 2.3 Văn phong khi đối thoại
 
 Áp cho mọi lượt đối thoại, **chặt nhất khi brainstorm** (§2.6). Hai bờ đều là bờ vực (NT1):
@@ -298,7 +301,7 @@ chỉ có sau khi scene chứa nó nạp xong.
 | **Logic tại chỗ** | chỉ chạy ở một nơi, đọc một mạch là hiểu hết | có **người gọi thứ hai**, hoặc một ý không còn nhìn hết trong một màn hình |
 | **Hàm tách riêng** | đặt được tên nói đúng mục đích (§3.7); không giữ state giữa các lần gọi | phát sinh **state phải giữ**, hoặc một cụm hàm cùng thao tác trên một nhóm dữ liệu |
 | **Class hoặc struct** | có **trách nhiệm gọi được tên** và state của riêng nó (`S`); `struct` hay `class` theo §3.3 | có **implementation thứ hai** đang có thật (§2.4) |
-| **Delegate làm tham số** | thân thuật toán **giống hệt nhau** ở mọi biến thể, chỉ khác **một thao tác** gọi được tên, biến thể **không giữ state riêng**. Khai `static readonly Func<…>` với lambda `static`: bắt biến ngoài thành **lỗi biên dịch** thay vì rác GC âm thầm (NT2) | biến thể cần **state riêng**, hoặc **hơn một thao tác** đi cùng nhau — lúc đó nó đã là interface |
+| **Delegate làm tham số** | thân thuật toán **giống hệt nhau** ở mọi biến thể, chỉ khác **một thao tác** gọi được tên, biến thể **không giữ state riêng**. Khai `static readonly Func<…>` với lambda `static`: bắt biến ngoài thành **lỗi biên dịch** thay vì rác GC âm thầm (NT2). Callback sinh ở call site thì **chữ ký trả lại chủ thể** (`Action<Transform>` nhận đúng transform vừa chạy) để handler là method group `static` — bất biến "không cấp phát" nằm ở chữ ký, không ở kỷ luật người gọi | biến thể cần **state riêng**, hoặc **hơn một thao tác** đi cùng nhau — lúc đó nó đã là interface |
 | **Interface hoặc abstract** | implementation thứ hai **đang có thật**, không phải sắp có | — |
 
 **`MonoBehaviour` · `ScriptableObject` · class thuần không phải ba bậc của thang trên.** Thang trả lời
@@ -324,6 +327,10 @@ trả lời, câu trước trả lời được ngay.
 chính class đó**: thêm method hoặc tham số mới mà đường cũ không đụng là đã đạt `O`. Phải đổi hành vi
 đường cũ nghĩa là **trách nhiệm mới** — tách class; chỉ khi có implementation thứ hai đang có thật mới
 dựng interface.
+
+**Một tiền tố chung không phải một hệ.** Một họ helper cùng tiền tố (`Charm*` kéo một property về đích)
+không kéo theo nghĩa vụ dựng sequence, loop, bảng easing cho đủ bộ — hệ chỉ dựng khi người dùng thứ hai
+đòi thứ helper không làm được (NT1). Runner tổng quát nhận lambda chỉ còn cho công thức tự do.
 
 **Ba hình dạng composite — viết lý do ra tại chỗ trước khi dùng.** Không cấm, nhưng mặc định là không,
 và mỗi lần dùng phải gọi tên được thứ bậc thấp hơn không làm được (NT1). Thước đo là **phạm vi bài
@@ -358,6 +365,7 @@ có chủ thì ở Editor tắt domain reload, mỗi lần Play là một loop n
 |---|---|
 | Code chỉ có ở Editor | file `*.Editor.cs` khai `partial` của cùng class, **bên trong vẫn** `#if UNITY_EDITOR` — file runtime không bị `#if` cắt ngang, nút Editor đọc thẳng private member |
 | Nhận phụ thuộc | `MonoBehaviour<T>` cho component thường · `IInitializable<T>` khi class đã kế thừa base khác · không service locator bên trong hệ |
+| Helper thao tác lên một object có sẵn | extension method trên type đó, file partial `<Type>Extensions.<Nhóm>.cs` cạnh `<Type>Extensions.cs` — call site đọc thành câu, tìm được từ chính object, không bao giờ che instance method (§3.4) |
 | Dựng host | hệ **không** tự `new GameObject` — host là component kéo tay vào scene, chu kỳ và collection đọc được trong Inspector (§3.6) |
 | Log | mọi dòng mở bằng `[TênHệ]: ` để filter console; kèm `this` làm context object để bấm vào ra đúng asset |
 | Hàm một biểu thức | expression-bodied (`=>`), kể cả method `void` |
@@ -486,6 +494,13 @@ ca sai nào**; guard hay không guard chỉ là hai đường tới cùng đích
 | **Lọt qua authoring rồi sai âm thầm** giữa gameplay | **guard đầy đủ** — bất biến thật, về bảng trên | Editor không bắt chắc được: reference chỉ có lúc runtime · null ở một prefab variant hoặc một scene trong nhiều scene · sai chỉ hiện ở một tổ hợp cấu hình · thành null sau `Destroy` · **dữ liệu từ ngoài** (import, server, save — §3.8) luôn thuộc nhóm này |
 | **Không gọi tên được** lượt kiểm nào bắt nó | **guard** | "chắc là không xảy ra đâu" không phải bằng chứng (NT8) |
 
+**Dữ liệu ngoài kiểm một lần ở cửa vào; sau cửa, consumer tin hợp đồng.** Hàng "dữ liệu từ ngoài" của
+bảng trên là guard ở **cửa** — một hàm thuần kiểm luật nghiệp vụ, sai thì từ chối cả cấu hình kèm
+`LogError` — không phải mỗi consumer một nhánh. View runtime **không có nhánh vẽ lỗi** cho dữ liệu đã qua
+cửa: chủ dữ liệu `LogError` kèm `this` khi tra thiếu là toàn bộ chẩn đoán. "Không giấu thứ có thật" của
+§3.9 là cho Editor tool, nơi người nhìn màn hình là người sửa được dữ liệu; trong build người nhìn là
+người chơi, nhánh đó phục vụ không ai.
+
 **"Để nó nổ" đứng được nhờ vế *nổ* — phải kiểm, không được giả định.** Bốn hình dạng nó **không** nổ:
 
 | Hình dạng | Vì sao im lặng | Trả về chỗ nổ bằng |
@@ -517,14 +532,30 @@ Tiêu chí: **hủy được** (việc dừng theo owner) · **giải phóng đ�
 lại) · **cô lập được lỗi** (một callback lỗi không kéo cả hệ chết — `try/catch` quanh từng callback
 trong vòng dispatch, ca được phép theo §3.4).
 
+**Hàm mở một tiến trình theo thời gian thì sở hữu trạng thái cuối của nó ở mọi đường ra.** Xong, bị
+hủy, thời lượng bằng 0 — cả ba đi qua **một** `try/finally` bọc toàn thân hàm, delay lẫn vòng lặp, nên
+trạng thái cuối và callback xảy ra đúng một lần. Caller chỉ `await` và ghép bằng `WhenAll`, không
+`try/finally`: hợp đồng "đặt trạng thái cuối sau `await`" là kỷ luật, người gọi thứ hai sẽ quên (§3.4).
+Helper chỉ hứa thứ nó biết — nhận công thức thay giá trị đích thì không snap hộ.
+
+**Hủy giữa chừng phân loại theo thứ mất đi.** Dữ liệu (tiến độ, grant, save) phải nhất quán trên mọi
+đường — grant đứng trước anim. Trình diễn chỉ cần không để rác trên màn hình: snap đích, tắt, xong.
+Không bỏ công bảo toàn đường hủy cho thứ mà bị hủy thì người chơi không mất gì.
+
 > **Nền tảng** — lựa chọn mặc định và ràng buộc đi kèm:
 >
 > | Nhu cầu | Dùng | Ràng buộc không bỏ được |
 > |---|---|---|
 > | Async | **UniTask**, không coroutine, không `Task` | propagate `CancellationToken` xuống toàn bộ chain; token là đời của host (§3.1) |
-> | Load asset | **Addressables** qua `AssetReference` | không dùng string key; giữ `AsyncOperationHandle` để `Release()` đúng lúc, không giữ là leak |
+> | Load asset | **Addressables** qua `AssetReference`, cho **đơn vị nạp theo nhu cầu** (màn, popup) | không dùng string key; giữ `AsyncOperationHandle` để `Release()` đúng lúc, không giữ là leak. Prefab con nằm trong prefab cha đã nạp thì `[SerializeField]` kéo thẳng: mỗi `AssetReference` thêm là một handle phải trả và một `await` trước khi dùng được |
+> | Anim UI | `Time.unscaledDeltaTime` · `DelayType.UnscaledDeltaTime` | popup phải chạy khi `timeScale` bằng 0 |
 > | Data lớn | `NativeArray` / `NativeList` | khi truyền GPU hoặc Job System; `StructLayout(Sequential)` khi phải khớp layout native |
 > | Tài nguyên nặng | cache `RenderTexture`, `Texture2D`… | có đường dọn dẹp trong `OnDestroy()` |
+>
+> Hai sự thật về hình dạng `finally` với UniTask: `finally` đặt **trong** `while` chạy **mỗi vòng**, đặt
+> ngay sau `Delay` chạy khi delay vừa xong — chỉ một `try/finally` bọc toàn thân mới cho "đúng một lần".
+> `UniTask.Yield(ct)` **ném** ở `await` khi bị hủy, nên `if (ct.IsCancellationRequested)` đứng sau nó là
+> code chết.
 
 ## 3.6 Editor-first
 
@@ -546,7 +577,9 @@ Inspector **thật sự không kéo được** — và câu đó phải **kiểm
 > bằng mắt ngay trên đối tượng**.
 
 **Sổ tay** — reference kéo thả vào `[SerializeField]` · component add sẵn trên prefab · số tinh chỉnh
-phơi ra Inspector · preset thành ScriptableObject · wire sẵn trong prefab rồi `Instantiate`.
+phơi ra Inspector · preset thành ScriptableObject · wire sẵn trong prefab rồi `Instantiate` ·
+`RectTransform` của chính object cũng là một ô `[SerializeField]` thay cho cast `(RectTransform)transform`
+— mọi thứ class chạm tới đều hiện trên Inspector, không có tham chiếu ngầm nào phải đọc code mới biết.
 
 **Biên của "kéo được thì kéo" là số chỗ phải nối** (câu phân xử ở §0.1), và lý do nằm ngay trong cái
 bảo đảm đang bênh kéo thả: **ô trống chỉ lộ ra khi có người nhìn vào ô đó.** Một ô trên một object thì
@@ -604,6 +637,12 @@ chạy" đủ để dựng lại từ 0 — bỏ code canh mà không viết bư
 - Tên method nói rõ **mục đích**: `EnsureMaterial()`, `SwapWriteBuffer()`, `SolveAnalytic()`. Tên vô
   nghĩa cần thay: `Process`, `Handle`, `DoWork`, `Update2`. Boolean đọc như một câu hỏi: `IsPickable`,
   `HasPendingInput`, `frameDataReady`; `IsFinished`, không `Finished`.
+- **`Setup(data)` cho view nhận dữ liệu để vẽ; `Bind`/`Attach` chỉ cho nối reference** — đúng thứ §3.6
+  gọi là code nối. Dùng `Bind` cho cả hai là một từ hai nghĩa.
+- **Casing theo quyền truy cập, không theo loại member**: private field camelCase · public field (data
+  class `[Serializable]`, DTO, ô Inspector của một cell) PascalCase như property — người đọc ở ngoài
+  class thấy `step.Goal`, không cần biết nó là field hay property. Khoá wire format sinh từ tên field thì
+  casing cũng là hợp đồng (dòng cuối mục): chốt trước khi bản dữ liệu đầu tiên rời máy developer.
 - **Comment chỉ khi thật sự cần thiết — mặc định là không có.** Tự giải thích áp cho cả tên **và
   logic**: đoạn nào cần comment mới theo dõi được thì tách hàm có tên, đảo điều kiện, đặt biến trung
   gian có tên — sửa code, không chú thích code. Comment còn lại **chỉ** nói **tại sao** (quyết định
@@ -816,6 +855,10 @@ lại để học, nên code lõi trong Plan là bản để đọc và gõ, kh�
 agent viết code như mọi task khác. Test thì agent viết và chạy (§2.8), nên Plan **chỉ có danh sách case
 sẽ kiểm**, không có code test. **Nhịp:** developer code xong lõi → agent đọc code thật rồi mới viết
 test, vì chữ ký lúc viết Plan còn là nháp. Danh sách case là chỗ developer veto hoặc thêm case.
+
+**Developer gõ lệch plan là bình thường** (NT6). Lượt kiểm của agent sau mỗi step: compile, rồi **so code
+với plan và phân loại từng chỗ lệch** — tư tưởng thì chưng cất (§2.6) · lỗi thì báo kèm bằng chứng (§2.2)
+· trôi thì sync plan theo code (§5.4). Chỗ lệch là nơi tư tưởng lộ ra rõ nhất, và cũng là nơi lỗi mới sinh.
 
 **Sổ tay** — kho phần cho mỗi task, **chỉ lấy phần task này cần**: Files (đường dẫn chính xác) ·
 Interfaces (consumes và produces, chữ ký đầy đủ) · bảng "toán → code" trỏ về `§0` · bảng lý do cho
