@@ -1,12 +1,9 @@
 using System;
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
-using Object = UnityEngine.Object;
 
 namespace Horcrux.Runtime.Utilities.ExtensionMethods
 {
-    public static class TransformExtensions
+    public static partial class TransformExtensions
     {
         public static T GetOrAdd<T>(this Transform t) where T : Component
         {
