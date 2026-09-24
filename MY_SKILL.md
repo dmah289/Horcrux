@@ -332,6 +332,12 @@ dựng interface.
 không kéo theo nghĩa vụ dựng sequence, loop, bảng easing cho đủ bộ — hệ chỉ dựng khi người dùng thứ hai
 đòi thứ helper không làm được (NT1). Runner tổng quát nhận lambda chỉ còn cho công thức tự do.
 
+**Một wrapper chỉ đặt tên cho một bộ hằng là một cửa thừa.** `SnapVerticalToBottom(item)` gọi
+`SnapVertical(item, 0, 0)`, `…ToTop` gọi `(1, 1)`: hai hàm không có logic, chỉ có tên — mà caller duy
+nhất đã nói rõ hướng bằng trạng thái của chính nó (`scrollDirection`), nên tên đó nói hai lần một điều.
+Mỗi cửa thêm là một chữ ký phải doc, test và giữ đúng mãi (NT1). Wrapper chỉ chính đáng khi bộ hằng đó
+**mã hoá một luật caller không nên biết**, hoặc khi người gọi thứ hai cần đúng bộ đó (§2.4).
+
 **Ba hình dạng composite — viết lý do ra tại chỗ trước khi dùng.** Không cấm, nhưng mặc định là không,
 và mỗi lần dùng phải gọi tên được thứ bậc thấp hơn không làm được (NT1). Thước đo là **phạm vi bài
 toán**: cùng một cách chia có thể đúng ở hệ nhiều người chạm và thừa ở một tính năng cục bộ.
@@ -367,6 +373,8 @@ có chủ thì ở Editor tắt domain reload, mỗi lần Play là một loop n
 | Nhận phụ thuộc | `MonoBehaviour<T>` cho component thường · `IInitializable<T>` khi class đã kế thừa base khác · không service locator bên trong hệ |
 | Helper thao tác lên một object có sẵn | extension method trên type đó, file partial `<Type>Extensions.<Nhóm>.cs` cạnh `<Type>Extensions.cs` — call site đọc thành câu, tìm được từ chính object, không bao giờ che instance method (§3.4) |
 | Dựng host | hệ **không** tự `new GameObject` — host là component kéo tay vào scene, chu kỳ và collection đọc được trong Inspector (§3.6) |
+| Field serialize | nhóm bằng `[Splitter("References")]` (ô kéo) rồi `[Splitter("Configs")]` (số chỉnh), References đứng trước — mở Inspector thấy ngay thứ **phải nối** trước thứ có thể để mặc định |
+| Field private runtime | tiền tố `_` (`_module`, `_isOpen`); field `[SerializeField]` **không** `_` — đọc tên trong thân hàm biết giá trị đến từ Inspector hay từ code, không cần cuộn lên khai báo. Code mới theo luật này; Horcrux cũ chưa đổi hàng loạt (§3.7 casing) |
 | Log | mọi dòng mở bằng `[TênHệ]: ` để filter console; kèm `this` làm context object để bấm vào ra đúng asset |
 | Hàm một biểu thức | expression-bodied (`=>`), kể cả method `void` |
 | Ẩn method của contract | mặc định `public` — tin người dùng hệ. Explicit interface implementation **chỉ cho method mà gọi sai gây mất dữ liệu im lặng** |
@@ -538,6 +546,11 @@ trạng thái cuối và callback xảy ra đúng một lần. Caller chỉ `awa
 `try/finally`: hợp đồng "đặt trạng thái cuối sau `await`" là kỷ luật, người gọi thứ hai sẽ quên (§3.4).
 Helper chỉ hứa thứ nó biết — nhận công thức thay giá trị đích thì không snap hộ.
 
+**Hàm mở một lượt sống bằng tài nguyên một lần dùng thì từ chối tái nhập ở cửa.** `Open()` tạo
+`UniTaskCompletionSource` mới cho `WaitClosedAsync`; gọi `Open()` chồng lên lượt đang mở là thay source
+mới trong khi người đang chờ còn giữ source cũ — họ treo **im lặng, vĩnh viễn**, đúng loại lỗi §3.4 xếp
+vào "guard đầy đủ". Một dòng `if (isOpen) return;` ở cửa rẻ hơn mọi kỷ luật "đừng gọi hai lần".
+
 **Hủy giữa chừng phân loại theo thứ mất đi.** Dữ liệu (tiến độ, grant, save) phải nhất quán trên mọi
 đường — grant đứng trước anim. Trình diễn chỉ cần không để rác trên màn hình: snap đích, tắt, xong.
 Không bỏ công bảo toàn đường hủy cho thứ mà bị hủy thì người chơi không mất gì.
@@ -547,7 +560,7 @@ Không bỏ công bảo toàn đường hủy cho thứ mà bị hủy thì ngư
 > | Nhu cầu | Dùng | Ràng buộc không bỏ được |
 > |---|---|---|
 > | Async | **UniTask**, không coroutine, không `Task` | propagate `CancellationToken` xuống toàn bộ chain; token là đời của host (§3.1) |
-> | Load asset | **Addressables** qua `AssetReference`, cho **đơn vị nạp theo nhu cầu** (màn, popup) | không dùng string key; giữ `AsyncOperationHandle` để `Release()` đúng lúc, không giữ là leak. Prefab con nằm trong prefab cha đã nạp thì `[SerializeField]` kéo thẳng: mỗi `AssetReference` thêm là một handle phải trả và một `await` trước khi dùng được |
+> | Load asset | **Addressables** qua `AssetReference`, cho **đơn vị nạp theo nhu cầu** (màn, popup) | không dùng string key; giữ `AsyncOperationHandle` để `Release()` đúng lúc, không giữ là leak. Prefab con nằm trong prefab cha đã nạp thì `[SerializeField]` kéo thẳng: mỗi `AssetReference` thêm là một handle phải trả và một `await` trước khi dùng được. Đổi lại con **chia đời sống với cha**: cha `SetActive(false)` thì con tắt theo, nên thứ phải hiện **khi cha đang đóng** (tay chỉ vào nút nằm ngoài cha) không được là con của cha |
 > | Anim UI | `Time.unscaledDeltaTime` · `DelayType.UnscaledDeltaTime` | popup phải chạy khi `timeScale` bằng 0 |
 > | Data lớn | `NativeArray` / `NativeList` | khi truyền GPU hoặc Job System; `StructLayout(Sequential)` khi phải khớp layout native |
 > | Tài nguyên nặng | cache `RenderTexture`, `Texture2D`… | có đường dọn dẹp trong `OnDestroy()` |
@@ -643,6 +656,14 @@ chạy" đủ để dựng lại từ 0 — bỏ code canh mà không viết bư
   class `[Serializable]`, DTO, ô Inspector của một cell) PascalCase như property — người đọc ở ngoài
   class thấy `step.Goal`, không cần biết nó là field hay property. Khoá wire format sinh từ tên field thì
   casing cũng là hợp đồng (dòng cuối mục): chốt trước khi bản dữ liệu đầu tiên rời máy developer.
+- **Hai chế độ loại trừ nhau là `enum` hai phần tử, không `bool`**: `ScrollDirection.Upwards` đọc
+  được ở cả Inspector lẫn call site; `firstStepAtBottom = true` chỉ nói một phía, phía `false` người
+  đọc phải tự phủ định, và ô checkbox trong Inspector không mang tên trạng thái nào. Chế độ thứ ba thêm
+  vào enum không đổi tên gì; thêm vào `bool` là đổi kiểu.
+- **Đại lượng hình học đặt tên theo hai đầu mút**, dạng `<từ>To<đến>Dist`: `topContentToItemPivotDist`,
+  `pivotViewToTopViewDist`. Tên theo vai (`offsetFromTop`, `distFromContentTop`) chỉ nói một đầu, đầu
+  kia người đọc phải suy; đủ hai đầu thì phép trừ `A − B` đọc thành hình vẽ ngay tại dòng code, và
+  đối chiếu từng số hạng (§4.3) làm bằng mắt được.
 - **Comment chỉ khi thật sự cần thiết — mặc định là không có.** Tự giải thích áp cho cả tên **và
   logic**: đoạn nào cần comment mới theo dõi được thì tách hàm có tên, đảo điều kiện, đặt biến trung
   gian có tên — sửa code, không chú thích code. Comment còn lại **chỉ** nói **tại sao** (quyết định
@@ -773,6 +794,11 @@ giống" (NT8). Đây là đối chiếu **công thức với code**, không ph�
 
 Mỗi hệ thống và mỗi tool có tài liệu riêng, đặt cùng thư mục với nó. **Thay đổi hệ thống thì cập nhật
 tài liệu trong cùng lần làm** — riêng `.html` theo nhịp mốc.
+
+Một utility lẻ trong thư mục phẳng (`Utilities/ExtensionMethods/`) mà có tài liệu hay demo đi kèm thì
+**xuống thư mục con mang tên nó** (`ExtensionMethods/ScrollRect/` gồm `.cs` · `.md` · `.html`): tài liệu
+vẫn cạnh code, mà thư mục phẳng không lẫn ba loại file của mười utility. Chuyển thư mục **không** là
+lý do bỏ bản `.md` — chuỗi `code → .md → .html` dưới đây vẫn đủ ba mắt.
 
 | Loại | Vai trò | Vòng đời |
 |---|---|---|
