@@ -1,12 +1,11 @@
-﻿using System.Threading;
-using Horcrux.Runtime.Abstractions.Composites.LiveOps;
+﻿using Horcrux.Runtime.Abstractions.LiveOps;
 using Horcrux.Runtime.Utilities;
 using Horcrux.Runtime.Utilities.Common;
 using Horcrux.Runtime.Utilities.ExtensionMethods;
 using Sisus.Init;
 using UnityEngine;
 
-namespace Horcrux.Runtime.Implementations.Composites.LiveOps
+namespace Horcrux.Runtime.Implementations.LiveOps
 {
     [Service(typeof(IHighlightTutorial), FindFromScene = true)]
     public class HighlightTutorial : MonoBehaviour, IHighlightTutorial

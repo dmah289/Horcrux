@@ -1,7 +1,7 @@
 ﻿using Horcrux.Runtime.Utilities.Common;
 using UnityEngine;
 
-namespace Horcrux.Runtime.Abstractions.Composites.LiveOps
+namespace Horcrux.Runtime.Abstractions.LiveOps
 {
     public interface IHighlightTutorial
     {
