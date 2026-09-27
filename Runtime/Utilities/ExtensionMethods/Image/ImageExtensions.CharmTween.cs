@@ -1,6 +1,7 @@
 ﻿using System.Threading;
 using Cysharp.Threading.Tasks;
 using Horcrux.Runtime.Tweening.Easing;
+using Horcrux.Runtime.Utilities.Tweening;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -8,22 +9,17 @@ namespace Horcrux.Runtime.Utilities.ExtensionMethods
 {
     public static partial class ImageExtensions
     {
-        public static async UniTask CharmFillAmount(this Image self, float from, float to, float duration,
-            CancellationToken ct = default)
+        public static async UniTask CharmFillAmount(this Image self, float from, float to,
+            EaseType ease, float duration, CancellationToken ct)
         {
-            float invDuration = 1f / Mathf.Max(duration, 0.0001f);
-            float elapsed = 0f;
-
-            try
+            await CharmTween.CastAsync(duration, ease, spell, ct, onComplete);
+            
+            void spell(float t)
             {
-                while (elapsed < duration)
-                {
-                    elapsed += Time.unscaledDeltaTime;
-                    self.fillAmount = Mathf.Lerp(from, to, Easer.Evaluate(EaseType.OutQuad, elapsed * invDuration));
-                    await UniTask.Yield(PlayerLoopTiming.Update, ct);
-                }
+                self.fillAmount = Mathf.Lerp(from, to, Easer.Evaluate(ease, t));
             }
-            finally
+            
+            void onComplete()
             {
                 self.fillAmount = to;
             }

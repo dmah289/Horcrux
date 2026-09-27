@@ -9,17 +9,21 @@ namespace Horcrux.Runtime.Utilities.Tweening
     public static class CharmTween
     {
         public static async UniTask CastAsync(float durationSeconds, EaseType ease,
-            Action<float> spell, CancellationToken ct)
+            Action<float> spell, CancellationToken ct, Action onComplete = null)
         {
             float invDurationSeconds = 1f / Mathf.Max(durationSeconds, 0.0001f);
             float t = 0f;
 
-            while (t < 1f)
+            try
             {
-                t += Time.unscaledDeltaTime * invDurationSeconds;
-                spell(Easer.Evaluate(ease, t));
-                await UniTask.Yield(PlayerLoopTiming.Update, ct);
+                while (t < 1f)
+                {
+                    t += Time.unscaledDeltaTime * invDurationSeconds;
+                    spell(Easer.Evaluate(ease, t));
+                    await UniTask.Yield(PlayerLoopTiming.Update, ct);
+                }
             }
+            finally { onComplete?.Invoke(); }
         }
     }
 }
