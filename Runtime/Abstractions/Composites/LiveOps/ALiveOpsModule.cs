@@ -1,10 +1,12 @@
-﻿using Sisus.Init;
+﻿using UnityEngine;
 
 namespace Horcrux.Runtime.Abstractions.Composites.LiveOps
 {
-    public abstract class ALiveOpsModule : MonoBehaviour<ILiveOpsHost>, ILiveOpsModule
+    public abstract class ALiveOpsModule : MonoBehaviour, ILiveOpsModule
     {
         #region Properties
+        
+        protected abstract ILiveOpsHost LiveOpsHost { get; }
         
         public abstract string ModuleId { get; }
         
@@ -24,10 +26,14 @@ namespace Horcrux.Runtime.Abstractions.Composites.LiveOps
         #region Unity Callbacks
 
         protected virtual void Start()
-            => liveOpsHost.Register(this);
+        {
+            LiveOpsHost.Register(this);
+        }
 
         protected virtual void OnDestroy()
-            => liveOpsHost.Unregister(this);
+        {
+            LiveOpsHost.Unregister(this);
+        }
 
         #endregion
 
@@ -73,17 +79,6 @@ namespace Horcrux.Runtime.Abstractions.Composites.LiveOps
             LastUnix = nowUnix;
             Window = ResolveWindow(nowUnix);
             Refresh(nowUnix);
-        }
-
-        #endregion
-
-        #region DI
-
-        ILiveOpsHost liveOpsHost;
-        
-        protected override void Init(ILiveOpsHost argument)
-        {
-            liveOpsHost = argument;
         }
 
         #endregion

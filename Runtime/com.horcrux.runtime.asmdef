@@ -8,7 +8,8 @@
         "Unity.ResourceManager",
         "UniTask",
         "UniTask.Addressables",
-        "Unity.Mathematics"
+        "Unity.Mathematics",
+        "UnityEngine.UI"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

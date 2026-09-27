@@ -30,8 +30,11 @@ namespace Horcrux.Runtime.Utilities.ExtensionMethods
             }
             finally
             {
-                self.position = target;
-                onComplete?.Invoke(self);
+                if (self != null)
+                {
+                    self.position = target;
+                    onComplete?.Invoke(self);
+                }
             }
         }
 
@@ -57,12 +60,14 @@ namespace Horcrux.Runtime.Utilities.ExtensionMethods
             }
             finally
             {
-                self.localScale = target;
-                onComplete?.Invoke(self);
+                if (self != null)
+                {
+                    self.localScale = target;
+                    onComplete?.Invoke(self);
+                }
             }
         }
-
-        // formula(timeRatio, easedRatio) owns the shape, so there is no end scale to snap to.
+        
         public static async UniTask CharmScale(this Transform self, EaseType ease, float duration,
             Func<float, float, Vector3> formula, float delaySeconds = 0f, CancellationToken ct = default,
             Action<Transform> onComplete = null)
@@ -86,6 +91,31 @@ namespace Horcrux.Runtime.Utilities.ExtensionMethods
             finally
             {
                 onComplete?.Invoke(self);
+            }
+        }
+        
+        public static async UniTask CharmPointAndBob(this Transform self, Vector3 target, Vector3 direction,
+            float backupDistance, float targetPadding, EaseType ease, float oneWayDuration, CancellationToken ct)
+        {
+            Vector3 normalizedDirection = direction.normalized;
+            Vector3 to = target - normalizedDirection * targetPadding;
+            Vector3 from = to - normalizedDirection * backupDistance;
+            float invOneWaySeconds = 1f / Mathf.Max(oneWayDuration, 0.0001f);
+            float cyclePhase = 0f;
+
+            while (true)
+            {
+                cyclePhase += Time.unscaledDeltaTime * invOneWaySeconds;
+                while (cyclePhase >= 2f)
+                    cyclePhase -= 2f;
+
+                float oneWayRatio = cyclePhase < 1f ? cyclePhase : 2f - cyclePhase;
+                self.position = Vector3.LerpUnclamped(from, to, Easer.Evaluate(ease, oneWayRatio));
+                
+                await UniTask.Yield(PlayerLoopTiming.Update);
+
+                if (ct.IsCancellationRequested)
+                    return;
             }
         }
     }

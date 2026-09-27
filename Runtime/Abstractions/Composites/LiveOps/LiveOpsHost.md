@@ -136,12 +136,12 @@ Tự tính mốc khác bằng `DateTimeOffset.ToUnixTimeSeconds()` trong test, k
 ## §3 `ALiveOpsModule`
 
 ```csharp
-using Sisus.Init;
+using UnityEngine;
 
 namespace Horcrux.Runtime.Abstractions.Composites.LiveOps
 {
     /// <summary>Skeleton of one live-ops module: state, window, one Refresh body. See LiveOpsHost.md §3.</summary>
-    public abstract class ALiveOpsModule : MonoBehaviour<ILiveOpsHost>, ILiveOpsModule
+    public abstract class ALiveOpsModule : MonoBehaviour, ILiveOpsModule
     {
         #region Properties
 
@@ -163,9 +163,9 @@ namespace Horcrux.Runtime.Abstractions.Composites.LiveOps
 
         #region Unity Callbacks
 
-        protected virtual void Start() => liveOpsHost.Register(this);
+        protected virtual void Start() => LiveOpsHost.Register(this);
 
-        protected virtual void OnDestroy() => liveOpsHost.Unregister(this);
+        protected virtual void OnDestroy() => LiveOpsHost.Unregister(this);
 
         #endregion
 
@@ -213,9 +213,8 @@ namespace Horcrux.Runtime.Abstractions.Composites.LiveOps
 
         #region DI
 
-        private ILiveOpsHost liveOpsHost;
-
-        protected override void Init(ILiveOpsHost argument) => liveOpsHost = argument;
+        // Abstract, not injected: the module's one Init slot owns every dependency; a module without a host does not compile.
+        protected abstract ILiveOpsHost LiveOpsHost { get; }
 
         #endregion
     }
@@ -228,7 +227,7 @@ namespace Horcrux.Runtime.Abstractions.Composites.LiveOps
 | **Module trả về cửa sổ, base gán — `Window` có setter `private`** | `SecondsLeft` đọc thẳng `Window.SecondsLeft(LastUnix)`, nên một `Refresh` quên gán `Window` cho countdown đứng `0m 0s` cả phiên mà **không lỗi nào nổ**. Khi `Refresh` vừa phải tính vừa phải nhớ gán thì cái quên đó là chuyện của kỷ luật; tách `ResolveWindow` ra thì module **không còn cửa để quên**, vì không trả về gì là không biên dịch được |
 | **`IsInitialized`** | module đọc dữ liệu do một boot step **trước** nó nạp. `Start` của module chạy lúc scene nạp, còn chuỗi boot chạy sau đó, và lệnh từ game có thể tới sớm hơn cả hai. Cờ nằm ở base vì mọi module đều gặp đúng khe hở này, và nó trả lời đúng một câu: *host đã gọi `Initialize` chưa* |
 | Không generic `<TSave, TConfig>` | một module; host không cần biết type save/config |
-| `MonoBehaviour<ILiveOpsHost>`, không `MonoBehaviour` thuần | InitArgs tiêm host vào `Init`, nên `Register`/`Unregister` không phải đi qua `ILiveOpsHost.Service`. Bớt một service-locator, và module nhận host giả được khi cần dựng thử |
+| **`MonoBehaviour` thuần + `protected abstract ILiveOpsHost LiveOpsHost`**, không `MonoBehaviour<ILiveOpsHost>` | InitArgs chỉ tự gọi **một** khe `Init` cho mỗi component, mà mọi module đều cần nhiều hơn host (save, đồng hồ, reward). Base chiếm khe đó là module phải gắn `*Initializer` cho phần còn lại — và `InitArgs.TryGet` **bỏ qua** service tra được cho khe `MonoBehaviour<T>` ngay khi thấy một Initializer gắn lên client (`HasCustomInitArguments`): host null im lặng, NRE ở `Start`. Property abstract đẩy host vào chính `Init` của module: vẫn không service-locator, module vẫn nhận host giả được, và module quên host thì **không biên dịch được**. *Đã sai một lần:* `CollectionModule` với Initializer ba ô, `liveOpsHost` null ở `Start`, không một dòng log |
 | Module là MonoBehaviour | giữ prefab/asset của UI; scene Services sống suốt phiên |
 | Host là boot step, không phải MonoBehaviour tự lo `Start` | `BootstrapRunner` trong `Services.unity` xếp `SaveBootstep` (0) → `LiveOpsHost` (20) bằng `Order`, nên host không phải hỏi cờ nào để biết save đã load. Thứ tự do runner bảo đảm, không do cờ. (`TimeService` **không** ở trong chuỗi này — nó là `MonoBehaviour<T>` thường, tự hỏi `IsInitialized` trong getter, xem `TimeSystem.md`) |
 | `SetState` không publish EventBus | tên event là của module; base không mang vocabulary game |
@@ -334,7 +333,7 @@ kế thừa `BaseBootStep` nên không dùng được `MonoBehaviour<T>`, đó l
 | **`FindFromScene` phải thấy được `Services.unity`** — scene này nạp bằng Addressables, tức **sau** khi InitArgs khởi tạo; tiền lệ đang chạy được của dự án nằm ở scene đầu | `ServiceInjector` chỉ `LogWarning "Service Not Found"` rồi trả `null`; `IService.Service` ném NRE ở caller đầu |
 | Kéo `LiveOpsHost` vào list `steps` của `BootstrapRunner`, `Order` **sau** `SaveBootstep` (`TimeService` và `RewardService` không phải step) | `InitializeAsync` không chạy → không module nào `Initialize`, không tick, widget im lặng không hiện |
 | `TimeService` có trong scene (xem `TimeSystem.md`) | `ITimeService.Service` ném ở dòng `now` đầu tiên |
-| Module: component kế thừa `ALiveOpsModule` đặt trong cùng scene | không ai `Register` → module không bao giờ `Initialize` |
+| Module: component kế thừa `ALiveOpsModule` đặt trong cùng scene, **kèm đúng MỘT `*Initializer` của module** có ô Target trỏ vào module và một ô `ILiveOpsHost` để **Service** | thiếu component → không ai `Register`, module không bao giờ `Initialize`; thiếu Initializer → `LiveOpsHost` null, NRE ở `Start` của module, không một dòng log trước đó; **Initializer thừa với Target trống → InitArgs `AddComponent` một module thứ hai lúc `Awake`, nó đăng ký host trước bản trong scene và không ai cấu hình nó** — *đã sai một lần*, lộ bằng NRE trong `Refresh` của module có `GetInstanceID()` âm |
 
 ## Kiểm
 
