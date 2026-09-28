@@ -10,7 +10,7 @@ using UnityEngine.UI;
 
 namespace Horcrux.Runtime.Utilities.UI
 {
-    public class FLyRewardItem : MonoBehaviour
+    public class FlyRewardItem : MonoBehaviour
     {
         [Splitter("References")]
         [SerializeField] private RectTransform selfRect;
