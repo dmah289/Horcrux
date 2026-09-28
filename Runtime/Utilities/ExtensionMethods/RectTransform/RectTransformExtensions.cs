@@ -2,7 +2,7 @@
 
 namespace Horcrux.Runtime.Utilities.ExtensionMethods
 {
-    public static class RectTransformExtensions
+    public static partial class RectTransformExtensions
     {
         public static void GetLocalPosYIn(this RectTransform self, RectTransform parent, out float yMin, out float yMax)
         {
