@@ -119,7 +119,8 @@ tắt lại · **hạn chế viết tắt và thuật ngữ khó**, buộc dùng
 khái niệm đúng tên nó có trong hệ**, khớp nguyên văn tên trong code và tài liệu (§3.7) · câu hỏi phải
 trả lời được **mà không cần mở code ra đọc lại**, thiếu ngữ cảnh gì thì cung cấp kèm · **kết luận
 trước, dẫn giải sau** để developer đủ tin thì dừng đọc được — đối thoại **cố ý** đi khác trình tự của
-NT10 vì nó không có người đọc tuần tự.
+NT10 vì nó không có người đọc tuần tự. Câu trả lời có việc developer phải làm bằng tay trong Editor thì
+gom việc đó về **một mục riêng ở cuối**, không xen giữa dẫn giải logic (§5.4).
 
 **Bày phương án, rồi chốt một cái.** Mỗi phương án một dòng: *nó là gì · được gì · mất gì*. Rồi **chốt
 một phương án và nói vì sao nó thắng** — tiêu chí là **hợp tư tưởng trong file này nhất** (§0), không
@@ -157,6 +158,9 @@ class `*ConfigParser` bọc `JsonConvert` + `try/catch` — toàn bộ phần đ
 > `Model` là class dữ liệu thuần và property phơi `Model`; **không** khai `RemoteConfig<string>` cho nó. JSON
 > hỏng thì `RemoteConfig<T>` tự `LogError` và giữ cache hoặc giá trị trong asset — consumer không `try/catch`.
 > Assembly khai biến phải tham chiếu được assembly của `Model`; chiều đó đúng vì collection RC là của dự án.
+> `JsonConvert` khớp property **không phân biệt hoa thường** nhưng không đổi tên: đổi casing của `Model`
+> không đổi hợp đồng JSON, đổi **tên** field thì key cũ trong JSON rơi thành `null` im lặng — chỉ cửa
+> kiểm luật nghiệp vụ mới bắt được. Persistence của bộ này dùng cùng serializer, nên áp cho cả save.
 
 Sau đó mới tới phạm vi. Mọi thứ định đưa vào qua cùng một luật: **có nhu cầu thật ngay bây giờ thì đưa
 vào** (NT1).
@@ -389,6 +393,12 @@ bên mà bên kia không phải sửa. Bên trong một hệ thì không cần t
 **Phân tầng theo mức phụ thuộc, quyết ngay từ đầu** (NT3): hệ **độc lập** (bê sang dự án khác được) ·
 hệ **kết hợp** (dựng trên nhiều hệ độc lập) · **Utilities** static và universal, không phụ thuộc hệ nào.
 
+**Sổ tay** — bộ này bày tầng đó ra thư mục, để chỗ đặt file trả lời câu hỏi của NT3 mà không mở code:
+`Abstractions/` giữ thứ dự án **gọi tên** (interface, base `A*`, model thuần, event, hằng) ·
+`Implementations/` giữ class cụ thể dự án chỉ **wire** vào scene (host, bootstep, `*Initializer`) ·
+trong mỗi bên `Foundations/` là hệ độc lập, `Composites/` là hệ kết hợp. Một file đặt nhầm bên là một
+phụ thuộc giấu: dự án gọi tên class trong `Implementations/` thì đổi implementation bên đó là sửa dự án.
+
 **Ranh giới framework dùng chung ↔ dự án đi đúng một chiều: dự án → framework.** Framework không gọi
 tên type nào của dự án — và **cơ chế mở rộng nó cung cấp cũng không được ép dự án đẩy domain sang phía
 framework**. Phép kiểm: *nửa mà dự án viết có nằm trong ranh giới biên dịch của dự án không?* Không
@@ -482,6 +492,11 @@ method thành property là đổi hợp đồng ở hai nơi:** interface phải
 ngoài cầm interface không ghi được — lỗi chỉ lộ khi viết tới consumer; và `internal void SetX` thành
 `public X { get; set; }` là nới quyền ghi ra cả assembly khác mà không ai để ý.
 
+**Hai lời gọi luôn phải đi cùng nhau là một kỷ luật — gộp về một cửa.** Bật gốc rồi mới chọn trạng
+thái con: người gọi thứ hai quên bước đầu thì trạng thái con đổi trong khi gốc vẫn tắt, không lỗi nào
+nổ. Bước tiền đề đi vào **trong** mỗi cửa public, và thứ chỉ có nghĩa là tiền đề thành `private`. Phép
+kiểm: mặt ngoài của class nói **trạng thái caller muốn thấy**, không nói **cơ chế** để tới đó.
+
 **Chọn cấu trúc theo bảo đảm mà người dùng nó đang dựa vào, không theo thao tác thuận tay.** Gộp theo
 khoá thì `Dictionary` đúng khi kết quả để **tra cứu**, và sai khi kết quả là **danh sách để vẽ**: thứ
 tự duyệt `Dictionary` không có bảo đảm nào, UI sẽ đảo hàng giữa các lần chạy và không ai gọi đó là bug.
@@ -505,9 +520,13 @@ ca sai nào**; guard hay không guard chỉ là hai đường tới cùng đích
 **Dữ liệu ngoài kiểm một lần ở cửa vào; sau cửa, consumer tin hợp đồng.** Hàng "dữ liệu từ ngoài" của
 bảng trên là guard ở **cửa** — một hàm thuần kiểm luật nghiệp vụ, sai thì từ chối cả cấu hình kèm
 `LogError` — không phải mỗi consumer một nhánh. View runtime **không có nhánh vẽ lỗi** cho dữ liệu đã qua
-cửa: chủ dữ liệu `LogError` kèm `this` khi tra thiếu là toàn bộ chẩn đoán. "Không giấu thứ có thật" của
-§3.9 là cho Editor tool, nơi người nhìn màn hình là người sửa được dữ liệu; trong build người nhìn là
-người chơi, nhánh đó phục vụ không ai.
+cửa: chủ dữ liệu `LogError` kèm `this` khi tra thiếu là toàn bộ chẩn đoán; caller chỉ log thêm khi nó
+biết **ngữ cảnh** chủ dữ liệu không biết (bước nào, chu kỳ nào) — hai dòng đỏ là hai thông tin, không phải
+lặp. Nhánh duy nhất view được có khi tra thiếu là **xoá vết cũ**: view dùng lại (pool, prefab mang sprite
+mẫu) gán `null` cho ô sẽ hiện sai nhất — sprite — rồi thoát, để cái thiếu lộ thành ô trống ngay lần nhìn
+đầu thay vì hiện dữ liệu của item trước; không dựng trạng thái lỗi riêng, không đụng các ô còn lại. "Không giấu
+thứ có thật" của §3.9 là cho Editor tool, nơi người nhìn màn hình là người sửa được dữ liệu; trong build
+người nhìn là người chơi, nhánh đó phục vụ không ai.
 
 **"Để nó nổ" đứng được nhờ vế *nổ* — phải kiểm, không được giả định.** Bốn hình dạng nó **không** nổ:
 
@@ -604,7 +623,7 @@ thả chỉ tồn tại dưới dạng GUID trong file serialize, nên thước 
 
 **Ngoại lệ tự nhiên** là thứ chưa tồn tại lúc authoring: object spawn runtime, số lượng động, dữ liệu
 từ server. Plan chạm scene hoặc prefab thì mô tả thao tác Editor **như một bước thật**, không lặng lẽ
-thay bằng code.
+thay bằng code — và gom về **một mục riêng** tách khỏi logic (§5.4).
 
 **Bắt buộc phải nối bằng code thì bên đời ngắn tự trình diện với bên đời dài, không phải ngược lại.**
 Bên đời ngắn biết chính xác lúc nó xuất hiện và biến mất, nên đăng ký và huỷ đăng ký là **một cặp nằm
@@ -635,6 +654,8 @@ chạy" đủ để dựng lại từ 0 — bỏ code canh mà không viết bư
   - *Đếm hay vị trí*: hậu tố `Amount` cho số lượng, `Index` cho vị trí — `loadedAssetsAmount` vs
     `currAssetIndex`. Danh từ số nhiều đứng một mình (`loadedAssets`) đọc như một danh sách.
   - *Tổng dồn*: tiền tố `total` — `totalSpentCoins`.
+  - *Khoá tra cứu*: hậu tố `Name` cho **chuỗi** người đọc được dùng làm khoá tra danh mục, `Id` cho
+    **số** định danh. `…Id` giữ một chuỗi làm người đọc đi tìm một bảng số không tồn tại.
   - *Đã xảy ra gì*: quá khứ phân từ nói điều đã xảy ra **với giá trị, theo góc nhìn người chơi hay dữ
     liệu** — `collected` · `animated` · `claimed` · `played`: `currAnimatedScore` (số người chơi đã thấy
     chạy tới), `playedIntro`. Không dùng từ mờ (`introDone`) hay từ tả hành động của hệ
@@ -677,7 +698,12 @@ chạy" đủ để dựng lại từ 0 — bỏ code canh mà không viết bư
   niệm không đặt nổi tên riêng thường là khái niệm chưa rõ.
 - **Đổi tên là đổi cả hệ**: code, comment, chuỗi debug, mọi tài liệu — cùng một lần làm, kiểm bằng
   grep. **Ranh giới:** khoá wire format và dữ liệu đã serialize (key JSON, tên field trong save,
-  schema) là **hợp đồng với hệ khác** — không đổi theo, không tính là "tên cũ còn sót".
+  schema) là **hợp đồng với hệ khác** — không đổi theo, không tính là "tên cũ còn sót". Asset trong repo
+  **không** thuộc ranh giới đó: field `[SerializeField]` đổi tên thì đổi luôn key trong YAML của asset,
+  cùng lần làm, so bằng diff — không gắn `FormerlySerializedAs`. Attribute đó là cầu (NT10), chỉ cho asset
+  đã author ở chỗ không sửa tay được (nhiều scene, prefab variant, dữ liệu người dùng), và gỡ cầu **sau
+  khi** asset đã lưu lại theo tên mới. *Đã sai một lần:* gỡ cầu khi asset còn key cũ — Unity nạp thành
+  các entry rỗng, không một dòng lỗi lúc import, hệ tự tắt ở lần Play đầu.
 
 ## 3.8 Dữ liệu đi qua tool — import/export
 
@@ -889,8 +915,8 @@ với plan và phân loại từng chỗ lệch** — tư tưởng thì chưng c
 **Sổ tay** — kho phần cho mỗi task, **chỉ lấy phần task này cần**: Files (đường dẫn chính xác) ·
 Interfaces (consumes và produces, chữ ký đầy đủ) · bảng "toán → code" trỏ về `§0` · bảng lý do cho
 mỗi quyết định thiết kế và tối ưu · **code hoàn chỉnh dán được** với comment trỏ công thức nguồn ·
-**Editor setup** khi chạm scene hoặc prefab (§3.6) · **bảng case kiểm thử** (input → kỳ vọng, kèm biên
-theo §2.8) · **danh sách cheat** chọn theo tiêu chí cheat ở §2.8, kèm lý do từng lệnh.
+**Editor setup** khi chạm scene hoặc prefab — mục riêng của task, không xen vào code và bảng lý do (§5.4) ·
+**bảng case kiểm thử** (input → kỳ vọng, kèm biên theo §2.8) · **danh sách cheat** chọn theo tiêu chí cheat ở §2.8, kèm lý do từng lệnh.
 
 **Plan không thuật lại code.** Bảng lý do ghi *quyết định và vì sao chọn nó*, không kể *code làm gì*
 (§5.4).
@@ -925,7 +951,8 @@ chờ, tài liệu canh theo **việc người đọc phải làm được sau k
 | **Mỗi tài liệu một người đọc** | mỗi loại trả lời đúng câu hỏi của người đọc nó; chép nội dung loại này sang loại kia là sai cả hai. **Cặp `.md`–`.html` không thuộc lỗi này** (§5): cùng nội dung, hai người đọc. Tool có người dùng không phải developer thì có **Manual riêng**: viết theo **nhãn thật trên UI**, trả lời *"bấm gì ra gì, dùng khi nào"* — không tên class, không lý giải cách cài đặt |
 | **Không chép lại thứ người đọc đã cầm trong tay** | `.md` và `.html` viết cho người mở được **code** — cột "vai trò" nói lại đúng tên hàm, dòng bảo đảm mà một dòng `catch` đã nói hết, metrics `O(n log n)` của một `Sort`: **bỏ**. Plan viết cho người **chưa có code**, chuẩn là các task trước trong Plan; Manual cho người **không đọc code**, chuẩn là màn hình trước mặt. Phép kiểm (NT1): *xoá dòng này thì người đọc mất gì* — đáp án "mở file kia ra xem" thì bỏ. **Ngoại lệ giữ bằng mọi giá:** danh sách chữ ký API trong `.md`, vì `.html` dựng từ `.md` mà không mở source (§5.1) |
 | **Không viết theo trí nhớ** | mọi tên file, signature, hằng số, nhãn UI đều mở code đối chiếu lại trước khi ghi — kể cả khi vừa viết chính dòng code đó (NT8). Nguồn sai nhiều nhất của tài liệu |
-| **Code đã tồn tại thì khối code trong Plan là bản sao nguyên văn** | đồng bộ bằng cách chép file rồi **so sánh máy**, không gõ lại — gõ tay là mở lại đúng nguồn sai mà luật trên đang chặn. Lý do ở lại bảng quyết định dưới khối; đó mới là thứ code không tự nói được |
+| **Code đã tồn tại thì khối code trong Plan là bản sao nguyên văn** | đồng bộ bằng cách chép file rồi **so sánh máy**, không gõ lại — gõ tay là mở lại đúng nguồn sai mà luật trên đang chặn. Lý do ở lại bảng quyết định dưới khối; đó mới là thứ code không tự nói được. **Sổ tay** — script dò mỗi khối mở bằng `using`/`namespace` tới file `.cs` giống nhất (so danh sách dòng đã chuẩn hoá khoảng trắng), thay nguyên khối, giữ kiểu xuống dòng của file; chạy lại tới khi báo 0 khối lệch, rồi mới sửa prose tay theo bảng quyết định |
+| **Thao tác Editor là một mục riêng** | mọi việc developer phải làm bằng tay trong Editor — dựng prefab, kéo ô Inspector, tạo asset, thêm key remote config, menu — gom về **một mục riêng** ở mọi đầu ra: Plan (mục Editor setup của task, §5.3) · tài liệu module ("Trước khi chạy", §5.1) · **và câu trả lời trong chat** (§2.3). Không xen vào giữa logic và code: developer tìm lại việc phải làm bằng cách mở đúng một mục, không lọc lại từng dòng dẫn giải; bước setup trộn vào logic là bước bị đọc lướt qua rồi quên |
 | **Viết cho người đọc lần đầu, ở thì hiện tại** | NT10 áp cho tài liệu. **Ngoại lệ duy nhất:** sổ ghi bẫy *"đã sai một lần"* (§3.4) trong mục quyết định thiết kế — ghi **bài học**, không tường thuật thay đổi, và không lưu tên cũ (§3.7). **Sổ tay** — grep các cụm kể lịch sử ("trước đây", "bản cũ", "giờ đã") |
 | **Câu hỏi của người đọc là bằng chứng tài liệu chưa rõ** | trả lời xong phải để câu trả lời lại trong tài liệu, không để nó chết trong hội thoại |
 | **Mâu thuẫn thì SỬA dòng cũ** | không thêm dòng thứ hai nói ngược. **Riêng dòng cũ ghi quyết định hoặc ranh giới do developer đặt thì không tự sửa** — nêu chỗ lệch để developer phân xử (NT5) |

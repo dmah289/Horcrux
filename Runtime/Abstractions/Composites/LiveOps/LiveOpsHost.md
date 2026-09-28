@@ -5,16 +5,17 @@
 
 **Mục tiêu:** module live-ops là component tự chứa; host chỉ làm ba việc — chờ save load, gọi `Initialize` một lần, gọi `Tick` mỗi giây với **cùng một `now`** cho mọi module.
 
-**Kiến trúc:** 5 file. Composite vì dựa trên Persistence + Time + EventBus.
+**Kiến trúc:** 7 file. Composite vì dựa trên Persistence + Time + EventBus.
 
 ```
-Abstractions/Composites/LiveOps/     ILiveOpsModule.cs   (LiveOpsModuleState · LiveOpsWindow · LiveOpsSecondTick · ILiveOpsModule)
-                                     ILiveOpsHost.cs · WeeklySchedule.cs
-Implementations/Composites/LiveOps/  ALiveOpsModule.cs · LiveOpsHost.cs
+Abstractions/Composites/LiveOps/     ILiveOpsModule.cs   (LiveOpsModuleState · LiveOpsSecondTick · ILiveOpsModule)
+                                     LiveOpsWindow.cs · ILiveOpsHost.cs · ALiveOpsModule.cs
+Implementations/Composites/LiveOps/  WeeklySchedule.cs · LiveOpsHost.cs · LiveOpsHostInitializer.cs
 ```
 
-`WeeklySchedule` ở `Abstractions/` dù có thân: hàm thuần, không phụ thuộc Unity, và là thứ module (cũng ở tầng
-trên) gọi thẳng — cùng lý do `BasePersistenceDataCollection` có thân mà vẫn ở `Abstractions/`.
+`ALiveOpsModule` ở `Abstractions/` dù có thân: là bộ khung mọi module kế thừa — cùng lý do `BasePersistenceDataCollection`
+có thân mà vẫn ở `Abstractions/`. `WeeklySchedule` ở `Implementations/` (developer chốt lúc gõ, 28/09): hàm thuần nhưng là
+một cách tính lịch cụ thể, `CycleSchedule` sau này đứng cạnh nó. `LiveOpsWindow` tách file riêng.
 
 ## Ngữ cảnh đã chốt
 
@@ -25,49 +26,69 @@ trên) gọi thẳng — cùng lý do `BasePersistenceDataCollection` có thân 
 | Nhịp | 1 Hz, `UniTask.Delay` Realtime trong host; module không có `Update` |
 | Thời gian | chỉ `ITimeService.UtcNowUnix`; không `DateTime.Now` |
 | Save | module tự giữ entry của mình trong collection của dự án; host chỉ chờ `IsInitialized` |
-| Config | module tự nhận (JSON string từ bridge); host không biết RC |
+| Config | module nhận model đã ép kiểu (`RemoteConfig<T>` của dự án, bridge truyền vào); host không biết RC |
 
 ## §1 Contract
 
 `ILiveOpsModule.cs`:
 
 ```csharp
-using System;
 using Horcrux.Runtime.Utilities.EventBus;
 
 namespace Horcrux.Runtime.Abstractions.Composites.LiveOps
 {
-    public enum LiveOpsModuleState { Inactive, Running, Finished }
+    public enum LiveOpsModuleState
+    {
+        Inactive, Running, Finished
+    }
 
-    /// <summary>[StartUnix, EndUnix) of one cycle. Immutable; a module replaces it, never edits it.</summary>
+    public readonly struct LiveOpsSecondTick : IEvent
+    {
+        public readonly long NowUnix;
+        
+        public LiveOpsSecondTick(long nowUnix)
+        {
+            NowUnix = nowUnix;
+        }
+    }
+    
+    public interface ILiveOpsModule
+    {
+         string ModuleId { get; }
+         LiveOpsModuleState State { get; }
+         
+         void Initialize(long nowUnix);
+         void Tick(long nowUnix);
+    }
+}
+```
+
+`LiveOpsWindow.cs`:
+
+```csharp
+using System;
+
+namespace Horcrux.Runtime.Abstractions.Composites.LiveOps
+{
+    /// <summary>
+    /// [StartUnix, EndUnix)
+    /// </summary>
     public readonly struct LiveOpsWindow
     {
         public readonly long StartUnix;
-        public readonly long EndUnix;                                    // exclusive
+        public readonly long EndUnix;
 
         public LiveOpsWindow(long startUnix, long endUnix)
         {
             StartUnix = startUnix;
             EndUnix = endUnix;
         }
+        
+        public bool Contains(long nowUnix)
+            => nowUnix >= StartUnix && nowUnix < EndUnix;
 
-        public bool Contains(long now) => now >= StartUnix && now < EndUnix;
-        public long SecondsLeft(long now) => Math.Max(0, EndUnix - now);
-    }
-
-    /// <summary>Published by the host once per second, after every module has ticked. For views.</summary>
-    public readonly struct LiveOpsSecondTick : IEvent
-    {
-        public readonly long NowUnix;
-        public LiveOpsSecondTick(long nowUnix) => NowUnix = nowUnix;
-    }
-
-    public interface ILiveOpsModule
-    {
-        string ModuleId { get; }
-        LiveOpsModuleState State { get; }
-        void Initialize(long nowUnix);      // once, after save is loaded
-        void Tick(long nowUnix);            // every second while registered
+        public long SecondsLeft(long nowUnix)
+            => Math.Max(0, EndUnix - nowUnix);
     }
 }
 ```
@@ -89,28 +110,28 @@ namespace Horcrux.Runtime.Abstractions.Composites.LiveOps
 
 ```csharp
 using System;
+using Horcrux.Runtime.Abstractions.Composites.LiveOps;
+using UnityEngine;
 
-namespace Horcrux.Runtime.Abstractions.Composites.LiveOps
+namespace Horcrux.Runtime.Implementations.Composites.LiveOps
 {
-    /// <summary>Weekly cycle windows. Pure: same inputs, same window. See LiveOpsHost.md §2.</summary>
     public static class WeeklySchedule
     {
         public const long WeekSeconds = 604800;
         private const long DaySeconds = 86400;
-        private const int EpochDayOfWeek = 4;            // 1970-01-01 is Thursday; DayOfWeek numbering, Sunday = 0
+        private const int EpochDayOfWeek = 4;
 
-        /// <summary>Window of the cycle containing <paramref name="nowUnix"/>; the anchor is the cycle start.</summary>
-        public static LiveOpsWindow Resolve(long nowUnix, int anchorDayOfWeek, int anchorHourUtc,
-                                            int anchorMinuteUtc, long durationSeconds)
+        public static LiveOpsWindow Resolve(long nowUnix, int anchorDayOfWeek,
+            int anchorHourUtc, int anchorMinuteUtc, long durationSeconds)
         {
-            long anchorOffset = ((anchorDayOfWeek - EpochDayOfWeek + 7) % 7) * DaySeconds
-                                + anchorHourUtc * 3600L + anchorMinuteUtc * 60L;
+            long firstAnchorUnix = ((anchorDayOfWeek - EpochDayOfWeek + 7) % 7) * DaySeconds
+                + anchorHourUtc * 3600L + anchorMinuteUtc * 60L;
 
-            // C# % keeps the sign of the dividend: before the first anchor after the epoch it would go negative.
-            long sinceAnchor = ((nowUnix - anchorOffset) % WeekSeconds + WeekSeconds) % WeekSeconds;
+            long sinceFirstAnchor = ((nowUnix - firstAnchorUnix) % WeekSeconds + WeekSeconds) % WeekSeconds;
 
-            long start = nowUnix - sinceAnchor;
+            long start = nowUnix - sinceFirstAnchor;
             long end = start + Math.Clamp(durationSeconds, 1, WeekSeconds);
+            
             return new LiveOpsWindow(start, end);
         }
     }
@@ -140,81 +161,84 @@ using UnityEngine;
 
 namespace Horcrux.Runtime.Abstractions.Composites.LiveOps
 {
-    /// <summary>Skeleton of one live-ops module: state, window, one Refresh body. See LiveOpsHost.md §3.</summary>
     public abstract class ALiveOpsModule : MonoBehaviour, ILiveOpsModule
     {
         #region Properties
-
+        
+        protected abstract ILiveOpsHost LiveOpsHost { get; }
+        
         public abstract string ModuleId { get; }
-
+        
         public LiveOpsModuleState State { get; private set; }
-
+        
         public long SecondsLeft => State == LiveOpsModuleState.Running
             ? Window.SecondsLeft(LastUnix) : 0;
-
-        /// <summary>False until the host calls Initialize. Gate for data an earlier boot step loads.</summary>
+        
         protected bool IsInitialized { get; private set; }
-
-        protected LiveOpsWindow Window { get; private set; }
-
+        
+        protected LiveOpsWindow Window { get;  private set; }
+        
         protected long LastUnix { get; private set; }
-
+        
         #endregion
 
         #region Unity Callbacks
 
-        protected virtual void Start() => LiveOpsHost.Register(this);
+        protected virtual void Start()
+        {
+            LiveOpsHost.Register(this);
+        }
 
-        protected virtual void OnDestroy() => LiveOpsHost.Unregister(this);
+        protected virtual void OnDestroy()
+        {
+            LiveOpsHost.Unregister(this);
+        }
 
         #endregion
 
         #region API
-
+        
         public void Initialize(long nowUnix)
         {
             IsInitialized = true;
             Evaluate(nowUnix);
         }
 
-        public void Tick(long nowUnix) => Evaluate(nowUnix);
-
+        /// <summary>
+        ///  first evaluation and every tick
+        /// </summary>
+        public void Tick(long nowUnix)
+        {
+            Evaluate(nowUnix);
+        }
+        
         #endregion
 
         #region Class Methods
 
-        /// <summary>Window of the cycle holding nowUnix. The base stores it in Window before each Refresh.</summary>
+        protected abstract void Refresh(long nowUnix);
+        
         protected abstract LiveOpsWindow ResolveWindow(long nowUnix);
 
-        /// <summary>Roll the cycle, then end with SetState. Window and LastUnix are already set.</summary>
-        protected abstract void Refresh(long nowUnix);
-
-        protected virtual void OnStateChanged(LiveOpsModuleState previous, LiveOpsModuleState next) { }
-
-        protected void SetState(LiveOpsModuleState next)
+        protected virtual void OnStateChanged(LiveOpsModuleState oldState, 
+            LiveOpsModuleState newState) {}
+        
+        protected void SetState(LiveOpsModuleState nextState)
         {
-            if (next == State)
+            if (nextState == State)
                 return;
-
-            LiveOpsModuleState previous = State;
-            State = next;
-            OnStateChanged(previous, next);
+            
+            LiveOpsModuleState oldState = State;
+            State = nextState;
+            OnStateChanged(oldState, nextState);
         }
-
-        // One body for the first evaluation and every tick: the rollover rule must not differ between them.
+        
         private void Evaluate(long nowUnix)
         {
             LastUnix = nowUnix;
             Window = ResolveWindow(nowUnix);
             Refresh(nowUnix);
         }
-
-        #endregion
-
-        #region DI
-
-        // Abstract, not injected: the module's one Init slot owns every dependency; a module without a host does not compile.
-        protected abstract ILiveOpsHost LiveOpsHost { get; }
 
         #endregion
     }
@@ -247,7 +271,6 @@ using Sisus.Init;
 
 namespace Horcrux.Runtime.Implementations.Composites.LiveOps
 {
-    /// <summary>Gives every module the same clock: Initialize once after save, Tick once a second. See LiveOpsHost.md §4.</summary>
     [Service(typeof(ILiveOpsHost), FindFromScene = true)]
     public class LiveOpsHost : BaseBootStep, ILiveOpsHost, IInitializable<ITimeService>
     {
@@ -256,10 +279,10 @@ namespace Horcrux.Runtime.Implementations.Composites.LiveOps
         private readonly List<ILiveOpsModule> modules = new();
         private bool isReady;
 
+        #region API
+
         public override UniTask InitializeAsync(CancellationToken ct)
         {
-            // Own lifetime, not the phase token: the runner cancels that one at every level load.
-            // Not awaited: the loop never ends, and the boot chain must move on.
             RunAsync(destroyCancellationToken).Forget();
             return UniTask.CompletedTask;
         }
@@ -267,18 +290,24 @@ namespace Horcrux.Runtime.Implementations.Composites.LiveOps
         public void Register(ILiveOpsModule liveOpsModule)
         {
             modules.Add(liveOpsModule);
-
-            // Late joiner (a scene loaded after boot): give it the first evaluation the others already had.
-            if (isReady)
+            
+            if(isReady)
                 liveOpsModule.Initialize(timeService.UtcNowUnix);
         }
 
-        public void Unregister(ILiveOpsModule liveOpsModule) => modules.Remove(liveOpsModule);
+        public void Unregister(ILiveOpsModule liveOpsModule)
+        {
+            modules.Remove(liveOpsModule);
+        }
+
+        #endregion
+
+        #region Class Methods
 
         private async UniTaskVoid RunAsync(CancellationToken ct)
         {
-            // Save is loaded: Order puts this step after SaveBootstep.
             long now = timeService.UtcNowUnix;
+
             for (int i = 0; i < modules.Count; i++)
                 modules[i].Initialize(now);
             isReady = true;
@@ -286,21 +315,24 @@ namespace Horcrux.Runtime.Implementations.Composites.LiveOps
             while (!ct.IsCancellationRequested)
             {
                 await UniTask.Delay(TickMilliseconds, DelayType.Realtime, cancellationToken: ct);
-
-                // One read per tick: two modules must never disagree on which second it is.
+                
                 now = timeService.UtcNowUnix;
-                for (int i = 0; i < modules.Count; i++)
+                for(int i = 0; i < modules.Count; i++)
                     modules[i].Tick(now);
-
+                
                 EventBus<LiveOpsSecondTick>.Publish(new LiveOpsSecondTick(now));
             }
         }
 
+        #endregion
+
         #region DI
 
         private ITimeService timeService;
-
-        public void Init(ITimeService argument) => timeService = argument;
+        public void Init(ITimeService argument)
+        {
+            timeService = argument;
+        }
 
         #endregion
     }
@@ -310,6 +342,36 @@ namespace Horcrux.Runtime.Implementations.Composites.LiveOps
 Kèm một `LiveOpsHostInitializer : Initializer<LiveOpsHost, ITimeService>` trong cùng thư mục — `LiveOpsHost`
 kế thừa `BaseBootStep` nên không dùng được `MonoBehaviour<T>`, đó là ca mà InitArgs bảo khai class
 `*Initializer` riêng.
+
+```csharp
+using Sisus.Init;
+using Horcrux.Runtime.Abstractions.Time;
+
+namespace Horcrux.Runtime.Implementations.Composites.LiveOps
+{
+	/// <summary>
+	/// Initializer for the <see cref="LiveOpsHost"/> component.
+	/// </summary>
+	internal sealed class LiveOpsHostInitializer : Initializer<LiveOpsHost, ITimeService>
+	{
+		#if UNITY_EDITOR
+		/// <summary>
+		/// This section can be used to customize how the Init arguments will be drawn in the Inspector.
+		/// <para>
+		/// The Init argument names shown in the Inspector will match the names of members defined inside this section.
+		/// </para>
+		/// <para>
+		/// Any PropertyAttributes attached to these members will also affect the Init arguments in the Inspector.
+		/// </para>
+		/// </summary>
+		private sealed class Init
+		{
+			public ITimeService TimeService = default;
+		}
+		#endif
+	}
+}
+```
 
 | Quyết định | Vì |
 |---|---|
