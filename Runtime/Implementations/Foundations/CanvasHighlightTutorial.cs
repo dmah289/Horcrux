@@ -24,7 +24,6 @@ namespace Horcrux.Runtime.Implementations.LiveOps
         
         private Canvas _target;
         private GraphicRaycaster _targetRaycaster;
-        private bool _cacheTargetCanvasEnabled;
         private bool _cacheTargetRaycasterEnabled;
         private bool _cacheTargetOverrideSorting;
         private int _cacheTargetSortingOrder;
@@ -83,13 +82,11 @@ namespace Horcrux.Runtime.Implementations.LiveOps
             _handToTargetDir = _highlightConfig.HandDirection.GetDirectionVector();
             
             // cache original sorting values
-            _cacheTargetCanvasEnabled = _target.enabled;
             _cacheTargetRaycasterEnabled = _targetRaycaster.enabled;
             _cacheTargetOverrideSorting = _target.overrideSorting;
             _cacheTargetSortingOrder = _target.sortingOrder;
 
             // override sorting values to make sure highlight is on top of target
-            _target.enabled = true;
             _targetRaycaster.enabled = true;
             _target.overrideSorting = true;
             _target.sortingOrder = highlightSortingOrder + 1;
@@ -117,7 +114,6 @@ namespace Horcrux.Runtime.Implementations.LiveOps
             
             _target.overrideSorting = _cacheTargetOverrideSorting;
             _target.sortingOrder = _cacheTargetSortingOrder;
-            _target.enabled = _cacheTargetCanvasEnabled;
             _targetRaycaster.enabled = _cacheTargetRaycasterEnabled;
             _target = null;
             _targetRaycaster = null;
