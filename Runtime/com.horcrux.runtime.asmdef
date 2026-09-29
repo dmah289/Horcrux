@@ -9,7 +9,8 @@
         "UniTask",
         "UniTask.Addressables",
         "Unity.Mathematics",
-        "UnityEngine.UI"
+        "UnityEngine.UI",
+        "Unity.TextMeshPro"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
