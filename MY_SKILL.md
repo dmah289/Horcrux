@@ -586,6 +586,9 @@ nó ở nơi khác (Home, popup), có khi sau nhiều lần đổi. Luật đúc
 | **Trạng thái nghỉ là trạng thái dựng trong prefab; đích trình diễn là ô developer đặt; mỗi lần hiện đặt lại về nghỉ** | bar giấu sau rèm là chỗ prefab lưu; vị trí lộ là `[SerializeField]`, không đọc ngầm `anchoredPosition` ở `Start` — đọc ngầm là hợp đồng không hiện trong Inspector. Khoảng đi suy từ kích thước có sẵn (`rect.width` của cửa sổ) thay cho ô thứ hai. Mỗi lần hiện, code đặt về nghỉ rồi mới hỏi có gì để diễn; không dựa vào prefab đúng hay lượt trước không bị huỷ |
 | **Lớp vẽ trên đè lớp dưới, không bật/tắt thứ bị che** | khung mang chữ riêng đè lên nhãn; nhãn không `SetActive`. Bật/tắt theo vị trí là một trạng thái nữa phải giữ đồng bộ với tween |
 | **Giá trị đổi lúc tới nơi, không lúc bắt đầu** | khung chạy tới mốc mới vẫn mang giá trị cũ; số đổi và hạt nổ ở `Arrive`. Đổi giữa đường là hai thông tin mâu thuẫn trên một vật; về bậc thấp thì đổi số, không nổ hạt |
+| **Trình diễn tách bước thì save giữ cấu tạo của lần đổi cuối** | trình diễn tổng chỉ cần mốc và sự thật; trình diễn tách bước cần biết thay đổi **hình thành thế nào** — thứ không suy ngược được từ tổng. Save giữ cấu tạo của đúng **một** lần đổi chưa xem, ghi đè mỗi lần đổi: diễn tách bước cho lần cuối, phần dồn trước đi đường trình diễn tổng. Xoá cấu tạo khi diễn xong — cùng luật với ghi mốc "đã thấy" — và reset chu kỳ xoá theo |
+| **Bước diễn thiếu dữ liệu thì bỏ bước, không rẽ nhánh cả luồng** | luồng trình diễn giữ một hình dạng cho mọi ca; chỉ bước không có gì để diễn bị bỏ. Nhánh "ca này khỏi diễn" là một đường trình diễn thứ hai phải giữ đồng bộ với đường chính |
+| **Service overlay giữ cơ chế; nội dung là canvas của consumer được nâng cùng** | tối màn, nâng sorting, con trỏ hướng dẫn, fade là cơ chế dùng chung; nội dung nằm trong canvas thuộc prefab của consumer, đưa vào qua tham số của service. Kịch bản mới là consumer mới, không sửa service — service mọc cờ chế độ theo từng kịch bản là gom domain của mọi consumer về một class (NT1, NT3) |
 
 > **Nền tảng** — lựa chọn mặc định và ràng buộc đi kèm:
 >
@@ -709,6 +712,11 @@ chạy" đủ để dựng lại từ 0 — bỏ code canh mà không viết bư
   tài liệu.
 - **Một từ = một nghĩa trong toàn hệ thống** — một từ mang hai nghĩa thì đổi tên một bên ngay. Khái
   niệm không đặt nổi tên riêng thường là khái niệm chưa rõ.
+- **Tên hệ theo cơ chế nó cung cấp, không theo người dùng đầu tiên.** Người dùng thứ hai khác vai xuất
+  hiện là tên theo vai cũ thành lời nói dối về phạm vi — hệ overlay đặt tên theo tutorial thành sai khi
+  màn nhận thưởng cũng dùng nó; lúc đó đổi tên theo luật "đổi tên là đổi cả hệ" dưới. File `.cs` và thư
+  mục đổi tên **trong Project window của Unity** để giữ `.meta` và GUID — đổi ngoài Editor là mọi
+  reference kéo thả đứt im lặng.
 - **Đổi tên là đổi cả hệ**: code, comment, chuỗi debug, mọi tài liệu — cùng một lần làm, kiểm bằng
   grep. **Ranh giới:** khoá wire format và dữ liệu đã serialize (key JSON, tên field trong save,
   schema) là **hợp đồng với hệ khác** — không đổi theo, không tính là "tên cũ còn sót". Asset trong repo
@@ -933,6 +941,13 @@ mỗi quyết định thiết kế và tối ưu · **code hoàn chỉnh dán đ
 
 **Plan không thuật lại code.** Bảng lý do ghi *quyết định và vì sao chọn nó*, không kể *code làm gì*
 (§5.4).
+
+**Dẫn giải của Plan dừng ở luồng; Editor setup thì đầy đủ.** Người đọc Plan là developer đang có agent
+bên cạnh, nên kênh bù cho chỗ chưa rõ là **hỏi trực tiếp** — dẫn giải chỉ cần đủ lần theo luồng (dữ
+liệu đi đâu, bước nào gọi bước nào, quyết định trái trực giác vì sao), không dẫn dắt dài như tài liệu
+module; câu hỏi lặp lại thì ghi câu trả lời ngược vào Plan (§5.4). Chiều gọn đó **không áp cho Editor
+setup**: bước tay thiếu không có compile error nào bắt, và developer tra lại nó lúc dựng — mục đó viết
+đủ để làm theo từng bước không phải hỏi.
 
 **Hai loại Plan, hai hình dạng code.** Hệ **chưa có code** thì mỗi khối là **một file trọn vẹn** để
 chép. Hệ **đang có code** thì Plan là **chuỗi chỗ đổi theo thứ tự**: mỗi bước một chỗ — file · dòng
