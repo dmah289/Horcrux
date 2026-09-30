@@ -574,6 +574,19 @@ vào "guard đầy đủ". Một dòng `if (isOpen) return;` ở cửa rẻ hơn
 đường — grant đứng trước anim. Trình diễn chỉ cần không để rác trên màn hình: snap đích, tắt, xong.
 Không bỏ công bảo toàn đường hủy cho thứ mà bị hủy thì người chơi không mất gì.
 
+**Trình diễn một thay đổi cho người chơi.** Dữ liệu đổi ở một nơi (gameplay, server) và người chơi thấy
+nó ở nơi khác (Home, popup), có khi sau nhiều lần đổi. Luật đúc từ bar bậc nhân của Collection:
+
+| Luật | Nghĩa là |
+|---|---|
+| **Mốc "đã thấy" nằm trong save, cạnh sự thật** | mọi thứ trượt hay đếm từ A tới B cần một A người chơi đã xác nhận bằng mắt: `currAnimatedTokens`, `lastSeenMultiplierIndex` (quá khứ phân từ, §3.7). A sống trong instance view là sai: view bị tắt, dựng lại, hoặc có nhiều instance; A = sự thật lúc bật là không có gì để diễn. Sự thật đổi bao nhiêu lần giữa hai lần xem cũng được — trình diễn đi từ mốc tới sự thật **một** lần. *Đã sai một lần:* view có cờ `slide` nhưng lúc bật không có "từ đâu", thắng ba level rồi về Home là khung nhảy thẳng |
+| **Ghi mốc khi diễn xong, ở đúng một chỗ cho cả snap lẫn trượt** | huỷ giữa chừng thì mốc chưa nhích, lần sau diễn lại; ghi lúc bắt đầu là đánh dấu thứ người chơi chưa thấy. Reset chu kỳ (rollover) reset cả mốc — chu kỳ mới không có chuỗi cũ để diễn |
+| **Component dùng chung ở nhiều host thì mặc định thụ động; host cần dàn dựng gọi API `await` được. Không có cờ chế độ trên instance** | bật lên chỉ đứng ở mốc (`Park`); trượt khi event bắn lúc đang hiện, hoặc host gọi `PlayAsync(ct)`. Một cờ `autoPlay` quên tick trên một instance không để lại dấu vết (§3.4). Giá nói ra tại chỗ: host không có code thì không tự đuổi theo sự thật, chỉ đứng ở mốc |
+| **Hiệu ứng "báo có thay đổi" ở đúng một điểm trình diễn; chỗ khác vẽ tĩnh** | rèm mở ở widget Home; Main Screen và popup đặt bar thường, luôn hiện. Cùng một hiệu ứng ở hai chỗ là diễn hai lần cùng một thay đổi |
+| **Trạng thái nghỉ là trạng thái dựng trong prefab; đích trình diễn là ô developer đặt; mỗi lần hiện đặt lại về nghỉ** | bar giấu sau rèm là chỗ prefab lưu; vị trí lộ là `[SerializeField]`, không đọc ngầm `anchoredPosition` ở `Start` — đọc ngầm là hợp đồng không hiện trong Inspector. Khoảng đi suy từ kích thước có sẵn (`rect.width` của cửa sổ) thay cho ô thứ hai. Mỗi lần hiện, code đặt về nghỉ rồi mới hỏi có gì để diễn; không dựa vào prefab đúng hay lượt trước không bị huỷ |
+| **Lớp vẽ trên đè lớp dưới, không bật/tắt thứ bị che** | khung mang chữ riêng đè lên nhãn; nhãn không `SetActive`. Bật/tắt theo vị trí là một trạng thái nữa phải giữ đồng bộ với tween |
+| **Giá trị đổi lúc tới nơi, không lúc bắt đầu** | khung chạy tới mốc mới vẫn mang giá trị cũ; số đổi và hạt nổ ở `Arrive`. Đổi giữa đường là hai thông tin mâu thuẫn trên một vật; về bậc thấp thì đổi số, không nổ hạt |
+
 > **Nền tảng** — lựa chọn mặc định và ràng buộc đi kèm:
 >
 > | Nhu cầu | Dùng | Ràng buộc không bỏ được |
