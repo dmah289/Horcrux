@@ -25,5 +25,24 @@ namespace Horcrux.Runtime.Utilities.ExtensionMethods
                 self.sizeDelta = targetSizeDelta;
             }
         }
+
+        public static async UniTask CharmAnchoredPosition(this RectTransform self, Vector2 target, EaseType ease,
+            float duration, CancellationToken ct)
+        {
+            Vector2 from = self.anchoredPosition;
+
+            await CharmTween.CastAsync(duration, ease, spell, ct, onComplete);
+
+            void spell(float t)
+            {
+                self.anchoredPosition = Vector2.LerpUnclamped(from, target, t);
+            }
+
+            void onComplete()
+            {
+                if (self != null)
+                    self.anchoredPosition = target;
+            }
+        }
     }
 }
