@@ -1,4 +1,6 @@
-﻿using Horcrux.Runtime.Utilities.Common;
+﻿using System.Threading;
+using Cysharp.Threading.Tasks;
+using Horcrux.Runtime.Utilities.Common;
 using UnityEngine;
 
 namespace Horcrux.Runtime.Abstractions.LiveOps
@@ -24,10 +26,18 @@ namespace Horcrux.Runtime.Abstractions.LiveOps
             : this(true, handDirection, targetPadding, handTargetOffset) { }
     }
     
-    public interface ICanvasHighlightTutorial
+    public interface ICanvasSpotlight
     {
         bool IsFocusing { get; }
         void Focus(Canvas target, in HighlightConfig config);
-        public void Release();
+        /// <summary>
+        /// Hand anchors to the FIRST one
+        /// </summary>
+        void Focus(Canvas target, Canvas extra, in HighlightConfig config);
+        /// <summary>
+        /// Taps stay swallowed until Release.
+        /// </summary>
+        UniTask FadeDimAsync(float toAlpha, float duration, CancellationToken ct);
+        void Release();
     }
 }
