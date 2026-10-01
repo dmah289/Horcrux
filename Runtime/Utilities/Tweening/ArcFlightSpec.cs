@@ -1,6 +1,5 @@
 ﻿using System;
 using Horcrux.Runtime.Tweening.Easing;
-using UnityEngine.Serialization;
 
 namespace Horcrux.Runtime.Utilities.Tweening
 {

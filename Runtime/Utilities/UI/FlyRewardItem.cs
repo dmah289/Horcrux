@@ -6,7 +6,6 @@ using Horcrux.Runtime.Utilities.ExtensionMethods;
 using Horcrux.Runtime.Utilities.PhysXHelper;
 using Horcrux.Runtime.Utilities.Tweening;
 using UnityEngine;
-using UnityEngine.Serialization;
 using UnityEngine.UI;
 
 namespace Horcrux.Runtime.Utilities.UI

@@ -114,6 +114,7 @@ footer{text-align:center;padding:3rem 1rem;color:var(--tx3);font-size:.85rem;bor
 <tr><td class="st">n</td><td>số trục <strong>bù</strong> (không tính trục chính)</td><td><code>{1, 2}</code> (§3)</td></tr>
 <tr><td class="st">σx σy σz</td><td>ba thành phần <code>Vector3</code> trả về</td><td>∏ <code>= 1</code></td></tr>
 <tr><td class="st">m</td><td><code>minScale</code> — <code>s</code> lúc bẹp sâu nhất</td><td><code>&gt; 0.28</code> (§6)</td></tr>
+<tr><td class="st">s₀ · s₁</td><td><code>startScale</code> · <code>endScale</code> của <code>GetSquashStretch</code> — <code>s</code> lúc <code>e = 0</code> · lúc <code>e = 1</code></td><td>kẹp <code>[1e-4, 1e4]</code> (§7)</td></tr>
 <tr><td class="st">e</td><td><code>Easer.Evaluate(ease, t)</code></td><td>có thể vượt <code>[0,1]</code></td></tr>
 <tr><td class="st">u · k</td><td><code>saturate(impact/maxImpact)</code> · <code>stretchPerSpeed</code></td><td><code>[0,1]</code> · —</td></tr>
 </table></div>
@@ -235,7 +236,7 @@ footer{text-align:center;padding:3rem 1rem;color:var(--tx3);font-size:.85rem;bor
                                 │
   speed, k, maxStretch ─────────┼──► <em>s</em> ──► <em>GetVolumePreservingScale</em> ──► Vector3
                                 │      guard §7 → c = s^(-1/n)      (localScale)
-  t, easeType, minScale ────────┘        §2      → trục bù §4
+  t, easeType, s₀, s₁ ──────────┘        §2      → trục bù §4
         └─► Easer.Evaluate
 </div>
 
@@ -276,6 +277,8 @@ footer{text-align:center;padding:3rem 1rem;color:var(--tx3);font-size:.85rem;bor
 <h2><span class="sn">§6</span>Vọt lố &amp; ngưỡng minScale</h2>
 
 <p class="lead">Mapping Time (§5) là một phép <code>lerp</code> biến giá trị ease <code>e</code> thành <code>s</code>. Nó neo ở hai mốc, và <em>mọi thứ ngoài hai mốc đó</em> mới là chuyện đáng nói:</p>
+
+<p class="hint">Mục này viết cho <code>s₀ = m</code>, <code>s₁ = 1</code>. Tổng quát <code>s = s₀ + e(s₁ − s₀)</code>: thay <code>(1 − m)</code> bằng <code>(s₁ − s₀)</code>. Khi <code>s₁ &lt; s₀</code> (co dần) thì <code>e &gt; 1</code> đẩy <code>s</code> xuống <em>dưới</em> <code>s₁</code>, và <code>e &lt; 0</code> đẩy <code>s</code> lên <em>trên</em> <code>s₀</code>.</p>
 
 <div class="arch">   <em>e</em> (ease trả về)   0 ───────────── 1 ─────────────── <em>e_max</em>
                         │               │                   │
@@ -411,7 +414,7 @@ footer{text-align:center;padding:3rem 1rem;color:var(--tx3);font-size:.85rem;bor
 <tr><td><code>GetVolumePreservingScale</code></td><td><code>float primaryScale</code></td><td>caller tự cấp</td><td>tự điều khiển <code>s</code>, hoặc chồng nhiều hiệu ứng</td></tr>
 <tr><td><code>GetSquashFromImpact</code><br><span style="color:var(--tx3);font-size:.85em">inlined</span></td><td><code>impact</code>, <code>maxImpact</code>, <code>minScale</code></td><td><code>lerp(1, m, saturate(impact/maxImpact))</code></td><td>đáp đất, nút bấm, pickup</td></tr>
 <tr><td><code>GetDirectionalStretch</code><br><span style="color:var(--tx3);font-size:.85em">inlined</span></td><td><code>speed</code>, <code>stretchPerSpeed</code>, <code>maxStretch</code></td><td><code>1 + clamp(speed·k, 0, maxStretch−1)</code></td><td>đạn, nhân vật bay nhanh</td></tr>
-<tr><td><code>GetSquashStretch</code><br><span style="color:var(--tx3);font-size:.85em">inlined</span></td><td><code>t</code>, <code>EaseType easeType</code>, <code>minScale</code></td><td><code>lerp(m, 1, Easer.Evaluate(ease, t))</code></td><td>animation squash→stretch→nghỉ</td></tr>
+<tr><td><code>GetSquashStretch</code><br><span style="color:var(--tx3);font-size:.85em">inlined</span></td><td><code>t</code>, <code>EaseType easeType</code>, <code>startScale</code>, <code>endScale</code></td><td><code>lerp(s₀, s₁, Easer.Evaluate(ease, t))</code></td><td>animation squash→stretch→nghỉ (<code>s₀ = m</code>, <code>s₁ = 1</code>); hoặc một chiều bất kỳ <code>s₀ → s₁</code>, ví dụ phồng 1.3 co về 0.8 khi bay</td></tr>
 <tr><td colspan="4" style="color:var(--tx2)"><code>AxisType primaryAxis</code> = trục chủ động · <code>CoordinateSystem coordinateSystem</code> = tập trục được bù (§3–4) · trả <code>Vector3</code> gán thẳng <code>localScale</code></td></tr>
 </table></div>
 
@@ -424,7 +427,7 @@ footer{text-align:center;padding:3rem 1rem;color:var(--tx3);font-size:.85rem;bor
 
 <div class="tw"><table>
 <tr><th>Chủ đề</th><th>Lưu ý</th></tr>
-<tr><td><strong>Chọn minScale</strong></td><td>time-driven giữ <code>&gt; 0.28</code>; nhỏ hơn thì tránh họ <code>*Elastic</code> (§6)</td></tr>
+<tr><td><strong>Chọn minScale</strong></td><td>time-driven giữ <code>&gt; 0.28</code>; nhỏ hơn thì tránh họ <code>*Elastic</code> (§6). Với <code>GetSquashStretch</code> hai đầu thì tính lại theo <code>s = s₀ + e(s₁ − s₀)</code> (§6)</td></tr>
 <tr><td><strong>Chọn ease</strong></td><td>cần stretch → <code>OutBack</code>/<code>OutElastic</code>. Bounce và họ <code>In*</code> <strong>không</strong> cho <code>s&gt;1</code> (§6)</td></tr>
 <tr><td><strong>Chồng nhiều hiệu ứng</strong></td><td><strong>nhân các <code>s</code></strong> rồi gọi lõi <strong>một lần</strong>: <code>GetVolumePreservingScale(s_impact * s_speed, …)</code>. Cộng hai <code>Vector3</code> kết quả sẽ phá bảo toàn — hợp các phép scale là phép <em>nhân</em></td></tr>
 <tr><td><strong>Directional</strong></td><td>caller phải xoay <code>primaryAxis</code> về hướng vận tốc; hàm chỉ trả độ lớn (SRP)</td></tr>

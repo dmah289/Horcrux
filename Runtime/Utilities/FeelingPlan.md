@@ -7,7 +7,8 @@ Tất cả phải tuân thủ: **zero-GC** (thuần tính toán `float`/`struct`
 
 Đã có:
 - `HarmonicOscillator` (dao động điều hòa đơn giản, Sin/Cos).
-- `SquashStretch` — ✅ **đã triển khai** (`Horcrux.Runtime.Utilities.PhysXHelper.SquashStretch`): `GetVolumePreservingScale`, `GetSquashFromImpact`, `GetDirectionalStretch`, `GetSquashStretch`.
+- `SquashStretch` — ✅ **đã triển khai** (`Horcrux.Runtime.Utilities.PhysXHelper.SquashStretch`): `GetVolumePreservingScale`, `GetSquashFromImpact`, `GetDirectionalStretch`, `GetSquashStretch` (nhận `startScale` và `endScale`).
+- `BezierCurveHelper` — ✅ **đã triển khai** (`PhysXHelper/BezierCurveHelper.cs`): `EvaluateQuadraticBezier`, `ComputeControlPoint` (cung trong mặt phẳng XY). Dùng bởi hai overload `CharmFlyArc` (`ArcFlightSpec`, `SquashStretchFlightSpec`) trong `TransformExtensions.CharmTween.cs`.
 - `AudioPitchHelper` — ✅ **đã triển khai** (`Horcrux.Runtime.Utilities.AudioHelper`): `SemitonesToRatio`, `GetRampedPitch`, `GetDetunedPitch`.
 - `DampedOscillator` — ✅ **đã triển khai** (envelope · displacement · velocity · settling-time, bản `decay` và bản `halfLife`).
 - `GeometryHelper` — ⚠️ **một phần**: hiện chỉ có `RandomPointInAnnulus`/`RandomPointIn3DAnnulus`. Phần khoảng cách/closest-point (cần cho `StaggerHelper`) **chưa có**.
@@ -79,7 +80,7 @@ Mục tiêu: tạo cảm giác "đã tay, đã mắt, đã tai" (satisfying feed
 #### ~~`SquashStretch`~~ — ✅ **ĐÃ XONG** (`PhysXHelper/SquashStretch.cs`)
 - Giữ nguyên thể tích: nén theo Y thì phình theo X (`scaleX = 1/√scaleY`).
 - Ứng dụng: nhân vật nhảy/đáp đất, nút bấm, item pickup. Bí quyết "sống động" như jelly.
-- Đang được dùng bởi: `ComboMeter` (cú nảy mỗi nhịp) — `ComboSystem.md` Task 8.
+- Đang được dùng bởi: `ComboMeter` (cú nảy mỗi nhịp) — `ComboSystem.md` Task 8 · `FlyRewardItem` (quà bay, phồng 1.3 co về 0.8) · `CharmFlyArc(SquashStretchFlightSpec)` (bay cung, giãn lúc rời, nén lúc chạm).
 
 #### `Wobble` / `Jelly` ⭐ ưu tiên cao — rung rinh như thạch
 - Kết hợp `DampedOscillator` tạo hiệu ứng lắc lư tắt dần sau khi chạm/thả. Rất ASMR.

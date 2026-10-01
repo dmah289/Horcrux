@@ -1,5 +1,4 @@
-﻿using Horcrux.Runtime.Utilities.PhysXHelper;
-using UnityEngine;
+﻿using UnityEngine;
 
 namespace Horcrux.Runtime.Utilities.PhysXHelper
 {
