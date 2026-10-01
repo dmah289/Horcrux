@@ -1,7 +1,7 @@
 ﻿using Horcrux.Runtime.Utilities.PhysXHelper;
 using UnityEngine;
 
-namespace Horcrux.Runtime.Horcrux.Runtime.Utilities.PhysXHelper
+namespace Horcrux.Runtime.Utilities.PhysXHelper
 {
     public static class Vector3Interpolator
     {

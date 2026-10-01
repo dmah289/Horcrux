@@ -18,52 +18,52 @@ namespace Horcrux.Runtime.Utilities.PhysXHelper
         /// <summary>
         /// Calculate volume-preserving scale derived from the on main axis.
         /// </summary>
-        /// <param name="primaryScale">Scale factor of the primary axis.</param>
-        /// <param name="primaryAxis">Primary axis to scale</param>
+        /// <param name="stretchScale">Scale factor of the primary axis.</param>
+        /// <param name="stretchedAxis">Primary axis to scale</param>
         /// <param name="coordinateSystem">Coordinate system to calculate the complement.</param>
         /// <returns>Volume-preserving scale.</returns>
-        public static Vector3 GetVolumePreservingScale(float primaryScale, 
-            AxisType primaryAxis, CoordinateSystem coordinateSystem)
+        public static Vector3 GetVolumePreservingScale(float stretchScale, 
+            AxisType stretchedAxis, CoordinateSystem coordinateSystem)
         {
             // min(max(..)) not math.clamp: clamp is max(lo, min(hi, x)) and math.min(hi, NaN) returns hi,
             // so NaN would land on the ceiling (10^4x blow-up). This order sends NaN to the floor
             // (invisible sliver) while the outer min still caps +∞ before it reaches localScale.
-            primaryScale = math.min(math.max(primaryScale, MinScale), MaxScale);
-            float compScale = coordinateSystem.Is2D() ? 1f / primaryScale 
-                : math.rsqrt(primaryScale);
+            stretchScale = math.min(math.max(stretchScale, MinScale), MaxScale);
+            float compScale = coordinateSystem.Is2D() ? 1f / stretchScale 
+                : math.rsqrt(stretchScale);
 
             switch (coordinateSystem)
             {
                 case CoordinateSystem.XY:
-                    switch (primaryAxis)
+                    switch (stretchedAxis)
                     {
-                        case AxisType.X : return new Vector3(primaryScale, compScale, 1f);
-                        case AxisType.Y : return new Vector3(compScale, primaryScale, 1f);
+                        case AxisType.X : return new Vector3(stretchScale, compScale, 1f);
+                        case AxisType.Y : return new Vector3(compScale, stretchScale, 1f);
                         default: return Vector3.one;
                     }
 
                 case CoordinateSystem.XZ:
-                    switch (primaryAxis)
+                    switch (stretchedAxis)
                     {
-                        case AxisType.X : return new Vector3(primaryScale, 1f, compScale);
-                        case AxisType.Z : return new Vector3(compScale, 1f, primaryScale);
+                        case AxisType.X : return new Vector3(stretchScale, 1f, compScale);
+                        case AxisType.Z : return new Vector3(compScale, 1f, stretchScale);
                         default: return Vector3.one;
                     }
 
                 case CoordinateSystem.YZ:
-                    switch (primaryAxis)
+                    switch (stretchedAxis)
                     {
-                        case AxisType.Y : return new Vector3(1f, primaryScale, compScale);
-                        case AxisType.Z : return new Vector3(1f, compScale, primaryScale);
+                        case AxisType.Y : return new Vector3(1f, stretchScale, compScale);
+                        case AxisType.Z : return new Vector3(1f, compScale, stretchScale);
                         default: return Vector3.one;
                     }
 
                 default: // XYZ
-                    switch (primaryAxis)
+                    switch (stretchedAxis)
                     {
-                        case AxisType.X : return new Vector3(primaryScale, compScale, compScale);
-                        case AxisType.Y : return new Vector3(compScale, primaryScale, compScale);
-                        default: return new Vector3(compScale, compScale, primaryScale);
+                        case AxisType.X : return new Vector3(stretchScale, compScale, compScale);
+                        case AxisType.Y : return new Vector3(compScale, stretchScale, compScale);
+                        default: return new Vector3(compScale, compScale, stretchScale);
                     }
             }
         }
@@ -107,15 +107,12 @@ namespace Horcrux.Runtime.Utilities.PhysXHelper
         /// Squash-Stretch-Idle based on time progress (must use unclamped ease).<br/>
         /// Only Stretch with OutBack/OutElastic.
         /// </summary>
-        /// <param name="t">Time progress, clamped by Easer.</param>
-        /// <param name="minScale">Min scale factor of the primary axis.</param>
-        /// <returns>Volume-preserving based on easing.</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static Vector3 GetSquashStretch(float t, EaseType easeType, float minScale,
+        public static Vector3 GetSquashStretch(float t, EaseType easeType, float startScale, float endScale,
             AxisType primaryAxis, CoordinateSystem coordinateSystem)
         {
             float eased = Easer.Evaluate(easeType, t);
-            float s = math.lerp(minScale, 1f, eased); // unclamped by design: overshoot IS the stretch
+            float s = math.lerp(startScale, endScale, eased);
             return GetVolumePreservingScale(s, primaryAxis, coordinateSystem);
         }
     }

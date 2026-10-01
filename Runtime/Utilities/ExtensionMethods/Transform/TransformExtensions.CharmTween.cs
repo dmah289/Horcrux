@@ -2,6 +2,9 @@
 using System.Threading;
 using Cysharp.Threading.Tasks;
 using Horcrux.Runtime.Tweening.Easing;
+using Horcrux.Runtime.Utilities.Common;
+using Horcrux.Runtime.Utilities.PhysXHelper;
+using Horcrux.Runtime.Utilities.Tweening;
 using UnityEngine;
 
 namespace Horcrux.Runtime.Utilities.ExtensionMethods
@@ -116,6 +119,73 @@ namespace Horcrux.Runtime.Utilities.ExtensionMethods
 
                 if (ct.IsCancellationRequested)
                     return;
+            }
+        }
+
+        public static async UniTask CharmFlyArc(this Transform self, Vector3 target, ArcFlightSpec spec,
+            CancellationToken ct)
+        {
+            Vector3 from = self.position;
+            Vector3 controlPoint = BezierCurveHelper.ComputeControlPoint(from, target, spec.controlOffset);
+
+            await CharmTween.CastAsync(spec.duration, EaseType.Linear, spell, ct, onComplete);
+            
+            void spell(float t)
+            {
+                float progressEased = Easer.Evaluate(spec.progressEase, t);
+                self.position = BezierCurveHelper.EvaluateQuadraticBezier(progressEased, from, target, controlPoint);
+                
+                float scale = Mathf.LerpUnclamped(spec.startScale, spec.endScale, Easer.Evaluate(spec.scaleEase, t));
+                self.localScale = Vector3.one * scale;
+            }
+
+            void onComplete()
+            {
+                if (self != null)
+                {
+                    self.position = target;
+                    self.localScale = Vector3.one * spec.endScale;
+                }
+            }
+        }
+        
+        public static async UniTask CharmFlyArc(this Transform self, Vector3 target, SquashStretchFlightSpec spec,
+            CancellationToken ct)
+        {
+            Vector3 from = self.position;
+            Vector3 controlPoint = BezierCurveHelper.ComputeControlPoint(from, target, spec.controlOffset);
+            Vector3 landScale = SquashStretch.GetVolumePreservingScale(spec.endScale, AxisType.Y, CoordinateSystem.XY);
+
+            try
+            {
+                await CharmTween.CastAsync(spec.progressDuration, spec.progressEase, flySpell, ct);
+
+                if (!spec.recoverAfterLanding)
+                    return;
+
+                await CharmTween.CastAsync(spec.recoverDuration, EaseType.Linear, recoverSpell, ct);
+            }
+            finally
+            {
+                if (self != null)
+                {
+                    self.position = target;
+                    self.localScale = spec.recoverAfterLanding ? spec.recoverScale * Vector3.one : landScale;
+                }
+            }
+            
+            
+            void flySpell(float t)
+            {
+                self.position = BezierCurveHelper.EvaluateQuadraticBezier(t, from, target, controlPoint);
+                
+                self.localScale = SquashStretch.GetSquashStretch(t, EaseType.Linear, spec.startScale, spec.endScale,
+                    AxisType.Y, CoordinateSystem.XY);
+            }
+
+            void recoverSpell(float t)
+            {
+                self.localScale = Vector3.LerpUnclamped(landScale, Vector3.one * spec.recoverScale, t);
             }
         }
     }

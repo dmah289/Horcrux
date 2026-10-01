@@ -6,6 +6,7 @@ using Horcrux.Runtime.Utilities.ExtensionMethods;
 using Horcrux.Runtime.Utilities.PhysXHelper;
 using Horcrux.Runtime.Utilities.Tweening;
 using UnityEngine;
+using UnityEngine.Serialization;
 using UnityEngine.UI;
 
 namespace Horcrux.Runtime.Utilities.UI
@@ -22,8 +23,8 @@ namespace Horcrux.Runtime.Utilities.UI
         [SerializeField] private float duration = 0.5f;
         
         [SerializeField] private EaseType stretchEase = EaseType.OutBack;
-        [SerializeField] private AxisType stretchAxis = AxisType.Y;
-        [SerializeField] private float squashScale = 0.8f;
+        [SerializeField] private float startScale = 1.3f;
+        [SerializeField] private float endScale = 0.8f;
 
         [SerializeField] private float targetAlpha = 0.3f;
         [SerializeField] private float fadeStartAtRatio = 0.6f;
@@ -47,7 +48,7 @@ namespace Horcrux.Runtime.Utilities.UI
             {
                 selfRect.position = Vector3.LerpUnclamped(from, to, Easer.Evaluate(moveEase, t));
                 selfRect.localScale = SquashStretch.GetSquashStretch
-                    (t, stretchEase, squashScale, stretchAxis, CoordinateSystem.XY);
+                    (t, stretchEase, startScale, endScale, AxisType.Y, CoordinateSystem.XY);
                 icon.SetAlpha(Mathf.Lerp(1f, targetAlpha, Mathf.InverseLerp(fadeStartAtRatio, 1f, t)));
                 
                 if(!burstFired && t >= burstAtRatio)
