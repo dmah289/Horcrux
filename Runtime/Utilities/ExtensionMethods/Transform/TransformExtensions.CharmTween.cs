@@ -188,5 +188,24 @@ namespace Horcrux.Runtime.Utilities.ExtensionMethods
                 self.localScale = Vector3.LerpUnclamped(landScale, Vector3.one * spec.recoverScale, t);
             }
         }
+        
+        public static async UniTask CharmPunchScale(this Transform self, Vector3 restScale, Vector3 maxScale,
+            EaseType outEase, EaseType inEase, float duration, float delaySeconds = 0f, CancellationToken ct = default,
+            Action<Transform> onComplete = null)
+        {
+            try
+            {
+                await self.CharmScale(maxScale, outEase, duration / 2f, delaySeconds, ct);
+                await self.CharmScale(restScale, inEase, duration / 2f, 0, ct);
+            }
+            finally
+            {
+                if (self != null)
+                {
+                    self.localScale = restScale;
+                    onComplete?.Invoke(self);
+                }
+            }
+        }
     }
 }
