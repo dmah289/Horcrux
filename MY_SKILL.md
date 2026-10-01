@@ -44,7 +44,7 @@ nói giá. Nơi **duy nhất** định nghĩa NT1–NT4; các mục sau chỉ tr
 | **Chi phí đọc, hạn chế composite** (NT1) ↔ **`S` và `I` của SOLID** (§3.1) | **Tách theo cái gì?** Theo **lý do thay đổi** là `S`, tách đúng. Theo "cho gọn mắt", "cho đúng pattern", "mỗi việc một component" là xé vụn: gộp lại. |
 | **Mang đi được** (NT3) ↔ **không phòng xa** (NT1) | **Thứ phải thêm là gì?** Chỉ là **chiều phụ thuộc** và **chỗ đặt file** thì làm ngay. Là một interface, một adapter, một tham số cho người dùng **chưa có** thì là phòng xa — bỏ (§2.4). |
 | **Editor-first** (NT4) ↔ **wiring trong asset không grep được** (§3.6) | **Số chỗ phải nối là hằng số nhỏ trong cùng một asset, hay tăng theo số instance?** Hằng số nhỏ → kéo thả: ô trống chắc chắn có người nhìn vào. Tăng theo instance → đăng ký: nó gom n ca hỏng-im-lặng thành **một** dòng đỏ lúc boot. |
-| **§2.1 gộp câu hỏi thành 1–2 lượt** ↔ **§2.6 hỏi ở từng câu trả lời** | Hai loại câu hỏi, **không cộng dồn**: §2.1 hỏi để **lấy ngữ cảnh trước khi làm** — gộp lượt; §2.6 hỏi để **chốt một nguyên tắc vào file này** — hiếm. |
+| **§2.1 gộp câu hỏi thành 1–2 lượt** ↔ **§2.6 hỏi ở từng câu trả lời** | Hai loại câu hỏi, **không cộng dồn**: §2.1 hỏi để **lấy ngữ cảnh trước khi làm** — gộp lượt; §2.6 hỏi để **chốt một nguyên tắc vào file này** giữa brainstorm — hiếm; quét cuối chat của §2.6 không hỏi mà ghi thẳng. |
 
 ---
 
@@ -141,6 +141,12 @@ sát đâu và kết luận gì (NT8).
 | Gần đúng nhưng thiếu | mở rộng nó nếu **thêm được mà không sửa cái cũ**; không được thì viết mới |
 | Không có, hoặc phải **bẻ cong bài toán** cho vừa nó | **viết mới** — tái sử dụng không phải lý do để làm sai bài toán |
 
+**Khảo sát tái sử dụng chạy trước cả khi viết Plan hay đoạn mẫu** — code trong Plan là code developer sẽ gõ
+nguyên, nên thừa ở đó cũng là thừa. Helper chuyển động thì nhìn runner tween và class công thức đã có ở
+Utilities trước khi viết vòng lặp riêng. *Đã sai một lần:* viết vòng tween riêng và công thức scale riêng
+cho một overload bay, trong khi hệ đã có runner tween và class squash-stretch — developer phát hiện ở
+lượt review, cả mục phải viết lại.
+
 **Bê một khuôn có sẵn thì soi kỹ nhất đúng những chỗ khuôn cũ *cố ý* làm** — cân nhắc kỹ nghĩa là nó
 **bám chặt vào ngữ cảnh cũ**. Với mỗi quyết định cố ý, hỏi lý do gốc có còn đúng ở bài toán này không;
 hết thì đảo và ghi lý do ngay tại đó. *Đã sai một lần:* bê một khuôn cố ý serialize giá trị runtime
@@ -200,6 +206,17 @@ thể**, và trôi mất khi bài toán xong. **Ở từng câu hỏi**, sau khi
 
 Chỉ khái quát khi câu trả lời **thật sự chứa tư tưởng** — một lựa chọn có "vì sao" lặp lại được. Quyết
 định thuần bài toán (hằng số, tên, phạm vi một task) thì không.
+
+**Quét cuối chat — bắt buộc, không đợi nhắc.** Trước báo cáo hoàn thành của mỗi chat có làm việc, agent
+duyệt **cả chat** và tổng hợp vào file này mọi **rule, tư tưởng thiết kế hệ thống, kịch bản dùng chung cho
+các dự án game** thuộc hai nguồn: thứ developer yêu cầu hoặc sửa, và gợi ý của agent mà developer đã
+đồng ý (kể cả đồng ý bằng cách sửa code theo gợi ý). Ba luật:
+
+- **Không mang domain dự án** — bỏ tên type, tên hệ, hằng số của dự án; còn lại phải dùng được ở dự án game khác.
+- **Đối chiếu trước khi ghi** (NT7) — đã có thì thôi; là trường hợp riêng thì trỏ về; mâu thuẫn thì nêu chỗ lệch, không tự sửa.
+- **Ghi thẳng, liệt kê nguyên văn trong báo cáo** để developer veto; veto thì xoá. Đây là sự cho phép đứng
+  sẵn — bước hỏi của mục trên chỉ còn cho brainstorm giữa chừng. Nguồn không rõ (gợi ý nào được đồng ý?)
+  thì nêu giả định trong báo cáo, không đoán lặng lẽ (NT5).
 
 ## 2.7 Subagent — ngữ cảnh bơm từ orchestrator, không tự đọc lại
 
@@ -380,6 +397,7 @@ có chủ thì ở Editor tắt domain reload, mỗi lần Play là một loop n
 | Field serialize | nhóm bằng `[Splitter("References")]` (ô kéo) rồi `[Splitter("Configs")]` (số chỉnh), References đứng trước — mở Inspector thấy ngay thứ **phải nối** trước thứ có thể để mặc định |
 | Field private runtime | tiền tố `_` (`_module`, `_isOpen`); field `[SerializeField]` **không** `_` — đọc tên trong thân hàm biết giá trị đến từ Inspector hay từ code, không cần cuộn lên khai báo. Code mới theo luật này; Horcrux cũ chưa đổi hàng loạt (§3.7 casing) |
 | Log | mọi dòng mở bằng `[TênHệ]: ` để filter console; kèm `this` làm context object để bấm vào ra đúng asset |
+| Cụm núm tinh chỉnh của một helper chuyển động | struct `[Serializable]` gom các núm đi cùng nhau, truyền nguyên vào helper — chữ ký không mọc theo số núm, designer chỉnh trong Inspector (§3.6), dải hợp lệ khai bằng `[Min]` (§3.4). Biến thể loại trừ nhau là **overload nhận spec riêng**, không phải một spec mang cờ chế độ, và không chồng hiệu ứng của biến thể kia lên |
 | Hàm một biểu thức | expression-bodied (`=>`), kể cả method `void` |
 | Ẩn method của contract | mặc định `public` — tin người dùng hệ. Explicit interface implementation **chỉ cho method mà gọi sai gây mất dữ liệu im lặng** |
 
@@ -470,6 +488,7 @@ Bất biến giữ bằng "mọi người nhớ làm đúng" sẽ vỡ ở đún
 | **Chuỗi định danh mà hai hệ phải khớp — placement, tên event, khoá — khai MỘT lần ở phía phát, phía nhận trỏ symbol** | literal chép sang phía nhận là bản thứ hai của cùng một sự thật: lệch một ký tự thì phép so trả `false` im lặng, không lỗi nào nổ. Trỏ symbol biến lệch thành lỗi biên dịch và grep ra hết mọi nơi dùng. Phía phát sở hữu vì chuỗi sinh ra ở đó; phía phát **chưa có hằng thì thêm hằng vào phía phát** rồi trỏ, không lấy đó làm lý do chép literal. Là trường hợp riêng của hàng trên, áp cho chuỗi thay cho công thức |
 | **Định danh số chia sẻ với asset hay hệ khác là `enum` gán số tường minh, không `const int`** | tên đi cùng số ở mọi chỗ code đọc, `switch` được compiler soát đủ nhánh, `(int)` chỉ xuất hiện ở đúng cửa ranh giới. Gán số từ phần tử đầu (`Coin = 1`) để `0` — giá trị `default` của enum — không trùng một định danh thật. Số đã nằm trong asset là wire format (§3.7): **không đánh số lại**, phần tử mới thêm ở cuối |
 | **Cửa hẹp là thân chung của cửa rộng** | bản giữ-lại-một-phần gọi vào thân bản đầy đủ — hai bên không thể lệch nhau |
+| **Một phép biến đổi chỉ áp ở MỘT tầng** | runner đã áp ease cho `t` thì thân nhận `t` đã ease, không ease lần nữa; hai tầng cùng có tham số ease thì một tầng cố định `Linear`. Ease hai lần không lỗi nào báo — chỉ là chuyển động sai nhịp, và đoạn vọt (overshoot) bị nhân đôi |
 | **Một bảo đảm phải phủ MỌI đường vào** | hệ tuyên bố "mất không quá X", "luôn hợp lệ" thì **mọi** cửa ghi phải đi qua chỗ tạo ra bảo đảm đó. Cửa thứ hai đi vòng làm bảo đảm **chỉ còn đúng cho một nửa hệ** trong khi tài liệu vẫn phát biểu nguyên câu |
 
 **Phép kiểm của luật cuối — đếm cửa trước, đọc thân sau.** Đường phụ sinh ra sau, người viết không
@@ -564,6 +583,10 @@ hủy, thời lượng bằng 0 — cả ba đi qua **một** `try/finally` bọ
 trạng thái cuối và callback xảy ra đúng một lần. Caller chỉ `await` và ghép bằng `WhenAll`, không
 `try/finally`: hợp đồng "đặt trạng thái cuối sau `await`" là kỷ luật, người gọi thứ hai sẽ quên (§3.4).
 Helper chỉ hứa thứ nó biết — nhận công thức thay giá trị đích thì không snap hộ.
+
+**Tiến trình chạm object Unity thì `finally` và callback hoàn tất guard `!= null`.** Destroy giữa chừng là
+một đường ra thật, cùng loại với huỷ, và chạm object đã huỷ ném ngay trong `finally` — trạng thái cuối
+không đặt được, callback không chạy. "Một lần ở mọi đường ra" chỉ đúng khi chính đường ra đó không nổ.
 
 **Hàm mở một lượt sống bằng tài nguyên một lần dùng thì từ chối tái nhập ở cửa.** `Open()` tạo
 `UniTaskCompletionSource` mới cho `WaitClosedAsync`; gọi `Open()` chồng lên lượt đang mở là thay source
@@ -687,6 +710,9 @@ chạy" đủ để dựng lại từ 0 — bỏ code canh mà không viết bư
 - Tên method nói rõ **mục đích**: `EnsureMaterial()`, `SwapWriteBuffer()`, `SolveAnalytic()`. Tên vô
   nghĩa cần thay: `Process`, `Handle`, `DoWork`, `Update2`. Boolean đọc như một câu hỏi: `IsPickable`,
   `HasPendingInput`, `frameDataReady`; `IsFinished`, không `Finished`.
+- **Tên hàm khớp thứ nó trả về, không khớp thứ nó dựa vào**: hàm trả **một điểm** trên đường cong là
+  `EvaluateQuadraticBezier`, không `GetQuadraticBezierCurve` — "Curve" hứa một đối tượng đường cong.
+  `Evaluate` cho lấy mẫu một giá trị tại tham số `t`, `Compute` cho dẫn xuất một đại lượng từ đầu vào.
 - **`Setup(data)` cho view nhận dữ liệu để vẽ; `Bind`/`Attach` chỉ cho nối reference** — đúng thứ §3.6
   gọi là code nối. Dùng `Bind` cho cả hai là một từ hai nghĩa.
 - **Casing theo quyền truy cập, không theo loại member**: private field camelCase · public field (data
@@ -929,6 +955,11 @@ agent viết code như mọi task khác. Test thì agent viết và chạy (§2.
 sẽ kiểm**, không có code test. **Nhịp:** developer code xong lõi → agent đọc code thật rồi mới viết
 test, vì chữ ký lúc viết Plan còn là nháp. Danh sách case là chỗ developer veto hoặc thêm case.
 
+**Việc phát sinh giữa lúc đang làm Plan thì đầu ra là Plan.** Developer nhờ thêm một overload hay một biến
+thể trong bối cảnh Plan thì viết vào Plan, không tạo file code — Plan tồn tại vì developer muốn tự gõ lõi.
+Chỗ đặt đầu ra chưa rõ thì hỏi một câu (NT5), không chọn hộ. *Đã sai một lần:* tạo hai file `.cs` mới khi
+developer đang chờ một mục trong Plan; phải xoá cả file lẫn `.meta`.
+
 **Developer gõ lệch plan là bình thường** (NT6). Lượt kiểm của agent sau mỗi step: compile, rồi **so code
 với plan và phân loại từng chỗ lệch** — tư tưởng thì chưng cất (§2.6) · lỗi thì báo kèm bằng chứng (§2.2)
 · trôi thì sync plan theo code (§5.4). Chỗ lệch là nơi tư tưởng lộ ra rõ nhất, và cũng là nơi lỗi mới sinh.
@@ -985,4 +1016,4 @@ chờ, tài liệu canh theo **việc người đọc phải làm được sau k
 | **Câu hỏi của người đọc là bằng chứng tài liệu chưa rõ** | trả lời xong phải để câu trả lời lại trong tài liệu, không để nó chết trong hội thoại |
 | **Mâu thuẫn thì SỬA dòng cũ** | không thêm dòng thứ hai nói ngược. **Riêng dòng cũ ghi quyết định hoặc ranh giới do developer đặt thì không tự sửa** — nêu chỗ lệch để developer phân xử (NT5) |
 | **Quyết định trái trực giác gom về một mục riêng** | chỗ cố ý trông "kém tối ưu" phải có lý do viết sẵn ở một nơi biết trước; người tối ưu sau đọc mục đó **trước khi đụng** (cùng họ với "cố ý KHÔNG làm" của §2.5) |
-| **Tư tưởng mới chưng cất ngay trong task** | task, câu hỏi, phản hồi nào xác lập **quy ước còn đúng ở lần sửa sau** thì ghi vào tài liệu module **trước khi báo hoàn thành** — quyết định chỉ sống trong hội thoại thì chết cùng hội thoại. Ghi *quy ước ở thì hiện tại*, không tường thuật task. **Liệt kê nguyên văn các dòng đã ghi trong báo cáo hoàn thành** để developer veto được bản khái quát sai. Thêm vào chính MY_SKILL thì theo §2.6 — hỏi developer trước |
+| **Tư tưởng mới chưng cất ngay trong task** | task, câu hỏi, phản hồi nào xác lập **quy ước còn đúng ở lần sửa sau** thì ghi vào tài liệu module **trước khi báo hoàn thành** — quyết định chỉ sống trong hội thoại thì chết cùng hội thoại. Ghi *quy ước ở thì hiện tại*, không tường thuật task. **Liệt kê nguyên văn các dòng đã ghi trong báo cáo hoàn thành** để developer veto được bản khái quát sai. Thêm vào chính MY_SKILL thì theo §2.6 — quét cuối chat là bắt buộc, ghi thẳng rồi liệt kê để developer veto |
