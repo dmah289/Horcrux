@@ -1,14 +1,14 @@
-# CanvasHighlightTutorial — tối màn, nâng một canvas lên trên, tay chỉ
+# CanvasSpotlight — tối màn, nâng một canvas lên trên, tay chỉ
 
 Một canvas phủ tối toàn màn ở sorting cao (`highlightSortingOrder`, mặc định 3103). **Target là một `Canvas` lồng**:
-`Focus` bật nó và nâng `sortingOrder` lên trên lớp tối, nên target vừa sáng vừa nhận tap, mọi thứ khác bị lớp tối nuốt.
-Tay chỉ nhấp về phía target bằng `CharmPointAndBob`. `Release` trả target về bốn giá trị đã nhớ (`enabled` của Canvas
-và GraphicRaycaster, `overrideSorting`, `sortingOrder`) và tắt cả object.
+`Focus` bật raycaster của nó và nâng `sortingOrder` lên trên lớp tối, nên target vừa sáng vừa nhận tap, mọi thứ khác bị lớp tối nuốt.
+Tay chỉ nhấp về phía target bằng `CharmPointAndBob`. `Release` trả target về ba giá trị đã nhớ (`enabled` của
+GraphicRaycaster, `overrideSorting`, `sortingOrder`) và tắt cả object. `Focus` nhận được **hai** canvas cùng lúc (xem §2b).
 
 Hệ độc lập với dự án (chỉ Unity UI, UniTask, InitArgs). Service **không biết click**: tap đi thẳng vào nút thật dưới
-target, caller tự chờ tap rồi `Release`. Consumer đầu tiên: `CollectionHomeFlow.RunTutorialAsync`.
+target, caller tự chờ tap rồi `Release`. Consumer: `CollectionHomeFlow.RunTutorialAsync` (một canvas, có tay) và `PlayReceiveCeremonyAsync` (hai canvas, không tay, tối dần).
 
-Code: `ICanvasHighlightTutorial.cs` (cạnh file này) · `Implementations/Foundations/CanvasHighlightTutorial.cs` ·
+Code: `ICanvasSpotlight.cs` (cạnh file này) · `Implementations/Foundations/CanvasSpotlight.cs` ·
 `Utilities/Common/Direction.cs` · `TransformExtensions.CharmTween.cs` (`CharmPointAndBob`).
 
 ---
@@ -57,13 +57,34 @@ finally
 
 ---
 
+## §2b. Hai canvas và tối dần
+
+```csharp
+highlight.Focus(widget.HighlightCanvas, stage.SelfCanvas, HighlightConfig.NoHand);   // cả hai sáng
+await highlight.FadeDimAsync(0f, 0.5f, ct);                                           // tối tắt dần, vẫn nuốt tap
+// ... diễn tiếp trên stage ...
+highlight.Release();                                                                  // trả cả hai
+```
+
+| Luật | Vì |
+|---|---|
+| `Focus(target, extra, config)`: tay neo vào **target đầu**; `extra` chỉ được nâng, không có tay riêng | một tay, một đích; nội dung lễ (`extra`) là canvas con của target nên sáng cùng |
+| `FadeDimAsync(toAlpha, duration, ct)` đổi alpha lớp tối, **tap vẫn bị nuốt tới `Release`** | lễ cần màn tối mờ dần mà người chơi chưa chạm được UI dưới; `Release` mới trả tương tác |
+| `FadeDimAsync` chạy bằng thời gian unscaled, huỷ thì đặt alpha đích ngay | nhất quán với `CharmTween`; không để lớp tối kẹt nửa chừng |
+| `Focus` lần sau luôn đặt lại alpha về `dimAlpha` | fade về 0 ở lượt trước không làm lượt sau không tối |
+| `Release` trả **mọi** canvas đã nhớ (tối đa hai) | caller chỉ gọi một `Release` trong `finally` |
+
+Nội dung lễ nằm trong canvas của consumer (đưa vào qua tham số `extra`); service **không** mọc cờ chế độ theo kịch bản. Kịch bản mới là consumer mới, không sửa service.
+
+---
+
 ## §3. Trước khi chạy
 
 ### 3.1. Service (đã dựng trong `collection_setup.prefab`, instance trong `Services.unity`)
 
 | # | Bước | Thiếu thì hỏng ở đâu |
 |---|---|---|
-| 1 | Root `canvas_highlight_tutorial`: `Canvas` **Screen Space - Overlay** · `GraphicRaycaster` · `CanvasHighlightTutorial`. Root **active** trong prefab; `Awake` tự tắt | root tắt sẵn thì `Awake` chạy lần đầu ngay trong `Focus` và tắt lại object: không tối, không tay, không log |
+| 1 | Root `canvas_spotlight`: `Canvas` **Screen Space - Overlay** · `GraphicRaycaster` · `CanvasSpotlight`. Root **active** trong prefab; `Awake` tự tắt | root tắt sẵn thì `Awake` chạy lần đầu ngay trong `Focus` và tắt lại object: không tối, không tay, không log |
 | 2 | Con `dim`: `Image` stretch toàn màn, đen alpha ~0.78, **Raycast Target bật** | tắt thì tap ngoài target lọt xuống UI dưới |
 | 3 | Con `hand_group`: `RectTransform` trống, anchor và pivot giữa; `Focus` ghi `position` và góc xoay lên nó | — |
 | 4 | Con `hand` trong `hand_group`: sprite ngón trỏ **vẽ trỏ sang phải**, đặt sao cho **đầu ngón trùng gốc của `hand_group`** | đầu ngón không ở gốc thì `TargetPadding` đo tới giữa sprite, tay đè lên target; sprite vẽ hướng khác thì mọi góc lệch một hằng |
@@ -74,7 +95,7 @@ finally
 
 | # | Bước | Thiếu thì hỏng ở đâu |
 |---|---|---|
-| 1 | `Canvas` + `GraphicRaycaster` lên **đúng object cần sáng**, **cả hai bỏ tick** | thiếu raycaster: `LogError` rồi NRE ở `Focus`. Để bật sẵn không hỏng (`Release` trả về đúng bật sẵn), chỉ tốn một batch riêng suốt phiên |
+| 1 | `Canvas` + `GraphicRaycaster` lên **đúng object cần sáng**: `Canvas` **để bật**, `GraphicRaycaster` **bỏ tick** (`Focus` tự bật, `Release` trả về) | thiếu raycaster: `LogError` rồi NRE ở `Focus`. `Canvas` tắt thì `overrideSorting` không có tác dụng, target không nổi lên trên lớp tối. Raycaster để bật sẵn không hỏng, chỉ tốn một batch riêng suốt phiên |
 | 2 | Root canvas của target là **Screen Space - Overlay** | canvas Camera không nâng lên trên lớp tối Overlay được: tối toàn màn, không gì sáng |
 | 3 | Phơi Canvas ra property kiểu `Canvas` (`HighlightCanvas`, `InfoBtnCanvas`) | hợp đồng "target là canvas" nằm ở kiểu tham số, không `GetComponent` lúc chạy |
 
@@ -84,7 +105,7 @@ finally
 
 | Ở đâu | Thứ tự | Vì |
 |---|---|---|
-| `Focus` | bật canvas target **rồi mới** `overrideSorting` | `Graphic` gắn với canvas gần nhất **đang bật**; `overrideSorting` trên canvas tắt không đổi được gì, nút vẫn thuộc canvas cha dưới lớp tối |
+| `Focus` | bật raycaster **rồi mới** `overrideSorting` | `Graphic` gắn với canvas gần nhất **đang bật**; canvas phải bật sẵn trong prefab, vì `overrideSorting` trên canvas tắt không đổi được gì và nút vẫn thuộc canvas cha dưới lớp tối |
 | `Release` | huỷ loop → trả sorting → tắt canvas | không có frame nào canvas lồng đang bật mà sorting đã về thấp; loop không chạm `handGroup` sau khi object tắt |
 
 ---
@@ -106,7 +127,7 @@ finally
 | Nâng sorting của target, không khoét lỗ trên lớp tối | target và lớp tối cùng là Canvas, đổi sorting là cơ chế sẵn của uGUI; không shader, không `ICanvasRaycastFilter`. Đổi lại: hợp đồng target §3.2 và giới hạn Overlay |
 | Chữ ký nhận `Canvas` | caller không có Canvas thì không compile, thay vì `GetComponent` null lúc chạy |
 | Không `AddComponent` lúc chạy | thứ cần có trên prefab thì dựng trên prefab; thêm lúc chạy phải nhớ gỡ |
-| Bật tắt Canvas và raycaster của target trong `Focus`/`Release` | canvas lồng tắt lúc nghỉ thì nút vẽ chung batch với cha; giá là một lượt gắn lại `Graphic` mỗi `Focus`/`Release`, chỉ trong tutorial |
+| Bật tắt raycaster của target trong `Focus`/`Release`, Canvas luôn bật | raycaster tắt lúc nghỉ thì target không chặn tap của cha; Canvas bật sẵn nên không có lượt gắn lại `Graphic` |
 | `SetActive(false)` cả object lúc nghỉ | không việc gì mỗi frame; `FindFromScene` vẫn resolve object inactive |
 | Góc xoay suy từ vector, không switch thứ hai theo enum | vector và góc buộc khớp; thêm hướng mới chỉ đụng `GetDirectionVector` |
 | Nhấp bằng `CharmPointAndBob` + một `CancellationTokenSource` mỗi `Focus` | vòng lặp là việc của `Charm*` với điều kiện có chủ huỷ; `Release` huỷ và dispose trước khi trả target. Không link `destroyCancellationToken`: `GetCancellationTokenOnDestroy` `AddComponent` lúc chạy và mỗi `Focus` thêm một registration không dispose |
@@ -124,7 +145,8 @@ finally
 | Bám target mỗi frame | target đang tween lúc tutorial → truyền `Transform` cho loop thay vì `Vector3` |
 | Guard `ShowHand == false` không chạy loop | profiler thấy một `Lerp` mỗi frame trên object tắt, hoặc `NoHand` thành ca thường |
 | Frame viền, nhãn chữ | chữ là màn riêng của consumer; viền chưa ai cần |
-| Sáng hai chỗ cùng lúc | yêu cầu mới → overload nhận mảng |
+| Pool flyer bắn hàng loạt | dựng trên `CharmFlyArc` khi có nhu cầu thật |
+| Sáng hơn hai chỗ cùng lúc | yêu cầu mới → overload nhận mảng (hiện tối đa hai: `target` + `extra`) |
 | `await` trong API | service không biết nút; mỗi caller một kiểu chờ |
 | Canvas Camera / gameplay 3D | khác cơ chế sorting; là hệ khác |
 | `OnDestroy` gọi `Release()` | xuất hiện đường destroy service khi đang `Focus` |
@@ -141,6 +163,6 @@ Chưa có scene demo trong SDK — kiểm trong scene thật, Play từ `Start.u
 | Target sáng và nhận tap | `Focus` một nút, tap nó | màn tối trừ nút; listener của nút chạy; tap chỗ khác không xuống UI dưới |
 | Tay đúng phía, đúng hướng | `Focus` với `TopCenter` rồi `TopLeft` | tay ở dưới trỏ lên, rồi ở góc dưới phải trỏ lên trái; nhấp về phía target |
 | Nhấp dưới pause | `Time.timeScale = 0` khi đang `Focus` | tay vẫn nhấp |
-| Thay target không kẹt | `Focus(A)` → `Focus(B)` → `Release` | A về bốn giá trị cũ ngay khi `Focus(B)`; sau `Release` cả A lẫn B `enabled = false`, `overrideSorting = false` |
+| Thay target không kẹt | `Focus(A)` → `Focus(B)` → `Release` | A về giá trị cũ ngay khi `Focus(B)`; sau `Release` cả A lẫn B có raycaster `enabled = false`, `overrideSorting = false` |
 | Huỷ giữa chừng | `Focus` rồi tắt Home | object highlight tắt, target về nghỉ, Console không đỏ |
-| Target bật sẵn vẫn đúng | target có Canvas tick sẵn, `Focus` rồi `Release` | Canvas vẫn tick, sorting về số cũ |
+| Target bật sẵn vẫn đúng | target có raycaster tick sẵn, `Focus` rồi `Release` | raycaster vẫn tick, sorting về số cũ |
