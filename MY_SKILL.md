@@ -587,6 +587,9 @@ Helper chỉ hứa thứ nó biết — nhận công thức thay giá trị đí
 **Tiến trình chạm object Unity thì `finally` và callback hoàn tất guard `!= null`.** Destroy giữa chừng là
 một đường ra thật, cùng loại với huỷ, và chạm object đã huỷ ném ngay trong `finally` — trạng thái cuối
 không đặt được, callback không chạy. "Một lần ở mọi đường ra" chỉ đúng khi chính đường ra đó không nổ.
+Guard bằng `if (x != null)`, không bằng `x?.Foo()`: `?.` bỏ qua phép so sánh null đã overload của Unity, nên
+object đã huỷ vẫn bị gọi. Và `onComplete` chỉ có **một** chủ: đã gán cho `finally` ngoài thì không truyền
+thêm vào lời gọi bên trong, nếu không nó chạy hai lần.
 
 **Hàm mở một lượt sống bằng tài nguyên một lần dùng thì từ chối tái nhập ở cửa.** `Open()` tạo
 `UniTaskCompletionSource` mới cho `WaitClosedAsync`; gọi `Open()` chồng lên lượt đang mở là thay source
