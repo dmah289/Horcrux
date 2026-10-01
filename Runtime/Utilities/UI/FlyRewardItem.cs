@@ -20,10 +20,6 @@ namespace Horcrux.Runtime.Utilities.UI
         [Splitter("Configs")]
         [SerializeField] private EaseType moveEase;
         [SerializeField] private float duration = 0.5f;
-        
-        [SerializeField] private EaseType stretchEase = EaseType.OutBack;
-        [SerializeField] private float startScale = 1.3f;
-        [SerializeField] private float endScale = 0.8f;
 
         [SerializeField] private float targetAlpha = 0.3f;
         [SerializeField] private float fadeStartAtRatio = 0.6f;
@@ -41,13 +37,14 @@ namespace Horcrux.Runtime.Utilities.UI
             gameObject.SetActive(true);
             bool burstFired = false;
 
-            await CharmTween.CastAsync(duration, EaseType.Linear, FlySequence, ct, Land);
+            await UniTask.WhenAll(
+                selfRect.CharmPunchScale(Vector3.one, Vector3.one * 1.2f, EaseType.InQuad, EaseType.OutQuad,
+                    duration, ct: ct),
+                CharmTween.CastAsync(duration, EaseType.Linear, FlySequence, ct, Land));
 
             void FlySequence(float t)
             {
                 selfRect.position = Vector3.LerpUnclamped(from, to, Easer.Evaluate(moveEase, t));
-                selfRect.localScale = SquashStretch.GetSquashStretch
-                    (t, stretchEase, startScale, endScale, AxisType.Y, CoordinateSystem.XY);
                 icon.SetAlpha(Mathf.Lerp(1f, targetAlpha, Mathf.InverseLerp(fadeStartAtRatio, 1f, t)));
                 
                 if(!burstFired && t >= burstAtRatio)

@@ -33,6 +33,7 @@ namespace Horcrux.Runtime.Implementations.LiveOps
         [Splitter("Configs")]
         [SerializeField] private int highlightSortingOrder = 3103;
         [SerializeField, Range(0f, 1f)] private float dimAlpha = 0.8f;
+        [SerializeField] private float handOneWayDuration = 0.75f;
 
         private readonly TargetState[] _targets = new TargetState[2];
         private int _targetCount;
@@ -128,9 +129,10 @@ namespace Horcrux.Runtime.Implementations.LiveOps
             handGroup.localEulerAngles = new Vector3(0f, 0f, _highlightConfig.HandDirection.GetEulerAngleZ());
 
             _bobCts = new CancellationTokenSource();
+            Debug.LogError($"[CanvasSpotlight] : {target.transform.position}");
             handGroup.CharmPointAndBob(target.transform.position, _handToTargetDir, 
                 _highlightConfig.HandTargetOffset, _highlightConfig.TargetPadding,
-                EaseType.OutQuad, 1f, _bobCts.Token).Forget();
+                EaseType.OutQuad, handOneWayDuration, _bobCts.Token).Forget();
             
         }
 

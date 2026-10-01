@@ -9,22 +9,21 @@ namespace Horcrux.Runtime.Utilities.UI
         [SerializeField] private RectTransform bubble;
         [SerializeField] private Button dismissBtn;
 
-        #region Unity Callbacks
-
-        private void Awake() => dismissBtn.onClick.AddListener(Hide);
-
-        #endregion
-
         #region API
 
         /// <summary>Puts the bubble pivot on a world position and shows it until the dismiss button is tapped.</summary>
         public void Show(Vector3 anchorWorldPos)
         {
+            bubble.gameObject.SetActive(true);
             bubble.position = anchorWorldPos;
             gameObject.SetActive(true);
         }
 
-        public void Hide() => gameObject.SetActive(false);
+        public void Hide()
+        {
+            bubble.gameObject.SetActive(false);
+            gameObject.SetActive(false);
+        }
 
         #endregion
     }
