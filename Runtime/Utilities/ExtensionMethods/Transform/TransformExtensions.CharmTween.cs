@@ -189,14 +189,30 @@ namespace Horcrux.Runtime.Utilities.ExtensionMethods
             }
         }
         
-        public static async UniTask CharmPunchScale(this Transform self, Vector3 restScale, Vector3 maxScale,
-            EaseType outEase, EaseType inEase, float duration, float delaySeconds = 0f, CancellationToken ct = default,
+        public static async UniTask CharmPunchScale(this Transform self, Vector3 restScale, Vector3 endScale,
+            float duration, float vibrato = 2f, float delaySeconds = 0f, CancellationToken ct = default,
             Action<Transform> onComplete = null)
         {
+            // DOPunch-style: damped oscillation around restScale; whole cycles so it ends flat at rest.
+            Vector3 punch = endScale - restScale;
+            float omega = 2f * Mathf.PI * Mathf.Max(1, Mathf.RoundToInt(vibrato * duration * 0.5f));
+            float invDuration = 1f / Mathf.Max(duration, 0.0001f);
+            float elapsed = 0f;
+
             try
             {
-                await self.CharmScale(maxScale, outEase, duration / 2f, delaySeconds, ct);
-                await self.CharmScale(restScale, inEase, duration / 2f, 0, ct);
+                if (delaySeconds > 0f)
+                    await UniTask.Delay((int)(delaySeconds * 1000f), DelayType.UnscaledDeltaTime, cancellationToken: ct);
+
+                while (elapsed < duration)
+                {
+                    elapsed += Time.unscaledDeltaTime;
+
+                    float t = Mathf.Clamp01(elapsed * invDuration);
+                    self.localScale = restScale + punch * (Mathf.Sin(omega * t) * (1f - t));
+
+                    await UniTask.Yield(PlayerLoopTiming.Update, ct);
+                }
             }
             finally
             {

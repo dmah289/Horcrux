@@ -33,16 +33,23 @@ Ví dụ giá trị gợi ý (tune lại trong Inspector): badge nhảy `control
 ## §2. `CharmPunchScale` — nảy rồi về
 
 ```csharp
-await tr.CharmPunchScale(restScale, maxScale, EaseType.OutQuad, EaseType.InQuad, duration, delaySeconds, ct, onComplete);
+await tr.CharmPunchScale(restScale, maxScale, duration, vibrato: 10, delaySeconds, ct, onComplete);
 ```
 
-Hai lượt `CharmScale` mỗi lượt `duration / 2`: tới `maxScale` bằng `outEase`, về `restScale` bằng `inEase`. `finally` đặt `localScale = restScale`
-rồi gọi `onComplete` **một lần**.
+Kiểu `DOPunchScale`: dao động tắt dần quanh `restScale`, `localScale = restScale + (maxScale − restScale) · sin(2π · cycles · t) · (1 − t)`
+với `cycles = max(1, round(vibrato · duration / 2))`. Lượt đầu đẩy tới `maxScale`, lượt sau lắc ngược dưới `restScale` rồi tắt. `finally` đặt
+`localScale = restScale` rồi gọi `onComplete` **một lần**.
+
+| Quyết định | Vì |
+|---|---|
+| Công thức đóng, không ghép hai pha | hai pha ease riêng luôn có vận tốc nhảy ở đỉnh; một hàm `sin` tắt dần thì liên tục ở mọi điểm |
+| `cycles` là số nguyên | `sin(2π·cycles)` = 0 và đạo hàm cuối bằng 0 nên kết thúc phẳng đúng ở `restScale`, không bị `finally` bắt về |
+| Không có `ease`, không có `elasticity` | độ tắt tuyến tính `(1 − t)` như DOTween; đổi cảm giác bằng `vibrato` và `duration`. Thêm elasticity khi có nhu cầu thật |
+| Caller truyền `restScale` bằng scale đang có | hàm không lerp từ scale hiện tại; khác nhau thì frame đầu nhảy |
 
 | Quyết định | Vì |
 |---|---|
 | `restScale` là tham số, không hardcode `Vector3.one` | đổi scale nghỉ của prefab không vỡ; caller thường truyền `localScale` hiện tại |
-| Hai lượt con không nhận `onComplete` | nếu nhận, callback chạy ở cuối lượt một lẫn cuối hàm — hai lần |
 | Huỷ giữa chừng đặt về `restScale` | không để vật kẹt ở scale đỉnh |
 
 ---
