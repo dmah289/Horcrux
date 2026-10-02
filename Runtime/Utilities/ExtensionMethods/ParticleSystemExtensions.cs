@@ -12,7 +12,7 @@ namespace Horcrux.Runtime.Utilities.ExtensionMethods
         /// </summary>
         /// <param name="onComplete">Called when remaining particles are dissolved</param>
         public static async UniTask StopAndAwaitCompletion(this ParticleSystem self, 
-            Action onComplete, CancellationToken ct = default)
+            Action onComplete = null, CancellationToken ct = default)
         {
             if (!self) return;
             
