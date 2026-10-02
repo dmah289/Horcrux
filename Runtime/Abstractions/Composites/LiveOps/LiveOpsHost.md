@@ -408,6 +408,14 @@ namespace Horcrux.Runtime.Implementations.Composites.LiveOps
 `ALiveOpsModule` và `LiveOpsHost` không có test tự động: cả hai là MonoBehaviour buộc vào nhịp Unity và
 save đã load. Agent kiểm chúng bằng biên dịch; hành vi kiểm ở hai dòng Play mode trên.
 
+## Luồng về Home
+
+`LiveOpsHost` lo nhịp tick và cửa sổ thời gian. Trình diễn lúc về Home (ceremony, bay thưởng, tutorial, mở màn con) do
+**`LiveOpsHomeFlowHost`** điều phối, một component riêng với một lý do thay đổi khác: module giữ luồng của mình
+(`ALiveOpsModule.HomeFlow`), host chạy tuần tự theo danh sách kéo thả, `HomeFlowRunner` giữ cơ chế (chạy bù, huỷ, cô lập lỗi).
+Chi tiết ở `LiveOpsHomeFlow_Design.md` cạnh file này. `SetState` của `ALiveOpsModule` tự bắn `LiveOpsHomeFlowRequested` sau mỗi
+chuyển trạng thái, nên module không phải tự nhớ xin một lượt chạy.
+
 ## §5 Để sau
 
 `IOptionalService<T>` · tick thích ứng theo `SecondsLeft` · `EActivationTiming` · `#define` per module · asset preload/unload · lịch chu kỳ N ngày (`CycleSchedule.Resolve` cạnh `WeeklySchedule`) · hook cheat-time · `try/catch` từng module khi có ≥ 2 module.

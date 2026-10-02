@@ -6,7 +6,7 @@ Tay chỉ nhấp về phía target bằng `CharmPointAndBob`. `Release` trả ta
 GraphicRaycaster, `overrideSorting`, `sortingOrder`) và tắt cả object. `Focus` nhận được **hai** canvas cùng lúc (xem §2b).
 
 Hệ độc lập với dự án (chỉ Unity UI, UniTask, InitArgs). Service **không biết click**: tap đi thẳng vào nút thật dưới
-target, caller tự chờ tap rồi `Release`. Consumer: `CollectionHomeFlow.RunTutorialAsync` (một canvas, có tay) và `PlayReceiveCeremonyAsync` (hai canvas, không tay, tối dần).
+target, caller tự chờ tap rồi `Release`. Consumer: `CollectionHomeFlow.RunTutorialAsync` (một canvas, có tay) và `PlayReceiveCeremonyAsync` (hai canvas, không tay, tối dần). Service không biết ai gọi mình: các luồng lúc về Home chạy tuần tự trong một điều phối viên nên không bao giờ `Focus` chồng nhau.
 
 Code: `ICanvasSpotlight.cs` (cạnh file này) · `Implementations/Foundations/CanvasSpotlight.cs` ·
 `Utilities/Common/Direction.cs` · `TransformExtensions.CharmTween.cs` (`CharmPointAndBob`).
