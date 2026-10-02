@@ -521,6 +521,10 @@ khoá thì `Dictionary` đúng khi kết quả để **tra cứu**, và sai khi 
 tự duyệt `Dictionary` không có bảo đảm nào, UI sẽ đảo hàng giữa các lần chạy và không ai gọi đó là bug.
 Gộp vào `List` theo thứ tự gặp đầu tiên thì thứ tự là một bảo đảm viết ra được và test được.
 
+**Thứ tự đọc từ cấu hình ngoài phải toàn phần và tất định.** Giá trị thiếu rơi về phía an toàn — ưu tiên
+thấp nhất, đứng cuối — không tự chen lên đầu; hai giá trị bằng nhau phá hoà bằng một **định danh ổn định**,
+không bằng thứ tự đăng ký hay khởi tạo: thứ tự đó đổi giữa các lần chạy mà không ai gọi là bug.
+
 **Một danh sách vừa là lệnh vừa là thứ để vẽ thì hỏi hai vai có chung khoá gộp không.** Vai *thực thi*
 gộp theo khoá của hệ nhận lệnh, vai *hiển thị* gộp theo khoá người dùng nhìn thấy — hai khoá đó thường
 ánh xạ nhiều-về-một, nên gộp theo khoá của vai này là vai kia mất hàng. **Và tổng hợp đặt ở chỗ nhìn
@@ -952,6 +956,11 @@ hướng dẫn ở đầu chính file đó (NT7). Không dùng thư viện tô m
 Tiêu chí: **tự chứa**. Developer code lại được từ đầu đến cuối mà **không phải suy đoán**, không phải
 mở tài liệu khác. Các task xếp theo **thứ tự phụ thuộc**, mỗi task chỉ cần thứ đã có ở task trước.
 Hệ có lõi toán (§4.1) thì mục `§0` của Plan dẫn giải tại chỗ theo mạch §4.2.
+
+**Plan chạm cả framework dùng chung lẫn consumer thì phần framework chỉ thêm** — member mới mang mặc định
+(`virtual`), API cũ giữ nguyên — để task framework xong là compile sạch và consumer chưa áp dụng vẫn chạy
+như cũ; mỗi task sau cũng là một mốc compile sạch. Xoá API cũ là việc riêng, sau khi mọi consumer đã chuyển.
+Developer gõ framework trước rồi mới áp ra: lỗi đỏ kéo dài qua nhiều task là không biết task nào hỏng.
 
 **Phân công riêng của Plan: lõi developer viết, test agent viết.** Plan tồn tại vì developer muốn tự gõ
 lại để học, nên code lõi trong Plan là bản để đọc và gõ, không phải để agent commit — ngoài Plan thì
