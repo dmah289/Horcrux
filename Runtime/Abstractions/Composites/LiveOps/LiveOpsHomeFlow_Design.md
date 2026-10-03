@@ -8,9 +8,9 @@ Mỗi lần về Home, trình diễn của mọi live-ops chạy theo **bốn gi
 |---|---|
 | Người dùng | Developer của game và của các live-ops thêm sau; Horcrux mang sang dự án khác |
 | Mục tiêu | Trình diễn lúc về Home không chồng nhau, theo đúng thứ tự giai đoạn; live-ops mới chỉ override giai đoạn nó có |
-| Phạm vi Plan | Horcrux, Rocket Rush, Endless Sale |
+| Phạm vi Plan | Horcrux, Rocket Rush, Endless Sale, Collection |
 | Cố ý KHÔNG làm | Giai đoạn và phase thành dữ liệu cấu hình được (đã chốt cứng, runner viết thẳng đọc một mạch hơn) · trần số popup quảng bá mỗi lần về Home (mới có một module quảng bá) · timeout cho flow · lease hoặc hàng đợi trên spotlight (luật tài nguyên độc quyền ở §1 làm chồng chéo không xảy ra) · **xoá hoặc đổi tên API Horcrux đang có** (chỉ thêm, để phần Horcrux compile sạch trước khi áp vào module) · luồng ngoài live-ops · màn hình khác ngoài Home |
-| Hướng phát triển | Collection: toàn bộ chuỗi nhận token thành flow phase `Parallel` (§6). Trần quảng bá: một điều kiện ở bước 4 của runner. Màn hình thứ hai: host thứ hai, runner dùng lại nguyên |
+| Hướng phát triển | Trần quảng bá: một điều kiện ở bước 4 của runner. Ép xem cho Collection: một override `PlayForcedReviewAsync` và một field remote config. Màn hình thứ hai: host thứ hai, runner dùng lại nguyên |
 
 ## Quyết định đã chốt
 
@@ -67,7 +67,7 @@ Runner sắp xếp lại **mỗi lượt**. Priority đọc từ remote config v
 | `LiveOpsHomeFlowRunner` | Horcrux Implementations, class thuần | lượt bốn giai đoạn, sắp xếp, cô lập lỗi, huỷ, chạy bù, một vòng bơm tại một thời điểm; không có Unity object nên test được |
 | `LiveOpsHomeFlowHost` | Horcrux Implementations, component | ô kéo `LiveOpsHost`, đọc `Modules` · nghe sự kiện · `OnHomeEnter/OnHomeExit` · huỷ ở `OnDestroy` |
 | `HomeFlowBridge` | game, `Assets/LiveOps/_Shared/Bridge` | `HomeVisibilityChangedEvent` → `host.OnHomeEnter/OnHomeExit` |
-| Flow của module | game | `RocketRushHomeFlow`, `EndlessSaleHomeFlow` kế thừa `ALiveOpsHomeFlow` |
+| Flow của module | game | `RocketRushHomeFlow`, `EndlessSaleHomeFlow`, `CollectionHomeFlow` kế thừa `ALiveOpsHomeFlow` |
 
 `ALiveOpsModule` là class duy nhất implement `ILiveOpsModule`, `LiveOpsHost` là class duy nhất implement `ILiveOpsHost`: thêm member vào hai interface không làm đỏ module nào.
 
@@ -139,7 +139,16 @@ HideHome ─► host.OnHomeExit ─► Runner.OnHomeExit: xoá dirty, huỷ CTS 
 
 - Intro rút khỏi `EndlessSaleHomeIcon.Refresh`. `AttachHomeIcon` và `RollIntoNextCycle` gọi `RequestHomeFlow()`: chu kỳ mới nợ lời chào mới, mà state có thể vẫn `Running` qua lần roll.
 
-**Collection** (ngoài Plan) — phase `Parallel`: chờ main screen đóng → `ConsumeEndedSummary` → ceremony có làm tối → bay token → bar dừng ở từng mốc và nhận → multiplier, tất cả trong `PlayProgressChangeAsync`; tutorial sang GĐ2. Widget đang gắn ở `Start`, trễ một frame sau sự kiện Home: chuyển sang `OnEnable` khi áp dụng, như hai icon kia.
+**Collection** — phase `Parallel`, vì ceremony làm tối màn bằng spotlight.
+
+| GĐ | Làm | Điều kiện |
+|---|---|---|
+| 1 | chờ main screen đóng → `ConsumeEndedSummary` → ceremony có làm tối → bay token → bar dừng ở từng mốc và nhận → multiplier | widget gắn |
+| 2 | tay chỉ widget → main screen → nút info → màn tutorial → cuộn tới mốc cuối → **chờ main screen đóng** | widget gắn · `!PlayedTutorial` · `HomeViewState == Running` |
+
+- Không có GĐ3 và không có cờ force: mọi mốc đã diễn và nhận ngay trên widget ở GĐ1.
+- Widget gắn ở `OnAwake` (gỡ ở `OnDestroy`), không ở `Start`: `Start` chạy một frame sau sự kiện Home lúc trang Home dựng lần đầu, nên lượt đầu bỏ qua Collection. Không ở `OnEnable` vì `Hide()` tự `SetActive(false)` chính widget, sẽ gỡ nó khỏi module.
+- Module bỏ `OnHomeEnter/OnHomeExit`, `_isHomeVisible`, `Start/Cancel` của flow; bridge bỏ nhánh nghe Home. `AttachWidget`, `Grant`, `RollIntoNextCycle`, `Debug_ResetTutorial` gọi `RequestHomeFlow()`.
 
 ## 7. Remote config và save
 
@@ -147,6 +156,7 @@ HideHome ─► host.OnHomeExit ─► Runner.OnHomeExit: xoá dirty, huỷ CTS 
 |---|---|---|---|
 | `rocket_rush_operation` → `RocketRushOperationConfig` | `priority` (int) · `forceReview` (bool) | nháp của developer | `RocketRushModule` |
 | `endless_sale_operation` → `EndlessSaleOperationConfig` | `priority` (int) | nháp của developer | `EndlessSaleModule` |
+| `collection_operation` → `CollectionOperationConfig` | `priority` (int) | nháp của developer | `CollectionModule` |
 | `RocketRushProgressData` | `iconAnimatedPoints` | `-1`; `RollTo` đặt `0` | `RocketRushHomeFlow` qua module |
 
 Save cũ không có `iconAnimatedPoints`: `JsonConvert` giữ giá trị khởi tạo `-1`, nên lần về Home đầu sau khi cập nhật đặt thẳng, không bay lại cả chu kỳ.
@@ -157,7 +167,7 @@ Save cũ không có `iconAnimatedPoints`: `JsonConvert` giữ giá trị khởi 
 |---|---|---|
 | 1 | `Services.unity`: GameObject `live_ops_home_flow` ở gốc scene, *Add Component* `LiveOpsHomeFlowHost`, kéo `live_ops_host` (con của prefab instance `bootstrap_runner`) vào ô `Live Ops Host` | `NullReferenceException` ở `Awake` lần Play đầu |
 | 2 | Cùng object, *Add Component* `HomeFlowBridge`, kéo chính `live_ops_home_flow` vào ô `Host` | thiếu ô: NRE ở lần Home đầu · thiếu component: không luồng Home nào chạy, không log |
-| 3 | `RemoteConfigCollection.asset`: `rocket_rush_operation` → `value` đặt `Priority`, tick `Force Review` (key này `allowFetching: 0`, asset là giá trị chạy); `endless_sale_operation` → thêm `"priority"` vào JSON, cả trên Firebase | thiếu `priority`: mọi module bằng `0`, xếp theo `ModuleId` · thiếu `forceReview`: không bao giờ ép mở tháp, cú tụt chỉ thấy khi người chơi tự mở |
+| 3 | `RemoteConfigCollection.asset`: `rocket_rush_operation` → `value` đặt `Priority`, tick `Force Review` (key này `allowFetching: 0`, asset là giá trị chạy); `endless_sale_operation` → thêm `"priority"` vào JSON, cả trên Firebase; `collection_operation` → `value` đặt `Priority`, cả trên Firebase (`allowFetching: 1`) | thiếu `priority`: mọi module bằng `0`, xếp theo `ModuleId` · thiếu `forceReview`: không bao giờ ép mở tháp, cú tụt chỉ thấy khi người chơi tự mở |
 
 ## 9. Test (agent viết sau khi developer code xong lõi)
 
