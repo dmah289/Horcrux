@@ -126,8 +126,13 @@ gom việc đó về **một mục riêng ở cuối**, không xen giữa dẫn 
 một phương án và nói vì sao nó thắng** — tiêu chí là **hợp tư tưởng trong file này nhất** (§0), không
 phải "dễ làm nhất" hay "nhiều tính năng nhất". Bỏ phần chốt là đẩy việc khó nhất về developer; bỏ phần
 bày phương án là lấy mất dữ kiện để developer bác lại. **Ranh giới:** quyết định thuộc developer thì
-**thu hẹp lựa chọn và nêu giá từng cái, không chốt hộ** — phạm vi, ba thứ ở ranh giới cứng của NT6,
-thứ developer đã quyết rồi (§5.4), và mọi ca NT5 nói là phải hỏi.
+**thu hẹp lựa chọn và nêu giá từng cái, không chốt hộ** — phạm vi, **tên và thuật ngữ của hệ**, ba thứ
+ở ranh giới cứng của NT6, thứ developer đã quyết rồi (§5.4), và mọi ca NT5 nói là phải hỏi. Tên gợi ý
+chưa áp vào code hay tài liệu nào trước khi developer chốt; bản nháp lỡ áp thì hoàn về.
+
+**Ví dụ minh hoạ cũng là khẳng định** — kiểm trên code trước khi đưa (NT8). Ví dụ sai làm developer nghi
+luôn định nghĩa đúng đi kèm nó. *Đã sai một lần:* một ví dụ dựng từ trí nhớ về số lượt một chuỗi hợp lệ
+tốn, sai, khiến developer phải hỏi lại chính định nghĩa của "lượt".
 
 ## 2.4 Tái sử dụng, rồi chốt phạm vi
 
@@ -308,6 +313,8 @@ bất biến · §3.5 async — **luật ngang mọi code** §3.7 naming · §3.
 > **không ai gọi** (đường tự tiêm thoát sớm, dòng log báo việc đó nằm trong `#if DEV_MODE`). Ca này
 > **bắt buộc** một `*Initializer` kéo tay vào scene; hai đường tiêm độc lập, không phá nhau. Editor và
 > tooling không bắt buộc dùng InitArgs — constructor injection hoặc static factory ở đó là hợp lệ.
+> `Awake` của base gọi `Init` **trước** `OnAwake`, và hoãn `OnAwake` khi một Initializer đang tiêm dở —
+> nên dùng phụ thuộc đã tiêm trong `OnAwake` an toàn ngang `Start`: thiếu service thì cả hai cùng null.
 
 **Đổi từ resolve lười sang resolve sớm là dịch cửa sổ thất bại, không phải bỏ nó.** Gọi lúc dùng thì
 hỏng lúc dùng; nhận qua `Init` thì hỏng lúc khởi tạo. Đổi chiều nào cũng phải hỏi lại: **lúc đó thứ
@@ -525,6 +532,10 @@ Gộp vào `List` theo thứ tự gặp đầu tiên thì thứ tự là một b
 thấp nhất, đứng cuối — không tự chen lên đầu; hai giá trị bằng nhau phá hoà bằng một **định danh ổn định**,
 không bằng thứ tự đăng ký hay khởi tạo: thứ tự đó đổi giữa các lần chạy mà không ai gọi là bug.
 
+**Mặc định của một lựa chọn là ca số đông, viết bằng tên.** Ca số ít — đặc quyền, đi trước người khác —
+phải khai rõ: quên khai thì rơi về ca số đông, không âm thầm chiếm đặc quyền. Mặc định viết tường minh
+(`=> Mode.Normal`), không dựa vào phần tử đầu của enum: đổi thứ tự enum là đổi mặc định mà không dòng nào báo.
+
 **Một danh sách vừa là lệnh vừa là thứ để vẽ thì hỏi hai vai có chung khoá gộp không.** Vai *thực thi*
 gộp theo khoá của hệ nhận lệnh, vai *hiển thị* gộp theo khoá người dùng nhìn thấy — hai khoá đó thường
 ánh xạ nhiều-về-một, nên gộp theo khoá của vai này là vai kia mất hàng. **Và tổng hợp đặt ở chỗ nhìn
@@ -539,6 +550,11 @@ ca sai nào**; guard hay không guard chỉ là hai đường tới cùng đích
 | **Ngay lúc authoring, hoặc nổ ngay lần Play đầu** — và **đã kiểm là nó nổ thật** | **để nó nổ**, không guard | exception thô và `LogError` đẹp chặn developer ngang nhau; đổi cái trước thành cái sau là trả phí **vĩnh viễn trong build** cho một lần đọc log dễ hơn. Guard cho ca không bao giờ xảy ra vẫn là một nhánh phải đọc, test, giữ đúng mãi (NT1) |
 | **Lọt qua authoring rồi sai âm thầm** giữa gameplay | **guard đầy đủ** — bất biến thật, về bảng trên | Editor không bắt chắc được: reference chỉ có lúc runtime · null ở một prefab variant hoặc một scene trong nhiều scene · sai chỉ hiện ở một tổ hợp cấu hình · thành null sau `Destroy` · **dữ liệu từ ngoài** (import, server, save — §3.8) luôn thuộc nhóm này |
 | **Không gọi tên được** lượt kiểm nào bắt nó | **guard** | "chắc là không xảy ra đâu" không phải bằng chứng (NT8) |
+
+**Đã guard thì thoát im lặng hay log tuỳ ca đó có hợp lệ không.** Ca hợp lệ — chưa tới lượt, chưa có gì
+để làm — thoát im lặng. Ca chỉ xảy ra khi setup sai — view lẽ ra đã gắn mà chưa — thì `LogError`, kể cả
+khi nó lặp mỗi lượt: thoát im lặng biến một bước setup thiếu thành một tính năng vắng mặt cả phiên mà
+không ai biết.
 
 **Dữ liệu ngoài kiểm một lần ở cửa vào; sau cửa, consumer tin hợp đồng.** Hàng "dữ liệu từ ngoài" của
 bảng trên là guard ở **cửa** — một hàm thuần kiểm luật nghiệp vụ, sai thì từ chối cả cấu hình kèm
@@ -595,6 +611,11 @@ Guard bằng `if (x != null)`, không bằng `x?.Foo()`: `?.` bỏ qua phép so 
 object đã huỷ vẫn bị gọi. Và `onComplete` chỉ có **một** chủ: đã gán cho `finally` ngoài thì không truyền
 thêm vào lời gọi bên trong, nếu không nó chạy hai lần.
 
+**`CancellationTokenSource` có đúng một chủ dọn: chỗ tạo ra nó.** Nơi khác chỉ `?.Cancel()`. `Cancel` chạy
+tiếp đồng bộ phần còn lại của luồng ngay trong lời gọi, nên `finally` của chủ có thể đã `Dispose` và gán
+`null` trước khi bên huỷ tới dòng kế — bên huỷ dọn thêm là NRE, kể cả ở ca thường nhất: huỷ lúc không có
+lượt nào đang chạy.
+
 **Hàm mở một lượt sống bằng tài nguyên một lần dùng thì từ chối tái nhập ở cửa.** `Open()` tạo
 `UniTaskCompletionSource` mới cho `WaitClosedAsync`; gọi `Open()` chồng lên lượt đang mở là thay source
 mới trong khi người đang chờ còn giữ source cũ — họ treo **im lặng, vĩnh viễn**, đúng loại lỗi §3.4 xếp
@@ -605,7 +626,7 @@ vào "guard đầy đủ". Một dòng `if (isOpen) return;` ở cửa rẻ hơn
 Không bỏ công bảo toàn đường hủy cho thứ mà bị hủy thì người chơi không mất gì.
 
 **Trình diễn một thay đổi cho người chơi.** Dữ liệu đổi ở một nơi (gameplay, server) và người chơi thấy
-nó ở nơi khác (Home, popup), có khi sau nhiều lần đổi. Luật đúc từ bar bậc nhân của Collection:
+nó ở nơi khác (Home, popup), có khi sau nhiều lần đổi. Luật cho mọi trình diễn kiểu đó:
 
 | Luật | Nghĩa là |
 |---|---|
@@ -619,7 +640,8 @@ nó ở nơi khác (Home, popup), có khi sau nhiều lần đổi. Luật đúc
 | **Trình diễn tách bước thì save giữ cấu tạo của lần đổi cuối** | trình diễn tổng chỉ cần mốc và sự thật; trình diễn tách bước cần biết thay đổi **hình thành thế nào** — thứ không suy ngược được từ tổng. Save giữ cấu tạo của đúng **một** lần đổi chưa xem, ghi đè mỗi lần đổi: diễn tách bước cho lần cuối, phần dồn trước đi đường trình diễn tổng. Xoá cấu tạo khi diễn xong — cùng luật với ghi mốc "đã thấy" — và reset chu kỳ xoá theo |
 | **Bước diễn thiếu dữ liệu thì bỏ bước, không rẽ nhánh cả luồng** | luồng trình diễn giữ một hình dạng cho mọi ca; chỉ bước không có gì để diễn bị bỏ. Nhánh "ca này khỏi diễn" là một đường trình diễn thứ hai phải giữ đồng bộ với đường chính |
 | **Service overlay giữ cơ chế; nội dung là canvas của consumer được nâng cùng** | tối màn, nâng sorting, con trỏ hướng dẫn, fade là cơ chế dùng chung; nội dung nằm trong canvas thuộc prefab của consumer, đưa vào qua tham số của service. Kịch bản mới là consumer mới, không sửa service — service mọc cờ chế độ theo từng kịch bản là gom domain của mọi consumer về một class (NT1, NT3) |
-| **Trình diễn khi vào một màn do một điều phối viên chạy tuần tự; thứ tự là thứ tự `await`** | nhiều module cùng muốn trình diễn lúc vào một màn (ceremony, bay thưởng, tutorial, mở màn con) mà mỗi module tự khởi động thì chồng lên nhau, và hàng đợi ưu tiên chỉ vá triệu chứng bằng thêm cơ chế (lease, số ưu tiên, chờ một frame). Mỗi module giữ **luồng của mình**: một đối tượng đọc trạng thái đã lưu và chỉ làm phần chưa làm. Một điều phối viên duy nhất giữ danh sách luồng **có thứ tự kéo thả** rồi `await` lần lượt, nên chồng chéo không thể xảy ra. Luồng **idempotent**: tiêu thụ trạng thái *sau* khi diễn xong (huỷ giữa chừng thì lần sau diễn lại), kết thúc khi mọi thứ nó mở đã đóng, trả tài nguyên dùng chung trong `finally`. Yêu cầu chạy lại giữa lúc đang chạy thì **đặt cờ và chạy bù đúng một lượt** sau khi lượt hiện tại xong, không cắt ngang animation đang diễn. Lỗi của một luồng không chặn luồng sau (`try/catch` quanh từng luồng, ca §3.4 cho phép). Tín hiệu vào màn chỉ đi vào điều phối viên qua **một** bridge của dự án, module không tự nghe nó. Vòng điều phối tách thành class thuần để test không cần engine (§2.8) |
+| **Trình diễn khi vào một màn do một điều phối viên chạy theo giai đoạn cố định; trong một giai đoạn, thứ tự theo một ưu tiên dùng chung** | nhiều module cùng muốn trình diễn lúc vào một màn mà mỗi module tự khởi động thì chồng lên nhau; lease, hàng đợi trên tài nguyên hay chờ một frame chỉ vá triệu chứng. Giai đoạn chia theo **loại** trình diễn và cố định trong code — loại quyết định thứ tự trước, ưu tiên chỉ xếp các module trong cùng giai đoạn: **thay đổi tiến trình** (tăng lẫn giảm) → **hướng dẫn lần đầu** → **ép xem đầy đủ tiến trình** (mốc vừa đạt, tiến trình vừa mất) → **quảng bá** (gói bán, khi các hệ đã ổn định). Chỉ ưu tiên và cờ ép là cấu hình từ xa. Giai đoạn đầu chia **nhóm chú ý**: nhóm ưu tiên chạy đồng thời, xong hết mới tới nhóm thường; nhóm thường là mặc định vì nhóm ưu tiên dành cho số ít. Luồng dùng **tài nguyên độc quyền** (lớp tối màn, màn chồng) chỉ chạy ở **làn lần lượt** — một làn riêng song song với nhóm thường, và ba giai đoạn sau — nên không thể chồng nhau; luồng chạy đồng thời chỉ chạm view của chính nó. **Ép** là tự mở giao diện cho xem, có tự nhận hay không do module quyết; chỉ mốc mới hoặc lần tụt chưa xem mới ép, cộng thường thì không. Điều kiện ép suy từ mốc "đã thấy" trong save, không từ cờ runtime do một sự kiện đặt — thứ tự sự kiện và giết app không làm lệch. Mỗi module giữ **luồng của mình**, chỉ override giai đoạn nó có. Mọi giai đoạn chạy ở mọi lượt nên luồng **idempotent**: đọc trạng thái đã lưu, chỉ làm phần còn nợ, tiêu thụ trạng thái *sau* khi diễn xong (huỷ giữa chừng thì lần sau diễn lại), kết thúc khi mọi thứ nó mở đã đóng — chờ màn con đóng, nếu không luồng sau mở chồng lên — và trả tài nguyên dùng chung trong `finally`. Lỗi của một luồng không chặn luồng khác: `try/catch` quanh **từng** luồng (ca §3.4 cho phép), kể cả trong nhóm đồng thời — chờ-tất-cả kết thúc ngay ở lỗi đầu tiên và cắt mọi giai đoạn sau. Tín hiệu vào/ra màn chỉ đi vào điều phối viên qua **một** bridge của dự án, module không tự nghe nó. Vòng điều phối tách thành class thuần để test không cần engine (§2.8) |
+| **Yêu cầu chạy lượt: gửi dư, gộp lại, chỉ nhận khi đang ở màn** | một **lượt** là một lần chạy trọn mọi giai đoạn của mọi module. Lớp cha của module tự gửi yêu cầu mỗi lần trạng thái đổi, **sau** hook đổi trạng thái: lớp cha không biết lần đổi nào quan trọng với module nào — gửi dư tốn một lượt rỗng, gửi thiếu là màn hiển thị sai; và vòng khởi động kiểu gọi-rồi-bỏ chạy đồng bộ tới `await` đầu, nên luồng có thể đọc module ngay trong lời gọi. Module chỉ tự gửi cho thay đổi không phải đổi trạng thái (cộng tiến trình, sang chu kỳ mà vẫn đang chạy, view vừa gắn). Điều phối viên giữ hai cờ: *có yêu cầu chờ lượt* — xoá **trước** khi chạy lượt, nên mọi yêu cầu giữa lượt chỉ thêm đúng một lượt, lượt đó đọc trạng thái mới nhất, và animation đang diễn không bị cắt (xoá sau là mất yêu cầu đến giữa lượt) — và *vòng đang chạy*, để không mở hai vòng song song. Ngoài màn thì bỏ qua yêu cầu: vào màn luôn chạy một lượt và luồng đọc save, nên nhớ yêu cầu là thừa; rời màn thì xoá yêu cầu chờ và huỷ lượt đang chạy. Lọc ở một chỗ này, module không cần biết người chơi đang ở đâu. Trần số lượt liền nhau chỉ để bắt luồng tự gửi yêu cầu mãi; chạm trần thì báo lỗi |
 
 > **Nền tảng** — lựa chọn mặc định và ràng buộc đi kèm:
 >
@@ -635,6 +657,11 @@ nó ở nơi khác (Home, popup), có khi sau nhiều lần đổi. Luật đúc
 > ngay sau `Delay` chạy khi delay vừa xong — chỉ một `try/finally` bọc toàn thân mới cho "đúng một lần".
 > `UniTask.Yield(ct)` **ném** ở `await` khi bị hủy, nên `if (ct.IsCancellationRequested)` đứng sau nó là
 > code chết.
+>
+> Tham số `CancellationToken` không mang `= default` khi mọi caller đều có token: mặc định chỉ cho phép
+> quên truyền mà compiler không báo, và luồng quên token không dừng theo owner. Giá trị mặc định của tham
+> số trên method `virtual` lấy theo **kiểu khai báo của biến lúc gọi**, không theo override — lớp con khai
+> mặc định khác là kết quả khó đoán.
 
 ## 3.6 Editor-first
 
@@ -677,6 +704,11 @@ Bên đời ngắn biết chính xác lúc nó xuất hiện và biến mất, n
 trong một file**. Bên đời dài đi tìm thì phải poll, hoặc rốt cuộc vẫn phải chờ được báo — và nó không
 có chỗ tự nhiên nào để biết lúc phải gỡ ra.
 
+**Cặp đăng ký chọn theo đời object, và phải xong trước tín hiệu cần tới nó.** View tự ẩn bằng cách tắt
+chính nó thì cặp bật/tắt gỡ nó khỏi chủ ngay lần ẩn đầu, rồi không ai bật lại. Tín hiệu phát ngay sau
+khi bật cây object thì `Awake` cả cây đã chạy còn `Start` thì chưa — đăng ký ở `Start` là lượt đầu
+thiếu view, và phần của nó bị đẩy ra sau mọi thứ khác ở lượt bù. Cặp đúng là `Awake`/`OnDestroy`.
+
 **Điều kiện dựng hệ ghi vào tài liệu, không sinh code canh.** Tạo asset, dựng GameObject, gán
 reference, đặt layer/tag, thêm scene vào build — người dựng làm **một lần**, viết thành một bước ở mục
 **"Trước khi chạy"** của tài liệu module (§5.1). Thiếu setup thì **để nó nổ** ở lần Play đầu — nhưng
@@ -717,7 +749,9 @@ chạy" đủ để dựng lại từ 0 — bỏ code canh mà không viết bư
   không `new` được và phải tìm subclass.
 - Tên method nói rõ **mục đích**: `EnsureMaterial()`, `SwapWriteBuffer()`, `SolveAnalytic()`. Tên vô
   nghĩa cần thay: `Process`, `Handle`, `DoWork`, `Update2`. Boolean đọc như một câu hỏi: `IsPickable`,
-  `HasPendingInput`, `frameDataReady`; `IsFinished`, không `Finished`.
+  `HasPendingInput`, `frameDataReady`; `IsFinished`, không `Finished`. Cờ nói **cái gì** đang chờ hay
+  đang chạy, không mượn hình ảnh cơ chế: `hasPendingPassRequest` · `isRunningPasses`, không `isDirty`
+  (bẩn cái gì?) · `isPumping` (hình ảnh chỉ có trong đầu người viết).
 - **Tên hàm khớp thứ nó trả về, không khớp thứ nó dựa vào**: hàm trả **một điểm** trên đường cong là
   `EvaluateQuadraticBezier`, không `GetQuadraticBezierCurve` — "Curve" hứa một đối tượng đường cong.
   `Evaluate` cho lấy mẫu một giá trị tại tham số `t`, `Compute` cho dẫn xuất một đại lượng từ đầu vào.
