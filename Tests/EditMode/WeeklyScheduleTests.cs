@@ -1,6 +1,6 @@
 using System;
 using Horcrux.Runtime.Abstractions.Composites.LiveOps;
-using Horcrux.Runtime.Implementations.Composites.LiveOps;
+using Horcrux.Runtime.Implementations.LiveOps;
 using NUnit.Framework;
 
 namespace Horcrux.Tests

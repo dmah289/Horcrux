@@ -2,7 +2,7 @@
 using Horcrux.Runtime.Abstractions.Composites.LiveOps;
 using UnityEngine;
 
-namespace Horcrux.Runtime.Implementations.Composites.LiveOps
+namespace Horcrux.Runtime.Implementations.LiveOps
 {
     public static class WeeklySchedule
     {

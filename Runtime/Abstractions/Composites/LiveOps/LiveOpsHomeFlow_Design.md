@@ -18,7 +18,7 @@ Mỗi lần về Home, trình diễn của mọi live-ops chạy theo **bốn gi
 |---|---|
 | Thứ tự giai đoạn | Thay đổi tiến trình → Tutorial → Ép xem đầy đủ tiến trình → Quảng bá; cố định trong code |
 | Phase của giai đoạn 1 | `First` (đồng thời) xong hết mới tới `Second` (đồng thời) và `Parallel` (lần lượt) bắt đầu cùng lúc; giai đoạn 1 xong khi cả hai xong |
-| Module thuộc phase nào | hằng trong code flow của module |
+| Module thuộc phase nào | hằng trong code flow của module; không khai là `Second`, vì `First` chỉ dành cho số ít live-ops được ưu tiên |
 | Priority | remote config của từng module · số lớn chạy trước · thiếu key là `0`, đứng cuối · bằng nhau thì theo `ModuleId` (so ordinal) |
 | Cờ force | remote config của từng module; chỉ module đọc, khung không biết |
 | Ép xem khi nào | force bật **và** còn mốc mới đạt chưa xem **hoặc** còn cú tụt chưa xem; cộng điểm không qua mốc thì không ép. Force chỉ mở giao diện xem; nhận thưởng hay không do module |
@@ -58,13 +58,13 @@ Runner sắp xếp lại **mỗi lượt**. Priority đọc từ remote config v
 
 | Thành phần | Tầng | Việc |
 |---|---|---|
-| `LiveOpsProgressPhase` | Horcrux Abstractions | enum `First, Second, Parallel` |
-| `ALiveOpsHomeFlow` | Horcrux Abstractions, class thuần | `ProgressPhase` (virtual, mặc định `First`) · `PlayProgressChangeAsync` · `PlayTutorialAsync` · `PlayForcedReviewAsync` · `PlayPromotionAsync` — mỗi method `virtual`, mặc định trả về ngay; module override giai đoạn nó có |
+| `LiveOpsProgressChangePhase` | Horcrux Abstractions | enum `First, Second, Parallel` |
+| `ALiveOpsHomeFlow` | Horcrux Abstractions, class thuần | `ProgressChangePhase` (virtual, mặc định `Second`; `First` dành cho số ít live-ops được ưu tiên nên phải khai rõ) · `PlayProgressChangeAsync` · `PlayTutorialAsync` · `PlayForcedReviewAsync` · `PlayPromotionAsync` — mỗi method `virtual`, mặc định trả về ngay; module override giai đoạn nó có |
 | `ILiveOpsModule` | thêm | `int Priority { get; }` · `ALiveOpsHomeFlow HomeFlow { get; }` |
 | `ALiveOpsModule` | thêm | `Priority => 0` và `HomeFlow => null` (virtual) · `protected RequestHomeFlow()` bắn `LiveOpsHomeFlowRequested` · `SetState` gọi nó sau `OnStateChanged` |
 | `ILiveOpsHost` | thêm | `IReadOnlyList<ILiveOpsModule> Modules { get; }` |
 | `LiveOpsHomeFlowRequested` | Horcrux Abstractions | sự kiện EventBus "có thứ mới để diễn", không payload |
-| `LiveOpsHomeFlowRunner` | Horcrux Implementations, class thuần | lượt bốn giai đoạn, sắp xếp, cô lập lỗi, huỷ, chạy bù, một vòng bơm tại một thời điểm; không có Unity object nên test được |
+| `LiveOpsHomeFlowRunner` | Horcrux Implementations, class thuần | lượt bốn giai đoạn, sắp xếp, cô lập lỗi, huỷ, chạy bù, mỗi lúc chỉ một vòng chạy lượt; không có Unity object nên test được |
 | `LiveOpsHomeFlowHost` | Horcrux Implementations, component | ô kéo `LiveOpsHost`, đọc `Modules` · nghe sự kiện · `OnHomeEnter/OnHomeExit` · huỷ ở `OnDestroy` |
 | `HomeFlowBridge` | game, `Assets/LiveOps/_Shared/Bridge` | `HomeVisibilityChangedEvent` → `host.OnHomeEnter/OnHomeExit` |
 | Flow của module | game | `RocketRushHomeFlow`, `EndlessSaleHomeFlow`, `CollectionHomeFlow` kế thừa `ALiveOpsHomeFlow` |
@@ -77,9 +77,9 @@ Runner sắp xếp lại **mỗi lượt**. Priority đọc từ remote config v
 ShowHome ─► HomeVisibilityChangedEvent ─► HomeFlowBridge ─► host.OnHomeEnter ─► Runner.OnHomeEnter ─► Request
 SetState · icon gắn · tiến trình đổi · chu kỳ mới · cheat ─► LiveOpsHomeFlowRequested ─► Runner.Request (bỏ qua nếu không ở Home)
 
-Request:   dirty = true;  chưa có vòng bơm thì mở PumpAsync
-PumpAsync: while (ở Home && dirty && chưa quá 5 lượt liên tiếp)  dirty = false;  CTS mới;  RunPassAsync(ct)
-           vẫn còn dirty sau 5 lượt: báo một lỗi, bỏ dirty
+Request:   _hasPendingPassRequest = true;  chưa có vòng (!_isRunningPasses) thì mở RunPassesAsync
+RunPassesAsync: while (ở Home && _hasPendingPassRequest && chưa quá 3 lượt liên tiếp)  _hasPendingPassRequest = false;  CTS mới;  RunPassAsync(ct)
+           vẫn còn request sau 3 lượt: báo một lỗi, bỏ request
 RunPassAsync:
   gom flow từ host.Modules (HomeFlow != null) vào buffer, sắp theo Priority
   GĐ1  WhenAll(First)  ─►  WhenAll( WhenAll(Second), lần lượt(Parallel) )
@@ -88,13 +88,14 @@ RunPassAsync:
   GĐ4  lần lượt(mọi flow).PlayPromotionAsync
   mỗi lời gọi bọc riêng:  huỷ do host → thoát lượt  ·  lỗi khác → log kèm tên flow và giai đoạn, flow khác vẫn chạy
 
-HideHome ─► host.OnHomeExit ─► Runner.OnHomeExit: xoá dirty, huỷ CTS ─► flow thoát qua finally
+HideHome ─► host.OnHomeExit ─► Runner.OnHomeExit: xoá _hasPendingPassRequest, huỷ CTS ─► flow thoát qua finally
 ```
 
 - **Bọc từng lời gọi, kể cả trong `WhenAll`.** `UniTask.WhenAll` kết thúc ngay ở lỗi đầu tiên trong khi các task khác vẫn chạy; không bọc thì một flow lỗi cắt cả phase và mọi giai đoạn sau.
 - **Hai hàm duyệt cho mọi giai đoạn**: một "đồng thời", một "lần lượt"; giai đoạn chỉ khác thao tác gọi, truyền vào bằng delegate static. Cô lập lỗi và điểm thoát khi huỷ có đúng một bản.
-- **Một vòng bơm tại một thời điểm.** Thoát rồi vào lại Home khi lượt cũ chưa dọn xong: lượt mới chỉ bắt đầu sau khi lượt cũ đã thoát hết qua `finally`.
-- **Trần 5 lượt liên tiếp mỗi vòng bơm**: một flow tự yêu cầu chạy lại ở mọi lượt sẽ không có `await` nào chặn và treo Editor; trần biến nó thành một dòng lỗi.
+- **Một lượt** là một lần chạy trọn `RunPassAsync`: cả bốn giai đoạn của mọi live-ops. Request đến giữa lượt bật lại cờ nên có đúng một lượt sau; nhiều request gộp một.
+- **Mỗi lúc chỉ một vòng chạy lượt** (`_isRunningPasses`). Thoát rồi vào lại Home khi lượt cũ chưa dọn xong: lượt mới chỉ bắt đầu sau khi lượt cũ đã thoát hết qua `finally`.
+- **Trần 3 lượt liên tiếp mỗi vòng** (`MaxPassesPerBurst`; lúc chơi bình thường một vòng chỉ 1–2 lượt): một flow tự yêu cầu chạy lại ở mọi lượt sẽ không có `await` nào chặn và treo Editor; trần biến nó thành một dòng lỗi.
 - **Nguồn yêu cầu là sự kiện EventBus**: module không giữ tham chiếu host, `Init` các module không đổi.
 
 ## 5. Hợp đồng của flow
@@ -171,7 +172,7 @@ Save cũ không có `iconAnimatedPoints`: `JsonConvert` giữ giá trị khởi 
 
 ## 9. Test (agent viết sau khi developer code xong lõi)
 
-`LiveOpsHomeFlowRunner`: bốn giai đoạn đúng thứ tự · `First` xong hết mới bắt đầu `Second` và `Parallel` · `Second` và `Parallel` bắt đầu cùng lúc, GĐ2 chỉ bắt đầu khi cả hai xong · flow trong `First`/`Second` chạy đồng thời · `Parallel` và GĐ2–4 chạy lần lượt, Priority lớn trước, bằng nhau theo `ModuleId` · module có `HomeFlow` null bị bỏ qua · lỗi một flow (trong làn đồng thời và trong làn lần lượt) được báo, flow khác và giai đoạn sau vẫn chạy · thoát Home huỷ lượt, không giai đoạn nào bắt đầu sau đó, huỷ không tính là lỗi · yêu cầu trong lúc chạy thì thêm đúng một lượt · nhiều yêu cầu gộp một · thoát Home xoá yêu cầu đang chờ · yêu cầu khi không ở Home bị bỏ qua · thoát rồi vào lại khi lượt cũ chưa dọn xong thì lượt mới chỉ chạy sau khi lượt cũ thoát · trần 5 lượt · danh sách rỗng · module đăng ký sau lượt đầu có mặt ở lượt sau · Priority đổi giữa hai lượt thì lượt sau theo thứ tự mới.
+`LiveOpsHomeFlowRunner`: bốn giai đoạn đúng thứ tự · `First` xong hết mới bắt đầu `Second` và `Parallel` · `Second` và `Parallel` bắt đầu cùng lúc, GĐ2 chỉ bắt đầu khi cả hai xong · flow trong `First`/`Second` chạy đồng thời · `Parallel` và GĐ2–4 chạy lần lượt, Priority lớn trước, bằng nhau theo `ModuleId` · module có `HomeFlow` null bị bỏ qua · lỗi một flow (trong làn đồng thời và trong làn lần lượt) được báo, flow khác và giai đoạn sau vẫn chạy · thoát Home huỷ lượt, không giai đoạn nào bắt đầu sau đó, huỷ không tính là lỗi · yêu cầu trong lúc chạy thì thêm đúng một lượt · nhiều yêu cầu gộp một · thoát Home xoá yêu cầu đang chờ · yêu cầu khi không ở Home bị bỏ qua · thoát rồi vào lại khi lượt cũ chưa dọn xong thì lượt mới chỉ chạy sau khi lượt cũ thoát · trần 3 lượt · danh sách rỗng · module đăng ký sau lượt đầu có mặt ở lượt sau · Priority đổi giữa hai lượt thì lượt sau theo thứ tự mới.
 
 ## 10. Rủi ro
 

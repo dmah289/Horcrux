@@ -7,7 +7,7 @@ using Horcrux.Runtime.Abstractions.Time;
 using Horcrux.Runtime.Utilities.EventBus;
 using Sisus.Init;
 
-namespace Horcrux.Runtime.Implementations.Composites.LiveOps
+namespace Horcrux.Runtime.Implementations.LiveOps
 {
     [Service(typeof(ILiveOpsHost), FindFromScene = true)]
     public class LiveOpsHost : BaseBootStep, ILiveOpsHost, IInitializable<ITimeService>
@@ -16,6 +16,13 @@ namespace Horcrux.Runtime.Implementations.Composites.LiveOps
 
         private readonly List<ILiveOpsModule> modules = new();
         private bool isReady;
+
+
+        #region Properties
+
+        public IReadOnlyList<ILiveOpsModule> Modules => modules;
+
+        #endregion
 
         #region API
 

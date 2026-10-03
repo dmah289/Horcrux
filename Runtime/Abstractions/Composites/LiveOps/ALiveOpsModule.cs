@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+﻿using Horcrux.Runtime.Utilities.EventBus;
+using UnityEngine;
 
 namespace Horcrux.Runtime.Abstractions.Composites.LiveOps
 {
@@ -7,18 +8,14 @@ namespace Horcrux.Runtime.Abstractions.Composites.LiveOps
         #region Properties
         
         protected abstract ILiveOpsHost LiveOpsHost { get; }
-        
         public abstract string ModuleId { get; }
-        
         public LiveOpsModuleState State { get; private set; }
-        
         public long SecondsLeft => State == LiveOpsModuleState.Running
             ? Window.SecondsLeft(LastUnix) : 0;
-        
+        public virtual int Priority => 0;
+        public virtual ALiveOpsHomeFlow HomeFlow => null;
         protected bool IsInitialized { get; private set; }
-        
         protected LiveOpsWindow Window { get;  private set; }
-        
         protected long LastUnix { get; private set; }
         
         #endregion
@@ -57,6 +54,11 @@ namespace Horcrux.Runtime.Abstractions.Composites.LiveOps
 
         #region Class Methods
 
+        protected void RequestHomeFlow()
+        {
+            EventBus<LiveOpsHomeFlowRequested>.Publish();
+        }
+
         protected abstract void Refresh(long nowUnix);
         
         protected abstract LiveOpsWindow ResolveWindow(long nowUnix);
@@ -72,6 +74,9 @@ namespace Horcrux.Runtime.Abstractions.Composites.LiveOps
             LiveOpsModuleState oldState = State;
             State = nextState;
             OnStateChanged(oldState, nextState);
+            
+            // Trigger if live-ops has just opened.
+            RequestHomeFlow();
         }
         
         private void Evaluate(long nowUnix)

@@ -1,7 +1,7 @@
 using Sisus.Init;
 using Horcrux.Runtime.Abstractions.Time;
 
-namespace Horcrux.Runtime.Implementations.Composites.LiveOps
+namespace Horcrux.Runtime.Implementations.LiveOps
 {
 	/// <summary>
 	/// Initializer for the <see cref="LiveOpsHost"/> component.
