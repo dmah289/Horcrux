@@ -197,10 +197,12 @@ Plan thì đặt mục **"Ngữ cảnh đã chốt"** trước `§0`; tài liệ
 mục tiêu · ranh giới · **những gì cố ý KHÔNG làm, kèm lý do** · hướng phát triển đã tính tới nhưng
 chưa làm (NT1). Người đọc sau biết vì sao phạm vi dừng ở đó, không "bổ sung cho đủ".
 
-## 2.6 Chưng cất tư tưởng khi brainstorm
+## 2.6 Chưng cất tư tưởng — khi brainstorm và khi developer gõ lệch plan
 
-Brainstorm là nơi tư tưởng của developer lộ ra rõ nhất — dưới dạng **quyết định cho một bài toán cụ
-thể**, và trôi mất khi bài toán xong. **Ở từng câu hỏi**, sau khi nhận câu trả lời:
+Tư tưởng của developer lộ ra ở hai chỗ, đều dưới dạng **quyết định cho một bài toán cụ thể** và đều
+trôi mất khi bài toán xong: **câu trả lời khi brainstorm**, và **chỗ code thật lệch khỏi plan** —
+developer đọc plan rồi vẫn viết khác là kinh nghiệm thực tế và phong cách của họ đang nói, không phải
+sai sót mặc định. Với brainstorm, **ở từng câu hỏi**, sau khi nhận câu trả lời:
 
 1. **Khái quát hóa** — tách *tư tưởng* khỏi *quyết định riêng của bài toán*: phát biểu lại thành
    nguyên tắc mang sang bài toán khác vẫn dùng được, kèm "vì sao".
@@ -211,6 +213,13 @@ thể**, và trôi mất khi bài toán xong. **Ở từng câu hỏi**, sau khi
 
 Chỉ khái quát khi câu trả lời **thật sự chứa tư tưởng** — một lựa chọn có "vì sao" lặp lại được. Quyết
 định thuần bài toán (hằng số, tên, phạm vi một task) thì không.
+
+**Với chỗ lệch plan**, lượt so code–plan (§5.3) phân loại từng chỗ trước: *lỗi* thì báo kèm bằng chứng
+(§2.2) · *trôi* (tên, thứ tự, chi tiết không mang lý do) thì sync plan theo code (§5.4) · *tư tưởng* —
+developer đổi hình dạng, ranh giới, kiểu, cách tiêm, và lý do còn đúng ở bài toán khác — thì chạy đúng
+ba bước trên, **bỏ bước hỏi**: developer đã quyết bằng chính dòng code, nên ghi thẳng rồi liệt kê nguyên
+văn trong báo cáo để veto, như quét cuối chat. Chỗ lệch là nơi tư tưởng lộ rõ nhất vì nó đi ngược một
+bản đã cân nhắc: lý do ở đó luôn mạnh hơn lý do trong plan, hoặc là lỗi — không có ca thứ ba.
 
 **Quét cuối chat — bắt buộc, không đợi nhắc.** Trước báo cáo hoàn thành của mỗi chat có làm việc, agent
 duyệt **cả chat** và tổng hợp vào file này mọi **rule, tư tưởng thiết kế hệ thống, kịch bản dùng chung cho
@@ -448,7 +457,23 @@ thư mục file vẫn đúng chỗ.
 **Chức năng có người dùng thứ hai thì đề xuất nâng thành tái sử dụng được** (NT7): hàm thuần → Utilities
 hoặc Helper static · có state hoặc nhiều biến thể → interface rồi tách implementation · chỉ khác một
 giá trị → thêm tham số. Đặt ở **tầng thấp nhất mà cả hai người dùng đều với tới được**, không thấp hơn
-(NT1). Là **đề xuất, không tự làm**: nâng một chức năng là đổi ranh giới trách nhiệm (NT5).
+(NT1). Là **đề xuất, không tự làm**: nâng một chức năng là đổi ranh giới trách nhiệm (NT5) — và code
+vào framework dùng chung luôn do developer gõ (§5.3).
+
+**Nâng bằng kế thừa thì cắt ở ranh *cơ chế / quyết định*: base giữ cơ chế, lớp con chỉ còn một quyết
+định.** Cơ chế là phần giống hệt ở mọi nơi dùng — giữ tham chiếu đích, bộ đệm, nhịp ghi lần đầu, định
+dạng; quyết định là phần mỗi nơi một khác — *nói gì, lúc nào*. Phép kiểm: lớp con đọc hết trong một màn
+hình và **không chạm vào bộ phận của base**, chỉ gọi động từ của nó.
+
+| Luật | Vì |
+|---|---|
+| Ô kéo thả ở base khai **kiểu rộng nhất còn đủ member base dùng** — base chỉ gọi một method đặt chữ thì khai cha chung của đích canvas và đích world | kiểu hẹp hơn là ràng buộc base không cần, và nó đóng cửa một nửa nơi dùng ngay từ chữ ký |
+| Base phơi **động từ theo việc** (`protected`, overload theo loại dữ liệu vào); bộ phận là `private` | lớp con nói bằng ngôn ngữ của việc; đổi cách base ghi ra đích không chạm lớp con (`O`) |
+| Hook vòng đời khai `protected virtual` ở base làm phần chung; lớp con `override`, gọi `base` rồi nối nhịp riêng | một chỗ quyết "ghi lần đầu khi bật", lớp con chỉ thêm nguồn tick của nó; quên `virtual` là bẫy che magic method ở bảng trên |
+| Base là `MonoBehaviour` thì **giá là khe DI**: lớp con không còn là `MonoBehaviour<T>`, nhận phụ thuộc qua `*Initializer` gắn tay (§3.1) | giá đó ghi vào Editor setup của từng chỗ dùng (§3.6), không giấu — thiếu là null ngay frame đầu |
+| Thời điểm nâng: khi sắp viết bản thứ n của một cơ chế đã có ở các module anh em — bản mới là lớp con đầu tiên, các bản cũ chuyển sau | người dùng thứ hai **đang có thật**, không phải phòng xa (NT1); chuyển bản cũ là thêm lớp con rồi xoá code cũ, không sửa base — việc rẻ, để sau được (§2.4) |
+
+Base đặt ở **Utilities của framework** khi cơ chế không gọi tên hệ nào (NT3).
 
 ## 3.3 Hiệu năng runtime
 
@@ -496,6 +521,7 @@ Bất biến giữ bằng "mọi người nhớ làm đúng" sẽ vỡ ở đún
 | **Định danh số chia sẻ với asset hay hệ khác là `enum` gán số tường minh, không `const int`** | tên đi cùng số ở mọi chỗ code đọc, `switch` được compiler soát đủ nhánh, `(int)` chỉ xuất hiện ở đúng cửa ranh giới. Gán số từ phần tử đầu (`Coin = 1`) để `0` — giá trị `default` của enum — không trùng một định danh thật. Số đã nằm trong asset là wire format (§3.7): **không đánh số lại**, phần tử mới thêm ở cuối |
 | **Cửa hẹp là thân chung của cửa rộng** | bản giữ-lại-một-phần gọi vào thân bản đầy đủ — hai bên không thể lệch nhau |
 | **Một phép biến đổi chỉ áp ở MỘT tầng** | runner đã áp ease cho `t` thì thân nhận `t` đã ease, không ease lần nữa; hai tầng cùng có tham số ease thì một tầng cố định `Linear`. Ease hai lần không lỗi nào báo — chỉ là chuyển động sai nhịp, và đoạn vọt (overshoot) bị nhân đôi |
+| **Một chuyển trạng thái = một chủ gọi; nơi khác chỉ phát sự thật** | mở, huỷ, chốt của cùng một trạng thái nằm trong **một** class — rải mỗi bước một nơi (UI gọi chốt, bridge gọi mở) là mỗi chỗ một kiểu và quên một cửa không ai thấy. UI phát sự kiện **đặt tên theo điều đã xảy ra** ("X đã chốt"), publish đồng bộ, đúng một người nghe hành động; cần một mốc chưa có thì **thêm sự kiện mới**, không mượn sự kiện cũ đang có người nghe mang tác dụng phụ khác |
 | **Một bảo đảm phải phủ MỌI đường vào** | hệ tuyên bố "mất không quá X", "luôn hợp lệ" thì **mọi** cửa ghi phải đi qua chỗ tạo ra bảo đảm đó. Cửa thứ hai đi vòng làm bảo đảm **chỉ còn đúng cho một nửa hệ** trong khi tài liệu vẫn phát biểu nguyên câu |
 
 **Phép kiểm của luật cuối — đếm cửa trước, đọc thân sau.** Đường phụ sinh ra sau, người viết không
@@ -642,7 +668,7 @@ nó ở nơi khác (Home, popup), có khi sau nhiều lần đổi. Luật cho m
 | **Service overlay giữ cơ chế; nội dung là canvas của consumer được nâng cùng** | tối màn, nâng sorting, con trỏ hướng dẫn, fade là cơ chế dùng chung; nội dung nằm trong canvas thuộc prefab của consumer, đưa vào qua tham số của service. Kịch bản mới là consumer mới, không sửa service — service mọc cờ chế độ theo từng kịch bản là gom domain của mọi consumer về một class (NT1, NT3) |
 | **Trình diễn khi vào một màn do một điều phối viên chạy theo giai đoạn cố định; trong một giai đoạn, thứ tự theo một ưu tiên dùng chung** | nhiều module cùng muốn trình diễn lúc vào một màn mà mỗi module tự khởi động thì chồng lên nhau; lease, hàng đợi trên tài nguyên hay chờ một frame chỉ vá triệu chứng. Giai đoạn chia theo **loại** trình diễn và cố định trong code — loại quyết định thứ tự trước, ưu tiên chỉ xếp các module trong cùng giai đoạn: **thay đổi tiến trình** (tăng lẫn giảm) → **hướng dẫn lần đầu** → **ép xem đầy đủ tiến trình** (mốc vừa đạt, tiến trình vừa mất) → **quảng bá** (gói bán, khi các hệ đã ổn định). Chỉ ưu tiên và cờ ép là cấu hình từ xa. Giai đoạn đầu chia **nhóm chú ý**: nhóm ưu tiên chạy đồng thời, xong hết mới tới nhóm thường; nhóm thường là mặc định vì nhóm ưu tiên dành cho số ít. Luồng dùng **tài nguyên độc quyền** (lớp tối màn, màn chồng) chỉ chạy ở **làn lần lượt** — một làn riêng song song với nhóm thường, và ba giai đoạn sau — nên không thể chồng nhau; luồng chạy đồng thời chỉ chạm view của chính nó. **Ép** là tự mở giao diện cho xem, có tự nhận hay không do module quyết; chỉ mốc mới hoặc lần tụt chưa xem mới ép, cộng thường thì không. Điều kiện ép suy từ mốc "đã thấy" trong save, không từ cờ runtime do một sự kiện đặt — thứ tự sự kiện và giết app không làm lệch. Mỗi module giữ **luồng của mình**, chỉ override giai đoạn nó có. Mọi giai đoạn chạy ở mọi lượt nên luồng **idempotent**: đọc trạng thái đã lưu, chỉ làm phần còn nợ, tiêu thụ trạng thái *sau* khi diễn xong (huỷ giữa chừng thì lần sau diễn lại), kết thúc khi mọi thứ nó mở đã đóng — chờ màn con đóng, nếu không luồng sau mở chồng lên — và trả tài nguyên dùng chung trong `finally`. Lỗi của một luồng không chặn luồng khác: `try/catch` quanh **từng** luồng (ca §3.4 cho phép), kể cả trong nhóm đồng thời — chờ-tất-cả kết thúc ngay ở lỗi đầu tiên và cắt mọi giai đoạn sau. Tín hiệu vào/ra màn chỉ đi vào điều phối viên qua **một** bridge của dự án, module không tự nghe nó. Vòng điều phối tách thành class thuần để test không cần engine (§2.8) |
 | **Yêu cầu chạy lượt: gửi dư, gộp lại, chỉ nhận khi đang ở màn** | một **lượt** là một lần chạy trọn mọi giai đoạn của mọi module. Lớp cha của module tự gửi yêu cầu mỗi lần trạng thái đổi, **sau** hook đổi trạng thái: lớp cha không biết lần đổi nào quan trọng với module nào — gửi dư tốn một lượt rỗng, gửi thiếu là màn hiển thị sai; và vòng khởi động kiểu gọi-rồi-bỏ chạy đồng bộ tới `await` đầu, nên luồng có thể đọc module ngay trong lời gọi. Module chỉ tự gửi cho thay đổi không phải đổi trạng thái (cộng tiến trình, sang chu kỳ mà vẫn đang chạy, view vừa gắn). Điều phối viên giữ hai cờ: *có yêu cầu chờ lượt* — xoá **trước** khi chạy lượt, nên mọi yêu cầu giữa lượt chỉ thêm đúng một lượt, lượt đó đọc trạng thái mới nhất, và animation đang diễn không bị cắt (xoá sau là mất yêu cầu đến giữa lượt) — và *vòng đang chạy*, để không mở hai vòng song song. Ngoài màn thì bỏ qua yêu cầu: vào màn luôn chạy một lượt và luồng đọc save, nên nhớ yêu cầu là thừa; rời màn thì xoá yêu cầu chờ và huỷ lượt đang chạy. Lọc ở một chỗ này, module không cần biết người chơi đang ở đâu. Trần số lượt liền nhau chỉ để bắt luồng tự gửi yêu cầu mãi; chạm trần thì báo lỗi |
-| **Mất tiến trình khi thua: một luồng chung, cảnh báo trước, xác nhận sau** | nhiều module cùng mất tiến trình khi người chơi thua thì chạy **một** luồng chung hai giai đoạn: **cảnh báo** ở màn còn cứu được — chỉ module thật sự mất gì, xếp theo ưu tiên dùng chung, không ai mất thì ẩn hẳn khối cảnh báo — và **xác nhận** ở màn thua. Module tự định nghĩa "đang có gì để mất"; "thế nào là thua" khai **một chỗ** cho mọi module, nếu không mỗi module vá một lỗ né thua khác nhau. Bước ghi mất mát gọi **tường minh ngay trước** khi màn xác nhận hiện, không qua event có thứ tự người nghe không xác định: view xác nhận bật lên là đọc dữ liệu đã mất. Thoát app giữa lúc chờ quyết định vẫn là thua: cờ chờ nằm trong save của **từng** module (sang chu kỳ thì xoá cùng — cờ chung không biết module nào đã sang chu kỳ), khôi phục lúc boot sau lần đánh giá đầu và **không** kiểm trạng thái, vì lúc đó module chưa đủ ngữ cảnh để trả lời. Gỡ cờ **trước** khi kiểm còn gì để mất, để một lần thua trắng tay không để cờ lại cho lần boot sau. Luật vòng đời cờ nằm ở lớp cha, không `virtual` — module chỉ khai bốn điều: có gì để mất, hiện gì khi cảnh báo, cờ lưu ở đâu, mất thì mất gì |
+| **Mất tiến trình khi thua: một luồng chung, cảnh báo trước, xác nhận sau** | nhiều module cùng mất tiến trình khi người chơi thua thì chạy **một** luồng chung hai giai đoạn: **cảnh báo** ở màn còn cứu được — chỉ module thật sự mất gì, xếp theo ưu tiên dùng chung, không ai mất thì ẩn hẳn khối cảnh báo — và **xác nhận** ở màn thua. Module tự định nghĩa "đang có gì để mất"; "thế nào là thua" khai **một chỗ** cho mọi module, nếu không mỗi module vá một lỗ né thua khác nhau. Bắt đầu chờ, huỷ chờ và ghi mất mát có **một chủ gọi duy nhất** — cùng một class; màn thua chỉ phát **đồng bộ, ngay trước khi hiện** một sự kiện nói sự thật ("thua đã chốt") mà đúng một người nghe hành động, nên thứ tự người nghe không còn là vấn đề: view bật lên là đọc dữ liệu đã mất. Không mượn sự kiện thua có sẵn khi nó đang có người nghe tải lại màn — thêm sự kiện mới đặt tên theo sự thật. Thoát app giữa lúc chờ quyết định vẫn là thua: cờ chờ nằm trong save của **từng** module (sang chu kỳ thì xoá cùng — cờ chung không biết module nào đã sang chu kỳ), khôi phục lúc boot sau lần đánh giá đầu và **không** kiểm trạng thái, vì lúc đó module chưa đủ ngữ cảnh để trả lời. Gỡ cờ **trước** khi kiểm còn gì để mất, để một lần thua trắng tay không để cờ lại cho lần boot sau. Luật vòng đời cờ nằm ở lớp cha, không `virtual` — module chỉ khai bốn điều: có gì để mất, hiện gì khi cảnh báo, cờ lưu ở đâu, mất thì mất gì |
 
 > **Nền tảng** — lựa chọn mặc định và ràng buộc đi kèm:
 >
@@ -766,6 +792,9 @@ chạy" đủ để dựng lại từ 0 — bỏ code canh mà không viết bư
   được ở cả Inspector lẫn call site; `firstStepAtBottom = true` chỉ nói một phía, phía `false` người
   đọc phải tự phủ định, và ô checkbox trong Inspector không mang tên trạng thái nào. Chế độ thứ ba thêm
   vào enum không đổi tên gì; thêm vào `bool` là đổi kiểu.
+- **Chuỗi bước có bước lúc có lúc không là `enum` bước, không bộ đếm**: đếm số lần bấm thì mỗi chỗ đọc
+  phải tự cộng trừ theo bước vắng mặt; enum nói thẳng đang ở đâu, `++` sang bước kế, so với bước cuối
+  là biết còn đi tiếp không. Bước đầu có hay không quyết **một lần** lúc mở, trước khi vào chuỗi.
 - **Đại lượng hình học đặt tên theo hai đầu mút**, dạng `<từ>To<đến>Dist`: `topContentToItemPivotDist`,
   `pivotViewToTopViewDist`. Tên theo vai (`offsetFromTop`, `distFromContentTop`) chỉ nói một đầu, đầu
   kia người đọc phải suy; đủ hai đầu thì phép trừ `A − B` đọc thành hình vẽ ngay tại dòng code, và
@@ -999,7 +1028,10 @@ Developer gõ framework trước rồi mới áp ra: lỗi đỏ kéo dài qua n
 
 **Phân công riêng của Plan: lõi developer viết, test agent viết.** Plan tồn tại vì developer muốn tự gõ
 lại để học, nên code lõi trong Plan là bản để đọc và gõ, không phải để agent commit — ngoài Plan thì
-agent viết code như mọi task khác. Test thì agent viết và chạy (§2.8), nên Plan **chỉ có danh sách case
+agent viết code như mọi task khác, **trừ framework dùng chung (bộ này là Horcrux): mọi dòng vào đó
+developer tự gõ, trong hay ngoài Plan**; agent viết plan hoặc đoạn mẫu, review, test. Framework đi theo
+mọi dự án sau nên developer phải hiểu và chịu trách nhiệm từng dòng; và nó là repo riêng, agent sửa vào
+đó là sửa chung cho dự án khác. Test thì agent viết và chạy (§2.8), nên Plan **chỉ có danh sách case
 sẽ kiểm**, không có code test. **Nhịp:** developer code xong lõi → agent đọc code thật rồi mới viết
 test, vì chữ ký lúc viết Plan còn là nháp. Danh sách case là chỗ developer veto hoặc thêm case.
 
@@ -1009,7 +1041,7 @@ Chỗ đặt đầu ra chưa rõ thì hỏi một câu (NT5), không chọn hộ
 developer đang chờ một mục trong Plan; phải xoá cả file lẫn `.meta`.
 
 **Developer gõ lệch plan là bình thường** (NT6). Lượt kiểm của agent sau mỗi step: compile, rồi **so code
-với plan và phân loại từng chỗ lệch** — tư tưởng thì chưng cất (§2.6) · lỗi thì báo kèm bằng chứng (§2.2)
+với plan và phân loại từng chỗ lệch** — tư tưởng thì chưng cất vào file này (§2.6) · lỗi thì báo kèm bằng chứng (§2.2)
 · trôi thì sync plan theo code (§5.4). Chỗ lệch là nơi tư tưởng lộ ra rõ nhất, và cũng là nơi lỗi mới sinh.
 
 **Sổ tay** — kho phần cho mỗi task, **chỉ lấy phần task này cần**: Files (đường dẫn chính xác) ·

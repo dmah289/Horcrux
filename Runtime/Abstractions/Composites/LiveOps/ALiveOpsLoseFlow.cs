@@ -9,13 +9,13 @@ namespace Horcrux.Runtime.Abstractions.LiveOps
         /// <summary>
         /// Used if it is the only one at stake.
         /// </summary>
-        public readonly string SingleWarning;
+        public readonly string SingleWarningDesc;
             
-        public LiveOpsLossWarning(Sprite icon, string badge, string singleWarning)
+        public LiveOpsLossWarning(Sprite icon, string badge, string singleWarningDesc)
         {
             Icon = icon;
             Badge = badge;
-            SingleWarning = singleWarning;
+            SingleWarningDesc = singleWarningDesc;
         }
     }
     

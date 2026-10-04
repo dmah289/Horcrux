@@ -79,7 +79,7 @@ namespace Horcrux.Runtime.Implementations.LiveOps
                     ShowWarning(slots[i], _atStake[i].LoseFlow.Warning);
             }
             
-            warningDescTxt.SetText(_atStake.Count == 1 ? _atStake[0].LoseFlow.Warning.SingleWarning
+            warningDescTxt.SetText(_atStake.Count == 1 ? _atStake[0].LoseFlow.Warning.SingleWarningDesc
                 : sharedMultipleWarningDesc);
         }
         
