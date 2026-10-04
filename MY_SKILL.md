@@ -402,6 +402,17 @@ có chủ thì ở Editor tắt domain reload, mỗi lần Play là một loop n
 > class**, gói field nhận vào cùng `Init`. Trình tự **trạng thái → vòng đời → mặt ngoài → thân**: mở
 > file ra là thấy class giữ gì trước khi thấy nó làm gì; phụ thuộc xuống cuối vì đó là thứ hỏi sau cùng.
 
+> **Nền tảng** — **Callback của Unity là cửa mỏng: thân nằm trong hàm có tên, cửa chỉ gọi hàm đó.**
+> `OnEnable` gọi `Show()`, `Awake` gọi `Init` rồi `Bind` — mỗi callback một dòng hoặc một chuỗi lời gọi
+> tường minh, đọc callback là thấy trình tự. Thứ tự giữa nhiều việc, nhiều object do **một chủ gọi** xếp
+> bằng lời gọi tường minh, không trông vào thứ tự `Awake`/`OnEnable` engine chọn giữa các object (không
+> định trước) hay Script Execution Order (cấu hình ẩn ngoài code). Lợi hai đầu: thứ tự chắc, và hàm có tên
+> sẵn cho người gọi thứ hai — view hôm nay tự chạy, mai host gọi `Show()` thẳng mà không đổi cấu trúc. Giá
+> là một method, nên không phải phòng xa (NT1). **Chấp nhận để engine gọi** khi chủ gọi tường minh phải
+> trả giá lớn: biết một kiểu qua ranh giới không được biết (package hay framework gọi tên module của dự án
+> §3.2), hay kéo tham chiếu qua nhiều object chỉ để gọi một dòng — lúc đó view tự chạy ở callback, nhưng
+> callback vẫn chỉ là cửa gọi hàm có tên.
+
 **Sổ tay** — hình dạng file và class đang dùng trong bộ này:
 
 | Chỗ | Cách làm |
