@@ -1,5 +1,5 @@
 using System;
-using Horcrux.Runtime.Abstractions.Composites.LiveOps;
+using Horcrux.Runtime.Abstractions.LiveOps;
 using Horcrux.Runtime.Implementations.LiveOps;
 using NUnit.Framework;
 

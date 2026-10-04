@@ -1,6 +1,6 @@
 ﻿using Horcrux.Runtime.Utilities.EventBus;
 
-namespace Horcrux.Runtime.Abstractions.Composites.LiveOps
+namespace Horcrux.Runtime.Abstractions.LiveOps
 {
     public enum LiveOpsModuleState
     {
@@ -28,6 +28,7 @@ namespace Horcrux.Runtime.Abstractions.Composites.LiveOps
          /// </summary>
          int Priority { get; }
          ALiveOpsHomeFlow HomeFlow { get; }
+         ALiveOpsLoseFlow LoseFlow { get; }
          
          void Initialize(long nowUnix);
          void Tick(long nowUnix);

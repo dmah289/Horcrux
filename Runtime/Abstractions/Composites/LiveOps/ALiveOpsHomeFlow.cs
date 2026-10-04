@@ -1,7 +1,7 @@
 ﻿using System.Threading;
 using Cysharp.Threading.Tasks;
 
-namespace Horcrux.Runtime.Abstractions.Composites.LiveOps
+namespace Horcrux.Runtime.Abstractions.LiveOps
 {
     public enum LiveOpsProgressChangePhase
     {

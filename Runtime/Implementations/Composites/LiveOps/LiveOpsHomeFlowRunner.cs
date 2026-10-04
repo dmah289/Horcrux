@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Threading;
 using Cysharp.Threading.Tasks;
-using Horcrux.Runtime.Abstractions.Composites.LiveOps;
+using Horcrux.Runtime.Abstractions.LiveOps;
 
 namespace Horcrux.Runtime.Implementations.LiveOps
 {
@@ -35,8 +35,6 @@ namespace Horcrux.Runtime.Implementations.LiveOps
         private readonly List<ILiveOpsModule> _firstPhaseModules = new(5);
         private readonly List<ILiveOpsModule> _secondPhaseModules = new(5);
         private readonly List<ILiveOpsModule> _parallelPhaseModules = new(5);
-
-        private static readonly IComparer<ILiveOpsModule> ByPriority = Comparer<ILiveOpsModule>.Create(CompareByPriority);
 
         private bool _isOnHome;
         private bool _hasPendingPassRequest;
@@ -146,7 +144,7 @@ namespace Horcrux.Runtime.Implementations.LiveOps
                 if (_modules[i].HomeFlow != null) 
                     _orderedModules.Add(_modules[i]);
             }
-            _orderedModules.Sort(ByPriority);
+            _orderedModules.Sort(LiveOpsModulePriority.ByPriority);
 
             for (int i = 0; i < _orderedModules.Count; i++)
             {
@@ -165,14 +163,6 @@ namespace Horcrux.Runtime.Implementations.LiveOps
                         break;
                 }
             }
-        }
-        
-        private static int CompareByPriority(ILiveOpsModule x, ILiveOpsModule y)
-        {
-            if (x.Priority.Equals(y.Priority))
-                return String.CompareOrdinal(x.ModuleId, y.ModuleId);
-            
-            return y.Priority.CompareTo(x.Priority);
         }
 
         private UniTask RunSimultaneousAsync(List<ILiveOpsModule> modules, 

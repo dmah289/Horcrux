@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 
-namespace Horcrux.Runtime.Abstractions.Composites.LiveOps
+namespace Horcrux.Runtime.Abstractions.LiveOps
 {
     public interface ILiveOpsHost : IService<ILiveOpsHost>
     {

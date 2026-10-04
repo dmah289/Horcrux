@@ -1,5 +1,5 @@
 ﻿using System;
-using Horcrux.Runtime.Abstractions.Composites.LiveOps;
+using Horcrux.Runtime.Abstractions.LiveOps;
 using UnityEngine;
 
 namespace Horcrux.Runtime.Implementations.LiveOps

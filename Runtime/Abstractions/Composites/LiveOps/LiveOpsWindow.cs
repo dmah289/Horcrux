@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Horcrux.Runtime.Abstractions.Composites.LiveOps
+namespace Horcrux.Runtime.Abstractions.LiveOps
 {
     /// <summary>
     /// [StartUnix, EndUnix)

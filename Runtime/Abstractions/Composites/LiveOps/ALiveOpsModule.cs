@@ -1,7 +1,7 @@
 ﻿using Horcrux.Runtime.Utilities.EventBus;
 using UnityEngine;
 
-namespace Horcrux.Runtime.Abstractions.Composites.LiveOps
+namespace Horcrux.Runtime.Abstractions.LiveOps
 {
     public abstract class ALiveOpsModule : MonoBehaviour, ILiveOpsModule
     {
@@ -14,6 +14,7 @@ namespace Horcrux.Runtime.Abstractions.Composites.LiveOps
             ? Window.SecondsLeft(LastUnix) : 0;
         public virtual int Priority => 0;
         public virtual ALiveOpsHomeFlow HomeFlow => null;
+        public virtual ALiveOpsLoseFlow LoseFlow => null;
         protected bool IsInitialized { get; private set; }
         protected LiveOpsWindow Window { get;  private set; }
         protected long LastUnix { get; private set; }
@@ -40,6 +41,9 @@ namespace Horcrux.Runtime.Abstractions.Composites.LiveOps
         {
             IsInitialized = true;
             Evaluate(nowUnix);
+            
+            // After the first evaluation: a finished cycle has rolled and cleared its stale flag.
+            LiveOpsLossHelper.RecoverPendingLoss(this);
         }
 
         /// <summary>

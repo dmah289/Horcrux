@@ -2,7 +2,7 @@
 using System.Threading;
 using Cysharp.Threading.Tasks;
 using Horcrux.Runtime.Abstractions.Bootstrap;
-using Horcrux.Runtime.Abstractions.Composites.LiveOps;
+using Horcrux.Runtime.Abstractions.LiveOps;
 using Horcrux.Runtime.Abstractions.Time;
 using Horcrux.Runtime.Utilities.EventBus;
 using Sisus.Init;

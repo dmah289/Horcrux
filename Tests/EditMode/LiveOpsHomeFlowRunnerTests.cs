@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using Cysharp.Threading.Tasks;
-using Horcrux.Runtime.Abstractions.Composites.LiveOps;
+using Horcrux.Runtime.Abstractions.LiveOps;
 using Horcrux.Runtime.Implementations.LiveOps;
 using NUnit.Framework;
 
@@ -338,6 +338,7 @@ namespace Horcrux.Tests
             public LiveOpsModuleState State => LiveOpsModuleState.Running;
             public int Priority { get; set; }
             public ALiveOpsHomeFlow HomeFlow { get; set; }
+            public ALiveOpsLoseFlow LoseFlow => null;
 
             public void Initialize(long nowUnix) { }
             public void Tick(long nowUnix) { }
