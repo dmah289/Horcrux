@@ -12,10 +12,11 @@ namespace Horcrux.Runtime.Utilities.UI
         #region API
 
         /// <summary>Puts the bubble pivot on a world position and shows it until the dismiss button is tapped.</summary>
-        public void Show(Vector3 anchorWorldPos)
+        public void Show(Vector3 anchorWorldPos, Transform parent = null)
         {
             bubble.gameObject.SetActive(true);
             bubble.position = anchorWorldPos;
+            bubble.SetParent(parent);
             gameObject.SetActive(true);
         }
 
