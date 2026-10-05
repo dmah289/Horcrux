@@ -1,23 +1,12 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using Horcrux.Runtime.Abstractions.LiveOps;
 using Horcrux.Runtime.Utilities;
 using Sisus.Init;
 using TMPro;
 using UnityEngine;
-using UnityEngine.UI;
 
 namespace Horcrux.Runtime.Implementations.LiveOps
 {
-    [Serializable]
-    public sealed class LiveOpsLossWarningSlot
-    {
-        public GameObject Root;
-        public Image Icon;
-        public GameObject BadgeRoot;
-        public TextMeshProUGUI BadgeLabel;
-    }
-
     public class LiveOpsLossWarningView : MonoBehaviour<ILiveOpsHost>
     {
         private const int MaxSlots = 6;
@@ -73,21 +62,13 @@ namespace Horcrux.Runtime.Implementations.LiveOps
             for (int i = 0; i < slots.Length; i++)
             {
                 bool isUsed = i < _atStake.Count;
-                slots[i].Root.SetActive(isUsed);
-
                 if (isUsed)
-                    ShowWarning(slots[i], _atStake[i].LoseFlow.Warning);
+                    slots[i].SetUp(isUsed, _atStake[i].LoseFlow.Warning);
+                else slots[i].Root.SetActive(false);
             }
             
             warningDescTxt.SetText(_atStake.Count == 1 ? _atStake[0].LoseFlow.Warning.SingleWarningDesc
                 : sharedMultipleWarningDesc);
-        }
-        
-        private static void ShowWarning(LiveOpsLossWarningSlot slot, LiveOpsLossWarning warning)
-        {
-            slot.Icon.sprite = warning.Icon;
-            slot.BadgeRoot.SetActive(!string.IsNullOrEmpty(warning.Badge));
-            slot.BadgeLabel.text = warning.Badge;
         }
 
         #endregion
