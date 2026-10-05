@@ -22,6 +22,7 @@ namespace Horcrux.Runtime.Utilities.UI
 
         public void Hide()
         {
+            bubble.SetParent(null);
             bubble.gameObject.SetActive(false);
             gameObject.SetActive(false);
         }
