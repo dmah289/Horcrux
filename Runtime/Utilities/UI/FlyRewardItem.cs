@@ -38,7 +38,7 @@ namespace Horcrux.Runtime.Utilities.UI
             bool burstFired = false;
 
             await UniTask.WhenAll(
-                selfRect.CharmPunchScale(Vector3.one, Vector3.one * 1.2f, duration, ct: ct),
+                selfRect.CharmPunchScale(Vector3.one, 0.2f, duration, ct: ct),
                 CharmTween.CastAsync(duration, EaseType.Linear, FlySequence, ct, Land));
 
             void FlySequence(float t)

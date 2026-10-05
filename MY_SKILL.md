@@ -904,6 +904,13 @@ Toán đúng chỗ làm code **ngắn hơn**.
 đúng nhất về vật lý — xấp xỉ là **mặc định** (NT8). Khi **thật sự** cần bản đầy đủ thì **làm tử tế**:
 cắt nửa vời rồi bù bằng hằng số là cách sinh ra hệ không ai dám sửa.
 
+**Núm phơi ra là đại lượng người tune nhìn thấy trên màn hình, không phải tham số trung gian của công
+thức.** Biên độ là đúng độ lệch thật, số lần lắc là đúng số đếm được bằng mắt. Một "điểm đích" mà đỉnh
+không bao giờ chạm, hay một tốc độ bị làm tròn ngầm thành số lần, buộc người tune giải ngược công thức
+mới ra cảm giác — và đổi núm không đổi thứ họ tưởng. Hình dạng chuyển động gọi tên được theo pha
+(xuống → về → lên → về) thì dựng từ hàm có sẵn đúng hình dạng đó, chọn pha cho đúng hướng, thay vì
+công thức tự chế phải dẫn giải mới hiểu.
+
 ## 4.2 Cần thì phải cho hiểu sâu
 
 Người đọc phải **hiểu hiện tượng** · **tin công thức là suy ra được** · **kiểm lại được** bằng tay.

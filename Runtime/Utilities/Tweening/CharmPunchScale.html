@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CharmPunchScale — Horcrux</title>
+<script>document.documentElement.classList.add('js')</script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
+<style>
+/* --- nền tảng --- */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{color-scheme:dark;--bg:#0d1117;--bg2:#161b22;--bg3:#1c2333;--bg4:#242d3a;--tx:#e6edf3;--tx2:#8b949e;--tx3:#484f58;--ac:#58a6ff;--ac2:#bc8cff;--gr:#3fb950;--or:#d29922;--rd:#f85149;--bd:#30363d;--r:10px;--mono:'JetBrains Mono','Fira Code','Cascadia Code','SF Mono',monospace;--sans:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif}
+html{scroll-behavior:smooth;background:var(--bg);color:var(--tx);font:17px/1.7 var(--sans)}
+body{background:var(--bg)}
+a{color:var(--ac);text-decoration:none}a:hover{text-decoration:underline}
+
+/* --- bố cục --- */
+#progress{position:fixed;top:0;left:0;height:3px;background:linear-gradient(90deg,var(--ac),var(--ac2));width:0;z-index:999;transition:width .1s}
+#header{max-width:920px;margin:0 auto;padding:4rem 1.5rem 2rem;border-bottom:1px solid var(--bd)}
+#header h1{font-size:clamp(2rem,5vw,3rem);font-weight:800;letter-spacing:-.03em;color:var(--ac);background:linear-gradient(135deg,var(--ac),var(--ac2));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+#header .sub{font-size:1.05rem;color:var(--tx2);margin-top:.4rem}
+#header .badge{display:inline-block;margin-top:.8rem;padding:.3em .9em;border:1px solid var(--bd);border-radius:99px;font-family:var(--mono);font-size:.78rem;color:var(--tx2)}
+main{max-width:920px;margin:0 auto;padding:0 1.5rem 6rem}
+section{padding-top:4rem}
+#toc{max-width:920px;margin:3rem auto;padding:0 1.5rem}
+#toc h2{font-size:1.3rem}
+#toc ol{columns:2;column-gap:2rem;padding-left:1.5em}
+#toc li{font-size:.92rem;margin-bottom:.3rem;break-inside:avoid}
+@media(max-width:600px){#toc ol{columns:1}#header,main,#toc{padding-left:1rem;padding-right:1rem}}
+footer{text-align:center;padding:3rem 1rem;color:var(--tx3);font-size:.85rem;border-top:1px solid var(--bd)}
+
+/* --- fade-in --- */
+.js section .reveal{opacity:0;transform:translateY(24px);transition:opacity .6s ease,transform .6s ease}
+.js section .reveal.visible{opacity:1;transform:none}
+
+/* --- chữ --- */
+h2{font-size:1.9rem;font-weight:700;letter-spacing:-.02em;margin-bottom:1.5rem;padding-bottom:.5rem;border-bottom:1px solid var(--bd)}
+h3{font-size:1.3rem;font-weight:600;margin:2.5rem 0 1rem;color:var(--ac)}
+p,ul,ol{margin-bottom:1rem}ul{padding-left:1.3em}li{margin-bottom:.3rem}
+strong{color:var(--tx);font-weight:600}
+em{color:var(--ac2);font-style:normal}
+code{font-family:var(--mono);font-size:.88em;background:var(--bg3);padding:.15em .4em;border-radius:4px;overflow-wrap:anywhere}
+pre{background:var(--bg3);border:1px solid var(--bd);border-radius:var(--r);padding:1rem 1.2rem;margin:1.2rem 0;overflow-x:auto}
+pre code{display:block;background:none;padding:0;font-size:.85rem;line-height:1.6;overflow-wrap:normal}
+
+/* --- khối nội dung --- */
+.card{background:var(--bg2);border:1px solid var(--bd);border-radius:var(--r);padding:1.5rem;margin:1.5rem 0}
+.card-title{font-weight:600;margin-bottom:.75rem;font-size:1.05rem;color:var(--ac)}
+.note{border-left:3px solid var(--or);background:var(--bg2);padding:1rem 1.2rem;border-radius:0 var(--r) var(--r) 0;margin:1.5rem 0;font-size:.92rem;color:var(--tx2)}
+.note strong{color:var(--or)}
+.note.good{border-left-color:var(--gr)}.note.good strong{color:var(--gr)}
+.note.bad{border-left-color:var(--rd)}.note.bad strong{color:var(--rd)}
+.eq{background:var(--bg3);border:1px solid var(--bd);border-radius:var(--r);padding:1.1rem 1.3rem;margin:1.3rem 0;overflow-x:auto;text-align:center}
+.eq.boxed{border-color:var(--ac);box-shadow:0 0 0 1px var(--ac) inset}
+.eq-raw{font-family:var(--mono);font-size:.9rem;color:var(--tx2);text-align:left;white-space:pre-wrap}
+
+/* --- bảng --- */
+.tbl{overflow-x:auto;margin:1.2rem 0}
+.tbl table{margin:0}
+table{width:100%;border-collapse:collapse;font-size:.92rem}
+th{text-align:left;padding:.6rem .8rem;border-bottom:2px solid var(--bd);color:var(--ac);font-weight:600;white-space:nowrap}
+td{padding:.5rem .8rem;border-bottom:1px solid var(--bd)}
+tr:last-child td{border:none}
+td.num{font-family:var(--mono);text-align:right}
+td.lo{color:var(--ac);font-weight:600}
+td.hi{color:var(--ac2);font-weight:600}
+
+/* --- số liệu --- */
+.perf-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem;margin:1.5rem 0}
+.perf-card{background:var(--bg3);border-radius:var(--r);padding:1.2rem;text-align:center}
+.perf-val{font-size:1.8rem;font-weight:800;color:var(--ac);background:linear-gradient(135deg,var(--ac),var(--ac2));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.perf-label{font-size:.82rem;color:var(--tx2);margin-top:.2rem}
+
+/* --- demo --- */
+.demo{background:var(--bg2);border:1px solid var(--bd);border-radius:var(--r);padding:1.5rem;margin:2rem 0}
+.demo-title{font-family:var(--mono);font-size:.8rem;color:var(--ac2);text-transform:uppercase;letter-spacing:.08em;margin-bottom:1rem}
+.demo canvas{display:block;border-radius:8px;max-width:100%}
+.demo canvas.pick{cursor:crosshair}
+.demo-row{display:flex;gap:1.5rem;align-items:flex-start;flex-wrap:wrap}
+.demo-row>*{flex:1;min-width:250px}
+.demo-ctl{display:flex;gap:.6rem;flex-wrap:wrap;margin-bottom:1rem;align-items:center}
+.demo button{font:inherit;font-size:.88rem;padding:.4em 1em;background:var(--bg4);color:var(--tx);border:1px solid var(--bd);border-radius:6px;cursor:pointer}
+.demo button:hover{border-color:var(--ac);color:var(--ac)}
+.demo input[type=range]{width:100%;accent-color:var(--ac)}
+.readout{font-family:var(--mono);color:var(--ac2)}
+.sliders{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:.4rem 1.2rem;margin-bottom:1rem}
+.sliders label{font-size:.85rem;color:var(--tx2)}
+.graph-label{font-size:.8rem;color:var(--tx2);margin:.8rem 0 .3rem}
+.stage{flex:0 0 180px!important;min-width:180px!important;height:180px;display:flex;align-items:center;justify-content:center;background:var(--bg3);border-radius:8px;position:relative;overflow:hidden}
+.stage .ghost{position:absolute;width:80px;height:80px;border:1px dashed var(--tx3);border-radius:10px}
+.stage .box{width:80px;height:80px;border-radius:10px;background:linear-gradient(135deg,var(--ac),var(--ac2));will-change:transform}
+.legend{display:flex;gap:1.2rem;flex-wrap:wrap;font-size:.82rem;color:var(--tx2);margin-top:.6rem}
+.legend i{display:inline-block;width:14px;height:3px;border-radius:2px;margin-right:.4em;vertical-align:middle}
+
+@media(prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  .js section .reveal{opacity:1;transform:none;transition:none}
+  #progress{transition:none}
+}
+@media print{
+  #progress,#toc{display:none}
+  .js section .reveal{opacity:1!important;transform:none!important}
+  .card,.demo,.tbl{break-inside:avoid}
+}
+</style>
+</head>
+<body>
+<div id="progress"></div>
+
+<header id="header">
+  <h1>CharmPunchScale</h1>
+  <p class="sub">Nhún scale quanh mốc nghỉ: mỗi cycle là một nhịp rest → cực trị → rest, cycle lẻ lún, cycle chẵn phồng, đi qua mốc nghỉ êm.</p>
+  <span class="badge">Horcrux · Tweening · HarmonicOscillator · CharmFlyArc.md §2</span>
+</header>
+
+<nav id="toc">
+  <h2>Mục lục</h2>
+  <ol>
+    <li><a href="#tong-quan">Tổng quan</a></li>
+    <li><a href="#hinh-dang">Hình dạng — thử tay</a></li>
+    <li><a href="#dan-giai">Dẫn từ sin thuần</a></li>
+    <li><a href="#vat-ly">Bản chất vật lý</a></li>
+    <li><a href="#kiem-moc">Kiểm mốc</a></li>
+    <li><a href="#code">Công thức → code</a></li>
+    <li><a href="#quyet-dinh">Quyết định và bẫy</a></li>
+  </ol>
+</nav>
+
+<main>
+
+<section id="tong-quan">
+  <h2>Tổng quan</h2>
+  <div class="reveal">
+    <p>Gọi một lần, vật nhún <strong>đúng số nhịp đã chọn</strong> rồi dừng ở đúng scale nghỉ. Nhịp đầu luôn lún xuống, các nhịp sau đổi chiều lần lượt.</p>
+    <pre><code>await tr.CharmPunchScale(restScale, amplitude, duration, ct, cycles: 2);</code></pre>
+    <table>
+      <thead><tr><th>Tham số</th><th>Nghĩa</th><th>Ghi chú</th></tr></thead>
+      <tbody>
+        <tr><td><code>restScale</code></td><td>scale nghỉ — trục nhún và điểm dừng</td><td>caller thường truyền <code>localScale</code> hiện tại</td></tr>
+        <tr><td><code>amplitude</code></td><td><strong>tỉ lệ</strong> của <code>restScale</code>: đáy = rest·(1 − A), đỉnh = rest·(1 + A)</td><td>0.05 = lún/phồng đúng 5%</td></tr>
+        <tr><td><code>duration</code></td><td>thời gian cả lượt, giây, <em>unscaled</em></td><td>chạy được khi <code>timeScale = 0</code></td></tr>
+        <tr><td><code>ct</code></td><td>token huỷ, không có mặc định</td><td>huỷ thì vật về <code>restScale</code></td></tr>
+        <tr><td><code>cycles</code></td><td>số nhịp; mặc định <strong>2</strong></td><td>1 = lún rồi về · 2 = lún, về, phồng, về</td></tr>
+      </tbody>
+    </table>
+    <div class="eq boxed" data-tex="s = \sin(\pi N t),\qquad x = -A\,s\,|s|,\qquad \text{scale} = r\,(1 + x)"></div>
+    <p><code>t</code> ∈ [0, 1] là thời gian chuẩn hoá của <code>CastAsync</code> · <code>A</code> = <code>amplitude</code> · <code>N</code> = <code>cycles</code> · <code>r</code> = <code>restScale</code>.</p>
+  </div>
+</section>
+
+<section id="hinh-dang">
+  <h2>Hình dạng — thử tay</h2>
+  <div class="reveal">
+    <p>Kéo thanh trượt để đổi số nhịp và biên độ; rê chuột trên đồ thị để đọc giá trị tại một thời điểm; bấm <strong>Chạy</strong> để xem khối vuông nhún đúng theo đường cong. Biên độ trong demo cho kéo tới 0.5 để dễ nhìn — ở game thường chỉ 0.03–0.2.</p>
+    <div class="demo">
+      <div class="demo-title">scale(t) theo cycles và amplitude</div>
+      <div class="sliders">
+        <label>cycles = <span class="readout" id="nOut">2</span><input type="range" id="nIn" min="1" max="6" step="1" value="2"></label>
+        <label>amplitude = <span class="readout" id="aOut">0.20</span><input type="range" id="aIn" min="0" max="0.5" step="0.01" value="0.2"></label>
+        <label>duration = <span class="readout" id="dOut">0.8 s</span><input type="range" id="dIn" min="0.2" max="3" step="0.1" value="0.8"></label>
+      </div>
+      <p style="font-size:.85rem;color:var(--tx2);margin-bottom:1rem">Ω = <span class="readout" id="omegaOut">—</span> rad/s · v<sub>max</sub> = <span class="readout" id="vmaxOut">—</span> scale/s · a<sub>max</sub> = <span class="readout" id="amaxOut">—</span> scale/s²</p>
+      <div class="demo-ctl">
+        <button id="playBtn">Chạy</button>
+        <span>t = <span class="readout" id="tOut">—</span> · scale = <span class="readout" id="sOut">—</span></span>
+      </div>
+      <div class="demo-row">
+        <div>
+          <canvas id="shapeGraph" class="pick"></canvas>
+          <div class="legend">
+            <span><i style="background:var(--ac)"></i>scale(t)</span>
+            <span><i style="background:var(--tx3)"></i>rest · lower · upper</span>
+            <span><i style="background:var(--or)"></i>điểm cân bằng của lò xo</span>
+            <span><i style="background:var(--gr)"></i>mốc nghỉ, vận tốc 0</span>
+          </div>
+          <div class="graph-label">vận tốc và gia tốc, chuẩn hoá về [−1, 1]</div>
+          <canvas id="velGraph" class="pick"></canvas>
+          <div class="legend">
+            <span><i style="background:var(--ac2)"></i>vận tốc — 0 ở mọi mốc nghỉ</span>
+            <span><i style="background:var(--or)"></i>gia tốc — nhảy dấu ở mốc nghỉ giữa hai nhịp</span>
+          </div>
+        </div>
+        <div class="stage"><div class="ghost"></div><div class="box" id="box"></div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="dan-giai">
+  <h2>Dẫn từ sin thuần</h2>
+  <div class="reveal">
+    <p>Cần ba thứ cùng lúc: nhịp đầu đi xuống, các nhịp đổi chiều lần lượt, và qua mốc nghỉ <strong>êm</strong> (vận tốc 0). Mỗi bước dưới giải thêm một thứ.</p>
+
+    <h3>① Sin thuần — đúng chiều, nhưng khựng</h3>
+    <div class="eq" data-tex="x_1 = -A\sin(\pi N t)"></div>
+    <p>Qua mốc nghỉ ở mỗi <code>t = k/N</code> và đổi dấu sau mỗi nhịp — đúng thứ tự lún, phồng. Nhưng ở mốc nghỉ sin dốc nhất: vật đi qua rest ở <strong>vận tốc lớn nhất</strong>, nên khi lượt kết thúc nó dừng phắt.</p>
+
+    <h3>② Bình phương — êm, nhưng mất chiều</h3>
+    <div class="eq" data-tex="\sin^2\theta = \tfrac{1}{2}\big(1 - \cos 2\theta\big)\quad\Rightarrow\quad x_2 = -A\sin^2(\pi N t)"></div>
+    <p>Mỗi nhịp thành một sóng cos dời trục: rời rest từ từ, về rest từ từ. Nhưng bình phương luôn dương — nhịp nào cũng lún, không bao giờ phồng.</p>
+
+    <h3>③ s·|s| — độ lớn của ②, dấu của ①</h3>
+    <div class="eq boxed" data-tex="x = -A\,s\,|s| = \begin{cases} -A\,s^2 & s \ge 0 \;\text{(nhịp lẻ, lún)} \\ +A\,s^2 & s < 0 \;\text{(nhịp chẵn, phồng)} \end{cases}"></div>
+    <p>Mỗi nhịp có đúng hình của ②, chiều thì lấy theo dấu của ①. Hai đầu mỗi nhịp đều ở rest với vận tốc 0, nên nối nhịp này sang nhịp kia không có góc gãy.</p>
+
+    <div class="demo">
+      <div class="demo-title">Ba đường với N = 2, A = 1 — chiều dương hướng lên</div>
+      <canvas id="compareGraph"></canvas>
+      <div class="legend">
+        <span><i style="background:var(--tx2)"></i>① −sin(πNt)</span>
+        <span><i style="background:var(--or)"></i>② −sin²(πNt)</span>
+        <span><i style="background:var(--ac)"></i>③ −s·|s|</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="vat-ly">
+  <h2>Bản chất vật lý</h2>
+  <div class="reveal">
+    <p>Hai dòng đầu của <code>spell</code>:</p>
+<pre><code>float wave = HarmonicOscillator.GetHarmonicDisplacement(WaveStyle.Sin, frequency, t);
+float displacement = -amplitude * wave * Mathf.Abs(wave);</code></pre>
+    <div class="note good"><strong>Kết luận.</strong> Dòng 1 là dao động điều hoà nhưng <em>không phải chuyển động vật thực hiện</em> — nó là đồng hồ và nguồn dấu: điểm 0 của nó là ranh giới nhịp, dấu của nó cho biết nhịp lún hay phồng. Dòng 2 mới là chuyển động: mỗi nhịp, vật dao động điều hoà <strong>đúng một chu kỳ trọn</strong> quanh một điểm cân bằng nằm <strong>giữa rest và cực trị</strong>; hết nhịp, điểm cân bằng nhảy sang phía kia. Code chỉ tính thẳng vị trí từ công thức đóng, không mô phỏng lực — mô hình lò xo dưới đây là cách đọc công thức để thấy vì sao nó trông tự nhiên.</div>
+
+    <h3>Dòng 1 — đồng hồ của các nhịp</h3>
+    <p>Với <code>frequency = N/2</code>:</p>
+    <div class="eq" data-tex="s = \sin\!\Big(2\pi\cdot\tfrac{N}{2}\cdot t\Big) = \sin(\pi N t)"></div>
+    <p>Đây là nghiệm của lò xo lý tưởng, không ma sát. Dạng <code>Sin</code> pha 0 nghĩa là vật xuất phát <strong>ở điểm cân bằng với vận tốc lớn nhất</strong> — như bị đẩy một cái từ chỗ nghỉ:</p>
+    <div class="eq" data-tex="m\,\ddot{x} = -k\,x \quad\Rightarrow\quad x = \sin(\omega t),\qquad \omega = \sqrt{k/m}"></div>
+    <p>Tần số chỉ bằng N/2, nên một chu kỳ sin trải qua <strong>hai nhịp</strong>. Ba tính chất được dùng:</p>
+    <table>
+      <thead><tr><th>Tính chất của s</th><th>Dùng để</th></tr></thead>
+      <tbody>
+        <tr><td>s = 0 tại t = k/N</td><td>ranh giới giữa các nhịp — các mốc rest</td></tr>
+        <tr><td>s &gt; 0 ở nhịp lẻ, s &lt; 0 ở nhịp chẵn</td><td>chọn chiều: lún hay phồng</td></tr>
+        <tr><td>|s| đi 0 → 1 → 0 trong mỗi nhịp</td><td>nguyên liệu dựng hình của nhịp ở dòng 2</td></tr>
+      </tbody>
+    </table>
+    <p>Dùng thẳng <code>x = −A·s</code> thì vật đi đúng thứ tự lún, phồng nhưng qua rest ở vận tốc lớn nhất — lượt kết thúc là dừng phắt. Dòng 2 tồn tại để sửa đúng chỗ này.</p>
+
+    <h3>Dòng 2 — chuyển động thật</h3>
+    <p>Tách dấu và độ lớn, rồi hạ bậc:</p>
+    <div class="eq" data-tex="s\,|s| = \operatorname{sgn}(s)\cdot s^2,\qquad s^2 = \sin^2(\pi N t) = \tfrac{1}{2}\big(1 - \cos(2\pi N t)\big)"></div>
+    <p>Đặt σ = sgn(s) — bằng +1 ở nhịp lún, −1 ở nhịp phồng. Ghép lại:</p>
+    <div class="eq boxed" data-tex="x = -\sigma\,\tfrac{A}{2} + \sigma\,\tfrac{A}{2}\cos(\Omega t),\qquad \Omega = 2\pi N"></div>
+    <p>Lại đúng là dao động điều hoà, chỉ khác dòng 1 ở bốn chỗ:</p>
+    <table>
+      <thead><tr><th>Đại lượng</th><th>Dòng 1 (sin thuần)</th><th>Mỗi nhịp của dòng 2</th></tr></thead>
+      <tbody>
+        <tr><td>Điểm cân bằng</td><td>rest (x = 0)</td><td><strong>giữa rest và cực trị</strong>: x = −σ·A/2</td></tr>
+        <tr><td>Biên độ quanh cân bằng</td><td>A</td><td><strong>A/2</strong></td></tr>
+        <tr><td>Tần số góc (t chuẩn hoá)</td><td>πN</td><td><strong>Ω = 2πN</strong> — gấp đôi, mỗi nhịp là một chu kỳ trọn</td></tr>
+        <tr><td>Trạng thái đầu</td><td>ở cân bằng, vận tốc lớn nhất</td><td>dạng cos: ở <strong>xa cân bằng nhất</strong> (chính là rest), <strong>vận tốc 0</strong></td></tr>
+      </tbody>
+    </table>
+    <p><code>−A</code> ở đầu biểu thức làm hai việc: đặt độ sâu (cực trị cách rest đúng A) và chọn <strong>nhịp đầu đi xuống</strong>.</p>
+
+    <h3>Mô hình: lò xo có điểm cân bằng nhảy</h3>
+    <div class="eq" data-tex="m\,\ddot{x} = -k\,\big(x - x_{\text{eq}}\big),\qquad x_{\text{eq}} = -\sigma\,\tfrac{A}{2},\qquad \sqrt{k/m} = \Omega"></div>
+    <p>Trong demo ở mục <a href="#hinh-dang">Hình dạng</a>, đường bậc thang màu cam là <code>x_eq</code>. Một nhịp lún:</p>
+    <ol class="steps">
+      <li class="on"><strong>Đầu nhịp</strong> — vật đứng yên ở rest, cách cân bằng A/2. Lò xo căng, kéo xuống mạnh nhất; vận tốc 0.</li>
+      <li class="on"><strong>¼ nhịp</strong> (x = −A/2) — đi qua điểm cân bằng: vận tốc lớn nhất, gia tốc 0.</li>
+      <li class="on"><strong>Giữa nhịp</strong> (x = −A, đáy) — lò xo nén hết mức, vật dừng một khoảnh khắc rồi bị đẩy lên.</li>
+      <li class="on"><strong>Cuối nhịp</strong> (x = 0) — về đúng chỗ xuất phát, vận tốc 0: lò xo vừa xong đúng một chu kỳ.</li>
+      <li class="on"><strong>Đúng lúc đó</strong> điểm neo nhảy sang +A/2 — nhịp phồng lặp lại y hệt, ngược chiều.</li>
+    </ol>
+    <p>Cân bằng phải ở chính giữa vì dao động điều hoà đối xứng quanh cân bằng: muốn đi 0 → −A → 0 thì tâm là −A/2. Lò xo phải xong <strong>đúng một chu kỳ</strong> trong một nhịp để vật về rest đúng lúc với vận tốc 0 — vì vậy tần số mỗi nhịp gấp đôi dòng 1.</p>
+
+    <h3>Vị trí, vận tốc, gia tốc qua một nhịp lún</h3>
+    <table>
+      <thead><tr><th>Trong nhịp</th><th>Vị trí x</th><th>Vận tốc</th><th>Gia tốc</th></tr></thead>
+      <tbody>
+        <tr><td>đầu (rest)</td><td class="num">0</td><td class="num"><strong>0</strong></td><td>−(A/2)·Ω², kéo xuống mạnh nhất</td></tr>
+        <tr><td>¼</td><td class="num">−A/2</td><td class="num">−(A/2)·Ω — nhanh nhất</td><td class="num">0</td></tr>
+        <tr><td>½ (đáy)</td><td class="num">−A</td><td class="num">0</td><td>+(A/2)·Ω², đẩy lên mạnh nhất</td></tr>
+        <tr><td>¾</td><td class="num">−A/2</td><td class="num">+(A/2)·Ω — nhanh nhất</td><td class="num">0</td></tr>
+        <tr><td>cuối (rest)</td><td class="num">0</td><td class="num"><strong>0</strong></td><td>−(A/2)·Ω²</td></tr>
+      </tbody>
+    </table>
+    <p>Viết gọn bằng đạo hàm — thừa số <code>2|s|</code> bằng 0 ở mọi mốc rest, kể cả <code>t = 1</code>, nên lượt kết thúc không khựng:</p>
+    <div class="eq" data-tex="\dot{x} = -A\cdot 2|s|\cdot \pi N\cos(\pi N t) = -\sigma\,\tfrac{A}{2}\,\Omega\,\sin(\Omega t),\qquad \ddot{x} = -\sigma\,\tfrac{A}{2}\,\Omega^2\cos(\Omega t)"></div>
+    <div class="note good"><strong>Tốc độ đỉnh bằng sin thuần.</strong> (A/2)·Ω = (A/2)·2πN = AπN, đúng bằng tốc độ lớn nhất của −A·sin(πNt). Khác ở chỗ điểm nhanh nhất <strong>dời từ rest ra giữa đường</strong>: ở rest vật luôn chậm về 0 — đó là cảm giác "êm".</div>
+    <div class="note"><strong>Chỗ duy nhất không vật lý.</strong> Ở mốc rest giữa hai nhịp, σ đổi dấu nên gia tốc nhảy từ −(A/2)Ω² (lò xo cũ còn kéo xuống) sang +(A/2)Ω² (lò xo mới kéo lên) — điểm neo dịch không mất thời gian. Vị trí và vận tốc vẫn liền nên không có cú giật, chỉ là hướng kéo đổi tức thì; thấy trong demo ở đường gia tốc màu cam. Có cảm nhận được hay không thì chơi thử mới biết.</div>
+
+    <h3>Ra số thật theo giây</h3>
+    <p>Trong <code>spell</code>, t là thời gian chuẩn hoá. Thời gian thật τ = t · duration, nên:</p>
+    <div class="eq" data-tex="\Omega_{\text{giây}} = \frac{2\pi N}{\text{duration}},\qquad v_{\max} = \tfrac{A}{2}\,\Omega_{\text{giây}},\qquad a_{\max} = \tfrac{A}{2}\,\Omega_{\text{giây}}^2"></div>
+    <table>
+      <thead><tr><th>A = 0.05 · N = 2 · duration = 0.5 s</th><th>Công thức</th><th>Giá trị</th></tr></thead>
+      <tbody>
+        <tr><td>Tần số góc của lò xo</td><td>2π·2 / 0.5</td><td class="num">≈ 25.1 rad/s (k/m ≈ 632 s⁻²)</td></tr>
+        <tr><td>Mỗi nhịp kéo dài</td><td>duration / N</td><td class="num">0.25 s</td></tr>
+        <tr><td>Tốc độ đổi scale lớn nhất</td><td>(A/2)·Ω</td><td class="num">≈ 0.63 scale/s, ở giữa đường</td></tr>
+        <tr><td>Gia tốc lớn nhất</td><td>(A/2)·Ω²</td><td class="num">≈ 15.8 scale/s², ở rest và cực trị</td></tr>
+      </tbody>
+    </table>
+    <ul>
+      <li><strong>Tăng <code>cycles</code> mà giữ <code>duration</code></strong> làm lò xo cứng hơn theo bình phương: N gấp đôi thì gia tốc gấp bốn — nhiều nhịp trong <code>duration</code> ngắn trông gắt.</li>
+      <li><strong>Không ma sát</strong> nên năng lượng mỗi nhịp như nhau, ½·k·(A/2)², mọi nhịp cao bằng nhau. Đây là lựa chọn để số nhịp đếm được bằng mắt; vật thật có ma sát sẽ nhún thấp dần.</li>
+    </ul>
+    <p>Thanh trượt trong demo hiện ba số này theo giá trị đang chọn.</p>
+  </div>
+</section>
+
+<section id="kiem-moc">
+  <h2>Kiểm mốc</h2>
+  <div class="reveal">
+    <p>A = 0.05, rest = 1. <span style="color:var(--ac)">Xanh</span> là đáy, <span style="color:var(--ac2)">tím</span> là đỉnh.</p>
+    <table>
+      <thead><tr><th>t</th><th>0</th><th>0.25</th><th>0.5</th><th>0.75</th><th>1</th></tr></thead>
+      <tbody>
+        <tr><td><code>cycles = 1</code></td><td class="num">1</td><td class="num">0.975</td><td class="num lo">0.95</td><td class="num">0.975</td><td class="num">1</td></tr>
+        <tr><td><code>cycles = 2</code></td><td class="num">1</td><td class="num lo">0.95</td><td class="num">1</td><td class="num hi">1.05</td><td class="num">1</td></tr>
+      </tbody>
+    </table>
+    <p><code>cycles = 3</code>: đáy ở t = 1/6, đỉnh ở t = 1/2, đáy ở t = 5/6. Tổng quát: cực trị thứ k (đếm từ 1) nằm ở <code>t = (k − ½)/N</code>, lẻ là đáy, chẵn là đỉnh.</p>
+  </div>
+</section>
+
+<section id="code">
+  <h2>Công thức → code</h2>
+  <div class="reveal">
+    <table>
+      <thead><tr><th>Công thức</th><th>Code</th><th>Vì</th></tr></thead>
+      <tbody>
+        <tr><td>t ∈ [0, 1]</td><td><code>CharmTween.CastAsync(duration, EaseType.Linear, …)</code></td><td><code>Easer</code> kẹp t ≤ 1: frame cuối tính đúng t = 1</td></tr>
+        <tr><td>tần số = N/2</td><td><code>float frequency = cycles * 0.5f;</code></td><td>một cycle là nửa chu kỳ sin</td></tr>
+        <tr><td>s = sin(2π·(N/2)·t) = sin(πNt)</td><td><code>HarmonicOscillator.GetHarmonicDisplacement(WaveStyle.Sin, frequency, t)</code></td><td>pha chỉ phụ thuộc tích tần số × thời gian, nên truyền đơn vị chuẩn hoá</td></tr>
+        <tr><td>x = −A·s·|s|</td><td><code>-amplitude * wave * Mathf.Abs(wave)</code></td><td>độ lớn của sin², dấu của sin</td></tr>
+        <tr><td>scale = r·(1 + x)</td><td><code>restScale * (1f + displacement)</code></td><td>biên độ là tỉ lệ, giữ tỉ lệ trên từng trục</td></tr>
+      </tbody>
+    </table>
+    <p><code>TransformExtensions.CharmTween.cs</code>:</p>
+<pre><code>/// &lt;summary&gt;
+/// One cycle is half a sine period: odd cycles dip, even cycles rise.
+/// &lt;/summary&gt;
+public static UniTask CharmPunchScale(this Transform self, Vector3 restScale, float amplitude,
+    float duration, CancellationToken ct, int cycles = 2)
+{
+    float frequency = cycles * 0.5f;
+    return CharmTween.CastAsync(duration, EaseType.Linear, spell, ct, onComplete);
+
+    void spell(float t)
+    {
+        float wave = HarmonicOscillator.GetHarmonicDisplacement(WaveStyle.Sin, frequency, t);
+        float displacement = -amplitude * wave * Mathf.Abs(wave);
+        self.localScale = restScale * (1f + displacement);
+    }
+
+    void onComplete()
+    {
+        if(self != null)
+            self.localScale = restScale;
+    }
+}</code></pre>
+  </div>
+</section>
+
+<section id="quyet-dinh">
+  <h2>Quyết định và bẫy</h2>
+  <div class="reveal">
+    <table>
+      <thead><tr><th>Quyết định</th><th>Vì</th></tr></thead>
+      <tbody>
+        <tr><td><code>amplitude</code> là <strong>tỉ lệ</strong> của <code>restScale</code>, không phải scale đích</td><td>người tune nhập đúng độ lệch nhìn thấy; rest không đều trục vẫn giữ tỉ lệ</td></tr>
+        <tr><td><code>s·|s|</code>, không sin thuần</td><td>vận tốc 0 ở mọi mốc nghỉ: không khựng ở cuối, không gãy giữa hai nhịp</td></tr>
+        <tr><td>Truyền <code>cycles · 0.5</code> vào ô <code>frequency</code>, <code>t</code> vào ô <code>time</code></td><td>một cycle là nửa chu kỳ sin; đơn vị chuẩn hoá tránh chia cho <code>duration</code> (NaN khi bằng 0)</td></tr>
+        <tr><td><code>cycles</code> là <code>int</code></td><td>sin(πN) = 0: frame cuối đã ở đúng <code>restScale</code></td></tr>
+        <tr><td>Không envelope tắt dần</td><td>mọi nhịp cùng biên độ, số nhịp đếm được bằng mắt</td></tr>
+        <tr><td>Gia tốc đổi dấu tức thì ở mốc nghỉ giữa hai nhịp</td><td>vị trí và vận tốc liền, chỉ đạo hàm bậc hai nhảy — chơi thử mới biết có thấy không</td></tr>
+        <tr><td>Huỷ hoặc xong đều đặt về <code>restScale</code>, guard <code>!= null</code></td><td>không để vật kẹt ở scale cực trị; object đã huỷ thì không chạm</td></tr>
+      </tbody>
+    </table>
+    <div class="note bad"><strong>amplitude ≥ 1.</strong> Đáy ≤ 0: vật biến mất hoặc lật ngược. Caller kẹp ô Inspector bằng <code>[Range(0, 1)]</code>.</div>
+    <div class="note bad"><strong>Gọi chồng.</strong> Caller truyền <code>localScale</code> hiện tại làm <code>restScale</code>. Gọi lượt mới khi lượt trước đang nhún thì scale giữa sóng thành trục nghỉ mới, và lượt mới chốt vật ở đó vĩnh viễn.</div>
+
+    <div class="perf-grid">
+      <div class="perf-card"><div class="perf-val">0</div><div class="perf-label">vận tốc ở mọi mốc nghỉ</div></div>
+      <div class="perf-card"><div class="perf-val">r·(1 ∓ A)</div><div class="perf-label">đáy và đỉnh, chính xác</div></div>
+      <div class="perf-card"><div class="perf-val">N</div><div class="perf-label">số nhịp đếm được bằng mắt</div></div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer>Horcrux · CharmPunchScale · <code>Horcrux.Runtime.Utilities.ExtensionMethods</code></footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script>
+const PALETTE = (() => {
+  const s = getComputedStyle(document.documentElement), p = {};
+  for (const k of ['bg','bg2','bg3','bg4','tx','tx2','tx3','ac','ac2','gr','or','rd','bd'])
+    p[k] = s.getPropertyValue('--' + k).trim();
+  return p;
+})();
+
+document.querySelectorAll('main table').forEach(t => {
+  if (t.parentElement.classList.contains('tbl')) return;
+  const box = document.createElement('div');
+  box.className = 'tbl';
+  t.replaceWith(box);
+  box.appendChild(t);
+});
+
+const io = new IntersectionObserver((entries, obs) => {
+  for (const e of entries) if (e.isIntersecting) { e.target.classList.add('visible'); obs.unobserve(e.target); }
+}, { threshold: .08 });
+document.querySelectorAll('.reveal').forEach(el => io.observe(el));
+
+const progressBar = document.getElementById('progress');
+let progressRaf = 0;
+function paintProgress() {
+  progressRaf = 0;
+  const h = document.documentElement, max = h.scrollHeight - h.clientHeight;
+  progressBar.style.width = (max > 0 ? h.scrollTop / max * 100 : 0) + '%';
+}
+addEventListener('scroll', () => { if (!progressRaf) progressRaf = requestAnimationFrame(paintProgress); }, { passive: true });
+
+document.querySelectorAll('.eq[data-tex]').forEach(el => {
+  const tex = el.getAttribute('data-tex');
+  if (window.katex) {
+    try { katex.render(tex, el, { displayMode: true, throwOnError: false }); return; }
+    catch (_) { }
+  }
+  el.classList.add('eq-raw');
+  el.textContent = tex;
+});
+
+function setupCanvas(cv, w, h) {
+  const dpr = Math.min(devicePixelRatio || 1, 2);
+  cv.width = w * dpr; cv.height = h * dpr;
+  cv.style.width = w + 'px'; cv.style.height = h + 'px';
+  const ctx = cv.getContext('2d');
+  ctx.scale(dpr, dpr);
+  return ctx;
+}
+
+/* Same formula as the C# spell: s = sin(pi*N*t), x = -A*s*|s|. */
+function displacement(t, n, a) {
+  const s = Math.sin(Math.PI * n * t);
+  return -a * s * Math.abs(s);
+}
+/* dx/dt divided by A*pi*N, so it stays in [-1, 1]. */
+function normalizedVelocity(t, n) {
+  const th = Math.PI * n * t;
+  return -2 * Math.abs(Math.sin(th)) * Math.cos(th);
+}
+/* Cycle k = floor(t*N): even k dips (+1), odd k rises (-1). t = 1 belongs to the last cycle. */
+function cycleSign(t, n) {
+  const k = Math.min(Math.floor(t * n), n - 1);
+  return k % 2 === 0 ? 1 : -1;
+}
+/* d2x/dt2 divided by (A/2)*Omega^2. */
+function normalizedAcceleration(t, n) {
+  return -cycleSign(t, n) * Math.cos(2 * Math.PI * n * t);
+}
+function widthFor(cv, max) { return Math.max(240, Math.min(max, cv.parentElement.clientWidth)); }
+
+/* Shape demo: redraw on input, animate only while Play runs. */
+(function () {
+  const nIn = document.getElementById('nIn'), aIn = document.getElementById('aIn'), dIn = document.getElementById('dIn');
+  const nOut = document.getElementById('nOut'), aOut = document.getElementById('aOut'), dOut = document.getElementById('dOut');
+  const tOut = document.getElementById('tOut'), sOut = document.getElementById('sOut');
+  const omegaOut = document.getElementById('omegaOut'), vmaxOut = document.getElementById('vmaxOut'), amaxOut = document.getElementById('amaxOut');
+  const box = document.getElementById('box'), playBtn = document.getElementById('playBtn');
+  const shapeCv = document.getElementById('shapeGraph'), velCv = document.getElementById('velGraph');
+
+  const W = widthFor(shapeCv, 560), H = 220, VH = 110, pad = 28;
+  const ctx = setupCanvas(shapeCv, W, H), vctx = setupCanvas(velCv, W, VH);
+  const SCALE_MIN = 0.4, SCALE_MAX = 1.6;
+
+  let n = 2, a = 0.2, dur = 0.8, cursorT = -1, raf = 0, playRaf = 0, playStart = 0;
+
+  const xOf = t => pad + t * (W - 2 * pad);
+  const yOf = scale => pad + (SCALE_MAX - scale) / (SCALE_MAX - SCALE_MIN) * (H - 2 * pad);
+  const vyOf = v => VH / 2 - v * (VH / 2 - 12);
+
+  function hline(c, y, color, dash, label) {
+    c.strokeStyle = color; c.setLineDash(dash); c.lineWidth = 1;
+    c.beginPath(); c.moveTo(pad, y); c.lineTo(W - pad, y); c.stroke(); c.setLineDash([]);
+    if (label) { c.fillStyle = color; c.font = '11px monospace'; c.fillText(label, pad + 6, y - 4); }
+  }
+
+  function draw() {
+    raf = 0;
+    ctx.fillStyle = PALETTE.bg3; ctx.fillRect(0, 0, W, H);
+    hline(ctx, yOf(1), PALETTE.tx2, [4, 4], 'rest 1.00');
+    if (a > 0) {
+      hline(ctx, yOf(1 - a), PALETTE.tx3, [2, 4], 'lower ' + (1 - a).toFixed(2));
+      hline(ctx, yOf(1 + a), PALETTE.tx3, [2, 4], 'upper ' + (1 + a).toFixed(2));
+    }
+    ctx.strokeStyle = PALETTE.or; ctx.lineWidth = 1.5; ctx.setLineDash([6, 4]); ctx.beginPath();
+    for (let k = 0; k < n; k++) {
+      const y = yOf(1 - (k % 2 === 0 ? 1 : -1) * a / 2);
+      k ? ctx.lineTo(xOf(k / n), y) : ctx.moveTo(xOf(0), y);
+      ctx.lineTo(xOf((k + 1) / n), y);
+    }
+    ctx.stroke(); ctx.setLineDash([]);
+
+    ctx.strokeStyle = PALETTE.ac; ctx.lineWidth = 2; ctx.beginPath();
+    for (let i = 0; i <= 300; i++) {
+      const t = i / 300, x = xOf(t), y = yOf(1 + displacement(t, n, a));
+      i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+    }
+    ctx.stroke();
+    ctx.fillStyle = PALETTE.gr;
+    for (let k = 0; k <= n; k++) { ctx.beginPath(); ctx.arc(xOf(k / n), yOf(1), 4, 0, Math.PI * 2); ctx.fill(); }
+
+    vctx.fillStyle = PALETTE.bg3; vctx.fillRect(0, 0, W, VH);
+    hline(vctx, vyOf(0), PALETTE.tx2, [4, 4], 'v = 0');
+    vctx.strokeStyle = PALETTE.ac2; vctx.lineWidth = 1.5; vctx.beginPath();
+    for (let i = 0; i <= 300; i++) {
+      const t = i / 300, x = xOf(t), y = vyOf(normalizedVelocity(t, n));
+      i ? vctx.lineTo(x, y) : vctx.moveTo(x, y);
+    }
+    vctx.stroke();
+    vctx.strokeStyle = PALETTE.or; vctx.lineWidth = 1.5; vctx.beginPath();
+    for (let i = 0; i <= 600; i++) {
+      const t = i / 600, x = xOf(t), y = vyOf(normalizedAcceleration(t, n));
+      i ? vctx.lineTo(x, y) : vctx.moveTo(x, y);
+    }
+    vctx.stroke();
+    vctx.fillStyle = PALETTE.gr;
+    for (let k = 0; k <= n; k++) { vctx.beginPath(); vctx.arc(xOf(k / n), vyOf(0), 4, 0, Math.PI * 2); vctx.fill(); }
+
+    if (cursorT >= 0) {
+      const scale = 1 + displacement(cursorT, n, a), x = xOf(cursorT);
+      for (const [c, h] of [[ctx, H], [vctx, VH]]) {
+        c.strokeStyle = PALETTE.tx2; c.lineWidth = 1;
+        c.beginPath(); c.moveTo(x, 0); c.lineTo(x, h); c.stroke();
+      }
+      ctx.fillStyle = PALETTE.ac2; ctx.beginPath(); ctx.arc(x, yOf(scale), 5, 0, Math.PI * 2); ctx.fill();
+      tOut.textContent = cursorT.toFixed(3); sOut.textContent = scale.toFixed(3);
+      box.style.transform = 'scale(' + scale.toFixed(4) + ')';
+    } else {
+      tOut.textContent = '—'; sOut.textContent = '—';
+      box.style.transform = 'scale(1)';
+    }
+  }
+  function requestDraw() { if (!raf) raf = requestAnimationFrame(draw); }
+
+  function readInputs() {
+    n = +nIn.value; a = +aIn.value; dur = +dIn.value;
+    nOut.textContent = n; aOut.textContent = a.toFixed(2); dOut.textContent = dur.toFixed(1) + ' s';
+    const omega = 2 * Math.PI * n / dur;
+    omegaOut.textContent = omega.toFixed(1);
+    vmaxOut.textContent = (a / 2 * omega).toFixed(2);
+    amaxOut.textContent = (a / 2 * omega * omega).toFixed(1);
+    requestDraw();
+  }
+  [nIn, aIn, dIn].forEach(el => el.addEventListener('input', readInputs));
+
+  function stopPlay() { if (playRaf) { cancelAnimationFrame(playRaf); playRaf = 0; } playBtn.textContent = 'Chạy'; }
+  function tick(now) {
+    const t = Math.min((now - playStart) / (dur * 1000), 1);
+    cursorT = t; draw();
+    if (t < 1) { playRaf = requestAnimationFrame(tick); return; }
+    playRaf = 0; playBtn.textContent = 'Chạy';
+  }
+  playBtn.addEventListener('click', () => {
+    if (playRaf) { stopPlay(); cursorT = -1; requestDraw(); return; }
+    playBtn.textContent = 'Dừng'; playStart = performance.now(); playRaf = requestAnimationFrame(tick);
+  });
+
+  function pointerT(cv, e) {
+    const r = cv.getBoundingClientRect();
+    return Math.min(Math.max(((e.clientX - r.left) * W / r.width - pad) / (W - 2 * pad), 0), 1);
+  }
+  for (const cv of [shapeCv, velCv]) {
+    cv.addEventListener('mousemove', e => { if (playRaf) return; cursorT = pointerT(cv, e); requestDraw(); });
+    cv.addEventListener('mouseleave', () => { if (playRaf) return; cursorT = -1; requestDraw(); });
+  }
+
+  readInputs();
+  draw();
+})();
+
+/* Comparison graph: static, drawn once. */
+(function () {
+  const cv = document.getElementById('compareGraph');
+  const W = widthFor(cv, 860), H = 220, pad = 24, n = 2;
+  const ctx = setupCanvas(cv, W, H);
+  const xOf = t => pad + t * (W - 2 * pad), yOf = v => H / 2 - v * (H / 2 - pad);
+
+  ctx.fillStyle = PALETTE.bg3; ctx.fillRect(0, 0, W, H);
+  ctx.strokeStyle = PALETTE.tx3; ctx.setLineDash([4, 4]); ctx.lineWidth = 1;
+  for (const v of [-1, 0, 1]) { ctx.beginPath(); ctx.moveTo(pad, yOf(v)); ctx.lineTo(W - pad, yOf(v)); ctx.stroke(); }
+  ctx.setLineDash([]);
+
+  const curves = [
+    [PALETTE.tx2, t => -Math.sin(Math.PI * n * t)],
+    [PALETTE.or, t => -Math.pow(Math.sin(Math.PI * n * t), 2)],
+    [PALETTE.ac, t => displacement(t, n, 1)],
+  ];
+  for (const [color, f] of curves) {
+    ctx.strokeStyle = color; ctx.lineWidth = color === PALETTE.ac ? 2.5 : 1.5; ctx.beginPath();
+    for (let i = 0; i <= 300; i++) {
+      const t = i / 300, x = xOf(t), y = yOf(f(t));
+      i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+    }
+    ctx.stroke();
+  }
+  ctx.fillStyle = PALETTE.gr;
+  for (let k = 0; k <= n; k++) { ctx.beginPath(); ctx.arc(xOf(k / n), yOf(0), 4, 0, Math.PI * 2); ctx.fill(); }
+})();
+</script>
+</body>
+</html>

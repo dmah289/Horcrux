@@ -40,62 +40,6 @@ namespace Horcrux.Runtime.Utilities.ExtensionMethods
                 }
             }
         }
-
-        public static async UniTask CharmScale(this Transform self, Vector3 target, EaseType ease,
-            float duration, float delaySeconds = 0f, CancellationToken ct = default,
-            Action<Transform> onComplete = null)
-        {
-            Vector3 from = self.localScale;
-            float invDuration = 1f / Mathf.Max(duration, 0.0001f);
-            float elapsed = 0f;
-
-            try
-            {
-                if (delaySeconds > 0f)
-                    await UniTask.Delay((int)(delaySeconds * 1000f), DelayType.UnscaledDeltaTime, cancellationToken: ct);
-
-                while (elapsed < duration)
-                {
-                    elapsed += Time.unscaledDeltaTime;
-                    self.localScale = Vector3.LerpUnclamped(from, target, Easer.Evaluate(ease, elapsed * invDuration));
-                    await UniTask.Yield(PlayerLoopTiming.Update, ct);
-                }
-            }
-            finally
-            {
-                if (self != null)
-                {
-                    self.localScale = target;
-                    onComplete?.Invoke(self);
-                }
-            }
-        }
-        
-        public static async UniTask CharmScale(this Transform self, EaseType ease, float duration,
-            Func<float, float, Vector3> formula, float delaySeconds = 0f, CancellationToken ct = default,
-            Action<Transform> onComplete = null)
-        {
-            float invDuration = 1f / Mathf.Max(duration, 0.0001f);
-            float elapsed = 0f;
-
-            try
-            {
-                if (delaySeconds > 0f)
-                    await UniTask.Delay((int)(delaySeconds * 1000f), DelayType.UnscaledDeltaTime, cancellationToken: ct);
-
-                while (elapsed < duration)
-                {
-                    elapsed += Time.unscaledDeltaTime;
-                    float timeRatio = elapsed * invDuration;
-                    self.localScale = formula(timeRatio, Easer.Evaluate(ease, timeRatio));
-                    await UniTask.Yield(PlayerLoopTiming.Update, ct);
-                }
-            }
-            finally
-            {
-                onComplete?.Invoke(self);
-            }
-        }
         
         public static async UniTask CharmPointAndBob(this Transform self, Vector3 target, Vector3 direction,
             float backupDistance, float targetPadding, EaseType ease, float oneWayDuration, CancellationToken ct)
@@ -186,41 +130,6 @@ namespace Horcrux.Runtime.Utilities.ExtensionMethods
             void recoverSpell(float t)
             {
                 self.localScale = Vector3.LerpUnclamped(landScale, Vector3.one * spec.recoverScale, t);
-            }
-        }
-        
-        public static async UniTask CharmPunchScale(this Transform self, Vector3 restScale, Vector3 endScale,
-            float duration, float vibrato = 2f, float delaySeconds = 0f, CancellationToken ct = default,
-            Action<Transform> onComplete = null)
-        {
-            // DOPunch-style: damped oscillation around restScale; whole cycles so it ends flat at rest.
-            Vector3 punch = endScale - restScale;
-            float omega = 2f * Mathf.PI * Mathf.Max(1, Mathf.RoundToInt(vibrato * duration * 0.5f));
-            float invDuration = 1f / Mathf.Max(duration, 0.0001f);
-            float elapsed = 0f;
-
-            try
-            {
-                if (delaySeconds > 0f)
-                    await UniTask.Delay((int)(delaySeconds * 1000f), DelayType.UnscaledDeltaTime, cancellationToken: ct);
-
-                while (elapsed < duration)
-                {
-                    elapsed += Time.unscaledDeltaTime;
-
-                    float t = Mathf.Clamp01(elapsed * invDuration);
-                    self.localScale = restScale + punch * (Mathf.Sin(omega * t) * (1f - t));
-
-                    await UniTask.Yield(PlayerLoopTiming.Update, ct);
-                }
-            }
-            finally
-            {
-                if (self != null)
-                {
-                    self.localScale = restScale;
-                    onComplete?.Invoke(self);
-                }
             }
         }
     }
