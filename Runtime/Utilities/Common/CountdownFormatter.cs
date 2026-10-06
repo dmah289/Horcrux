@@ -8,28 +8,29 @@ namespace Horcrux.Runtime.Utilities.Common
         private const long SecondsPerHour = 3600;
         private const long SecondsPerDay = 86400;
 
-        public static void Write(long seconds, StringBuilder sb)
+        public static void Write(long seconds, StringBuilder sb, bool allowZeroInSecondUnit = true)
         {
             sb.Clear();
             if (seconds < 0)
                 seconds = 0;
 
             if (seconds >= SecondsPerDay)
-            {
-                sb.Append(seconds / SecondsPerDay).Append("d ");
-                sb.Append(seconds % SecondsPerDay / SecondsPerHour).Append('h');
-                return;
-            }
-            
-            if (seconds >= SecondsPerHour)
-            {
-                sb.Append(seconds / SecondsPerHour).Append("h ");
-                sb.Append(seconds % SecondsPerHour / SecondsPerMinute).Append('m');
-                return;
-            }
-            
-            sb.Append(seconds / SecondsPerMinute).Append("m ");
-            sb.Append(seconds % SecondsPerMinute). Append('s');
+                WritePair(sb, seconds/SecondsPerDay, 'd', seconds % SecondsPerDay / SecondsPerHour, 
+                    'h', allowZeroInSecondUnit);
+            else if (seconds >= SecondsPerHour)
+                WritePair(sb, seconds/SecondsPerHour, 'h', seconds % SecondsPerHour / SecondsPerMinute, 
+                    'm', allowZeroInSecondUnit);
+            else 
+                WritePair(sb, seconds/SecondsPerMinute, 'm', seconds % SecondsPerMinute, 
+                    's', allowZeroInSecondUnit);
+        }
+
+        private static void WritePair(StringBuilder sb, long first, char firstUnit, long second, char secondUnit,
+            bool allowZeroInSecondUnit = true)
+        {
+            sb.Append(first).Append(firstUnit);
+            if(allowZeroInSecondUnit || second != 0)
+                sb.Append(' ').Append(second).Append(secondUnit);
         }
     }
 }
