@@ -21,9 +21,15 @@ Chạy ở terminal, tại root project, theo thứ tự:
    graphify hook install
    ```
 
+5. Tạo thêm git hook post-merge để `git pull` cũng rebuild (graphify không cài sẵn hook này). Copy từ post-commit, đổi dòng tính file thay đổi:
+   ```
+   sed 's|^CHANGED=.*|CHANGED=$(git diff --name-only ORIG_HEAD HEAD 2>/dev/null)|' .git/hooks/post-commit > .git/hooks/post-merge
+   chmod +x .git/hooks/post-merge
+   ```
+
 Dùng hàng ngày:
 
 - Hỏi về code: `graphify query "<câu hỏi>"` ở terminal, hoặc `/graphify query "..."` trong chat.
 - Sửa code xong: `graphify update .` (AI tự chạy theo luật trong `CLAUDE.md`).
 - Sửa file `.md`: `/graphify . --update` trong chat.
-- Commit: không cần làm gì, hook tự rebuild. Log ở `~/.cache/graphify-rebuild.log`.
+- Commit, pull, đổi branch: không cần làm gì, hook tự rebuild. Log ở `~/.cache/graphify-rebuild.log`.
