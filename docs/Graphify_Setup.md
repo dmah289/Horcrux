@@ -9,19 +9,24 @@ Chạy ở terminal, tại root project, theo thứ tự:
    uv tool install graphifyy
    ```
 
-2. Build graph lần đầu: mở Claude Code, gõ `/graphify`. Phạm vi quét đã có sẵn trong `.graphifyignore`. Kết quả ở `graphify-out/`.
-
-3. Cài tích hợp với Claude Code (ghi luật vào `CLAUDE.md` và hook vào `.claude/settings.json`)
+2. Cài skill `/graphify` cho Claude Code (copy skill vào `~/.claude/skills/`, mỗi máy chạy một lần)
    ```
-   graphify claude install
+   graphify install
    ```
 
-4. Cài git hook (tự rebuild graph sau mỗi commit hoặc đổi branch, mỗi máy chạy một lần)
+3. Cài skill vào project và tích hợp với Claude Code (copy skill vào `.claude/skills/` của project, ghi luật vào `CLAUDE.md` và hook vào `.claude/settings.json`)
+   ```
+   graphify install --project
+   ```
+
+4. Build graph lần đầu: mở Claude Code, gõ `/graphify`. Phạm vi quét đã có sẵn trong `.graphifyignore`. Kết quả ở `graphify-out/`.
+
+5. Cài git hook (tự rebuild graph sau mỗi commit hoặc đổi branch, mỗi máy chạy một lần)
    ```
    graphify hook install
    ```
 
-5. Tạo thêm git hook post-merge để `git pull` cũng rebuild (graphify không cài sẵn hook này). Copy từ post-commit, đổi dòng tính file thay đổi:
+6. Tạo thêm git hook post-merge để `git pull` cũng rebuild (graphify không cài sẵn hook này). Copy từ post-commit, đổi dòng tính file thay đổi:
    ```
    sed 's|^CHANGED=.*|CHANGED=$(git diff --name-only ORIG_HEAD HEAD 2>/dev/null)|' .git/hooks/post-commit > .git/hooks/post-merge
    chmod +x .git/hooks/post-merge
