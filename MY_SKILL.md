@@ -4,14 +4,15 @@ Dành cho **game trên Unity**. Tư tưởng, không phải tài liệu của m�
 dùng nguyên. Áp cho mọi thứ viết ra: runtime, editor, tooling, script tạm, tài liệu.
 
 **Ai đọc:** AI agent, trước khi làm bất cứ việc gì · developer, khi review output.
-**Đi kèm:** `DOCS_TEMPLATE.html` (§5.2). Chỉ đọc được một mục thì đọc **§0**.
+**Đi kèm:** `DOCS_TEMPLATE.html` (§5.2). **Horcrux** là framework dùng chung đi theo mọi dự án; file
+này sống trong đó. Chỉ đọc được một mục thì đọc **§0**.
 
 ## Ba tầng ràng buộc
 
 | Tầng | Nhận biết | Nghĩa | AI được phép |
 |---|---|---|---|
 | **Luật** | *mặc định*, không đánh dấu | tiêu chí nghiệm thu: nói **cần đạt gì**, không nói **làm thế nào** | không bỏ; tự chọn cách đạt |
-| **Nền tảng** | khối `> **Nền tảng**` | đáp án đã chốt: **giới hạn thật** của Unity, browser, renderer — hoặc **stack mặc định** của bộ này | không đi đường khác. Dự án thiếu món nào thì quay về tiêu chí ở phần Luật ngay trên khối |
+| **Nền tảng** | khối `> **Nền tảng**` | đáp án đã chốt: **giới hạn thật** của Unity, C#, browser, renderer — hoặc **stack mặc định** của Horcrux | không đi đường khác. Dự án thiếu món nào thì quay về tiêu chí ở phần Luật ngay trên khối |
 | **Sổ tay** | dòng `**Sổ tay** —` | một cách đã dùng và chạy được; không phải cách duy nhất | thay bằng cách hay hơn, kèm lý do và phép kiểm (NT6) |
 
 **Ký hiệu:** `NT<n>` là nguyên tắc số n ở §0–§1 · `§x` là mục trong file này. **Số hiệu chỉ sống trong
@@ -20,7 +21,8 @@ ra chỗ thứ hai thì hai bản sẽ lệch"), không bằng **con trỏ** ("v
 không mở file này ra tra, và con trỏ mục nát âm thầm khi cấu trúc đổi.
 
 §0 và §1 là nền, áp cho mọi việc; §2–§5 là cách đạt cho từng loại việc, tra khi chạm tới. Sổ tay nào
-ghi **điều kiện áp dụng** thì ngoài điều kiện đó là vô nghĩa.
+ghi **điều kiện áp dụng** thì ngoài điều kiện đó là vô nghĩa. *"Đã sai một lần"* là bẫy đã trả giá —
+tri thức đắt nhất và không đọc ra được từ code; mỗi dòng ghi **triệu chứng**, không tường thuật.
 
 ---
 
@@ -31,20 +33,19 @@ nói giá. Nơi **duy nhất** định nghĩa NT1–NT4; các mục sau chỉ tr
 
 | # | Nguyên tắc | Nội dung |
 |---|---|---|
-| 1 | **Vừa đủ — lõi trước, đọc một mạch, mở đường mai** | **Đơn giản là mặc định**; mỗi lớp phức tạp thêm phải trả bằng **một nhu cầu đang có thật** — "phòng khi cần", "cho đầy đủ", "chuẩn hơn" không phải nhu cầu. **Kiểm nhanh:** *xoá nó đi thì hỏng ở đâu* — không gọi được tên chỗ hỏng thì bỏ. **Giá của một dòng code nằm ở mọi lần sau**, không ở lúc viết; agent sinh code gần như miễn phí nên hay quên vế này — đó là gốc của over-engineering. **Chi phí đọc là cùng khoản tiền đó và đo được:** *số file người đọc sau phải mở để lần hết một luồng*. Hai bờ vực: **xé vụn** (một tính năng rải qua nhiều component, nhiều lớp, hay một cây composite — mỗi mảnh đúng nhưng không mảnh nào nói được hành vi) và **gom bừa** (một class ôm nhiều lý do thay đổi). Mặc định là **bậc thấp nhất còn đọc được**; leo bậc phải **gọi được tên thứ bậc dưới không làm được** (§3.1). Composite còn là chi phí runtime: dispatch ảo, con trỏ nhảy, message engine nhân theo số mảnh (NT2). **Thứ tự làm:** mốc đầu là **lõi chạy được và kiểm được** từ input tới kết quả quan sát được; ca biên chưa có input thật, cấu hình chưa có call site, tối ưu chưa có số đo là mốc sau. "Lõi trước" cắt theo **chiều sâu**, không cắt vào mục đích — mục đích là **sàn**, giao mốc không chạy được là thiếu chứ không phải gọn. **Mở đường mai** là cách sắp xếp, không phải thêm số lượng: hình dạng để bước kế tiếp là **thêm vào**, không phải đập ra làm lại; phòng xa chỉ dồn vào **chữ ký và ranh giới trách nhiệm**, vì hàm thêm sau tốn hai phút còn chữ ký sai sửa sau rất đắt. **Nghiệm thu:** gọi được tên bước kế tiếp và chỉ ra nó là "thêm" chứ không phải "sửa". → **§2.4**, **§3.1** |
-| 2 | **Hiệu năng runtime — mỗi phép tính khai được nhịp của nó** | Nhịp là *mỗi frame* · *mỗi tương tác* · *mỗi lần dữ liệu đổi*. Hàm chạy trong vòng lặp phải trả lời được nó thuộc nhịp nào; đặt ở nhịp nhanh hơn mức cần thì **không có gì báo sai**, chỉ có hệ chậm dần. Ba việc **luôn làm, không cần đo** vì không làm code khó đọc hơn: khai đúng nhịp · **không tạo rác ở chỗ chạy lặp** · không tính lại thứ không đổi. Tối ưu **đánh đổi bằng độ khó đọc** thì phải đo trước, chỉ ở hot path đã xác nhận; ngoài đó chọn bản dễ đọc nhất. Cách rẻ nhất thường là **làm phép tính biến mất**, không phải làm nó chạy nhanh hơn. → **§3.3** |
-| 3 | **Module hoá — hệ độc lập là mặc định, mang đi được** | Mỗi hệ trả lời được: *bê sang dự án sau thì phải sửa gì?* Mặc định là **không sửa gì** — hệ không gọi tên type của dự án, phụ thuộc đi **một chiều: dự án → framework**. **Hệ kết hợp** (dựng trên nhiều hệ khác nên không rời đi một mình được) là ngoại lệ phải gọi tên lý do và chỉ ra đường tách. Tính mang đi được đến từ **chiều phụ thuộc và chỗ đặt file**, không từ lớp trừu tượng — nên không phải phòng xa: quyết đúng từ đầu gần như miễn phí, sửa sau thì đập cả cây phụ thuộc. → **§3.2** |
-| 4 | **Editor-first — code lo hành vi, Editor lo cấu hình và kết nối** | Thứ gì **làm chắc chắn được lúc authoring** thì không sinh code cho nó. **Phép kiểm là *chắc chắn*, không phải *tiện*.** Đang viết code chỉ để **tìm, nối, hoặc gán** thứ vốn đã tồn tại lúc authoring thì code đó đặt sai chỗ. Việc bắt buộc làm trước khi build là **một bước ghi trong tài liệu**, không phải code canh lúc chạy — và **tự tạo tệ hơn tự canh**, vì nó giấu việc setup còn thiếu. Ngoại lệ nằm ở *thời điểm biết được*, không ở *độ tiện khi viết code*. → **§3.6** |
+| 1 | **Vừa đủ — lõi chạy được trước, hình dạng mở để thêm, tối ưu khi có số đo** | **Đơn giản là mặc định.** Mỗi lớp phức tạp thêm phải trả bằng **một nhu cầu đang có thật** — "phòng khi cần", "cho đầy đủ", "chuẩn hơn" không phải nhu cầu. **Phép kiểm:** *xoá nó đi thì hỏng ở đâu* — không gọi được tên chỗ hỏng thì bỏ. **Giá của một dòng code nằm ở mọi lần đọc sau**, không ở lúc viết; agent sinh code gần như miễn phí nên hay quên vế này — đó là gốc của over-engineering. Chi phí đọc đo bằng *số file phải mở để lần hết một luồng*. Hai bờ vực: **xé vụn** (một tính năng rải qua nhiều mảnh, không mảnh nào nói được hành vi) và **gom bừa** (một class ôm nhiều lý do thay đổi). **Thứ tự làm:** ① lõi chạy được và kiểm được từ input tới kết quả quan sát được → ② ca biên khi có input thật, cấu hình khi có call site → ③ tối ưu khi có số đo (NT2). "Lõi trước" cắt theo **chiều sâu**, không cắt vào mục đích: giao mốc không chạy được là thiếu, không phải gọn. **Mở đường mai** là hình dạng, không phải số lượng: bước kế tiếp là **thêm vào**, không đập ra làm lại; phòng xa chỉ dồn vào **chữ ký và ranh giới trách nhiệm** — hàm thêm sau tốn hai phút, chữ ký sai sửa sau rất đắt. **Nghiệm thu:** gọi được tên bước kế tiếp và chỉ ra nó là "thêm" chứ không phải "sửa". → §2.4, §3.1 |
+| 2 | **Hiệu năng runtime — mỗi phép tính khai được nhịp của nó** | Nhịp là *mỗi frame* · *mỗi tương tác* · *mỗi lần dữ liệu đổi*. Hàm chạy lặp phải trả lời được nó thuộc nhịp nào; đặt ở nhịp nhanh hơn mức cần thì **không có gì báo sai**, chỉ có hệ chậm dần. Ba việc **luôn làm ở mọi nhịp, không cần đo**, vì không làm code khó đọc hơn: khai đúng nhịp · **không tạo rác ở chỗ chạy lặp** · **không tính lại thứ không đổi** (đầu vào chỉ đổi cùng cấu hình đọc một lần thì kết quả là hằng của phiên — dựng một lần, giữ trong field). Tối ưu **đánh đổi bằng độ khó đọc** thì phải đo trước, chỉ ở hot path đã xác nhận; ngoài đó chọn bản dễ đọc nhất. Cách rẻ nhất thường là **làm phép tính biến mất**, không phải làm nó chạy nhanh hơn. → §3.3 |
+| 3 | **Module hoá — hệ độc lập là mặc định, mang đi được** | Mỗi hệ trả lời được: *bê sang dự án sau thì phải sửa gì?* Mặc định là **không sửa gì** — hệ không gọi tên type của dự án, phụ thuộc đi **một chiều: dự án → Horcrux**. **Hệ kết hợp** (dựng trên nhiều hệ khác nên không rời đi một mình được) là ngoại lệ phải gọi tên lý do và chỉ ra đường tách. Tính mang đi được đến từ **chiều phụ thuộc và chỗ đặt file**, không từ lớp trừu tượng — nên không phải phòng xa: quyết đúng từ đầu gần như miễn phí, sửa sau thì đập cả cây phụ thuộc. **Hệ quả:** chức năng mang đi được thì **thuộc về Horcrux**, không nằm trong dự án (§2.4). → §3.2 |
+| 4 | **Editor-first — code lo hành vi, Editor lo cấu hình và kết nối** | Thứ gì **làm chắc chắn được lúc authoring** thì không sinh code cho nó. **Phép kiểm là *chắc chắn*, không phải *tiện*.** Đang viết code chỉ để **tìm, nối, hoặc gán** thứ vốn đã tồn tại lúc authoring thì code đó đặt sai chỗ. Việc bắt buộc làm trước khi build là **một bước ghi trong tài liệu**, không phải code canh lúc chạy — và **tự tạo tệ hơn tự canh**, vì nó giấu việc setup còn thiếu. Ngoại lệ nằm ở *thời điểm biết được* (spawn runtime, số lượng động, dữ liệu từ server), không ở *độ tiện khi viết code*. → §3.6 |
 
-## 0.1 Năm cặp trông như đá nhau
+## 0.1 Bốn cặp trông như đá nhau
 
 | Hai chỗ trông như đá nhau | Câu hỏi phân xử |
 |---|---|
-| **Hiệu năng là ưu tiên** (NT2) ↔ **chỉ tối ưu hot path đã xác nhận** (NT1) | **Bản nhanh hơn có khó đọc hơn không?** Không — đúng nhịp, không cấp phát trong vòng lặp, không tính lại thứ không đổi — thì **làm luôn**. Có — thêm tầng cache, viết tay vòng lặp, bẻ cấu trúc dữ liệu vì tốc độ — thì phải có **chỗ đo và số trước–sau**. |
-| **Chi phí đọc, hạn chế composite** (NT1) ↔ **`S` và `I` của SOLID** (§3.1) | **Tách theo cái gì?** Theo **lý do thay đổi** là `S`, tách đúng. Theo "cho gọn mắt", "cho đúng pattern", "mỗi việc một component" là xé vụn: gộp lại. |
-| **Mang đi được** (NT3) ↔ **không phòng xa** (NT1) | **Thứ phải thêm là gì?** Chỉ là **chiều phụ thuộc** và **chỗ đặt file** thì làm ngay. Là một interface, một adapter, một tham số cho người dùng **chưa có** thì là phòng xa — bỏ (§2.4). |
-| **Editor-first** (NT4) ↔ **wiring trong asset không grep được** (§3.6) | **Số chỗ phải nối là hằng số nhỏ trong cùng một asset, hay tăng theo số instance?** Hằng số nhỏ → kéo thả: ô trống chắc chắn có người nhìn vào. Tăng theo instance → đăng ký: nó gom n ca hỏng-im-lặng thành **một** dòng đỏ lúc boot. |
-| **§2.1 gộp câu hỏi thành 1–2 lượt** ↔ **§2.6 hỏi ở từng câu trả lời** | Hai loại câu hỏi, **không cộng dồn**: §2.1 hỏi để **lấy ngữ cảnh trước khi làm** — gộp lượt; §2.6 hỏi để **chốt một nguyên tắc vào file này** giữa brainstorm — hiếm; quét cuối chat của §2.6 không hỏi mà ghi thẳng. |
+| **Hiệu năng là ưu tiên** (NT2) ↔ **chỉ tối ưu hot path đã xác nhận** (NT1) | **Bản nhanh hơn có khó đọc hơn không?** Không — đúng nhịp, không cấp phát trong vòng lặp, không tính lại thứ không đổi — thì **làm luôn**. Có — thêm tầng cache, viết tay vòng lặp, bẻ cấu trúc dữ liệu — thì phải có **chỗ đo và số trước–sau**. |
+| **Hạn chế tách, hạn chế composite** (NT1) ↔ **`S` và `I` của SOLID** (§3.1) | **Tách theo cái gì?** Theo **lý do thay đổi** là `S`, tách đúng. Theo "cho gọn mắt", "cho đúng pattern", "mỗi việc một component" là xé vụn: gộp lại. |
+| **Mang đi được** (NT3) ↔ **không phòng xa** (NT1) | **Thứ phải thêm là gì?** Chỉ là **chiều phụ thuộc** và **chỗ đặt file** thì làm ngay. Là một interface, một adapter, một tham số cho người dùng **chưa có** thì là phòng xa — bỏ. |
+| **Editor-first** (NT4) ↔ **wiring trong asset không grep được** (§3.6) | **Số chỗ phải nối là hằng số nhỏ trong cùng một asset, hay tăng theo số instance?** Hằng số nhỏ → kéo thả: ô trống chắc chắn có người nhìn vào. Tăng theo instance → đăng ký bằng code: nó gom n ca hỏng-im-lặng thành **một** dòng đỏ lúc boot. |
 
 ---
 
@@ -54,16 +55,19 @@ Nơi **duy nhất** định nghĩa NT5–NT10. Mỗi ô là *định nghĩa và 
 
 | # | Nguyên tắc | Nội dung |
 |---|---|---|
-| 5 | **Hỏi đúng lúc, tự quyết đúng chỗ** | Thiếu ngữ cảnh thì **hỏi**, không đoán rồi làm. Buộc giả định thì ghi `Giả định (cần xác nhận): …` **tại chỗ dùng**. **Thao tác khó đảo ngược thì luôn hỏi trước khi chạy** — nhãn giả định không thay được xác nhận. Phạm vi hiện tại **chặn** hướng phát triển thật thì nêu ra **kèm giá**; mở rộng vì "cho đầy đủ" thì không (NT1). → **§2.1** |
+| 5 | **Hỏi đúng lúc, tự quyết đúng chỗ** | Thiếu ngữ cảnh thì **hỏi**, không đoán rồi làm. Buộc giả định thì ghi `Giả định (cần xác nhận): …` **tại chỗ dùng**. **Thao tác khó đảo ngược thì luôn hỏi trước khi chạy** — nhãn giả định không thay được xác nhận. Phạm vi hiện tại **chặn** hướng phát triển thật thì nêu ra **kèm giá**; mở rộng vì "cho đầy đủ" thì không (NT1). → §2.1 |
 | 6 | **Phạm vi bàn được, cách làm luôn mở** | Tiêu chí đã chốt thì cách đạt là việc của người triển khai: thấy cách **cùng tiêu chí** mà đơn giản, nhanh, hoặc rõ hơn thì **dùng nó**, kèm lý do và phép kiểm (NT8). **Ranh giới cứng** — tự do chỉ khi cả ba không đổi: **hành vi quan sát được** (kể cả kết quả ngẫu nhiên theo seed) · **dữ liệu ghi ra** (format lẫn giá trị) · **API công khai**. Đụng một trong ba là đổi phạm vi, phải hỏi (NT5). Im lặng chọn món trong Sổ tay khi biết có cách tốt hơn là vi phạm. |
-| 7 | **Không lặp tri thức** | *Tài liệu:* một khái niệm giải thích một nơi, sau đó trỏ về. *Code:* **một chức năng cài đặt một nơi** — có sẵn thì dùng lại (§2.4); có người dùng thứ hai thì đề xuất nâng thành tái sử dụng (§3.2). Áp cho **tri thức trùng nhau**, không áp cho **code trông giống nhau**. Phép thử: *hai chỗ có cùng lý do thay đổi không?* — **cùng** → gộp về một nguồn · **khác** → **để lặp**, vì gộp là trói hai nghiệp vụ độc lập rồi hàm chung mọc tham số và nhánh riêng · **chưa chắc** → để lặp trước: lặp rồi gộp sau thì rẻ, trừu tượng hoá sai thì mọi caller phải đập · **mấp mé** → hỏi developer. Ngoại lệ không được "để lặp": **hai phép tính buộc khớp nhau ở runtime** — đo–vẽ, vẽ–hit-test, điều kiện ẩn–hiện — lệch là hỏng ngay, gộp là **bắt buộc** kể cả khi công thức hiển nhiên (§3.4). |
-| 8 | **Bằng chứng, không khẳng định suông** | Mọi "tại sao" kèm phép kiểm **tái lập được**; công thức chốt phải **kiểm mốc**; code đối chiếu với công thức trước khi chốt. Không viết "đã đúng", "đã tối ưu" mà thiếu mốc, số đo, hoặc phép thử người đọc chạy lại được. **Bằng chứng phải cùng loại với tiêu chí** — và tiêu chí cao nhất của game là **cảm giác chơi**: công thức "sai sách" mà chơi đã tay thì **đúng**, chuẩn sách mà chơi vô hồn thì **sai**; toán là công cụ đạt cảm giác, không phải mục tiêu. Cảm giác chơi chỉ nghiệm thu bằng **chơi thử**, và chỉ developer chơi được. → **§2.8** |
-| 9 | **Config chưa chốt thì không phải mốc · chuẩn hoá thì bỏ điểm neo** | Số mặc định trong asset, bảng cấu hình, cấu hình từ xa là **bản nháp của developer**, chỉ thành mốc khi developer nói đã chốt. Đổi đơn vị, trục, công thức: **không tự ánh xạ giá trị cũ, không tự dựng đối chiếu trước–sau** để chứng minh "cảm giác không đổi" — đó là đóng băng nháp thành chuẩn (NT1). Việc phải làm: giữ **hành vi thuật toán** bất biến, chứng minh bằng mốc (NT8), rồi **hỏi** giá trị cũ là nháp hay mốc (NT5). *Khi một số phải so được giữa các ngữ cảnh khác cỡ:* chuẩn hoá là **bỏ** điểm neo, không phải chọn neo tốt hơn — còn hỏi "chia cho cái nào" là chưa xong. **Mẫu số là đại lượng gốc**, không phải đại lượng đã bị một núm khác nhân vào — chia cho bản đã nhân biến núm đó thành hệ số âm thầm và giết dòng chẩn đoán nói *ai* đang kẹp. |
-| 10 | **Mật độ, trình tự, và chỉ một hệ** | Chọn dạng có mật độ cao nhất **cho loại nội dung đó**: bảng cho so sánh, diagram cho luồng, công thức cho quan hệ định lượng, một câu cho trực giác. Dẫn theo mạch **dễ→khó, tổng quan→chi tiết, vấn đề→giải pháp**; mỗi bước chỉ dùng khái niệm đã nêu; đánh số khi là quy trình. **Mặc định một khẳng định = một câu lý do**; phải viết cả đoạn là dấu hiệu chưa hiểu đủ để nén, hoặc đang biện minh cho thứ không cần có. **Đổi rồi thì chỉ còn một hệ:** quyết định đã chốt thì code và tài liệu nói **hoàn toàn bằng hệ mới** — không "trước đây là…", không hai đơn vị song song, không giữ tên cũ làm cầu; người đọc sau **không có hệ cũ trong đầu**. Giữ vết hệ cũ chỉ khi **gọi tên được người dùng thật của vết đó**: payload cũ phải deserialize được (§3.7) · developer đọc log build cũ · developer yêu cầu. Lịch sử ghi ở commit và changelog. Áp cho **tài liệu đầu ra**; đối thoại có luật riêng ở §2.3. |
+| 7 | **Có sẵn thì dùng, không lặp tri thức** | *Code:* trước khi viết, **khảo sát đã có chưa** — trong hệ đang chạm, trong Horcrux, trong package đã cài — có thì dùng lại; gần đúng thì mở rộng không sửa cái cũ; phải bẻ cong bài toán cho vừa nó thì viết mới (§2.4). Có người dùng thứ hai thì đề xuất nâng thành tái sử dụng (§3.2). *Tài liệu:* một khái niệm giải thích một nơi, sau đó trỏ về. Áp cho **tri thức trùng nhau**, không áp cho **code trông giống nhau**. Phép thử: *hai chỗ có cùng lý do thay đổi không?* — **cùng** → gộp · **khác** → **để lặp**, vì gộp là trói hai nghiệp vụ độc lập rồi hàm chung mọc tham số và nhánh riêng · **chưa chắc** → để lặp trước: lặp rồi gộp sau thì rẻ, trừu tượng hoá sai thì mọi caller phải đập · **mấp mé** → hỏi developer. Ngoại lệ không được "để lặp": **hai phép tính buộc khớp nhau ở runtime** — đo–vẽ, vẽ–hit-test, điều kiện ẩn–hiện — gộp là **bắt buộc** kể cả khi công thức hiển nhiên (§3.4). |
+| 8 | **Bằng chứng, không khẳng định suông** | Mọi "tại sao" kèm phép kiểm **tái lập được**; công thức chốt phải **kiểm mốc**; code đối chiếu với công thức trước khi chốt. Không viết "đã đúng", "đã tối ưu" mà thiếu mốc, số đo, hoặc phép thử người đọc chạy lại được. **Bằng chứng phải cùng loại với tiêu chí** — và tiêu chí cao nhất của game là **cảm giác chơi**: công thức "sai sách" mà chơi đã tay thì **đúng**; toán là công cụ đạt cảm giác, không phải mục tiêu. Cảm giác chơi chỉ nghiệm thu bằng **chơi thử**, và chỉ developer chơi được. → §2.8 |
+| 9 | **Config chưa chốt thì không phải mốc · chuẩn hoá thì bỏ điểm neo** | Số mặc định trong asset, bảng cấu hình, cấu hình từ xa là **bản nháp của developer**, chỉ thành mốc khi developer nói đã chốt. Đổi đơn vị, trục, công thức: **không tự ánh xạ giá trị cũ**, không tự dựng đối chiếu trước–sau để chứng minh "cảm giác không đổi" — đó là đóng băng nháp thành chuẩn. Việc phải làm: giữ **hành vi thuật toán** bất biến, chứng minh bằng mốc (NT8), rồi **hỏi** giá trị cũ là nháp hay mốc (NT5). *Khi một số phải so được giữa các ngữ cảnh khác cỡ:* chuẩn hoá là **bỏ** điểm neo, không phải chọn neo tốt hơn. **Mẫu số là đại lượng gốc**, không phải đại lượng đã bị một núm khác nhân vào — chia cho bản đã nhân biến núm đó thành hệ số âm thầm. |
+| 10 | **Mật độ, trình tự, và chỉ một hệ** | Chọn dạng có mật độ cao nhất **cho loại nội dung đó**: bảng cho so sánh, diagram cho luồng, công thức cho quan hệ định lượng, một câu cho trực giác. Dẫn theo mạch **dễ→khó, tổng quan→chi tiết, vấn đề→giải pháp**; đánh số khi là quy trình. **Một khẳng định = một câu lý do**; phải viết cả đoạn là chưa hiểu đủ để nén, hoặc đang biện minh cho thứ không cần có. **Đổi rồi thì chỉ còn một hệ:** quyết định đã chốt thì code và tài liệu nói **hoàn toàn bằng hệ mới** — không "trước đây là…", không hai đơn vị song song, không giữ tên cũ làm cầu; người đọc sau **không có hệ cũ trong đầu**. Giữ vết hệ cũ chỉ khi **gọi tên được người dùng thật của vết đó**: payload cũ phải deserialize được (§3.7) · developer yêu cầu. Lịch sử ghi ở commit. Áp cho **tài liệu đầu ra**; đối thoại có luật riêng ở §2.3. |
 
 ---
 
 # §2 — Quy trình làm việc với AI
+
+Trình tự một việc: **phỏng vấn** (§2.1) → **đối chiếu code với developer** (§2.2) → **khảo sát có sẵn,
+chốt phạm vi, chốt chỗ đặt** (§2.4) → làm → **nghiệm thu đúng loại** (§2.8) → **quét cuối chat** (§2.6).
 
 ## 2.1 Trước khi làm — phỏng vấn ngữ cảnh
 
@@ -76,7 +80,7 @@ nào thì **nêu giả định để developer xác nhận**. **Chưa có câu t
 | **Ai dùng đầu ra** | ai đọc, đọc để làm gì, biết sẵn tới đâu | ai gọi, gọi ở đâu, có caller thật **ngay bây giờ** chưa |
 | **Mục tiêu** | đọc xong phải **làm được gì** | phải đạt **cảm giác hoặc hành vi** gì, nghiệm thu bằng gì (§2.8) |
 | **Ngân sách** | độ sâu và độ dài nào là đủ | **nhịp** của nó là gì (NT2), có phải hot path không, platform nào |
-| **Ranh giới** | phần nào giải ở đây, phần nào trỏ sang tài liệu khác | phần nào của class này, phần nào của hệ khác; hệ này **độc lập hay kết hợp** (NT3) |
+| **Ranh giới** | phần nào giải ở đây, phần nào trỏ sang tài liệu khác | phần nào của class này, phần nào của hệ khác; hệ này **độc lập hay kết hợp**, **thuộc dự án hay Horcrux** (§2.4) |
 | **Hướng phát triển thật** | hệ sắp đổi gì khiến tài liệu phải sửa | **chắc chắn** sắp cần thêm gì; cái gì *có thể* cần nhưng chưa chắc (NT1) |
 
 **Giả định chỉ vá khe hở nhỏ phát hiện giữa chừng, không thay cho phỏng vấn** — đủ cả ba: khe hở
@@ -85,60 +89,59 @@ xoá dữ liệu đã author (file level, save, asset) · migration đổi schem
 version control.
 
 **Gợi ý một hướng developer chưa nghĩ tới thì cứ nêu — đó là việc được mong đợi.** Đúng khi dừng ở
-**một dòng kèm giá** để developer chọn; sai khi tự đưa vào output vì "tiện thể" (NT1). Trần của gợi ý
-là **phạm vi đang bàn** — kéo sang hệ khác thì để một dòng ở "Mở rộng sau" (§2.5). Thứ developer tự nêu
+**một dòng kèm giá** để developer chọn; sai khi tự đưa vào output vì "tiện thể". Trần của gợi ý là
+**phạm vi đang bàn** — kéo sang hệ khác thì để một dòng ở "Mở rộng sau" (§2.5). Thứ developer tự nêu
 thì hỏi lại **một lần** để cân đắt–lợi, rồi theo developer.
 
 ## 2.2 Đọc code rồi phải đối chiếu lại với developer
 
-**Code cho biết cái gì đang chạy, không cho biết vì sao nó được viết như vậy.** **Không mặc định
-developer nắm rõ từng ngóc ngách hệ thống của mình**: code có thể do người khác viết, viết từ lâu,
-hoặc đã trôi khỏi thiết kế ban đầu. Với **mỗi phát hiện ảnh hưởng đến quyết định đang bàn**, nêu đủ:
-**(1) tôi thấy gì** — kèm đường dẫn và dòng để developer mở ra kiểm · **(2) tôi hiểu ý định là gì** —
-phát biểu lại bằng lời mình rồi hỏi thẳng có khớp thiết kế ban đầu không · **(3) developer đã biết chỗ
-này chưa** — chưa thì là chủ ý hay chỗ đã trôi cần xử lý. Kể lại toàn bộ code vừa đọc là bắt developer
-đọc tường thuật thay vì trả lời một câu hỏi (NT10).
+**Code cho biết cái gì đang chạy, không cho biết vì sao nó được viết như vậy.** Không mặc định developer
+nắm rõ từng ngóc ngách: code có thể do người khác viết, viết từ lâu, hoặc đã trôi khỏi thiết kế ban
+đầu. Với **mỗi phát hiện ảnh hưởng đến quyết định đang bàn**, nêu đủ: **(1) tôi thấy gì** — kèm đường
+dẫn và dòng · **(2) tôi hiểu ý định là gì** — phát biểu lại rồi hỏi thẳng có khớp thiết kế không ·
+**(3) developer đã biết chỗ này chưa** — chưa thì là chủ ý hay chỗ đã trôi. Kể lại toàn bộ code vừa đọc
+là bắt developer đọc tường thuật thay vì trả lời một câu hỏi.
 
 **Mỗi lượt review đọc lại file hiện tại.** Developer sửa giữa hai lượt, nên phát hiện của lượt trước là
 bản chết; báo lại lỗi đã sửa làm mất tin vào cả những phát hiện còn đúng.
 
 ## 2.3 Văn phong khi đối thoại
 
-Áp cho mọi lượt đối thoại, **chặt nhất khi brainstorm** (§2.6). Hai bờ đều là bờ vực (NT1):
+Áp cho mọi lượt đối thoại, chặt nhất khi brainstorm (§2.6). Hai bờ đều là bờ vực:
 
 - **Sàn — đủ dữ kiện để developer tự phân tích lại, không phải chỉ đủ để tin.** Nêu *cái đang có*,
-  *cái sẽ đổi*, *cái đánh đổi*, và số hoặc đường dẫn để kiểm. Đây là chỗ **mật độ của NT10 không áp**:
-  nén trong đối thoại chỉ tạo thêm một vòng hỏi lại. Sàn là dữ kiện, không phải dẫn giải — bước hiển
-  nhiên đúng, hoặc thứ đã chốt ở lượt trước, thì một hai câu nhắc lại là đủ.
-- **Trần — đúng phần cần cho quyết định đang chờ, không hơn.** Trần phải tự canh vì thiếu thì developer
-  hỏi lại và lộ ra ngay, thừa thì chỉ lộ dưới dạng quyết định ra chậm hơn. Phép kiểm: *dòng này thay
-  đổi điều gì trong quyết định developer đang phải ra?* Không đổi gì thì cắt, kể cả khi nó đúng.
+  *cái sẽ đổi*, *cái đánh đổi*, và số hoặc đường dẫn để kiểm. Đây là chỗ mật độ của NT10 **không áp**:
+  nén trong đối thoại chỉ tạo thêm một vòng hỏi lại.
+- **Trần — đúng phần cần cho quyết định đang chờ, không hơn.** Phép kiểm: *dòng này thay đổi điều gì
+  trong quyết định developer đang phải ra?* Không đổi gì thì cắt, kể cả khi nó đúng.
 
-Cách viết: một câu nói một ý · **ngắn và dễ hiểu đi trước hoa mỹ** — bỏ câu chuyển tiếp, lời dẫn, tóm
-tắt lại · **hạn chế viết tắt và thuật ngữ khó**, buộc dùng thì giải nghĩa ngắn ngay lần đầu · **gọi
-khái niệm đúng tên nó có trong hệ**, khớp nguyên văn tên trong code và tài liệu (§3.7) · câu hỏi phải
-trả lời được **mà không cần mở code ra đọc lại**, thiếu ngữ cảnh gì thì cung cấp kèm · **kết luận
-trước, dẫn giải sau** để developer đủ tin thì dừng đọc được — đối thoại **cố ý** đi khác trình tự của
-NT10 vì nó không có người đọc tuần tự. Câu trả lời có việc developer phải làm bằng tay trong Editor thì
-gom việc đó về **một mục riêng ở cuối**, không xen giữa dẫn giải logic (§5.4).
+Cách viết: một câu một ý · ngắn và dễ hiểu đi trước hoa mỹ — bỏ câu dẫn, câu chuyển, tóm tắt lại ·
+hạn chế viết tắt và thuật ngữ, buộc dùng thì giải nghĩa ngay lần đầu · **gọi khái niệm đúng tên nó có
+trong hệ**, khớp nguyên văn code và tài liệu (§3.7) · câu hỏi phải trả lời được **mà không cần mở code
+ra đọc lại** · **kết luận trước, dẫn giải sau** — đối thoại cố ý đi khác trình tự NT10 vì không có
+người đọc tuần tự · việc developer phải làm bằng tay trong Editor gom về **một mục riêng ở cuối** (§5.4).
 
 **Bày phương án, rồi chốt một cái.** Mỗi phương án một dòng: *nó là gì · được gì · mất gì*. Rồi **chốt
 một phương án và nói vì sao nó thắng** — tiêu chí là **hợp tư tưởng trong file này nhất** (§0), không
-phải "dễ làm nhất" hay "nhiều tính năng nhất". Bỏ phần chốt là đẩy việc khó nhất về developer; bỏ phần
-bày phương án là lấy mất dữ kiện để developer bác lại. **Ranh giới:** quyết định thuộc developer thì
-**thu hẹp lựa chọn và nêu giá từng cái, không chốt hộ** — phạm vi, **tên và thuật ngữ của hệ**, ba thứ
-ở ranh giới cứng của NT6, thứ developer đã quyết rồi (§5.4), và mọi ca NT5 nói là phải hỏi. Tên gợi ý
-chưa áp vào code hay tài liệu nào trước khi developer chốt; bản nháp lỡ áp thì hoàn về.
+phải "dễ làm nhất". Bỏ phần chốt là đẩy việc khó nhất về developer; bỏ phần bày phương án là lấy mất
+dữ kiện để developer bác lại. **Ranh giới:** quyết định thuộc developer thì **thu hẹp lựa chọn và nêu
+giá, không chốt hộ** — phạm vi · **tên và thuật ngữ của hệ** · ba thứ ở ranh giới cứng của NT6 · thứ
+developer đã quyết rồi · mọi ca NT5 nói là phải hỏi. Tên gợi ý chưa áp vào code hay tài liệu trước khi
+developer chốt.
 
-**Ví dụ minh hoạ cũng là khẳng định** — kiểm trên code trước khi đưa (NT8). Ví dụ sai làm developer nghi
-luôn định nghĩa đúng đi kèm nó. *Đã sai một lần:* một ví dụ dựng từ trí nhớ về số lượt một chuỗi hợp lệ
-tốn, sai, khiến developer phải hỏi lại chính định nghĩa của "lượt".
+**Ví dụ minh hoạ cũng là khẳng định** — kiểm trên code trước khi đưa (NT8). Ví dụ sai làm developer
+nghi luôn định nghĩa đúng đi kèm nó. *Đã sai một lần:* một ví dụ dựng từ trí nhớ về số lượt một chuỗi
+hợp lệ tốn, sai, khiến developer phải hỏi lại chính định nghĩa của "lượt".
 
-## 2.4 Tái sử dụng, rồi chốt phạm vi
+## 2.4 Có sẵn chưa → có cần không → đặt ở đâu
 
-**Trước câu hỏi "có cần không" là câu hỏi "đã có chưa"** (NT7). Khảo sát **trong phạm vi logic liên
-quan đến task** — hệ đang chạm, module nó gọi tới, Utilities khi nghi có helper sẵn. Nói rõ đã khảo
-sát đâu và kết luận gì (NT8).
+Ba câu hỏi theo đúng thứ tự, trước cả khi viết Plan hay đoạn mẫu — code trong Plan là code developer
+sẽ gõ nguyên, nên thừa ở đó cũng là thừa.
+
+### Có sẵn chưa (NT7)
+
+Khảo sát theo thứ tự: **hệ đang chạm và module nó gọi** → **Horcrux** (hệ ở `Foundations/`, helper ở
+`Utilities/`) → **package đã cài** trong dự án. Nói rõ đã khảo sát đâu và kết luận gì (NT8).
 
 | Cái có sẵn | Xử lý |
 |---|---|
@@ -146,35 +149,30 @@ sát đâu và kết luận gì (NT8).
 | Gần đúng nhưng thiếu | mở rộng nó nếu **thêm được mà không sửa cái cũ**; không được thì viết mới |
 | Không có, hoặc phải **bẻ cong bài toán** cho vừa nó | **viết mới** — tái sử dụng không phải lý do để làm sai bài toán |
 
-**Khảo sát tái sử dụng chạy trước cả khi viết Plan hay đoạn mẫu** — code trong Plan là code developer sẽ gõ
-nguyên, nên thừa ở đó cũng là thừa. Helper chuyển động thì nhìn runner tween và class công thức đã có ở
-Utilities trước khi viết vòng lặp riêng. *Đã sai một lần:* viết vòng tween riêng và công thức scale riêng
-cho một overload bay, trong khi hệ đã có runner tween và class squash-stretch — developer phát hiện ở
-lượt review, cả mục phải viết lại.
+*Đã sai một lần:* viết vòng tween riêng và công thức scale riêng cho một hiệu ứng bay, trong khi
+Horcrux đã có runner tween và class squash-stretch — cả mục phải viết lại ở lượt review.
 
 **Bê một khuôn có sẵn thì soi kỹ nhất đúng những chỗ khuôn cũ *cố ý* làm** — cân nhắc kỹ nghĩa là nó
-**bám chặt vào ngữ cảnh cũ**. Với mỗi quyết định cố ý, hỏi lý do gốc có còn đúng ở bài toán này không;
-hết thì đảo và ghi lý do ngay tại đó. *Đã sai một lần:* bê một khuôn cố ý serialize giá trị runtime
-vào asset sang bài toán lưu dữ liệu người chơi — tiến độ người chơi đi vào asset rồi vào version control.
+bám chặt ngữ cảnh cũ. Với mỗi quyết định cố ý, hỏi lý do gốc có còn đúng ở bài toán này không; hết thì
+đảo và ghi lý do tại đó. *Đã sai một lần:* bê một khuôn cố ý serialize giá trị runtime vào asset sang
+bài toán lưu dữ liệu người chơi — tiến độ người chơi đi vào asset rồi vào version control.
 
-**Hệ nguồn đã trả về kiểu thì nhận kiểu, không nhận chuỗi rồi tự parse lại.** Chuỗi trung gian là parse cài
-đặt ở hai nơi (NT7): hệ nguồn đã có đường parse, log lỗi và fallback cho nó, bản thứ hai phía consumer vừa
-chép lại đúng công việc đó vừa che lỗi parse khỏi đường log của hệ nguồn, và bỏ mất kiểm tra biên dịch trên
-tên field. Phần còn lại phía consumer chỉ là **kiểm luật nghiệp vụ** trên object đã có kiểu — một hàm thuần
-nhận object, không phải một "parser". *Đã sai một lần:* khai biến remote config kiểu chuỗi rồi viết một
-class `*ConfigParser` bọc `JsonConvert` + `try/catch` — toàn bộ phần đó đã có sẵn trong hệ remote config.
+**Hệ nguồn đã trả về kiểu thì nhận kiểu, không nhận chuỗi rồi tự parse lại.** Chuỗi trung gian là parse
+cài đặt ở hai nơi: hệ nguồn đã có đường parse, log lỗi và fallback; bản thứ hai phía consumer chép lại
+đúng việc đó, che lỗi khỏi đường log của hệ nguồn, và bỏ mất kiểm tra biên dịch trên tên field. Phần
+còn lại phía consumer chỉ là **kiểm luật nghiệp vụ** trên object đã có kiểu. *Đã sai một lần:* khai biến
+remote config kiểu chuỗi rồi viết một class `*ConfigParser` bọc deserialize và `try/catch` — toàn bộ
+phần đó đã có trong hệ remote config.
 
-> **Nền tảng** — `RemoteConfig<T>` của bộ này ép kiểu sẵn: `string` · enum · số · còn lại qua `JsonConvert`
-> (xem `RemoteConfigSystem.md` mục "Kiểu T hỗ trợ"). Giá trị có cấu trúc thì khai `RemoteConfig<Model>` với
-> `Model` là class dữ liệu thuần và property phơi `Model`; **không** khai `RemoteConfig<string>` cho nó. JSON
-> hỏng thì `RemoteConfig<T>` tự `LogError` và giữ cache hoặc giá trị trong asset — consumer không `try/catch`.
-> Assembly khai biến phải tham chiếu được assembly của `Model`; chiều đó đúng vì collection RC là của dự án.
-> `JsonConvert` khớp property **không phân biệt hoa thường** nhưng không đổi tên: đổi casing của `Model`
-> không đổi hợp đồng JSON, đổi **tên** field thì key cũ trong JSON rơi thành `null` im lặng — chỉ cửa
-> kiểm luật nghiệp vụ mới bắt được. Persistence của bộ này dùng cùng serializer, nên áp cho cả save.
+> **Nền tảng** — hệ remote config và persistence của Horcrux ép kiểu sẵn qua cùng một serializer
+> (xem `RemoteConfigSystem.md`, mục "Kiểu T hỗ trợ"). Giá trị có cấu trúc thì khai generic với một
+> class dữ liệu thuần, **không** khai `string`. JSON hỏng thì hệ tự `LogError` và giữ cache — consumer
+> không `try/catch`. Serializer khớp property **không phân biệt hoa thường** nhưng không đổi tên: đổi
+> **tên** field thì key cũ rơi thành `null` im lặng — chỉ cửa kiểm luật nghiệp vụ mới bắt được.
 
-Sau đó mới tới phạm vi. Mọi thứ định đưa vào qua cùng một luật: **có nhu cầu thật ngay bây giờ thì đưa
-vào** (NT1).
+### Có cần không (NT1)
+
+Mọi thứ định đưa vào qua cùng một luật: **có nhu cầu thật ngay bây giờ thì đưa vào.**
 
 | Thứ định thêm | Nhu cầu thật là |
 |---|---|
@@ -183,70 +181,70 @@ vào** (NT1).
 | Guard, nhánh biên, `try/catch` | theo **một câu hỏi duy nhất** ở §3.4: *cái sai đó lộ ra lúc nào?* |
 | Code canh — hoặc tự tạo — thứ dựng được lúc authoring | **không có nhu cầu nào cả**: đó là bước setup, viết vào tài liệu (§3.6) |
 | Tối ưu làm code khó đọc hơn | **hot path đã xác nhận** bằng số đo (NT2) |
-| Tách lớp, tách class, tách component | **trách nhiệm thật sự khác** — khác lý do thay đổi (NT1) |
+| Tách lớp, tách class, tách component | **trách nhiệm thật sự khác** — khác lý do thay đổi |
 | Chương, mục, demo | có người đọc cần nó để **làm được một việc cụ thể** |
 
-Thứ chỉ "có thể cần sau" chia theo **giá của việc thêm sau**: **rẻ** (thêm mục hoặc hàm mới, không sửa
-cái cũ) thì **để lại**, ghi một dòng ở "Mở rộng sau" (§2.5) · **đắt** (sửa chữ ký, đập cấu trúc, đảo
-chiều phụ thuộc) thì làm ngay — chỗ **duy nhất** đáng phòng xa (NT1). **Tính mở rộng đến từ
-Open/Closed**, không từ việc viết sẵn thứ chưa ai cần.
+Thứ chỉ "có thể cần sau" chia theo **giá của việc thêm sau**: **rẻ** (thêm hàm mới, không sửa cái cũ)
+thì **để lại**, ghi một dòng ở "Mở rộng sau" (§2.5) · **đắt** (sửa chữ ký, đập cấu trúc, đảo chiều phụ
+thuộc) thì làm ngay — chỗ **duy nhất** đáng phòng xa. Tính mở rộng đến từ Open/Closed, không từ việc
+viết sẵn thứ chưa ai cần.
+
+### Đặt ở đâu — dự án hay Horcrux (NT3)
+
+Với **mỗi chức năng mới**, trước khi viết, trả lời: *bê sang dự án khác có dùng nguyên được không?*
+
+| Chức năng | Nơi đặt | Ai viết |
+|---|---|---|
+| Không gọi tên type nào của dự án; dự án sau cũng cần | Horcrux — `Foundations/` nếu là hệ, `Utilities/` nếu là helper thuần | **developer tự gõ**, theo **Plan** agent viết (§5.3) |
+| Dựng trên nhiều hệ Horcrux, vẫn không mang domain dự án | Horcrux — `Composites/` | developer, theo Plan |
+| Gọi tên domain của dự án | dự án | agent |
+| Lõi chung + lớp nối dự án | **tách**: lõi vào Horcrux theo Plan; lớp nối agent viết trong dự án | cả hai |
+
+Chiều phụ thuộc chỉ một: dự án → Horcrux (§3.2). Phân loại là **đề xuất kèm giá**, developer quyết
+(NT5) — nhưng việc hỏi là bắt buộc: **im lặng viết vào dự án thứ vốn mang đi được là vi phạm**, vì sửa
+chỗ đặt sau là đập cả cây phụ thuộc. Mọi dòng vào Horcrux developer tự gõ, trong hay ngoài Plan: framework
+đi theo mọi dự án sau nên developer phải hiểu và chịu trách nhiệm từng dòng; agent viết Plan, đoạn
+mẫu, review, test.
 
 ## 2.5 Ghi ngữ cảnh đã chốt vào đầu output
 
 Plan thì đặt mục **"Ngữ cảnh đã chốt"** trước `§0`; tài liệu thì nêu ở phần mở đầu. Gồm: người dùng ·
-mục tiêu · ranh giới · **những gì cố ý KHÔNG làm, kèm lý do** · hướng phát triển đã tính tới nhưng
-chưa làm (NT1). Người đọc sau biết vì sao phạm vi dừng ở đó, không "bổ sung cho đủ".
+mục tiêu · ranh giới · chỗ đặt (dự án hay Horcrux) · **những gì cố ý KHÔNG làm, kèm lý do** · hướng
+phát triển đã tính tới nhưng chưa làm ("Mở rộng sau"). Người đọc sau biết vì sao phạm vi dừng ở đó,
+không "bổ sung cho đủ".
 
-## 2.6 Chưng cất tư tưởng — khi brainstorm và khi developer gõ lệch plan
+## 2.6 Chưng cất tư tưởng
 
-Tư tưởng của developer lộ ra ở hai chỗ, đều dưới dạng **quyết định cho một bài toán cụ thể** và đều
-trôi mất khi bài toán xong: **câu trả lời khi brainstorm**, và **chỗ code thật lệch khỏi plan** —
-developer đọc plan rồi vẫn viết khác là kinh nghiệm thực tế và phong cách của họ đang nói, không phải
-sai sót mặc định. Với brainstorm, **ở từng câu hỏi**, sau khi nhận câu trả lời:
+Tư tưởng của developer lộ ra dưới dạng **quyết định cho một bài toán cụ thể** và trôi mất khi bài toán
+xong. Ba nguồn, ba nhịp ghi:
 
-1. **Khái quát hóa** — tách *tư tưởng* khỏi *quyết định riêng của bài toán*: phát biểu lại thành
-   nguyên tắc mang sang bài toán khác vẫn dùng được, kèm "vì sao".
-2. **Đối chiếu với chính file này** (NT7) — đã có thì thôi; là trường hợp riêng thì trỏ về; **mâu
-   thuẫn** với nguyên tắc đã có thì nêu thẳng chỗ lệch để developer phân xử.
-3. **Hỏi developer quyết** (NT5) — có thêm vào MY_SKILL không, vào **tầng nào**? Developer chốt thì
-   mới ghi, đúng cấu trúc và văn phong của file; từ chối thì bỏ, không ghi tạm đâu khác.
+| Nguồn | Khi nào | Cách ghi |
+|---|---|---|
+| **Câu trả lời khi brainstorm** | ở từng câu trả lời | ① khái quát hoá: tách *tư tưởng* khỏi *quyết định riêng của bài toán*, kèm "vì sao" · ② đối chiếu với file này: đã có thì thôi, là trường hợp riêng thì trỏ về, **mâu thuẫn** thì nêu chỗ lệch để developer phân xử · ③ **hỏi** developer có ghi không, vào tầng nào — chốt mới ghi, từ chối thì bỏ |
+| **Code thật lệch khỏi Plan** | lượt so code–plan sau mỗi step (§5.3) | phân loại từng chỗ lệch: *lỗi* → báo kèm bằng chứng (§2.2) · *trôi* (tên, thứ tự, chi tiết không mang lý do) → sync plan theo code · *tư tưởng* (đổi hình dạng, ranh giới, kiểu, cách tiêm, và lý do còn đúng ở bài toán khác) → ba bước trên **bỏ bước hỏi**: developer đã quyết bằng chính dòng code, ghi thẳng rồi liệt kê để veto. Chỗ lệch là nơi tư tưởng lộ rõ nhất: lý do ở đó luôn mạnh hơn plan, hoặc là lỗi — không có ca thứ ba |
+| **Quét cuối chat — bắt buộc, không đợi nhắc** | trước báo cáo hoàn thành của mỗi chat có làm việc | duyệt **cả chat**, tổng hợp vào file này mọi rule, tư tưởng, kịch bản dùng chung cho game Unity từ hai nguồn: thứ developer yêu cầu hoặc sửa, và gợi ý của agent mà developer đã đồng ý (kể cả bằng cách sửa code theo gợi ý). **Ghi thẳng, liệt kê nguyên văn trong báo cáo** để developer veto; nguồn không rõ thì nêu giả định, không đoán lặng lẽ |
 
 Chỉ khái quát khi câu trả lời **thật sự chứa tư tưởng** — một lựa chọn có "vì sao" lặp lại được. Quyết
-định thuần bài toán (hằng số, tên, phạm vi một task) thì không.
-
-**Với chỗ lệch plan**, lượt so code–plan (§5.3) phân loại từng chỗ trước: *lỗi* thì báo kèm bằng chứng
-(§2.2) · *trôi* (tên, thứ tự, chi tiết không mang lý do) thì sync plan theo code (§5.4) · *tư tưởng* —
-developer đổi hình dạng, ranh giới, kiểu, cách tiêm, và lý do còn đúng ở bài toán khác — thì chạy đúng
-ba bước trên, **bỏ bước hỏi**: developer đã quyết bằng chính dòng code, nên ghi thẳng rồi liệt kê nguyên
-văn trong báo cáo để veto, như quét cuối chat. Chỗ lệch là nơi tư tưởng lộ rõ nhất vì nó đi ngược một
-bản đã cân nhắc: lý do ở đó luôn mạnh hơn lý do trong plan, hoặc là lỗi — không có ca thứ ba.
-
-**Quét cuối chat — bắt buộc, không đợi nhắc.** Trước báo cáo hoàn thành của mỗi chat có làm việc, agent
-duyệt **cả chat** và tổng hợp vào file này mọi **rule, tư tưởng thiết kế hệ thống, kịch bản dùng chung cho
-các dự án game** thuộc hai nguồn: thứ developer yêu cầu hoặc sửa, và gợi ý của agent mà developer đã
-đồng ý (kể cả đồng ý bằng cách sửa code theo gợi ý). Ba luật:
-
-- **Không mang domain dự án** — bỏ tên type, tên hệ, hằng số của dự án; còn lại phải dùng được ở dự án game khác.
-- **Đối chiếu trước khi ghi** (NT7) — đã có thì thôi; là trường hợp riêng thì trỏ về; mâu thuẫn thì nêu chỗ lệch, không tự sửa.
-- **Ghi thẳng, liệt kê nguyên văn trong báo cáo** để developer veto; veto thì xoá. Đây là sự cho phép đứng
-  sẵn — bước hỏi của mục trên chỉ còn cho brainstorm giữa chừng. Nguồn không rõ (gợi ý nào được đồng ý?)
-  thì nêu giả định trong báo cáo, không đoán lặng lẽ (NT5).
+định thuần bài toán (hằng số, tên, phạm vi một task) thì không. Mọi dòng ghi vào file này: **không mang
+domain dự án** — bỏ tên type, tên hệ, hằng số của dự án; đúng cấu trúc và văn phong của file; đối chiếu
+trước khi ghi (NT7). Hai loại câu hỏi **không cộng dồn**: §2.1 hỏi để lấy ngữ cảnh — gộp lượt; mục này
+hỏi để chốt một nguyên tắc — hiếm.
 
 ## 2.7 Subagent — ngữ cảnh bơm từ orchestrator, không tự đọc lại
 
-Mỗi subagent là một ngữ cảnh trắng: để nó "tự tìm hiểu" là nó đọc lại từ đầu MY_SKILL và tài liệu hệ,
-thuế đọc đó **nhân theo số subagent**. *Đã sai một lần:* hàng trăm subagent tự đọc lại tài liệu nền
-trong một ngày đốt token gấp hơn chục lần nhịp thường.
+Mỗi subagent là một ngữ cảnh trắng: để nó "tự tìm hiểu" là nó đọc lại từ đầu file này và tài liệu hệ,
+thuế đọc **nhân theo số subagent**. *Đã sai một lần:* hàng trăm subagent tự đọc lại tài liệu nền trong
+một ngày đốt token gấp hơn chục lần nhịp thường.
 
 - Prompt cho subagent **tự chứa như một task của Plan** (§5.3): trích đoạn tài liệu cần cho task,
   đường dẫn file sẽ chạm, tiêu chí nghiệm thu. Thiếu ngữ cảnh thì subagent báo về, không tự đi đọc.
-- Ngoại lệ là **code**: subagent tự đọc code nó sẽ sửa — trích đoạn code trong prompt là bản chết
-  (§5.4 "không viết theo trí nhớ" áp cho cả prompt).
+- Ngoại lệ là **code**: subagent tự đọc code nó sẽ sửa — trích đoạn code trong prompt là bản chết.
 
 ## 2.8 Nghiệm thu — chọn phép kiểm theo loại tiêu chí
 
 NT8 đòi bằng chứng; mục này nói bằng chứng **nào** hợp tiêu chí nào. Chọn sai thì lãng phí cả hai
 phía: dựng lệnh cho thứ chỉ chơi thử mới biết, hoặc đẩy về tay developer thứ máy quét vài giây là xong.
+Cái neo khi phân vân: **công sức đắt nhất trong nghiệm thu là của developer.**
 
 | Tiêu chí cần chứng minh | Bằng chứng đúng loại | Ai chạy |
 |---|---|---|
@@ -255,49 +253,45 @@ phía: dựng lệnh cho thứ chỉ chơi thử mới biết, hoặc đẩy v�
 | Hiệu năng | số trước–sau tại chỗ đo (§3.3) | agent |
 | Đúng–sai xác định được, mà người làm tay thì chậm, sót, hoặc không thấy được | vét cạn theo bảng dưới | agent, **tự đề xuất** |
 | Cảm giác chơi, nhịp, độ khó, hình ảnh | **chơi thử** | **developer** |
-| Kịch bản hành vi trên build — event, kinh tế, save, tutorial | **chơi qua kịch bản**, cheat rút đường tới trạng thái cần kiểm (khối cuối mục) | **developer, QA** |
+| Kịch bản hành vi trên build — event, kinh tế, save, tutorial | **chơi qua kịch bản**, cheat rút đường tới trạng thái cần kiểm | **developer, QA** |
 
 **Cảm giác chơi — DỪNG và giao, không dựng proxy.** Ép nó về một lệnh chạy được là **đo thứ dễ đo
 thay cho thứ cần biết**. Báo thẳng *"phần này chưa nghiệm thu được, cần chơi thử"*, kèm **kịch bản
-chơi thử**: *vào đâu* (level nào, cần bật cờ hoặc dữ liệu gì) · *làm gì* (chuỗi thao tác **ngắn nhất**
-tái lập được) · *nhìn cái gì* (hiện tượng cụ thể, không phải "xem có ổn không") · *khác trước ra sao* ·
-*dấu hiệu hỏng*.
+chơi thử**: *vào đâu* (level, cờ, dữ liệu cần bật) · *làm gì* (chuỗi thao tác **ngắn nhất**) · *nhìn cái
+gì* (hiện tượng cụ thể, không phải "xem có ổn không") · *khác trước ra sao* · *dấu hiệu hỏng*.
 
-**Đúng–sai xác định được — vét cạn, không đẩy về tay.** Điều kiện là **cả hai**: có đáp án đúng–sai
-xác định được, **và** ít nhất một dấu hiệu trong bảng. Đủ thì agent làm và chạy, kể cả khi chưa được
-yêu cầu.
+**Đúng–sai xác định được — vét cạn, không đẩy về tay.** Điều kiện là **cả hai**: có đáp án xác định
+được, **và** ít nhất một dấu hiệu dưới. Đủ thì agent làm và chạy, kể cả khi chưa được yêu cầu.
 
 | Máy hơn người ở | Dấu hiệu nhận ra | Người làm tay hỏng ở đâu |
 |---|---|---|
 | **Sức** | không gian đầu vào lớn · phải lặp lại nhiều lần | chậm, và sót vì mỏi |
 | **Thiên kiến** | trường hợp biên khó nghĩ ra hết | chỉ thử được thứ mình nghĩ ra, mà chỗ hỏng nằm đúng ở chỗ không ai nghĩ tới |
-| **Tầm nhìn** | phải chứng minh **sự vắng mặt**: không còn tham chiếu, caller, tên cũ · trạng thái nội bộ sai trong khi màn hình vẫn đúng (§3.4) · thứ chỉ lộ sau hàng nghìn vòng: rò rỉ, phình dần, pool không trả về | mắt không thấy được thứ *không có* |
-| **Nhất quán chéo** | nhiều bản buộc phải khớp nhau mà không suy từ một nguồn được (§3.4) · hành vi trước–sau một lần refactor phải trùng (NT6) | phải mở nhiều nguồn cạnh nhau so từng dòng — sót nhiều nhất |
+| **Tầm nhìn** | phải chứng minh **sự vắng mặt**: không còn tham chiếu, caller, tên cũ · trạng thái nội bộ sai trong khi màn hình vẫn đúng · thứ chỉ lộ sau hàng nghìn vòng: rò rỉ, pool không trả về | mắt không thấy được thứ *không có* |
+| **Nhất quán chéo** | nhiều bản buộc phải khớp nhau (§3.4) · hành vi trước–sau một lần refactor phải trùng (NT6) | phải mở nhiều nguồn cạnh nhau so từng dòng |
 
 Riêng nhánh **thiên kiến**, phần đắt giá là **liệt kê biên có hệ thống trước khi chạy**: rỗng · đúng
 một phần tử · chạm giới hạn trên và dưới · trùng nhau · ngoài dải · thứ tự đảo · hai sự kiện cùng lúc ·
-frame đầu tiên · đối tượng bị huỷ giữa chừng. Không dấu hiệu nào thì đọc code là xong (NT1). Cái neo
-khi phân vân: **công sức đắt nhất trong nghiệm thu là của developer**.
+frame đầu tiên · đối tượng bị huỷ giữa chừng. Không dấu hiệu nào thì đọc code là xong (NT1).
 
-**Cheat — mở đường tới kịch bản, không mở nắp kỹ thuật.** Chơi thử và kịch bản hành vi cần **tới được trạng thái**
-cần kiểm; cheat tồn tại đúng để rút ngắn đường đó, cho developer và QA. Một lệnh chỉ chính đáng khi kịch bản **không
-tới được bằng đường người chơi trong thời gian hợp lý**: thời gian (hết tuần, hết cửa sổ) · khối lượng (đủ điểm cho mốc
-cuối) · trạng thái ban đầu (save mới, tutorial chưa xem). Thứ chơi là tới — mở một màn, tăng một bậc, xem một số — thì
-QA đi đúng đường người chơi; cheat cho nó là kiểm kỹ thuật đội lốt kiểm hành vi, và mỗi nút là một dòng phải giữ đúng
-mãi (NT1). Hàng đọc chỉ cho **thứ màn hình không hiện** (một enum trạng thái, một số thô để đối chiếu). Mặt cheat đọc
-qua API **sẵn có** của hệ — **không sinh property `Debug*` bọc lại thứ đã public**; lệnh riêng chỉ khi phải chạm
-`private` (đổi save, giả thời gian), và khi đó nó gọi đúng lệnh thật của hệ, không đi tắt qua state. Plan liệt kê
-cheat theo tiêu chí này (§5.3); developer bảo hệ cần thêm thì mới thêm.
+**Cheat — mở đường tới kịch bản, không mở nắp kỹ thuật.** Một lệnh chỉ chính đáng khi kịch bản **không
+tới được bằng đường người chơi trong thời gian hợp lý**: thời gian (hết tuần, hết cửa sổ) · khối lượng
+(đủ điểm cho mốc cuối) · trạng thái ban đầu (save mới, tutorial chưa xem). Thứ chơi là tới thì QA đi
+đúng đường người chơi; cheat cho nó là kiểm kỹ thuật đội lốt kiểm hành vi, và mỗi nút là một dòng phải
+giữ đúng mãi. Hàng đọc chỉ cho **thứ màn hình không hiện**. Mặt cheat đọc qua API **sẵn có** của hệ —
+không sinh property `Debug*` bọc lại thứ đã public; lệnh riêng chỉ khi phải chạm `private` (đổi save,
+giả thời gian), và khi đó gọi đúng lệnh thật của hệ, không đi tắt qua state. Plan liệt kê cheat theo
+tiêu chí này (§5.3); developer bảo cần thêm thì mới thêm.
 
-> **Nền tảng** — tab Options của SRDebugger, một category mỗi hệ. **Có trong bản build chính thức, không `#if`**, vì
-> QA kiểm trên đúng bản người chơi cầm. Cách **mở** panel là của developer từng dự án, giấu khỏi người chơi; agent
-> không thiết kế và không viết nó. Trigger của SRDebugger để `Off`, nên `Init()` không hiện gì.
+> **Nền tảng** — tab Options của SRDebugger, một category mỗi hệ. **Có trong bản build chính thức, không
+> `#if`**, vì QA kiểm trên đúng bản người chơi cầm. Cách **mở** panel là của developer từng dự án, giấu
+> khỏi người chơi; agent không thiết kế và không viết nó. Trigger của SRDebugger để `Off`.
 
-**Sổ tay** — partial `<Hệ>.Debug.cs` giữ lệnh (với tới `private`), plain class `<Hệ>DebugOptions` giữ hàng UI, nhận
-hệ qua constructor · `Init/Dispose` ở `Awake/OnDestroy` · container `internal sealed`, không public gì ngoài hàng vì
-SRDebugger quét mọi public member · hàng đọc là `string` read-only · lệnh có tham số = một property số + một method
-không tham số, ô nhập xếp ngay trên nút · `INotifyPropertyChanged` bắn `null` sau mỗi lệnh để hàng đọc cập nhật ·
-chưa có save thì hàng nói lý do (`-- no save bound`) thay vì NRE.
+**Sổ tay** — partial `<Hệ>.Debug.cs` giữ lệnh (với tới `private`), plain class `<Hệ>DebugOptions` giữ
+hàng UI, nhận hệ qua constructor · `Init/Dispose` ở `Awake/OnDestroy` · container `internal sealed`,
+không public gì ngoài hàng vì SRDebugger quét mọi public member · hàng đọc là `string` read-only · lệnh
+có tham số = một property số + một method không tham số · `INotifyPropertyChanged` bắn `null` sau mỗi
+lệnh để hàng đọc cập nhật · chưa có save thì hàng nói lý do thay vì NRE.
 
 ---
 
@@ -310,121 +304,95 @@ bất biến · §3.5 async — **luật ngang mọi code** §3.7 naming · §3.
 
 | | Nội dung |
 |---|---|
-| **S** | Một class là một responsibility. Tách khi có nhiều hơn một **lý do thay đổi** — không tách theo "cho gọn mắt" (NT1, §0.1). |
-| **O** | Extend, don't modify. Không sửa trực tiếp class đang chạy ổn định — mở rộng bằng cơ chế phù hợp với bài toán. |
+| **S** | Một class là một responsibility. Tách khi có nhiều hơn một **lý do thay đổi** — không tách theo "cho gọn mắt" (§0.1). |
+| **O** | Extend, don't modify. `O` cấm **đổi hành vi đường cũ**, không cấm **thêm đường mới vào chính class đó**: thêm method hoặc tham số mà đường cũ không đụng là đã đạt `O`. Phải đổi hành vi đường cũ nghĩa là **trách nhiệm mới** — tách class. `O` **không phải lý do để leo bậc** (bảng dưới). |
 | **L** | Subtype thay thế được base mà không break behavior, không side-effect lạ. |
 | **I** | Interface nhỏ, tách theo consumer. Không ép client phụ thuộc method nó không dùng. |
-| **D** | **Consumer không tự `new` thứ nó phụ thuộc** — nó nhận vào (factory, pool, container thì đương nhiên phải `new`). `D` **không đòi interface**: **trong một hệ**, nhận vào class cụ thể vẫn là "nhận vào". **Qua ranh giới hệ** thì theo §3.2. |
+| **D** | **Consumer không tự `new` thứ nó phụ thuộc** — nó nhận vào (factory, pool, container thì đương nhiên phải `new`). `D` **không đòi interface**: trong một hệ, nhận vào class cụ thể vẫn là "nhận vào". Qua ranh giới hệ thì theo §3.2. |
 
 > **Nền tảng** — DI runtime mặc định là InitArgs (`Sisus.Init`): `[Service(typeof(T))]` để đăng ký,
 > `MonoBehaviour<TDep>` + `Init(TDep)` để nhận. **Mỗi class chỉ có MỘT khe `Init` mà framework tự
-> gọi** — base generic của thư viện đã tiêu khe đó thì `IInitializable<…>` khai thêm ở class con
-> **không ai gọi** (đường tự tiêm thoát sớm, dòng log báo việc đó nằm trong `#if DEV_MODE`). Ca này
-> **bắt buộc** một `*Initializer` kéo tay vào scene; hai đường tiêm độc lập, không phá nhau. Editor và
-> tooling không bắt buộc dùng InitArgs — constructor injection hoặc static factory ở đó là hợp lệ.
-> `Awake` của base gọi `Init` **trước** `OnAwake`, và hoãn `OnAwake` khi một Initializer đang tiêm dở —
-> nên dùng phụ thuộc đã tiêm trong `OnAwake` an toàn ngang `Start`: thiếu service thì cả hai cùng null.
+> gọi** — base generic đã tiêu khe đó thì `IInitializable<…>` khai thêm ở class con **không ai gọi**
+> (đường tự tiêm thoát sớm, log chỉ có trong `#if DEV_MODE`). Ca này **bắt buộc** một `*Initializer`
+> kéo tay vào scene. Editor và tooling không bắt buộc dùng InitArgs — constructor injection hoặc static
+> factory ở đó hợp lệ. `Awake` của base gọi `Init` **trước** `OnAwake`, nên dùng phụ thuộc đã tiêm trong
+> `OnAwake` an toàn ngang `Start`.
 
 **Đổi từ resolve lười sang resolve sớm là dịch cửa sổ thất bại, không phải bỏ nó.** Gọi lúc dùng thì
-hỏng lúc dùng; nhận qua `Init` thì hỏng lúc khởi tạo. Đổi chiều nào cũng phải hỏi lại: **lúc đó thứ
-mình cần đã tồn tại chưa?** — thứ tự `Awake` giữa các object không định trước, và service tìm-từ-scene
-chỉ có sau khi scene chứa nó nạp xong.
+hỏng lúc dùng; nhận qua `Init` thì hỏng lúc khởi tạo. Đổi chiều nào cũng phải hỏi: **lúc đó thứ mình
+cần đã tồn tại chưa?** — thứ tự `Awake` giữa các object không định trước.
 
-**Bậc cấu trúc leo từ dưới lên, mỗi bậc chỉ leo khi bậc dưới không còn đạt** (NT1). SOLID phục vụ
-**người đọc sau**: chia thiếu và chia thừa đều sai ở cùng một chỗ là **chi phí đọc**.
+**Bậc cấu trúc leo từ dưới lên, mỗi bậc chỉ leo khi bậc dưới không còn đạt** (NT1).
 
 | Bậc | Đủ dùng khi | Leo lên bậc trên khi |
 |---|---|---|
 | **Logic tại chỗ** | chỉ chạy ở một nơi, đọc một mạch là hiểu hết | có **người gọi thứ hai**, hoặc một ý không còn nhìn hết trong một màn hình |
 | **Hàm tách riêng** | đặt được tên nói đúng mục đích (§3.7); không giữ state giữa các lần gọi | phát sinh **state phải giữ**, hoặc một cụm hàm cùng thao tác trên một nhóm dữ liệu |
-| **Class hoặc struct** | có **trách nhiệm gọi được tên** và state của riêng nó (`S`); `struct` hay `class` theo §3.3 | có **implementation thứ hai** đang có thật (§2.4) |
-| **Delegate làm tham số** | thân thuật toán **giống hệt nhau** ở mọi biến thể, chỉ khác **một thao tác** gọi được tên, biến thể **không giữ state riêng**. Khai `static readonly Func<…>` với lambda `static`: bắt biến ngoài thành **lỗi biên dịch** thay vì rác GC âm thầm (NT2). Callback sinh ở call site thì **chữ ký trả lại chủ thể** (`Action<Transform>` nhận đúng transform vừa chạy) để handler là method group `static` — bất biến "không cấp phát" nằm ở chữ ký, không ở kỷ luật người gọi | biến thể cần **state riêng**, hoặc **hơn một thao tác** đi cùng nhau — lúc đó nó đã là interface |
+| **Class hoặc struct** | có **trách nhiệm gọi được tên** và state của riêng nó (`S`) | có **implementation thứ hai** đang có thật |
+| **Delegate làm tham số** | thân thuật toán **giống hệt** ở mọi biến thể, chỉ khác **một thao tác** gọi được tên, biến thể **không giữ state riêng**. Khai `static readonly Func<…>` với lambda `static`: bắt biến ngoài thành **lỗi biên dịch** thay vì rác GC âm thầm (NT2). Callback sinh ở call site thì **chữ ký trả lại chủ thể** (`Action<Transform>` nhận đúng transform vừa chạy) để handler là method group `static` — bất biến "không cấp phát" nằm ở chữ ký, không ở kỷ luật người gọi | biến thể cần **state riêng**, hoặc **hơn một thao tác** đi cùng nhau — lúc đó nó đã là interface |
 | **Interface hoặc abstract** | implementation thứ hai **đang có thật**, không phải sắp có | — |
-
-**`MonoBehaviour` · `ScriptableObject` · class thuần không phải ba bậc của thang trên.** Thang trả lời
-*chia tới đâu*; ba thứ này trả lời *đóng gói ở đâu* — hỏi **sau**, khi đã biết là cần một class. Gộp
-hai câu hỏi làm một là cách một dự án trượt tới chỗ mọi thứ đều là asset.
-
-| Nó làm gì | Là gì | Vì |
-|---|---|---|
-| trả lời câu hỏi từ **tham số truyền vào**, không giữ gì | **class thuần static** | test không phải dựng gì; không thêm một asset có thể quên kéo |
-| trả lời câu hỏi từ **dữ liệu của chính nó**, dữ liệu do người dựng đặt | **`ScriptableObject`** | dữ liệu là cấu hình, và asset thì kéo được từ mọi nơi (§3.6) |
-| **làm gì đó theo thời gian** — loop, chờ, subscribe, ghi ra ngoài | **`MonoBehaviour`**, hoặc class thuần do một `MonoBehaviour` sở hữu | cần một **mốc chết tin được** để tắt |
-
-Phép kiểm của hàng cuối là **"có cần tắt được không"**, không phải "có cần vòng đời không": câu sau khó
-trả lời, câu trước trả lời được ngay.
-
-> **Nền tảng** — `ScriptableObject` dừng ở **dữ liệu**: cấu hình, bảng số, danh mục, preset. Không làm
-> kênh sự kiện, không làm biến dùng chung, không giữ state đổi lúc chạy, **không tự mở
-> `CancellationTokenSource`**. Ba lý do: field serialize của asset bị đổi lúc Play **không quay lại**
-> khi dừng Play — ra "máy tôi chạy được" mà không một dòng log · asset chỉ nạp lúc có người chạm vào
-> lần đầu nên **không có thứ tự khởi tạo** để dựa vào · nó không có mốc kết thúc nào để đóng token.
-
-**`O` không phải lý do để leo bậc.** `O` cấm **đổi hành vi đường cũ**, không cấm **thêm đường mới vào
-chính class đó**: thêm method hoặc tham số mới mà đường cũ không đụng là đã đạt `O`. Phải đổi hành vi
-đường cũ nghĩa là **trách nhiệm mới** — tách class; chỉ khi có implementation thứ hai đang có thật mới
-dựng interface.
-
-**Một tiền tố chung không phải một hệ.** Một họ helper cùng tiền tố (`Charm*` kéo một property về đích)
-không kéo theo nghĩa vụ dựng sequence, loop, bảng easing cho đủ bộ — hệ chỉ dựng khi người dùng thứ hai
-đòi thứ helper không làm được (NT1). Runner tổng quát nhận lambda chỉ còn cho công thức tự do.
-
-**Một wrapper chỉ đặt tên cho một bộ hằng là một cửa thừa.** `SnapVerticalToBottom(item)` gọi
-`SnapVertical(item, 0, 0)`, `…ToTop` gọi `(1, 1)`: hai hàm không có logic, chỉ có tên — mà caller duy
-nhất đã nói rõ hướng bằng trạng thái của chính nó (`scrollDirection`), nên tên đó nói hai lần một điều.
-Mỗi cửa thêm là một chữ ký phải doc, test và giữ đúng mãi (NT1). Wrapper chỉ chính đáng khi bộ hằng đó
-**mã hoá một luật caller không nên biết**, hoặc khi người gọi thứ hai cần đúng bộ đó (§2.4).
-
-**Ba hình dạng composite — viết lý do ra tại chỗ trước khi dùng.** Không cấm, nhưng mặc định là không,
-và mỗi lần dùng phải gọi tên được thứ bậc thấp hơn không làm được (NT1). Thước đo là **phạm vi bài
-toán**: cùng một cách chia có thể đúng ở hệ nhiều người chạm và thừa ở một tính năng cục bộ.
-
-| Hình dạng | Giá phải trả | Chỉ dùng khi |
-|---|---|---|
-| **Cây composite** — cha và lá cùng interface, duyệt đệ quy | hành vi không nằm ở đâu cả, phải chạy mới biết; mỗi nút một dispatch ảo và một lần con trỏ nhảy, trong nhịp mỗi frame là trả giá theo số nút (NT2) | **cấu trúc lồng nhau là của dữ liệu thật** — độ sâu do người dùng hoặc dữ liệu tạo ra, không do người viết chọn cho đẹp |
-| **Một tính năng xé thành nhiều MonoBehaviour** | thứ tự `Awake`/`Update` giữa các mảnh **không định trước**, wire thiếu chỉ lộ lúc chạy, mỗi mảnh là một lần engine gọi message qua ranh giới native | các mảnh **thật sự lắp lẫn được** giữa nhiều prefab, và **tổ hợp đó đang tồn tại thật** — không phải "mỗi việc một component cho sạch" |
-| **Hệ dựng chồng lên nhiều hệ khác** (hệ kết hợp) | không rời đi một mình được (NT3) | không tách nổi thành các hệ độc lập cộng một lớp nối mỏng; khi đó vẫn phải chỉ ra đường tách (§3.2) |
 
 **Bậc delegate giữ bất biến của vòng lặp ở đúng một bản.** Khi n biến thể dùng chung một vòng lặp, thứ
 chỉ được có **một bản** là bất biến của vòng lặp — thứ tự chạy, phát tiến độ, xử lý lỗi, điểm thoát khi
 bị huỷ. Nhân vòng lặp ra n bản, hoặc cắm `if` biến thể vào giữa, là nhân bất biến ra n bản (NT7).
 
-**Nhiều host chung một nhịp: thân về nơi giữ bảo đảm, đời sống ở lại host.** Thân vòng lặp và con số
-cấu hình về nơi giữ bảo đảm mà nhịp đó phục vụ — con số nằm cạnh dữ liệu nó chi phối thì đọc một chỗ ra
-hết. **Token** ở lại host vì host là thứ **có đời sống**. **Mỗi loop phải chỉ ra được token của nó là
-đời của ai, và đời đó dài đúng bằng nhịp** — nhận token của pha ngắn hơn đời nó thì loop **chết im
-lặng**: hủy là hành vi hợp đồng, thư viện async không log, phần còn lại vẫn chạy như thường. Loop không
-có chủ thì ở Editor tắt domain reload, mỗi lần Play là một loop nữa xếp lên loop cũ. Editor không bắt
-được ca này, phải đọc code.
+**`MonoBehaviour` · `ScriptableObject` · class thuần không phải ba bậc của thang trên.** Thang trả lời
+*chia tới đâu*; ba thứ này trả lời *đóng gói ở đâu* — hỏi **sau**, khi đã biết là cần một class.
 
-> **Nền tảng** — thứ tự region trong một class là **cố định**: `Properties` trên cùng ·
-> `Unity Callbacks` · `API` (thứ người ngoài gọi) · `Class Methods` (thân private) · `DI` **cuối
-> class**, gói field nhận vào cùng `Init`. Trình tự **trạng thái → vòng đời → mặt ngoài → thân**: mở
-> file ra là thấy class giữ gì trước khi thấy nó làm gì; phụ thuộc xuống cuối vì đó là thứ hỏi sau cùng.
+| Nó làm gì | Là gì | Vì |
+|---|---|---|
+| trả lời câu hỏi từ **tham số truyền vào**, không giữ gì | **class thuần static** | test không phải dựng gì; không thêm một asset có thể quên kéo |
+| trả lời câu hỏi từ **dữ liệu của chính nó**, dữ liệu do người dựng đặt | **`ScriptableObject`** | dữ liệu là cấu hình, và asset thì kéo được từ mọi nơi (§3.6) |
+| **làm gì đó theo thời gian** — loop, chờ, subscribe, ghi ra ngoài | **`MonoBehaviour`**, hoặc class thuần do một `MonoBehaviour` sở hữu | cần một **mốc chết tin được** để tắt. Phép kiểm là *"có cần tắt được không"*, không phải *"có cần vòng đời không"* |
+
+> **Nền tảng** — `ScriptableObject` dừng ở **dữ liệu**: cấu hình, bảng số, danh mục, preset. Không làm
+> kênh sự kiện, không làm biến dùng chung, không giữ state đổi lúc chạy, không tự mở
+> `CancellationTokenSource`. Ba lý do: field serialize bị đổi lúc Play **không quay lại** khi dừng Play
+> — ra "máy tôi chạy được" không một dòng log · asset chỉ nạp lúc có người chạm lần đầu nên **không có
+> thứ tự khởi tạo** để dựa vào · không có mốc kết thúc nào để đóng token.
+
+**Một tiền tố chung không phải một hệ; một wrapper chỉ đặt tên cho một bộ hằng là một cửa thừa.** Một
+họ helper cùng tiền tố không kéo theo nghĩa vụ dựng sequence, loop, bảng easing cho đủ bộ — hệ chỉ dựng
+khi người dùng thứ hai đòi thứ helper không làm được. Hai hàm `…ToBottom()` / `…ToTop()` chỉ gọi cùng
+một thân với hai bộ hằng, trong khi caller duy nhất đã nói hướng bằng trạng thái của chính nó, là tên
+nói hai lần một điều. Wrapper chỉ chính đáng khi bộ hằng **mã hoá một luật caller không nên biết**,
+hoặc người gọi thứ hai cần đúng bộ đó.
+
+**Ba hình dạng composite — viết lý do ra tại chỗ trước khi dùng.** Không cấm, nhưng mặc định là không,
+và mỗi lần dùng phải gọi tên được thứ bậc thấp hơn không làm được. Thước đo là **phạm vi bài toán**:
+cùng một cách chia có thể đúng ở hệ nhiều người chạm và thừa ở một tính năng cục bộ.
+
+| Hình dạng | Giá phải trả | Chỉ dùng khi |
+|---|---|---|
+| **Cây composite** — cha và lá cùng interface, duyệt đệ quy | hành vi không nằm ở đâu cả, phải chạy mới biết; mỗi nút một dispatch ảo và một lần con trỏ nhảy, trong nhịp mỗi frame là trả giá theo số nút (NT2) | **cấu trúc lồng nhau là của dữ liệu thật** — độ sâu do người dùng hoặc dữ liệu tạo ra, không do người viết chọn cho đẹp |
+| **Một tính năng xé thành nhiều MonoBehaviour** | thứ tự `Awake`/`Update` giữa các mảnh **không định trước**, wire thiếu chỉ lộ lúc chạy, mỗi mảnh là một lần engine gọi message qua ranh giới native | các mảnh **thật sự lắp lẫn được** giữa nhiều prefab, và **tổ hợp đó đang tồn tại thật** |
+| **Hệ dựng chồng lên nhiều hệ khác** (hệ kết hợp) | không rời đi một mình được (NT3) | không tách nổi thành các hệ độc lập cộng một lớp nối mỏng; khi đó vẫn phải chỉ ra đường tách (§3.2) |
+
+> **Nền tảng** — thứ tự region trong một class là **cố định**: `Properties` trên cùng · `Unity Callbacks`
+> · `API` (thứ người ngoài gọi) · `Class Methods` (thân private) · `DI` **cuối class**, gói field nhận
+> vào cùng `Init`. Trình tự **trạng thái → vòng đời → mặt ngoài → thân**: mở file ra là thấy class giữ gì
+> trước khi thấy nó làm gì.
 
 > **Nền tảng** — **Callback của Unity là cửa mỏng: thân nằm trong hàm có tên, cửa chỉ gọi hàm đó.**
-> `OnEnable` gọi `Show()`, `Awake` gọi `Init` rồi `Bind` — mỗi callback một dòng hoặc một chuỗi lời gọi
-> tường minh, đọc callback là thấy trình tự. Thứ tự giữa nhiều việc, nhiều object do **một chủ gọi** xếp
-> bằng lời gọi tường minh, không trông vào thứ tự `Awake`/`OnEnable` engine chọn giữa các object (không
-> định trước) hay Script Execution Order (cấu hình ẩn ngoài code). Lợi hai đầu: thứ tự chắc, và hàm có tên
-> sẵn cho người gọi thứ hai — view hôm nay tự chạy, mai host gọi `Show()` thẳng mà không đổi cấu trúc. Giá
-> là một method, nên không phải phòng xa (NT1). **Chấp nhận để engine gọi** khi chủ gọi tường minh phải
-> trả giá lớn: biết một kiểu qua ranh giới không được biết (package hay framework gọi tên module của dự án
-> §3.2), hay kéo tham chiếu qua nhiều object chỉ để gọi một dòng — lúc đó view tự chạy ở callback, nhưng
-> callback vẫn chỉ là cửa gọi hàm có tên.
+> `OnEnable` gọi `Show()`, `Awake` gọi `Init` rồi `Bind` — đọc callback là thấy trình tự. Thứ tự giữa
+> nhiều việc, nhiều object do **một chủ gọi** xếp bằng lời gọi tường minh, không trông vào thứ tự
+> `Awake`/`OnEnable` engine chọn (không định trước) hay Script Execution Order (cấu hình ẩn ngoài code).
+> Lợi hai đầu: thứ tự chắc, và hàm có tên sẵn cho người gọi thứ hai. **Chấp nhận để engine gọi** khi chủ
+> gọi tường minh phải trả giá lớn: biết một kiểu qua ranh giới không được biết (§3.2), hay kéo tham chiếu
+> qua nhiều object chỉ để gọi một dòng — khi đó callback vẫn chỉ là cửa gọi hàm có tên.
 
-**Sổ tay** — hình dạng file và class đang dùng trong bộ này:
+**Sổ tay** — hình dạng file và class đang dùng trong Horcrux:
 
 | Chỗ | Cách làm |
 |---|---|
 | Code chỉ có ở Editor | file `*.Editor.cs` khai `partial` của cùng class, **bên trong vẫn** `#if UNITY_EDITOR` — file runtime không bị `#if` cắt ngang, nút Editor đọc thẳng private member |
 | Nhận phụ thuộc | `MonoBehaviour<T>` cho component thường · `IInitializable<T>` khi class đã kế thừa base khác · không service locator bên trong hệ |
-| Helper thao tác lên một object có sẵn | extension method trên type đó, file partial `<Type>Extensions.<Nhóm>.cs` cạnh `<Type>Extensions.cs` — call site đọc thành câu, tìm được từ chính object, không bao giờ che instance method (§3.4) |
+| Helper thao tác lên một object có sẵn | extension method trên type đó, file partial `<Type>Extensions.<Nhóm>.cs` — call site đọc thành câu, tìm được từ chính object, không bao giờ che instance method (§3.4) |
 | Dựng host | hệ **không** tự `new GameObject` — host là component kéo tay vào scene, chu kỳ và collection đọc được trong Inspector (§3.6) |
 | Field serialize | nhóm bằng `[Splitter("References")]` (ô kéo) rồi `[Splitter("Configs")]` (số chỉnh), References đứng trước — mở Inspector thấy ngay thứ **phải nối** trước thứ có thể để mặc định |
-| Field private runtime | tiền tố `_` (`_module`, `_isOpen`); field `[SerializeField]` **không** `_` — đọc tên trong thân hàm biết giá trị đến từ Inspector hay từ code, không cần cuộn lên khai báo. Code mới theo luật này; Horcrux cũ chưa đổi hàng loạt (§3.7 casing) |
+| Field private runtime | tiền tố `_` (`_module`, `_isOpen`); field `[SerializeField]` **không** `_` — đọc tên trong thân hàm biết giá trị đến từ Inspector hay từ code |
 | Log | mọi dòng mở bằng `[TênHệ]: ` để filter console; kèm `this` làm context object để bấm vào ra đúng asset |
-| Cụm núm tinh chỉnh của một helper chuyển động | struct `[Serializable]` gom các núm đi cùng nhau, truyền nguyên vào helper — chữ ký không mọc theo số núm, designer chỉnh trong Inspector (§3.6), dải hợp lệ khai bằng `[Min]` (§3.4). Biến thể loại trừ nhau là **overload nhận spec riêng**, không phải một spec mang cờ chế độ, và không chồng hiệu ứng của biến thể kia lên |
+| Cụm núm tinh chỉnh của một helper chuyển động | struct `[Serializable]` gom các núm đi cùng nhau, truyền nguyên vào helper — chữ ký không mọc theo số núm, dải hợp lệ khai bằng `[Min]`. Biến thể loại trừ nhau là **overload nhận spec riêng**, không phải một spec mang cờ chế độ |
 | Hàm một biểu thức | expression-bodied (`=>`), kể cả method `void` |
 | Ẩn method của contract | mặc định `public` — tin người dùng hệ. Explicit interface implementation **chỉ cho method mà gọi sai gây mất dữ liệu im lặng** |
 
@@ -432,59 +400,52 @@ có chủ thì ở Editor tắt domain reload, mỗi lần Play là một loop n
 
 Ranh giới hệ thống phải **nhìn thấy được** trong cấu trúc dự án; mỗi hệ có một trách nhiệm gọi được
 tên. **Module không tham chiếu trực tiếp implementation của nhau** — cơ chế trung gian chọn theo bài
-toán (interface, event bus, ScriptableObject channel, dữ liệu thuần), miễn đạt: đổi implementation một
-bên mà bên kia không phải sửa. Bên trong một hệ thì không cần tầng này (`D` ở §3.1).
+toán (interface, event bus, dữ liệu thuần), miễn đạt: đổi implementation một bên mà bên kia không phải
+sửa. Bên trong một hệ thì không cần tầng này (`D` ở §3.1).
 
 **Phân tầng theo mức phụ thuộc, quyết ngay từ đầu** (NT3): hệ **độc lập** (bê sang dự án khác được) ·
 hệ **kết hợp** (dựng trên nhiều hệ độc lập) · **Utilities** static và universal, không phụ thuộc hệ nào.
 
-**Sổ tay** — bộ này bày tầng đó ra thư mục, để chỗ đặt file trả lời câu hỏi của NT3 mà không mở code:
+**Sổ tay** — Horcrux bày tầng đó ra thư mục, để chỗ đặt file trả lời câu hỏi của NT3 mà không mở code:
 `Abstractions/` giữ thứ dự án **gọi tên** (interface, base `A*`, model thuần, event, hằng) ·
 `Implementations/` giữ class cụ thể dự án chỉ **wire** vào scene (host, bootstep, `*Initializer`) ·
-trong mỗi bên `Foundations/` là hệ độc lập, `Composites/` là hệ kết hợp. Một file đặt nhầm bên là một
-phụ thuộc giấu: dự án gọi tên class trong `Implementations/` thì đổi implementation bên đó là sửa dự án.
+trong mỗi bên `Foundations/` là hệ độc lập, `Composites/` là hệ kết hợp · `Utilities/` ngoài cả hai.
+Một file đặt nhầm bên là một phụ thuộc giấu: dự án gọi tên class trong `Implementations/` thì đổi
+implementation bên đó là sửa dự án.
 
-**Ranh giới framework dùng chung ↔ dự án đi đúng một chiều: dự án → framework.** Framework không gọi
-tên type nào của dự án — và **cơ chế mở rộng nó cung cấp cũng không được ép dự án đẩy domain sang phía
-framework**. Phép kiểm: *nửa mà dự án viết có nằm trong ranh giới biên dịch của dự án không?* Không
-nằm thì mọi type nửa đó gọi tên cũng bị kéo theo cả chuỗi — framework mất tính bê-sang-dự-án-khác dù
-thư mục file vẫn đúng chỗ.
+**Ranh giới Horcrux ↔ dự án đi đúng một chiều: dự án → Horcrux.** Horcrux không gọi tên type nào của dự
+án — và **cơ chế mở rộng nó cung cấp cũng không được ép dự án đẩy domain sang phía framework**. Phép
+kiểm: *nửa mà dự án viết có nằm trong ranh giới biên dịch của dự án không?*
 
 > **Nền tảng** — với C# và Unity:
 >
 > | Cơ chế mở rộng | Kết quả |
 > |---|---|
-> | `partial class` khai ở framework, nửa kia ở dự án | **Hỏng.** Mọi phần của `partial` phải cùng assembly, nên nửa của dự án phải vào assembly framework bằng `.asmref` — và type nó gọi tên phải tra được từ đó. Type của dự án thì không, vì chiều ngược là **circular reference**. Kết cục: domain nằm ở assembly framework |
+> | `partial class` khai ở framework, nửa kia ở dự án | **Hỏng.** Mọi phần của `partial` phải cùng assembly, nên nửa của dự án phải vào assembly framework bằng `.asmref` — và type của dự án không tra được từ đó (**circular reference**). Kết cục: domain nằm ở assembly framework |
 > | `abstract class` ở framework, dự án khai subclass | **Đúng.** Subclass là type của dự án, chỉ gọi tên xuống framework. Phần framework tự chạy được một mình biến mất — đó là đặc điểm: tự chạy được nghĩa là đang mang một mẩu domain |
 >
-> Ba bẫy hỏng-im-lặng đi kèm kế thừa:
->
-> | Thứ | Bẫy |
-> |---|---|
-> | Attribute khai `Inherited = false` — `[Service]` của InitArgs là một | khai ở base **không** tới subclass; quên khai lại là không đăng ký được gì |
-> | `GetType().GetFields(NonPublic \| Instance)` | thấy private field của subclass, **không** thấy private field khai trên base — field khai nhầm ở base bị bỏ qua không một dòng lỗi |
-> | Magic method của Unity (`OnDestroy`, `Awake`…) | subclass đặt trùng tên là che hẳn bản của base, dọn dẹp của base im lặng không chạy. Khai `protected virtual` để `override` |
+> Ba bẫy hỏng-im-lặng đi kèm kế thừa: attribute khai `Inherited = false` (`[Service]` của InitArgs là
+> một) khai ở base **không** tới subclass · `GetType().GetFields(NonPublic | Instance)` **không** thấy
+> private field khai trên base · magic method của Unity (`OnDestroy`, `Awake`…) subclass đặt trùng tên
+> là che hẳn bản của base — khai `protected virtual` để `override`.
 
-**Chức năng có người dùng thứ hai thì đề xuất nâng thành tái sử dụng được** (NT7): hàm thuần → Utilities
-hoặc Helper static · có state hoặc nhiều biến thể → interface rồi tách implementation · chỉ khác một
-giá trị → thêm tham số. Đặt ở **tầng thấp nhất mà cả hai người dùng đều với tới được**, không thấp hơn
-(NT1). Là **đề xuất, không tự làm**: nâng một chức năng là đổi ranh giới trách nhiệm (NT5) — và code
-vào framework dùng chung luôn do developer gõ (§5.3).
+**Nâng một chức năng lên tái sử dụng khi có người dùng thứ hai** (NT7): hàm thuần → Utilities · có
+state hoặc nhiều biến thể → interface rồi tách implementation · chỉ khác một giá trị → thêm tham số.
+Đặt ở **tầng thấp nhất mà cả hai người dùng đều với tới được**, không thấp hơn. Là **đề xuất, không tự
+làm** (§2.4): nâng là đổi ranh giới trách nhiệm, và code vào Horcrux developer tự gõ.
 
 **Nâng bằng kế thừa thì cắt ở ranh *cơ chế / quyết định*: base giữ cơ chế, lớp con chỉ còn một quyết
-định.** Cơ chế là phần giống hệt ở mọi nơi dùng — giữ tham chiếu đích, bộ đệm, nhịp ghi lần đầu, định
-dạng; quyết định là phần mỗi nơi một khác — *nói gì, lúc nào*. Phép kiểm: lớp con đọc hết trong một màn
-hình và **không chạm vào bộ phận của base**, chỉ gọi động từ của nó.
+định.** Cơ chế là phần giống hệt ở mọi nơi dùng — tham chiếu đích, bộ đệm, nhịp ghi lần đầu, định dạng;
+quyết định là phần mỗi nơi một khác — *nói gì, lúc nào*. Phép kiểm: lớp con đọc hết trong một màn hình
+và **không chạm vào bộ phận của base**, chỉ gọi động từ của nó.
 
 | Luật | Vì |
 |---|---|
-| Ô kéo thả ở base khai **kiểu rộng nhất còn đủ member base dùng** — base chỉ gọi một method đặt chữ thì khai cha chung của đích canvas và đích world | kiểu hẹp hơn là ràng buộc base không cần, và nó đóng cửa một nửa nơi dùng ngay từ chữ ký |
-| Base phơi **động từ theo việc** (`protected`, overload theo loại dữ liệu vào); bộ phận là `private` | lớp con nói bằng ngôn ngữ của việc; đổi cách base ghi ra đích không chạm lớp con (`O`) |
-| Hook vòng đời khai `protected virtual` ở base làm phần chung; lớp con `override`, gọi `base` rồi nối nhịp riêng | một chỗ quyết "ghi lần đầu khi bật", lớp con chỉ thêm nguồn tick của nó; quên `virtual` là bẫy che magic method ở bảng trên |
-| Base là `MonoBehaviour` thì **giá là khe DI**: lớp con không còn là `MonoBehaviour<T>`, nhận phụ thuộc qua `*Initializer` gắn tay (§3.1) | giá đó ghi vào Editor setup của từng chỗ dùng (§3.6), không giấu — thiếu là null ngay frame đầu |
-| Thời điểm nâng: khi sắp viết bản thứ n của một cơ chế đã có ở các module anh em — bản mới là lớp con đầu tiên, các bản cũ chuyển sau | người dùng thứ hai **đang có thật**, không phải phòng xa (NT1); chuyển bản cũ là thêm lớp con rồi xoá code cũ, không sửa base — việc rẻ, để sau được (§2.4) |
-
-Base đặt ở **Utilities của framework** khi cơ chế không gọi tên hệ nào (NT3).
+| Ô kéo thả ở base khai **kiểu rộng nhất còn đủ member base dùng** | kiểu hẹp hơn là ràng buộc base không cần, và đóng cửa một nửa nơi dùng ngay từ chữ ký |
+| Base phơi **động từ theo việc** (`protected`); bộ phận là `private` | lớp con nói bằng ngôn ngữ của việc; đổi cách base ghi ra đích không chạm lớp con (`O`) |
+| Hook vòng đời khai `protected virtual` ở base; lớp con `override`, gọi `base` rồi nối nhịp riêng | một chỗ quyết phần chung; quên `virtual` là bẫy che magic method ở trên |
+| Base là `MonoBehaviour` thì **giá là khe DI**: lớp con nhận phụ thuộc qua `*Initializer` gắn tay (§3.1) | giá đó ghi vào Editor setup của từng chỗ dùng, không giấu — thiếu là null ngay frame đầu |
+| Thời điểm nâng: khi sắp viết bản thứ n của một cơ chế đã có ở các module anh em — bản mới là lớp con đầu tiên, bản cũ chuyển sau | người dùng thứ hai **đang có thật**; chuyển bản cũ là việc rẻ, để sau được |
 
 ## 3.3 Hiệu năng runtime
 
@@ -494,212 +455,140 @@ Trước khi cache hay tối ưu, hỏi ba câu theo thứ tự — "có" ở c�
 tính** nó không · tính **một lần lúc authoring** được không (§3.6) · đổi **cấu trúc dữ liệu** để câu
 hỏi tự biến mất được không? Hết ba câu mới tới kỹ thuật.
 
-**Nhịp không miễn trừ ba việc luôn làm của NT2.** Nhịp chỉ quyết định có phải *đo trước* cho tối ưu đánh
-đổi độ đọc hay không; ba việc miễn phí — đúng nhịp, không rác trong vòng lặp, không tính lại thứ không đổi
-— áp ở **mọi** nhịp, kể cả mỗi lần người chơi tap. Phép kiểm cho vế thứ ba: **đầu vào của phép tính đổi
-khi nào?** Chỉ đổi cùng cấu hình đọc một lần lúc init thì kết quả là **hằng của phiên** — dựng một lần,
-giữ trong field cạnh chỗ dùng; dựng lười ở lần dùng đầu khi đầu vào chưa có lúc `Awake`. *Đã sai một lần:*
-một chuỗi toast nội suy từ một số đọc từ remote config được để cấp phát lại mỗi lần tap, với lý do "tap là
-tương tác" — nhịp được đem ra miễn trừ đúng việc không cần miễn trừ.
-
-**Sổ tay** — kỹ thuật đã dùng:
-
-- *Giảm cấp phát:* pool thay `Instantiate`/`Destroy` lặp lại · pre-alloc capacity · reuse buffer bằng
-  `.Clear()` · grow-only buffer khi size dao động · `struct` cho data nhỏ ngắn hạn · `ref` / `in` /
-  `Span<T>` thay copy · `static readonly` thay `new` lặp · tránh LINQ, boxing, string concat trong hot
-  path · **không closure capture** — lambda bắt biến ngoài cấp phát mỗi lần gọi; cache delegate thành
-  `static readonly` hoặc field.
-- *Giảm tính toán:* dirty flag · event-driven rebuild · lookup dictionary dựng trước · tách phần tĩnh
-  tính một lần khỏi phần động tính incremental · precompute hằng nặng (`exp`, `sqrt`, `sincos`, phép
-  chia) ngoài vòng lặp · đổi chia thành nhân · guard thoát sớm · `sqrMagnitude` khi chỉ so khoảng cách.
-- *Sửa list an toàn:* duyệt ngược khi xoá · hoặc deferred removal — đánh dấu rồi xử lý sau vòng lặp.
+**Nhịp không miễn trừ ba việc luôn làm của NT2.** *Đã sai một lần:* một chuỗi nội suy từ một số đọc từ
+remote config được để cấp phát lại mỗi lần tap, với lý do "tap là tương tác" — nhịp được đem ra miễn
+trừ đúng việc không cần miễn trừ.
 
 > **Nền tảng** — `Update`, polling loop và `OnGUI` bị gọi lại liên tục cho **cùng một state**. Việc
 > nặng đặt trong đó là sai không cần bàn; nó thuộc về event handler hoặc lúc authoring.
 
+**Sổ tay** — kỹ thuật đã dùng:
+
+- *Giảm cấp phát:* pool thay `Instantiate`/`Destroy` lặp lại · pre-alloc capacity · reuse buffer bằng
+  `.Clear()` · `struct` cho data nhỏ ngắn hạn · `ref` / `in` / `Span<T>` thay copy · `static readonly`
+  thay `new` lặp · tránh LINQ, boxing, string concat trong hot path · **không closure capture** — cache
+  delegate thành `static readonly` hoặc field.
+- *Giảm tính toán:* dirty flag · event-driven rebuild · lookup dictionary dựng trước · tách phần tĩnh
+  tính một lần khỏi phần động tính incremental · precompute hằng nặng ngoài vòng lặp · guard thoát
+  sớm · `sqrMagnitude` khi chỉ so khoảng cách.
+- *Sửa list an toàn:* duyệt ngược khi xoá · hoặc deferred removal.
+
 ## 3.4 Bất biến — bảo vệ bằng cấu trúc, không bằng kỷ luật
 
 Bất biến giữ bằng "mọi người nhớ làm đúng" sẽ vỡ ở đúng người thứ hai. Sắp xếp code sao cho cái sai
-**không thể xảy ra**:
+**không thể xảy ra**. **Quyết định mà lý do là "phải nhớ đừng…" thì chỗ đặt sai, không phải tên sai**
+— hỏi: *có chỗ đặt nào làm việc "đừng" đó bất khả thi không?* Thường có, và thường rẻ. *Đã sai một lần:*
+một helper tên `InstantiateAsync` khai trong class con của `MonoBehaviour` che **toàn bộ** overload cùng
+tên của `UnityEngine.Object`; đổi tên thì ràng buộc vẫn còn, đưa ra **extension method** thì ràng buộc
+biến mất, vì extension không bao giờ che được instance method.
 
 | Luật | Nghĩa là |
 |---|---|
 | **Một sự thật = một chủ sở hữu** | mỗi dữ liệu có đúng một nơi giữ bản gốc; mọi cache chỉ ra được **ai dựng lại** và **khi nào** |
-| **Cache mới bám vào bất biến ĐÃ CÓ** | dùng lại dirty flag / version counter đang có, không dựng bất biến thứ hai song song — mỗi bất biến thêm là một điều mọi code sau phải nhớ |
+| **Cache mới bám vào bất biến ĐÃ CÓ** | dùng lại dirty flag / version counter đang có, không dựng bất biến thứ hai song song |
 | **Một cờ chỉ được tiêu thụ ở đúng MỘT nơi** | có nơi thứ hai thì nơi chạy sau không bao giờ thấy cờ bật — cache của nó đứng im, không có gì báo |
-| **Hai phép tính buộc phải khớp thì suy từ MỘT nguồn** | cùng một hàm, hoặc cùng một biểu thức copy nguyên. Hai bản sẽ lệch, kiểu nhìn-vẫn-đúng-bấm-thì-trượt. Đây là ngoại lệ của luật "để lặp" (NT7) |
-| **Chuỗi định danh mà hai hệ phải khớp — placement, tên event, khoá — khai MỘT lần ở phía phát, phía nhận trỏ symbol** | literal chép sang phía nhận là bản thứ hai của cùng một sự thật: lệch một ký tự thì phép so trả `false` im lặng, không lỗi nào nổ. Trỏ symbol biến lệch thành lỗi biên dịch và grep ra hết mọi nơi dùng. Phía phát sở hữu vì chuỗi sinh ra ở đó; phía phát **chưa có hằng thì thêm hằng vào phía phát** rồi trỏ, không lấy đó làm lý do chép literal. Là trường hợp riêng của hàng trên, áp cho chuỗi thay cho công thức |
-| **Định danh số chia sẻ với asset hay hệ khác là `enum` gán số tường minh, không `const int`** | tên đi cùng số ở mọi chỗ code đọc, `switch` được compiler soát đủ nhánh, `(int)` chỉ xuất hiện ở đúng cửa ranh giới. Gán số từ phần tử đầu (`Coin = 1`) để `0` — giá trị `default` của enum — không trùng một định danh thật. Số đã nằm trong asset là wire format (§3.7): **không đánh số lại**, phần tử mới thêm ở cuối |
+| **Hai phép tính buộc phải khớp thì suy từ MỘT nguồn** | cùng một hàm, hoặc cùng một biểu thức copy nguyên. Hai bản sẽ lệch, kiểu nhìn-vẫn-đúng-bấm-thì-trượt. Ngoại lệ của luật "để lặp" (NT7) |
+| **Chuỗi định danh mà hai hệ phải khớp — placement, tên event, khoá — khai MỘT lần ở phía phát, phía nhận trỏ symbol** | literal chép sang phía nhận lệch một ký tự thì phép so trả `false` im lặng. Trỏ symbol biến lệch thành lỗi biên dịch và grep ra hết nơi dùng. Phía phát **chưa có hằng thì thêm hằng vào phía phát** rồi trỏ |
+| **Định danh số chia sẻ với asset hay hệ khác là `enum` gán số tường minh, không `const int`** | tên đi cùng số ở mọi chỗ đọc, `switch` được compiler soát đủ nhánh. Gán từ `= 1` để `0` — giá trị `default` — không trùng một định danh thật. Số đã nằm trong asset là wire format: **không đánh số lại**, phần tử mới thêm ở cuối |
 | **Cửa hẹp là thân chung của cửa rộng** | bản giữ-lại-một-phần gọi vào thân bản đầy đủ — hai bên không thể lệch nhau |
-| **Một phép biến đổi chỉ áp ở MỘT tầng** | runner đã áp ease cho `t` thì thân nhận `t` đã ease, không ease lần nữa; hai tầng cùng có tham số ease thì một tầng cố định `Linear`. Ease hai lần không lỗi nào báo — chỉ là chuyển động sai nhịp, và đoạn vọt (overshoot) bị nhân đôi |
-| **Một chuyển trạng thái = một chủ gọi; nơi khác chỉ phát sự thật** | mở, huỷ, chốt của cùng một trạng thái nằm trong **một** class — rải mỗi bước một nơi (UI gọi chốt, bridge gọi mở) là mỗi chỗ một kiểu và quên một cửa không ai thấy. UI phát sự kiện **đặt tên theo điều đã xảy ra** ("X đã chốt"), publish đồng bộ, đúng một người nghe hành động; cần một mốc chưa có thì **thêm sự kiện mới**, không mượn sự kiện cũ đang có người nghe mang tác dụng phụ khác |
-| **Một bảo đảm phải phủ MỌI đường vào** | hệ tuyên bố "mất không quá X", "luôn hợp lệ" thì **mọi** cửa ghi phải đi qua chỗ tạo ra bảo đảm đó. Cửa thứ hai đi vòng làm bảo đảm **chỉ còn đúng cho một nửa hệ** trong khi tài liệu vẫn phát biểu nguyên câu |
-
-**Phép kiểm của luật cuối — đếm cửa trước, đọc thân sau.** Đường phụ sinh ra sau, người viết không
-nghĩ mình đang chạm vào bảo đảm nào. Liệt kê **mọi cửa ghi vào cùng một kho** (grep API ghi của kho),
-rồi với từng cửa: chỉ ra nó đi qua chỗ tạo bảo đảm, hoặc **viết tại chỗ rằng cửa này không được bảo
-đảm**. Ép mọi cửa về **một** thân là cách rẻ nhất giữ phép kiểm còn đúng về sau (nhánh **tầm nhìn**,
-§2.8).
-
-**Quyết định mà lý do là "phải nhớ đừng…" thì chỗ đặt sai, không phải tên sai.** Hỏi: **có chỗ đặt nào
-làm việc "đừng" đó bất khả thi không?** Thường có, và thường rẻ. *Đã sai một lần:* một helper tên
-`InstantiateAsync` khai trong class con của `MonoBehaviour` che **toàn bộ** overload cùng tên của
-`UnityEngine.Object` — chỗ gọi nhìn như API engine nhưng chạy hàm nhà. Đổi tên helper thì ràng buộc vẫn
-còn, chỉ đang được tuân thủ; đưa nó ra **extension method** thì ràng buộc biến mất, vì extension không
-bao giờ che được instance method.
-
-**Một hệ quả bắt buộc thì đặt trong setter, đừng đặt trong method riêng.** `SetX(v)` cạnh một field `x`
-là **hai cửa ghi**; property có setter là một. Chỉ áp khi hệ quả **luôn phải xảy ra**, rẻ, và không ném
-— hệ quả tuỳ chọn hay tốn kém thì giữ method, vì sau dấu `=` người đọc không chờ đợi một cái giá. **Đổi
-method thành property là đổi hợp đồng ở hai nơi:** interface phải khai `{ get; set; }` nếu không người
-ngoài cầm interface không ghi được — lỗi chỉ lộ khi viết tới consumer; và `internal void SetX` thành
-`public X { get; set; }` là nới quyền ghi ra cả assembly khác mà không ai để ý.
-
-**Hai lời gọi luôn phải đi cùng nhau là một kỷ luật — gộp về một cửa.** Bật gốc rồi mới chọn trạng
-thái con: người gọi thứ hai quên bước đầu thì trạng thái con đổi trong khi gốc vẫn tắt, không lỗi nào
-nổ. Bước tiền đề đi vào **trong** mỗi cửa public, và thứ chỉ có nghĩa là tiền đề thành `private`. Phép
-kiểm: mặt ngoài của class nói **trạng thái caller muốn thấy**, không nói **cơ chế** để tới đó.
-
-**Chọn cấu trúc theo bảo đảm mà người dùng nó đang dựa vào, không theo thao tác thuận tay.** Gộp theo
-khoá thì `Dictionary` đúng khi kết quả để **tra cứu**, và sai khi kết quả là **danh sách để vẽ**: thứ
-tự duyệt `Dictionary` không có bảo đảm nào, UI sẽ đảo hàng giữa các lần chạy và không ai gọi đó là bug.
-Gộp vào `List` theo thứ tự gặp đầu tiên thì thứ tự là một bảo đảm viết ra được và test được.
-
-**Thứ tự đọc từ cấu hình ngoài phải toàn phần và tất định.** Giá trị thiếu rơi về phía an toàn — ưu tiên
-thấp nhất, đứng cuối — không tự chen lên đầu; hai giá trị bằng nhau phá hoà bằng một **định danh ổn định**,
-không bằng thứ tự đăng ký hay khởi tạo: thứ tự đó đổi giữa các lần chạy mà không ai gọi là bug.
-
-**Mặc định của một lựa chọn là ca số đông, viết bằng tên.** Ca số ít — đặc quyền, đi trước người khác —
-phải khai rõ: quên khai thì rơi về ca số đông, không âm thầm chiếm đặc quyền. Mặc định viết tường minh
-(`=> Mode.Normal`), không dựa vào phần tử đầu của enum: đổi thứ tự enum là đổi mặc định mà không dòng nào báo.
-
-**Một danh sách vừa là lệnh vừa là thứ để vẽ thì hỏi hai vai có chung khoá gộp không.** Vai *thực thi*
-gộp theo khoá của hệ nhận lệnh, vai *hiển thị* gộp theo khoá người dùng nhìn thấy — hai khoá đó thường
-ánh xạ nhiều-về-một, nên gộp theo khoá của vai này là vai kia mất hàng. **Và tổng hợp đặt ở chỗ nhìn
-thấy đủ dữ liệu:** kho cộng dồn qua nhiều chu kỳ thì gộp lúc *ghi vào* không thấy chu kỳ trước, phải
-gộp lúc *đọc ra*.
+| **Một phép biến đổi chỉ áp ở MỘT tầng** | runner đã áp ease cho `t` thì thân nhận `t` đã ease, không ease lần nữa; hai tầng cùng có tham số ease thì một tầng cố định `Linear` |
+| **Một chuyển trạng thái = một chủ gọi; nơi khác chỉ phát sự thật** | mở, huỷ, chốt của cùng một trạng thái nằm trong **một** class. UI phát sự kiện **đặt tên theo điều đã xảy ra**, publish đồng bộ, đúng một người nghe hành động; cần một mốc chưa có thì **thêm sự kiện mới**, không mượn sự kiện cũ đang có người nghe mang tác dụng phụ khác |
+| **Một bảo đảm phải phủ MỌI đường vào** | hệ tuyên bố "mất không quá X", "luôn hợp lệ" thì **mọi** cửa ghi đi qua chỗ tạo bảo đảm. Phép kiểm: **đếm cửa trước, đọc thân sau** — grep mọi API ghi của kho, với từng cửa chỉ ra nó đi qua chỗ tạo bảo đảm, hoặc viết tại chỗ rằng cửa này không được bảo đảm |
+| **Hệ quả bắt buộc đặt trong setter, không trong method riêng** | `SetX(v)` cạnh field `x` là **hai cửa ghi**; property có setter là một. Chỉ khi hệ quả **luôn phải xảy ra**, rẻ, không ném. Đổi method thành property là đổi hợp đồng: interface phải khai `{ get; set; }`, và `internal void SetX` thành `public X { get; set; }` là nới quyền ghi ra assembly khác |
+| **Hai lời gọi luôn phải đi cùng nhau là một kỷ luật — gộp về một cửa** | bước tiền đề đi vào **trong** mỗi cửa public, và thứ chỉ có nghĩa là tiền đề thành `private`. Mặt ngoài của class nói **trạng thái caller muốn thấy**, không nói **cơ chế** để tới đó |
+| **Chọn cấu trúc theo bảo đảm người dùng đang dựa vào** | `Dictionary` đúng khi kết quả để **tra cứu**, sai khi kết quả là **danh sách để vẽ**: thứ tự duyệt không có bảo đảm, UI đảo hàng giữa các lần chạy. Thứ tự đọc từ cấu hình ngoài phải **toàn phần và tất định**: giá trị thiếu rơi về ưu tiên thấp nhất; hoà phá bằng **định danh ổn định**, không bằng thứ tự đăng ký |
+| **Mặc định của một lựa chọn là ca số đông, viết bằng tên** | ca số ít — đặc quyền, đi trước người khác — phải khai rõ; quên khai thì rơi về số đông. Mặc định viết tường minh (`=> Mode.Normal`), không dựa vào phần tử đầu của enum |
+| **Một danh sách vừa là lệnh vừa là thứ để vẽ thì hỏi hai vai có chung khoá gộp không** | vai *thực thi* gộp theo khoá hệ nhận lệnh, vai *hiển thị* gộp theo khoá người dùng nhìn — gộp theo vai này là vai kia mất hàng. Kho cộng dồn qua nhiều chu kỳ thì gộp lúc *đọc ra*, không lúc *ghi vào* |
 
 **Guard — một câu hỏi duy nhất: cái sai đó lộ ra lúc nào?** Đích là **bản build không có ca null hay
 ca sai nào**; guard hay không guard chỉ là hai đường tới cùng đích.
 
 | Cái sai lộ ra… | Xử lý | Vì sao |
 |---|---|---|
-| **Ngay lúc authoring, hoặc nổ ngay lần Play đầu** — và **đã kiểm là nó nổ thật** | **để nó nổ**, không guard | exception thô và `LogError` đẹp chặn developer ngang nhau; đổi cái trước thành cái sau là trả phí **vĩnh viễn trong build** cho một lần đọc log dễ hơn. Guard cho ca không bao giờ xảy ra vẫn là một nhánh phải đọc, test, giữ đúng mãi (NT1) |
-| **Lọt qua authoring rồi sai âm thầm** giữa gameplay | **guard đầy đủ** — bất biến thật, về bảng trên | Editor không bắt chắc được: reference chỉ có lúc runtime · null ở một prefab variant hoặc một scene trong nhiều scene · sai chỉ hiện ở một tổ hợp cấu hình · thành null sau `Destroy` · **dữ liệu từ ngoài** (import, server, save — §3.8) luôn thuộc nhóm này |
+| **Ngay lúc authoring, hoặc nổ ngay lần Play đầu** — và **đã kiểm là nó nổ thật** | **để nó nổ**, không guard | exception thô và `LogError` đẹp chặn developer ngang nhau; đổi cái trước thành cái sau là trả phí **vĩnh viễn trong build** cho một lần đọc log dễ hơn |
+| **Sai lúc setup nhưng không nổ** — view lẽ ra đã gắn mà chưa, hệ thiếu wire chạy tiếp thiếu một tính năng | **`LogError` rồi thoát**, kể cả khi lặp mỗi lượt | thoát im lặng biến một bước setup thiếu thành một tính năng vắng mặt cả phiên mà không ai biết |
+| **Lọt qua authoring rồi sai âm thầm** giữa gameplay | **guard đầy đủ** — bất biến thật, về bảng trên | Editor không bắt chắc được: reference chỉ có lúc runtime · null ở một prefab variant · sai chỉ hiện ở một tổ hợp cấu hình · thành null sau `Destroy` · **dữ liệu từ ngoài** (import, server, save) |
+| **Ca hợp lệ** — chưa tới lượt, chưa có gì để làm | **thoát im lặng** | không phải lỗi |
 | **Không gọi tên được** lượt kiểm nào bắt nó | **guard** | "chắc là không xảy ra đâu" không phải bằng chứng (NT8) |
 
-**Đã guard thì thoát im lặng hay log tuỳ ca đó có hợp lệ không.** Ca hợp lệ — chưa tới lượt, chưa có gì
-để làm — thoát im lặng. Ca chỉ xảy ra khi setup sai — view lẽ ra đã gắn mà chưa — thì `LogError`, kể cả
-khi nó lặp mỗi lượt: thoát im lặng biến một bước setup thiếu thành một tính năng vắng mặt cả phiên mà
-không ai biết.
-
-**Dữ liệu ngoài kiểm một lần ở cửa vào; sau cửa, consumer tin hợp đồng.** Hàng "dữ liệu từ ngoài" của
-bảng trên là guard ở **cửa** — một hàm thuần kiểm luật nghiệp vụ, sai thì từ chối cả cấu hình kèm
-`LogError` — không phải mỗi consumer một nhánh. View runtime **không có nhánh vẽ lỗi** cho dữ liệu đã qua
-cửa: chủ dữ liệu `LogError` kèm `this` khi tra thiếu là toàn bộ chẩn đoán; caller chỉ log thêm khi nó
-biết **ngữ cảnh** chủ dữ liệu không biết (bước nào, chu kỳ nào) — hai dòng đỏ là hai thông tin, không phải
-lặp. Nhánh duy nhất view được có khi tra thiếu là **xoá vết cũ**: view dùng lại (pool, prefab mang sprite
-mẫu) gán `null` cho ô sẽ hiện sai nhất — sprite — rồi thoát, để cái thiếu lộ thành ô trống ngay lần nhìn
-đầu thay vì hiện dữ liệu của item trước; không dựng trạng thái lỗi riêng, không đụng các ô còn lại. "Không giấu
-thứ có thật" của §3.9 là cho Editor tool, nơi người nhìn màn hình là người sửa được dữ liệu; trong build
-người nhìn là người chơi, nhánh đó phục vụ không ai.
+**Dữ liệu ngoài kiểm một lần ở cửa vào; sau cửa, consumer tin hợp đồng.** Guard ở **cửa** là một hàm
+thuần kiểm luật nghiệp vụ, sai thì từ chối cả cấu hình kèm `LogError` — không phải mỗi consumer một
+nhánh. View runtime **không có nhánh vẽ lỗi** cho dữ liệu đã qua cửa: chủ dữ liệu `LogError` kèm `this`
+khi tra thiếu là toàn bộ chẩn đoán. Nhánh duy nhất view được có khi tra thiếu là **xoá vết cũ**: view
+dùng lại (pool) gán `null` cho ô sẽ hiện sai nhất — sprite — rồi thoát, để cái thiếu lộ thành ô trống
+thay vì hiện dữ liệu của item trước. "Không giấu thứ có thật" của §3.9 là cho Editor tool, nơi người
+nhìn màn hình là người sửa được dữ liệu; trong build người nhìn là người chơi.
 
 **"Để nó nổ" đứng được nhờ vế *nổ* — phải kiểm, không được giả định.** Bốn hình dạng nó **không** nổ:
 
 | Hình dạng | Vì sao im lặng | Trả về chỗ nổ bằng |
 |---|---|---|
 | **Giá trị mặc định của kiểu là giá trị hợp lệ** — `float` 0, `bool` false, list rỗng, enum phần tử đầu | ô trống trong Inspector **không phân biệt được** với ô cố ý điền giá trị đó | **authoring, không phải guard runtime**: default ngay trong khai báo field, kẹp dải bằng `[Min]`/`[Range]` |
-| **Host bắt lỗi fail-open** — vòng dispatch, chain boot log rồi bỏ qua step lỗi | thiếu wire thành **một dòng log lúc boot** rồi cả phiên chạy thiếu hẳn một hệ | không thêm guard: hệ tự đứng được không cần host đó, hoặc thiếu nó phải hỏng ở **cửa mà người chơi chạm** |
-| **Vòng lặp nhận sai token** | hủy là hành vi hợp đồng, không log (§3.1) | mỗi loop chỉ ra được token của nó là đời của ai |
-| **Chỗ nổ nằm trong `#if DEBUG`** | Editor và dev build ném to, **bản release không có dòng đó** — cùng một ca thành null chạy tiếp rồi NRE ở chỗ khác, xa chỗ sai | đọc `#if` bao quanh mọi guard của thư viện ngoài trước khi tin vào nó |
+| **Host bắt lỗi fail-open** — vòng dispatch, chain boot log rồi bỏ qua step lỗi | thiếu wire thành **một dòng log lúc boot** rồi cả phiên chạy thiếu hẳn một hệ | hệ tự đứng được không cần host đó, hoặc thiếu nó phải hỏng ở **cửa mà người chơi chạm** |
+| **Vòng lặp nhận sai token** | hủy là hành vi hợp đồng, không log (§3.5) | mỗi loop chỉ ra được token của nó là đời của ai |
+| **Chỗ nổ nằm trong `#if DEBUG`** | bản release không có dòng đó — cùng một ca thành null chạy tiếp rồi NRE ở chỗ khác | đọc `#if` bao quanh mọi guard của thư viện ngoài trước khi tin vào nó |
 
 *Đã sai một lần, nguồn của hai hàng đầu:* một hệ lưu dữ liệu có field khoảng thời gian không default —
 quên điền ra 0, thành ghi đĩa **mỗi frame**; cùng hệ gắn loop tự lưu vào token của pha boot mà runner
 refresh token mỗi lần load level — loop chết từ level thứ hai. Cả hai không một dòng log.
 
 **`try/catch` đi qua đúng câu hỏi đó.** Chỉ bọc khi **gọi được tên thứ ném ra**: API thật sự ném (I/O,
-parse, network, reflection, dữ liệu từ ngoài — §3.8), hoặc code của người khác chạy trong vòng lặp của
-mình (§3.5). Không gọi tên được thì bỏ — khối `catch` cho ca không bao giờ xảy ra **nói dối** rằng chỗ
-này có rủi ro. Bắt rồi thì phải **làm gì đó**: xử lý, hoặc log kèm ngữ cảnh rồi ném lại; nuốt exception
-rồi chạy tiếp là biến lỗi tỏ thành lỗi âm thầm. `catch (Exception)` trần chỉ ở **biên trên cùng**: một
-vòng dispatch, một entry point của tool.
+parse, network, reflection, dữ liệu từ ngoài), hoặc code của người khác chạy trong vòng lặp của mình
+(§3.5). Không gọi tên được thì bỏ — khối `catch` cho ca không bao giờ xảy ra **nói dối** rằng chỗ này
+có rủi ro. Bắt rồi thì phải **làm gì đó**: xử lý, hoặc log kèm ngữ cảnh rồi ném lại; nuốt exception là
+biến lỗi tỏ thành lỗi âm thầm. `catch (Exception)` trần chỉ ở **biên trên cùng**: một vòng dispatch,
+một entry point của tool.
 
 **Quy ước chỉ thay được guard khi nó viết ra ở chỗ người vi phạm đang nhìn** — Tooltip, XML doc của
-chính API đó, dòng trong tài liệu module — không phải một lượt chat. Và **bug "sai âm thầm" sửa xong
-thì chưng cất thành một dòng bất biến trong tài liệu module**, dạng *"đã sai một lần: [triệu chứng]"* —
-tri thức đắt nhất và không đọc ra được từ code (§5.4).
+chính API đó, dòng trong tài liệu module — không phải một lượt chat. Bug "sai âm thầm" sửa xong thì
+chưng cất thành một dòng *"đã sai một lần"* trong tài liệu module (§5.4).
 
-## 3.5 Async & tài nguyên
+## 3.5 Async, vòng đời, và trình diễn
 
 Tiêu chí: **hủy được** (việc dừng theo owner) · **giải phóng được** (thứ giữ tài nguyên có đường trả
 lại) · **cô lập được lỗi** (một callback lỗi không kéo cả hệ chết — `try/catch` quanh từng callback
-trong vòng dispatch, ca được phép theo §3.4).
-
-**Hàm mở một tiến trình theo thời gian thì sở hữu trạng thái cuối của nó ở mọi đường ra.** Xong, bị
-hủy, thời lượng bằng 0 — cả ba đi qua **một** `try/finally` bọc toàn thân hàm, delay lẫn vòng lặp, nên
-trạng thái cuối và callback xảy ra đúng một lần. Caller chỉ `await` và ghép bằng `WhenAll`, không
-`try/finally`: hợp đồng "đặt trạng thái cuối sau `await`" là kỷ luật, người gọi thứ hai sẽ quên (§3.4).
-Helper chỉ hứa thứ nó biết — nhận công thức thay giá trị đích thì không snap hộ.
-
-**Tiến trình chạm object Unity thì `finally` và callback hoàn tất guard `!= null`.** Destroy giữa chừng là
-một đường ra thật, cùng loại với huỷ, và chạm object đã huỷ ném ngay trong `finally` — trạng thái cuối
-không đặt được, callback không chạy. "Một lần ở mọi đường ra" chỉ đúng khi chính đường ra đó không nổ.
-Guard bằng `if (x != null)`, không bằng `x?.Foo()`: `?.` bỏ qua phép so sánh null đã overload của Unity, nên
-object đã huỷ vẫn bị gọi. Và `onComplete` chỉ có **một** chủ: đã gán cho `finally` ngoài thì không truyền
-thêm vào lời gọi bên trong, nếu không nó chạy hai lần.
-
-**`CancellationTokenSource` có đúng một chủ dọn: chỗ tạo ra nó.** Nơi khác chỉ `?.Cancel()`. `Cancel` chạy
-tiếp đồng bộ phần còn lại của luồng ngay trong lời gọi, nên `finally` của chủ có thể đã `Dispose` và gán
-`null` trước khi bên huỷ tới dòng kế — bên huỷ dọn thêm là NRE, kể cả ở ca thường nhất: huỷ lúc không có
-lượt nào đang chạy.
-
-**Hàm mở một lượt sống bằng tài nguyên một lần dùng thì từ chối tái nhập ở cửa.** `Open()` tạo
-`UniTaskCompletionSource` mới cho `WaitClosedAsync`; gọi `Open()` chồng lên lượt đang mở là thay source
-mới trong khi người đang chờ còn giữ source cũ — họ treo **im lặng, vĩnh viễn**, đúng loại lỗi §3.4 xếp
-vào "guard đầy đủ". Một dòng `if (isOpen) return;` ở cửa rẻ hơn mọi kỷ luật "đừng gọi hai lần".
-
-**Hủy giữa chừng phân loại theo thứ mất đi.** Dữ liệu (tiến độ, grant, save) phải nhất quán trên mọi
-đường — grant đứng trước anim. Trình diễn chỉ cần không để rác trên màn hình: snap đích, tắt, xong.
-Không bỏ công bảo toàn đường hủy cho thứ mà bị hủy thì người chơi không mất gì.
-
-**Trình diễn một thay đổi cho người chơi.** Dữ liệu đổi ở một nơi (gameplay, server) và người chơi thấy
-nó ở nơi khác (Home, popup), có khi sau nhiều lần đổi. Luật cho mọi trình diễn kiểu đó:
+trong vòng dispatch).
 
 | Luật | Nghĩa là |
 |---|---|
-| **Mốc "đã thấy" nằm trong save, cạnh sự thật** | mọi thứ trượt hay đếm từ A tới B cần một A người chơi đã xác nhận bằng mắt: `currAnimatedTokens`, `lastSeenMultiplierIndex` (quá khứ phân từ, §3.7). A sống trong instance view là sai: view bị tắt, dựng lại, hoặc có nhiều instance; A = sự thật lúc bật là không có gì để diễn. Sự thật đổi bao nhiêu lần giữa hai lần xem cũng được — trình diễn đi từ mốc tới sự thật **một** lần. *Đã sai một lần:* view có cờ `slide` nhưng lúc bật không có "từ đâu", thắng ba level rồi về Home là khung nhảy thẳng |
-| **Ghi mốc khi diễn xong, ở đúng một chỗ cho cả snap lẫn trượt** | huỷ giữa chừng thì mốc chưa nhích, lần sau diễn lại; ghi lúc bắt đầu là đánh dấu thứ người chơi chưa thấy. Reset chu kỳ (rollover) reset cả mốc — chu kỳ mới không có chuỗi cũ để diễn |
-| **Component dùng chung ở nhiều host thì mặc định thụ động; host cần dàn dựng gọi API `await` được. Không có cờ chế độ trên instance** | bật lên chỉ đứng ở mốc (`Park`); trượt khi event bắn lúc đang hiện, hoặc host gọi `PlayAsync(ct)`. Một cờ `autoPlay` quên tick trên một instance không để lại dấu vết (§3.4). Giá nói ra tại chỗ: host không có code thì không tự đuổi theo sự thật, chỉ đứng ở mốc |
-| **Hiệu ứng "báo có thay đổi" ở đúng một điểm trình diễn; chỗ khác vẽ tĩnh** | rèm mở ở widget Home; Main Screen và popup đặt bar thường, luôn hiện. Cùng một hiệu ứng ở hai chỗ là diễn hai lần cùng một thay đổi |
-| **Trạng thái nghỉ là trạng thái dựng trong prefab; đích trình diễn là ô developer đặt; mỗi lần hiện đặt lại về nghỉ** | bar giấu sau rèm là chỗ prefab lưu; vị trí lộ là `[SerializeField]`, không đọc ngầm `anchoredPosition` ở `Start` — đọc ngầm là hợp đồng không hiện trong Inspector. Khoảng đi suy từ kích thước có sẵn (`rect.width` của cửa sổ) thay cho ô thứ hai. Mỗi lần hiện, code đặt về nghỉ rồi mới hỏi có gì để diễn; không dựa vào prefab đúng hay lượt trước không bị huỷ |
-| **Lớp vẽ trên đè lớp dưới, không bật/tắt thứ bị che** | khung mang chữ riêng đè lên nhãn; nhãn không `SetActive`. Bật/tắt theo vị trí là một trạng thái nữa phải giữ đồng bộ với tween |
-| **Giá trị đổi lúc tới nơi, không lúc bắt đầu** | khung chạy tới mốc mới vẫn mang giá trị cũ; số đổi và hạt nổ ở `Arrive`. Đổi giữa đường là hai thông tin mâu thuẫn trên một vật; về bậc thấp thì đổi số, không nổ hạt |
-| **Trình diễn tách bước thì save giữ cấu tạo của lần đổi cuối** | trình diễn tổng chỉ cần mốc và sự thật; trình diễn tách bước cần biết thay đổi **hình thành thế nào** — thứ không suy ngược được từ tổng. Save giữ cấu tạo của đúng **một** lần đổi chưa xem, ghi đè mỗi lần đổi: diễn tách bước cho lần cuối, phần dồn trước đi đường trình diễn tổng. Xoá cấu tạo khi diễn xong — cùng luật với ghi mốc "đã thấy" — và reset chu kỳ xoá theo |
-| **Bước diễn thiếu dữ liệu thì bỏ bước, không rẽ nhánh cả luồng** | luồng trình diễn giữ một hình dạng cho mọi ca; chỉ bước không có gì để diễn bị bỏ. Nhánh "ca này khỏi diễn" là một đường trình diễn thứ hai phải giữ đồng bộ với đường chính |
-| **Service overlay giữ cơ chế; nội dung là canvas của consumer được nâng cùng** | tối màn, nâng sorting, con trỏ hướng dẫn, fade là cơ chế dùng chung; nội dung nằm trong canvas thuộc prefab của consumer, đưa vào qua tham số của service. Kịch bản mới là consumer mới, không sửa service — service mọc cờ chế độ theo từng kịch bản là gom domain của mọi consumer về một class (NT1, NT3) |
-| **Trình diễn khi vào một màn do một điều phối viên chạy theo giai đoạn cố định; trong một giai đoạn, thứ tự theo một ưu tiên dùng chung** | nhiều module cùng muốn trình diễn lúc vào một màn mà mỗi module tự khởi động thì chồng lên nhau; lease, hàng đợi trên tài nguyên hay chờ một frame chỉ vá triệu chứng. Giai đoạn chia theo **loại** trình diễn và cố định trong code — loại quyết định thứ tự trước, ưu tiên chỉ xếp các module trong cùng giai đoạn: **thay đổi tiến trình** (tăng lẫn giảm) → **hướng dẫn lần đầu** → **ép xem đầy đủ tiến trình** (mốc vừa đạt, tiến trình vừa mất) → **quảng bá** (gói bán, khi các hệ đã ổn định). Chỉ ưu tiên và cờ ép là cấu hình từ xa. Giai đoạn đầu chia **nhóm chú ý**: nhóm ưu tiên chạy đồng thời, xong hết mới tới nhóm thường; nhóm thường là mặc định vì nhóm ưu tiên dành cho số ít. Luồng dùng **tài nguyên độc quyền** (lớp tối màn, màn chồng) chỉ chạy ở **làn lần lượt** — một làn riêng song song với nhóm thường, và ba giai đoạn sau — nên không thể chồng nhau; luồng chạy đồng thời chỉ chạm view của chính nó. **Ép** là tự mở giao diện cho xem, có tự nhận hay không do module quyết; chỉ mốc mới hoặc lần tụt chưa xem mới ép, cộng thường thì không. Điều kiện ép suy từ mốc "đã thấy" trong save, không từ cờ runtime do một sự kiện đặt — thứ tự sự kiện và giết app không làm lệch. Mỗi module giữ **luồng của mình**, chỉ override giai đoạn nó có. Mọi giai đoạn chạy ở mọi lượt nên luồng **idempotent**: đọc trạng thái đã lưu, chỉ làm phần còn nợ, tiêu thụ trạng thái *sau* khi diễn xong (huỷ giữa chừng thì lần sau diễn lại), kết thúc khi mọi thứ nó mở đã đóng — chờ màn con đóng, nếu không luồng sau mở chồng lên — và trả tài nguyên dùng chung trong `finally`. Lỗi của một luồng không chặn luồng khác: `try/catch` quanh **từng** luồng (ca §3.4 cho phép), kể cả trong nhóm đồng thời — chờ-tất-cả kết thúc ngay ở lỗi đầu tiên và cắt mọi giai đoạn sau. Tín hiệu vào/ra màn chỉ đi vào điều phối viên qua **một** bridge của dự án, module không tự nghe nó. Vòng điều phối tách thành class thuần để test không cần engine (§2.8) |
-| **Yêu cầu chạy lượt: gửi dư, gộp lại, chỉ nhận khi đang ở màn** | một **lượt** là một lần chạy trọn mọi giai đoạn của mọi module. Lớp cha của module tự gửi yêu cầu mỗi lần trạng thái đổi, **sau** hook đổi trạng thái: lớp cha không biết lần đổi nào quan trọng với module nào — gửi dư tốn một lượt rỗng, gửi thiếu là màn hiển thị sai; và vòng khởi động kiểu gọi-rồi-bỏ chạy đồng bộ tới `await` đầu, nên luồng có thể đọc module ngay trong lời gọi. Module chỉ tự gửi cho thay đổi không phải đổi trạng thái (cộng tiến trình, sang chu kỳ mà vẫn đang chạy, view vừa gắn). Điều phối viên giữ hai cờ: *có yêu cầu chờ lượt* — xoá **trước** khi chạy lượt, nên mọi yêu cầu giữa lượt chỉ thêm đúng một lượt, lượt đó đọc trạng thái mới nhất, và animation đang diễn không bị cắt (xoá sau là mất yêu cầu đến giữa lượt) — và *vòng đang chạy*, để không mở hai vòng song song. Ngoài màn thì bỏ qua yêu cầu: vào màn luôn chạy một lượt và luồng đọc save, nên nhớ yêu cầu là thừa; rời màn thì xoá yêu cầu chờ và huỷ lượt đang chạy. Lọc ở một chỗ này, module không cần biết người chơi đang ở đâu. Trần số lượt liền nhau chỉ để bắt luồng tự gửi yêu cầu mãi; chạm trần thì báo lỗi |
-| **Mất tiến trình khi thua: một luồng chung, cảnh báo trước, xác nhận sau** | nhiều module cùng mất tiến trình khi người chơi thua thì chạy **một** luồng chung hai giai đoạn: **cảnh báo** ở màn còn cứu được — chỉ module thật sự mất gì, xếp theo ưu tiên dùng chung, không ai mất thì ẩn hẳn khối cảnh báo — và **xác nhận** ở màn thua. Module tự định nghĩa "đang có gì để mất"; "thế nào là thua" khai **một chỗ** cho mọi module, nếu không mỗi module vá một lỗ né thua khác nhau. Bắt đầu chờ, huỷ chờ và ghi mất mát có **một chủ gọi duy nhất** — cùng một class; màn thua chỉ phát **đồng bộ, ngay trước khi hiện** một sự kiện nói sự thật ("thua đã chốt") mà đúng một người nghe hành động, nên thứ tự người nghe không còn là vấn đề: view bật lên là đọc dữ liệu đã mất. Không mượn sự kiện thua có sẵn khi nó đang có người nghe tải lại màn — thêm sự kiện mới đặt tên theo sự thật. Thoát app giữa lúc chờ quyết định vẫn là thua: cờ chờ nằm trong save của **từng** module (sang chu kỳ thì xoá cùng — cờ chung không biết module nào đã sang chu kỳ), khôi phục lúc boot sau lần đánh giá đầu và **không** kiểm trạng thái, vì lúc đó module chưa đủ ngữ cảnh để trả lời. Gỡ cờ **trước** khi kiểm còn gì để mất, để một lần thua trắng tay không để cờ lại cho lần boot sau. Luật vòng đời cờ nằm ở lớp cha, không `virtual` — module chỉ khai bốn điều: có gì để mất, hiện gì khi cảnh báo, cờ lưu ở đâu, mất thì mất gì |
+| **Mỗi loop chỉ ra được token của nó là đời của ai, và đời đó dài đúng bằng nhịp** | nhận token của pha ngắn hơn đời nó thì loop **chết im lặng**: hủy là hành vi hợp đồng, thư viện async không log. Loop không có chủ thì ở Editor tắt domain reload, mỗi lần Play là một loop nữa xếp lên loop cũ. **Thân** vòng lặp và con số cấu hình về nơi giữ bảo đảm; **token** ở lại host vì host là thứ có đời sống |
+| **Hàm mở một tiến trình theo thời gian sở hữu trạng thái cuối của nó ở mọi đường ra** | xong, bị hủy, thời lượng bằng 0 — cả ba đi qua **một** `try/finally` bọc toàn thân hàm, nên trạng thái cuối và callback xảy ra đúng một lần. Caller chỉ `await` và ghép bằng `WhenAll`, không `try/finally` |
+| **Tiến trình chạm object Unity thì `finally` và callback guard `!= null`** | Destroy giữa chừng là một đường ra thật, và chạm object đã huỷ ném ngay trong `finally`. Guard bằng `if (x != null)`, không `x?.Foo()`: `?.` bỏ qua phép so sánh null đã overload của Unity. `onComplete` chỉ có **một** chủ: đã gán cho `finally` ngoài thì không truyền thêm vào lời gọi bên trong |
+| **`CancellationTokenSource` có đúng một chủ dọn: chỗ tạo ra nó** | nơi khác chỉ `?.Cancel()`. `Cancel` chạy tiếp đồng bộ phần còn lại ngay trong lời gọi, nên `finally` của chủ có thể đã `Dispose` trước khi bên huỷ tới dòng kế |
+| **Hàm mở một lượt sống bằng tài nguyên một lần dùng thì từ chối tái nhập ở cửa** | `Open()` chồng lên lượt đang mở là thay source mới trong khi người đang chờ còn giữ source cũ — họ treo **im lặng, vĩnh viễn**. Một dòng `if (isOpen) return;` rẻ hơn mọi kỷ luật |
+| **Hủy giữa chừng phân loại theo thứ mất đi** | dữ liệu (tiến độ, grant, save) nhất quán trên mọi đường — grant đứng trước anim. Trình diễn chỉ cần không để rác trên màn hình: snap đích, tắt, xong |
 
 > **Nền tảng** — lựa chọn mặc định và ràng buộc đi kèm:
 >
 > | Nhu cầu | Dùng | Ràng buộc không bỏ được |
 > |---|---|---|
-> | Async | **UniTask**, không coroutine, không `Task` | propagate `CancellationToken` xuống toàn bộ chain; token là đời của host (§3.1) |
-> | Load asset | **Addressables** qua `AssetReference`, cho **đơn vị nạp theo nhu cầu** (màn, popup) | không dùng string key; giữ `AsyncOperationHandle` để `Release()` đúng lúc, không giữ là leak. Prefab con nằm trong prefab cha đã nạp thì `[SerializeField]` kéo thẳng: mỗi `AssetReference` thêm là một handle phải trả và một `await` trước khi dùng được. Đổi lại con **chia đời sống với cha**: cha `SetActive(false)` thì con tắt theo, nên thứ phải hiện **khi cha đang đóng** (tay chỉ vào nút nằm ngoài cha) không được là con của cha |
+> | Async | **UniTask**, không coroutine, không `Task` | propagate `CancellationToken` xuống toàn bộ chain; tham số token **không mang `= default`** khi mọi caller đều có token — mặc định chỉ cho phép quên truyền mà compiler không báo |
+> | Load asset | **Addressables** qua `AssetReference`, cho **đơn vị nạp theo nhu cầu** (màn, popup) | không string key; giữ `AsyncOperationHandle` để `Release()`. Prefab con nằm trong prefab cha đã nạp thì `[SerializeField]` kéo thẳng — nhưng con **chia đời sống với cha**: thứ phải hiện **khi cha đang đóng** không được là con của cha |
 > | Anim UI | `Time.unscaledDeltaTime` · `DelayType.UnscaledDeltaTime` | popup phải chạy khi `timeScale` bằng 0 |
-> | Data lớn | `NativeArray` / `NativeList` | khi truyền GPU hoặc Job System; `StructLayout(Sequential)` khi phải khớp layout native |
+> | Data lớn | `NativeArray` / `NativeList` | khi truyền GPU hoặc Job System |
 > | Tài nguyên nặng | cache `RenderTexture`, `Texture2D`… | có đường dọn dẹp trong `OnDestroy()` |
 >
-> Hai sự thật về hình dạng `finally` với UniTask: `finally` đặt **trong** `while` chạy **mỗi vòng**, đặt
-> ngay sau `Delay` chạy khi delay vừa xong — chỉ một `try/finally` bọc toàn thân mới cho "đúng một lần".
-> `UniTask.Yield(ct)` **ném** ở `await` khi bị hủy, nên `if (ct.IsCancellationRequested)` đứng sau nó là
-> code chết.
->
-> Tham số `CancellationToken` không mang `= default` khi mọi caller đều có token: mặc định chỉ cho phép
-> quên truyền mà compiler không báo, và luồng quên token không dừng theo owner. Giá trị mặc định của tham
-> số trên method `virtual` lấy theo **kiểu khai báo của biến lúc gọi**, không theo override — lớp con khai
-> mặc định khác là kết quả khó đoán.
+> `finally` đặt **trong** `while` chạy **mỗi vòng**, đặt ngay sau `Delay` chạy khi delay vừa xong — chỉ
+> một `try/finally` bọc toàn thân mới cho "đúng một lần". `UniTask.Yield(ct)` **ném** ở `await` khi bị
+> hủy, nên `if (ct.IsCancellationRequested)` đứng sau nó là code chết. Giá trị mặc định của tham số trên
+> method `virtual` lấy theo **kiểu khai báo của biến lúc gọi**, không theo override.
+
+**Trình diễn một thay đổi cho người chơi.** Dữ liệu đổi ở một nơi và người chơi thấy nó ở nơi khác, có
+khi sau nhiều lần đổi. Luật cho mọi trình diễn kiểu đó:
+
+| Luật | Nghĩa là |
+|---|---|
+| **Mốc "đã thấy" nằm trong save, cạnh sự thật** | mọi thứ trượt hay đếm từ A tới B cần một A người chơi đã xác nhận bằng mắt (`currAnimatedScore`, `lastSeenRankIndex` — quá khứ phân từ, §3.7). A sống trong instance view là sai: view bị tắt, dựng lại, hoặc có nhiều instance. Sự thật đổi bao nhiêu lần giữa hai lần xem cũng được — trình diễn đi từ mốc tới sự thật **một** lần |
+| **Ghi mốc khi diễn xong, ở đúng một chỗ cho cả snap lẫn trượt** | huỷ giữa chừng thì mốc chưa nhích, lần sau diễn lại. Reset chu kỳ reset cả mốc. Trình diễn **tách bước** cần save giữ **cấu tạo** của đúng một lần đổi chưa xem, xoá khi diễn xong |
+| **Component dùng chung ở nhiều host thì mặc định thụ động; host cần dàn dựng gọi API `await` được** | bật lên chỉ đứng ở mốc; trượt khi host gọi `PlayAsync(ct)`. Không có cờ chế độ trên instance — một cờ `autoPlay` quên tick không để lại dấu vết |
+| **Hiệu ứng "báo có thay đổi" ở đúng một điểm trình diễn; chỗ khác vẽ tĩnh** | cùng một hiệu ứng ở hai màn là diễn hai lần cùng một thay đổi |
+| **Trạng thái nghỉ là trạng thái dựng trong prefab; đích trình diễn là ô developer đặt; mỗi lần hiện đặt lại về nghỉ** | vị trí lộ là `[SerializeField]`, không đọc ngầm `anchoredPosition` ở `Start` — hợp đồng không hiện trong Inspector. Mỗi lần hiện, code đặt về nghỉ rồi mới hỏi có gì để diễn |
+| **Lớp vẽ trên đè lớp dưới, không bật/tắt thứ bị che** | bật/tắt theo vị trí là một trạng thái nữa phải giữ đồng bộ với tween |
+| **Giá trị đổi lúc tới nơi, không lúc bắt đầu** | đổi giữa đường là hai thông tin mâu thuẫn trên một vật |
+| **Bước diễn thiếu dữ liệu thì bỏ bước, không rẽ nhánh cả luồng** | nhánh "ca này khỏi diễn" là một đường trình diễn thứ hai phải giữ đồng bộ với đường chính |
+| **Service overlay giữ cơ chế; nội dung là canvas của consumer được nâng cùng** | kịch bản mới là consumer mới, không sửa service — service mọc cờ chế độ theo từng kịch bản là gom domain của mọi consumer về một class (NT1, NT3) |
+| **Nhiều module cùng trình diễn khi vào một màn thì một điều phối viên chạy theo giai đoạn cố định** | mỗi module tự khởi động thì chồng lên nhau; lease, hàng đợi, chờ một frame chỉ vá triệu chứng. Giai đoạn chia theo **loại** trình diễn, cố định trong code — **thay đổi tiến trình** → **hướng dẫn lần đầu** → **ép xem tiến trình** (mốc vừa đạt, tiến trình vừa mất) → **quảng bá** (khi các hệ đã ổn định); ưu tiên chỉ xếp các module trong cùng giai đoạn, và chỉ ưu tiên với cờ ép là cấu hình từ xa. Luồng dùng **tài nguyên độc quyền** (lớp tối màn, màn chồng) chạy **lần lượt**; luồng chỉ chạm view của mình chạy đồng thời. Mọi luồng **idempotent**: đọc save, chỉ làm phần còn nợ, tiêu thụ trạng thái *sau* khi diễn xong, kết thúc khi mọi thứ nó mở đã đóng, trả tài nguyên trong `finally`; `try/catch` quanh **từng** luồng. Yêu cầu chạy lượt **gộp lại** bằng một cờ xoá **trước** khi chạy lượt. Vòng điều phối là class thuần để test không cần engine. Cơ chế đầy đủ ở tài liệu của hệ điều phối trong Horcrux |
+| **Nhiều module cùng mất gì đó ở một sự kiện thì một luồng chung, định nghĩa sự kiện ở một chỗ** | "thế nào là thua" khai **một chỗ** cho mọi module, nếu không mỗi module vá một lỗ né khác nhau. Bắt đầu chờ, huỷ chờ và ghi mất mát có **một chủ gọi**; cờ chờ nằm trong save của **từng** module (sang chu kỳ thì xoá cùng), gỡ cờ **trước** khi kiểm còn gì để mất. Luật vòng đời cờ ở lớp cha, không `virtual` — module chỉ khai: có gì để mất, hiện gì khi cảnh báo, cờ lưu ở đâu, mất thì mất gì |
 
 ## 3.6 Editor-first
 
@@ -707,14 +596,11 @@ Luật ở NT4; đây là nơi duy nhất dẫn giải. **Dấu hiệu code đan
 `Find` / `AddComponent` / `Resources.Load` để lấy thứ đã có trên prefab · hằng số tinh chỉnh cảm giác
 hardcode · dựng hierarchy bằng code · một API `Bind…` / `Attach…` nhận reference từ ngoài vào.
 
-**Kéo thả vào `[SerializeField]` là DI, không phải một cách làm cạnh tranh với DI.** Consumer vẫn
-không tự `new` và không tự đi tìm — nó **nhận vào** (`D`, §3.1). Khác duy nhất là composition root:
-code DI thì root là một file code chạy lúc boot, kéo thả thì root là **chính cái asset**.
-
-**API nhận reference là code nối, dù nó mang hình dạng DI.** `Bind(Transform)` chỉ chính đáng khi
-Inspector **thật sự không kéo được** — và câu đó phải **kiểm**, không phát biểu: cùng scene thì kéo
-được, khác scene hoặc prefab dựng lúc chạy thì không. Kéo được mà vẫn viết hàm bind là đổi một ô trống
-**nhìn thấy lúc authoring** lấy một lời gọi bị quên **không để lại dấu vết nào**.
+**Kéo thả vào `[SerializeField]` là DI, không phải một cách làm cạnh tranh với DI.** Consumer vẫn không
+tự `new` và không tự đi tìm — nó **nhận vào** (`D`, §3.1). Khác duy nhất là composition root: code DI
+thì root là một file chạy lúc boot, kéo thả thì root là **chính cái asset**. **API nhận reference là
+code nối, dù mang hình dạng DI** — `Bind(Transform)` chỉ chính đáng khi Inspector **thật sự không kéo
+được**, và câu đó phải **kiểm**: cùng scene thì kéo được; khác scene hoặc prefab dựng lúc chạy thì không.
 
 > **Nền tảng** — lý do gốc: dữ liệu serialize sửa được **không cần compile**, ai trong team cũng chỉnh
 > được, thiếu thì lộ ra ô trống trong Inspector chứ không nổ giữa gameplay, và giá trị thật **đọc được
@@ -722,118 +608,86 @@ Inspector **thật sự không kéo được** — và câu đó phải **kiểm
 
 **Sổ tay** — reference kéo thả vào `[SerializeField]` · component add sẵn trên prefab · số tinh chỉnh
 phơi ra Inspector · preset thành ScriptableObject · wire sẵn trong prefab rồi `Instantiate` ·
-`RectTransform` của chính object cũng là một ô `[SerializeField]` thay cho cast `(RectTransform)transform`
-— mọi thứ class chạm tới đều hiện trên Inspector, không có tham chiếu ngầm nào phải đọc code mới biết.
+`RectTransform` của chính object cũng là một ô `[SerializeField]` thay cho cast — mọi thứ class chạm
+tới đều hiện trên Inspector, không có tham chiếu ngầm nào phải đọc code mới biết.
 
-**Biên của "kéo được thì kéo" là số chỗ phải nối** (câu phân xử ở §0.1), và lý do nằm ngay trong cái
-bảo đảm đang bênh kéo thả: **ô trống chỉ lộ ra khi có người nhìn vào ô đó.** Một ô trên một object thì
-chắc chắn thấy; ba mươi ô rải trên ba mươi prefab thì không ai rà, và chúng hỏng từng cái một ở từng
-lần chơi khác nhau. **Cái giá phải nhận:** wiring nằm trong asset thì **không grep được** — quan hệ kéo
-thả chỉ tồn tại dưới dạng GUID trong file serialize, nên thước đo chi phí đọc của NT1 phải cộng thêm
-*"bao nhiêu asset phải mở Editor mới thấy"*; người đọc sau, và mọi agent đọc repo bằng text (§2.7),
-đều trả khoản này. Không phải lý do bỏ kéo thả; là lý do **không rải** nó ra nhiều chỗ.
+**Biên của "kéo được thì kéo" là số chỗ phải nối** (§0.1): **ô trống chỉ lộ ra khi có người nhìn vào ô
+đó.** Một ô trên một object thì chắc chắn thấy; ba mươi ô rải trên ba mươi prefab thì không ai rà. Cái
+giá phải nhận: wiring trong asset **không grep được** — chỉ tồn tại dưới dạng GUID trong file serialize,
+nên chi phí đọc của NT1 cộng thêm *"bao nhiêu asset phải mở Editor mới thấy"*; mọi agent đọc repo bằng
+text đều trả khoản này. Không phải lý do bỏ kéo thả; là lý do **không rải** nó.
 
-**Ngoại lệ tự nhiên** là thứ chưa tồn tại lúc authoring: object spawn runtime, số lượng động, dữ liệu
-từ server. Plan chạm scene hoặc prefab thì mô tả thao tác Editor **như một bước thật**, không lặng lẽ
-thay bằng code — và gom về **một mục riêng** tách khỏi logic (§5.4).
+**Bắt buộc phải nối bằng code thì bên đời ngắn tự trình diện với bên đời dài.** Bên đời ngắn biết chính
+xác lúc nó xuất hiện và biến mất, nên đăng ký và huỷ đăng ký là **một cặp trong một file**. Cặp chọn
+theo đời object và **phải xong trước tín hiệu cần tới nó**: view tự ẩn bằng cách tắt chính nó thì cặp
+bật/tắt gỡ nó khỏi chủ ngay lần ẩn đầu; tín hiệu phát ngay sau khi bật cây object thì `Awake` cả cây đã
+chạy còn `Start` thì chưa. Cặp đúng là `Awake`/`OnDestroy`.
 
-**Bắt buộc phải nối bằng code thì bên đời ngắn tự trình diện với bên đời dài, không phải ngược lại.**
-Bên đời ngắn biết chính xác lúc nó xuất hiện và biến mất, nên đăng ký và huỷ đăng ký là **một cặp nằm
-trong một file**. Bên đời dài đi tìm thì phải poll, hoặc rốt cuộc vẫn phải chờ được báo — và nó không
-có chỗ tự nhiên nào để biết lúc phải gỡ ra.
-
-**Cặp đăng ký chọn theo đời object, và phải xong trước tín hiệu cần tới nó.** View tự ẩn bằng cách tắt
-chính nó thì cặp bật/tắt gỡ nó khỏi chủ ngay lần ẩn đầu, rồi không ai bật lại. Tín hiệu phát ngay sau
-khi bật cây object thì `Awake` cả cây đã chạy còn `Start` thì chưa — đăng ký ở `Start` là lượt đầu
-thiếu view, và phần của nó bị đẩy ra sau mọi thứ khác ở lượt bù. Cặp đúng là `Awake`/`OnDestroy`.
-
-**Điều kiện dựng hệ ghi vào tài liệu, không sinh code canh.** Tạo asset, dựng GameObject, gán
-reference, đặt layer/tag, thêm scene vào build — người dựng làm **một lần**, viết thành một bước ở mục
-**"Trước khi chạy"** của tài liệu module (§5.1). Thiếu setup thì **để nó nổ** ở lần Play đầu — nhưng
-phải kiểm rằng nó nổ thật (§3.4).
-
-**Bước setup bằng tay là cách developer HIỂU hệ.** Người tự kéo asset vào ô, tự đặt số thì giữ được
-trong đầu **các mảnh rời của hệ và chỗ chúng nối vào nhau** — thứ duy nhất dùng được khi hệ hỏng lúc 2
-giờ sáng. **Hệ không gánh lỗi quên setup của người dùng nó**; đổi lại hệ **nợ** một mục "Trước khi
-chạy" đủ để dựng lại từ 0 — bỏ code canh mà không viết bước setup chỉ là đẩy việc.
+**Điều kiện dựng hệ ghi vào tài liệu, không sinh code canh.** Tạo asset, dựng GameObject, gán reference,
+đặt layer, thêm scene vào build — người dựng làm **một lần**, viết thành mục **"Trước khi chạy"** của
+tài liệu module (§5.1). Thiếu setup thì **để nó nổ** ở lần Play đầu — nhưng phải kiểm rằng nó nổ thật
+(§3.4). **Bước setup bằng tay là cách developer hiểu hệ**: người tự kéo asset vào ô giữ được trong đầu
+các mảnh rời và chỗ chúng nối vào nhau — thứ duy nhất dùng được khi hệ hỏng lúc 2 giờ sáng. Hệ không gánh
+lỗi quên setup; đổi lại hệ **nợ** một mục "Trước khi chạy" đủ để dựng lại từ 0. Plan chạm scene hoặc
+prefab thì mô tả thao tác Editor **như một bước thật**, gom về một mục riêng (§5.4).
 
 ## 3.7 Naming — self-documenting code
 
-- **Tên là lời giải thích thứ nhất, comment là phương án cuối.** Tên đạt khi developer mới đọc hiểu
-  ngay mà **không cần comment**; phải kèm comment mới hiểu nghĩa là tên chưa đạt — đổi tên trước, không
-  viết thêm chữ. Tên tự giải thích **mạnh** nhưng gọn: trần là **5 từ dài**, 6–7 từ ngắn đọc một mạch
-  vẫn đạt (`elapsedSecondsSinceLastSave`). Từ dài thì **viết tắt quen mắt** — `curr` · `prev` · `max` ·
-  `min` · `Utc` — không tự chế cách viết tắt mới. Viết tắt rồi vẫn vượt trần là khái niệm chưa tách đủ.
-- **Tên mang đủ ngữ nghĩa về giá trị nó giữ** — đọc tên biết ngay *cái gì*, *lúc nào*, *đã xảy ra gì*,
-  không suy từ ngữ cảnh xung quanh:
-  - *Lúc nào / thứ tự*: `curr` · `last` · `prev` · `next` — `currLevelIndex`, không `levelIndex` (level
-    nào?). Field cùng nói về một đối tượng dùng chung tiền tố: `CurrLevelIndex` · `CurrLevelScore`.
-  - *Đếm hay vị trí*: hậu tố `Amount` cho số lượng, `Index` cho vị trí — `loadedAssetsAmount` vs
-    `currAssetIndex`. Danh từ số nhiều đứng một mình (`loadedAssets`) đọc như một danh sách.
-  - *Tổng dồn*: tiền tố `total` — `totalSpentCoins`.
-  - *Khoá tra cứu*: hậu tố `Name` cho **chuỗi** người đọc được dùng làm khoá tra danh mục, `Id` cho
-    **số** định danh. `…Id` giữ một chuỗi làm người đọc đi tìm một bảng số không tồn tại.
-  - *Đã xảy ra gì*: quá khứ phân từ nói điều đã xảy ra **với giá trị, theo góc nhìn người chơi hay dữ
-    liệu** — `collected` · `animated` · `claimed` · `played`: `currAnimatedScore` (số người chơi đã thấy
-    chạy tới), `playedIntro`. Không dùng từ mờ (`introDone`) hay từ tả hành động của hệ
-    (`presentedScore`).
-  - *Số nhiều là lời hứa về số lượng*: type mang đúng một `ItemIndex` thì tên là `ItemClaimed`, không
-    `ItemsClaimed` — người đọc thấy số nhiều sẽ đi tìm một collection không tồn tại.
-  - *`-ing` là tiến trình, không phải trạng thái*: `IsPanelOpen` khác `IsPanelOpening`. Dùng nhầm thì
-    người sau sẽ thêm một cờ thứ hai cho trạng thái thật.
-  - *Biến cục bộ cùng luật*: `cumulativeWeight`, `visibleItemsAmount` — tính từ đứng một mình không
-    phải tên. Tính từ đứng trước danh từ theo tiếng Anh: `inclusiveEndIndex`, không `endIndexInclusive`.
-- **Tiền tố loại type**: interface `I…`, abstract class `A…` (`ALiveOpsModule`) — nhìn tên biết ngay
-  không `new` được và phải tìm subclass.
-- Tên method nói rõ **mục đích**: `EnsureMaterial()`, `SwapWriteBuffer()`, `SolveAnalytic()`. Tên vô
-  nghĩa cần thay: `Process`, `Handle`, `DoWork`, `Update2`. Boolean đọc như một câu hỏi: `IsPickable`,
-  `HasPendingInput`, `frameDataReady`; `IsFinished`, không `Finished`. Cờ nói **cái gì** đang chờ hay
-  đang chạy, không mượn hình ảnh cơ chế: `hasPendingPassRequest` · `isRunningPasses`, không `isDirty`
-  (bẩn cái gì?) · `isPumping` (hình ảnh chỉ có trong đầu người viết).
+- **Tên là lời giải thích thứ nhất, comment là phương án cuối.** Phải kèm comment mới hiểu nghĩa là
+  tên chưa đạt — đổi tên trước. Trần là **5 từ dài**, 6–7 từ ngắn đọc một mạch vẫn đạt
+  (`elapsedSecondsSinceLastSave`). Viết tắt **quen mắt** — `curr` · `prev` · `max` · `min` · `Utc` —
+  không tự chế. Viết tắt rồi vẫn vượt trần là khái niệm chưa tách đủ.
+- **Tên mang đủ ngữ nghĩa về giá trị nó giữ** — đọc tên biết *cái gì*, *lúc nào*, *đã xảy ra gì*:
+  - *Lúc nào / thứ tự*: `curr` · `last` · `prev` · `next` — `currLevelIndex`, không `levelIndex`. Field
+    cùng nói về một đối tượng dùng chung tiền tố.
+  - *Đếm hay vị trí*: hậu tố `Amount` cho số lượng, `Index` cho vị trí. Danh từ số nhiều đứng một mình
+    đọc như một danh sách; type mang đúng một `ItemIndex` thì tên là `ItemClaimed`, không `ItemsClaimed`.
+  - *Tổng dồn*: tiền tố `total`.
+  - *Khoá tra cứu*: hậu tố `Name` cho **chuỗi**, `Id` cho **số**. `…Id` giữ một chuỗi làm người đọc đi
+    tìm một bảng số không tồn tại.
+  - *Đã xảy ra gì*: quá khứ phân từ theo góc nhìn người chơi hay dữ liệu — `collected` · `animated` ·
+    `claimed`: `currAnimatedScore` (số người chơi đã thấy chạy tới). Không dùng từ mờ (`introDone`) hay
+    từ tả hành động của hệ (`presentedScore`).
+  - *`-ing` là tiến trình, không phải trạng thái*: `IsPanelOpen` khác `IsPanelOpening`.
+  - *Biến cục bộ cùng luật*: tính từ đứng một mình không phải tên; tính từ đứng trước danh từ theo
+    tiếng Anh (`inclusiveEndIndex`).
+- **Tiền tố loại type**: interface `I…`, abstract class `A…` — nhìn tên biết ngay không `new` được.
+- Tên method nói rõ **mục đích**: `EnsureMaterial()`, `SwapWriteBuffer()`. Tên vô nghĩa cần thay:
+  `Process`, `Handle`, `DoWork`. Boolean đọc như một câu hỏi: `IsPickable`, `HasPendingInput`. Cờ nói
+  **cái gì** đang chờ hay đang chạy, không mượn hình ảnh cơ chế: `hasPendingPassRequest`, không `isDirty`.
 - **Tên hàm khớp thứ nó trả về, không khớp thứ nó dựa vào**: hàm trả **một điểm** trên đường cong là
-  `EvaluateQuadraticBezier`, không `GetQuadraticBezierCurve` — "Curve" hứa một đối tượng đường cong.
-  `Evaluate` cho lấy mẫu một giá trị tại tham số `t`, `Compute` cho dẫn xuất một đại lượng từ đầu vào.
-- **`Setup(data)` cho view nhận dữ liệu để vẽ; `Bind`/`Attach` chỉ cho nối reference** — đúng thứ §3.6
-  gọi là code nối. Dùng `Bind` cho cả hai là một từ hai nghĩa.
+  `EvaluateQuadraticBezier`, không `GetQuadraticBezierCurve`. `Evaluate` cho lấy mẫu tại `t`, `Compute`
+  cho dẫn xuất một đại lượng.
+- **`Setup(data)` cho view nhận dữ liệu để vẽ; `Bind`/`Attach` chỉ cho nối reference** (§3.6).
 - **Casing theo quyền truy cập, không theo loại member**: private field camelCase · public field (data
-  class `[Serializable]`, DTO, ô Inspector của một cell) PascalCase như property — người đọc ở ngoài
-  class thấy `step.Goal`, không cần biết nó là field hay property. Khoá wire format sinh từ tên field thì
-  casing cũng là hợp đồng (dòng cuối mục): chốt trước khi bản dữ liệu đầu tiên rời máy developer.
-- **Hai chế độ loại trừ nhau là `enum` hai phần tử, không `bool`**: `ScrollDirection.Upwards` đọc
-  được ở cả Inspector lẫn call site; `firstStepAtBottom = true` chỉ nói một phía, phía `false` người
-  đọc phải tự phủ định, và ô checkbox trong Inspector không mang tên trạng thái nào. Chế độ thứ ba thêm
-  vào enum không đổi tên gì; thêm vào `bool` là đổi kiểu.
-- **Chuỗi bước có bước lúc có lúc không là `enum` bước, không bộ đếm**: đếm số lần bấm thì mỗi chỗ đọc
-  phải tự cộng trừ theo bước vắng mặt; enum nói thẳng đang ở đâu, `++` sang bước kế, so với bước cuối
-  là biết còn đi tiếp không. Bước đầu có hay không quyết **một lần** lúc mở, trước khi vào chuỗi.
-- **Đại lượng hình học đặt tên theo hai đầu mút**, dạng `<từ>To<đến>Dist`: `topContentToItemPivotDist`,
-  `pivotViewToTopViewDist`. Tên theo vai (`offsetFromTop`, `distFromContentTop`) chỉ nói một đầu, đầu
-  kia người đọc phải suy; đủ hai đầu thì phép trừ `A − B` đọc thành hình vẽ ngay tại dòng code, và
-  đối chiếu từng số hạng (§4.3) làm bằng mắt được.
-- **Comment chỉ khi thật sự cần thiết — mặc định là không có.** Tự giải thích áp cho cả tên **và
-  logic**: đoạn nào cần comment mới theo dõi được thì tách hàm có tên, đảo điều kiện, đặt biến trung
-  gian có tên — sửa code, không chú thích code. Comment còn lại **chỉ** nói **tại sao** (quyết định
-  trái trực giác, bẫy đã sai một lần §3.4, công thức nguồn §4), không bao giờ nói **cái gì**.
-- API public có XML doc; `<param>` cho mọi tham số có contract không hiển nhiên. **Comment, tooltip và
-  XML doc là chỗ đọc nhanh** — cơ chế và trade-off thuộc tài liệu của hệ (§5). Trần: **17–20 từ** cho
-  comment và tooltip · **35 từ** cho `<summary>` · **15 từ** cho `<param>`, `<returns>` và mỗi thẻ còn
-  lại. Chạm trần là tín hiệu: **sửa gốc trước khi viết thêm chữ**, hoặc phần đang viết vốn thuộc về
-  tài liệu.
-- **Một từ = một nghĩa trong toàn hệ thống** — một từ mang hai nghĩa thì đổi tên một bên ngay. Khái
-  niệm không đặt nổi tên riêng thường là khái niệm chưa rõ.
-- **Tên hệ theo cơ chế nó cung cấp, không theo người dùng đầu tiên.** Người dùng thứ hai khác vai xuất
-  hiện là tên theo vai cũ thành lời nói dối về phạm vi — hệ overlay đặt tên theo tutorial thành sai khi
-  màn nhận thưởng cũng dùng nó; lúc đó đổi tên theo luật "đổi tên là đổi cả hệ" dưới. File `.cs` và thư
-  mục đổi tên **trong Project window của Unity** để giữ `.meta` và GUID — đổi ngoài Editor là mọi
-  reference kéo thả đứt im lặng.
+  class, DTO) PascalCase như property — người đọc ngoài class thấy `step.Goal`, không cần biết nó là
+  field hay property. Khoá wire format sinh từ tên field thì casing là hợp đồng: chốt trước khi bản dữ
+  liệu đầu tiên rời máy developer.
+- **Hai chế độ loại trừ nhau là `enum` hai phần tử, không `bool`**: `ScrollDirection.Upwards` đọc được
+  ở cả Inspector lẫn call site; `bool` chỉ nói một phía, và chế độ thứ ba thêm vào `bool` là đổi kiểu.
+- **Chuỗi bước có bước lúc có lúc không là `enum` bước, không bộ đếm**: enum nói thẳng đang ở đâu;
+  bước đầu có hay không quyết **một lần** lúc mở.
+- **Đại lượng hình học đặt tên theo hai đầu mút**, dạng `<từ>To<đến>Dist`: `pivotToTopViewDist`. Đủ hai
+  đầu thì phép trừ `A − B` đọc thành hình vẽ ngay tại dòng code.
+- **Comment chỉ khi thật sự cần — mặc định là không có.** Đoạn nào cần comment mới theo dõi được thì
+  tách hàm có tên, đảo điều kiện, đặt biến trung gian — sửa code, không chú thích code. Comment còn lại
+  **chỉ** nói **tại sao** (quyết định trái trực giác, bẫy đã sai một lần, công thức nguồn), không bao giờ
+  nói **cái gì**.
+- API public có XML doc. Trần: **17–20 từ** cho comment và tooltip · **35 từ** cho `<summary>` · **15
+  từ** cho mỗi thẻ còn lại. Chạm trần là tín hiệu: sửa gốc trước khi viết thêm chữ, hoặc phần đang viết
+  thuộc về tài liệu (§5).
+- **Một từ = một nghĩa trong toàn hệ thống.** Khái niệm không đặt nổi tên riêng thường là khái niệm
+  chưa rõ.
+- **Tên hệ theo cơ chế nó cung cấp, không theo người dùng đầu tiên.** Hệ overlay đặt tên theo tutorial
+  thành sai khi màn nhận thưởng cũng dùng nó. File `.cs` và thư mục đổi tên **trong Project window của
+  Unity** để giữ `.meta` và GUID.
 - **Đổi tên là đổi cả hệ**: code, comment, chuỗi debug, mọi tài liệu — cùng một lần làm, kiểm bằng
-  grep. **Ranh giới:** khoá wire format và dữ liệu đã serialize (key JSON, tên field trong save,
-  schema) là **hợp đồng với hệ khác** — không đổi theo, không tính là "tên cũ còn sót". Asset trong repo
-  **không** thuộc ranh giới đó: field `[SerializeField]` đổi tên thì đổi luôn key trong YAML của asset,
-  cùng lần làm, so bằng diff — không gắn `FormerlySerializedAs`. Attribute đó là cầu (NT10), chỉ cho asset
-  đã author ở chỗ không sửa tay được (nhiều scene, prefab variant, dữ liệu người dùng), và gỡ cầu **sau
-  khi** asset đã lưu lại theo tên mới. *Đã sai một lần:* gỡ cầu khi asset còn key cũ — Unity nạp thành
-  các entry rỗng, không một dòng lỗi lúc import, hệ tự tắt ở lần Play đầu.
+  grep. **Ranh giới:** khoá wire format và dữ liệu đã serialize là **hợp đồng với hệ khác** — không đổi
+  theo. Asset trong repo **không** thuộc ranh giới đó: field `[SerializeField]` đổi tên thì đổi luôn key
+  trong YAML, cùng lần làm — không gắn `FormerlySerializedAs`. Attribute đó là cầu (NT10), chỉ cho asset
+  ở chỗ không sửa tay được (nhiều scene, prefab variant, dữ liệu người dùng), và gỡ **sau khi** asset đã
+  lưu lại theo tên mới. *Đã sai một lần:* gỡ cầu khi asset còn key cũ — Unity nạp thành entry rỗng,
+  không một dòng lỗi lúc import, hệ tự tắt ở lần Play đầu.
 
 ## 3.8 Dữ liệu đi qua tool — import/export
 
@@ -843,9 +697,9 @@ File mà tool đọc–ghi là **của người dùng và của hệ khác**, kh
 |---|---|
 | **Không bao giờ sửa giá trị dữ liệu import** | ngoài tầm hợp lệ thì **từ chối cả file**, hoặc **bỏ qua entry đó** kèm cảnh báo. Clamp là xuất ra bản lệch mà không ai biết |
 | **Bỏ entry hỏng, không bịa entry mới** | chèn dữ liệu để "sửa giúp" là thêm thứ không có trong file — tệ hơn thiếu |
-| **Chỉ sở hữu phần mình hiểu** | export clone dữ liệu gốc rồi ghi đè đúng những khoá tool sở hữu; khoá lạ **đi qua nguyên vẹn** — dữ liệu của hệ khác, không phải rác |
-| **Dữ liệu gốc đi theo đối tượng** | giữ tham chiếu bản gốc trên chính đối tượng, không tra lại theo toạ độ hay vị trí mảng lúc export — hai thứ đó đổi theo thao tác, tra theo chúng là gán dữ liệu cho đối tượng **khác** |
-| **Import và Export sống cạnh nhau** | hai chiều của cùng cụm dữ liệu trong một file — không trôi lệch nhau; nghiệm thu bằng round-trip (§4.3) |
+| **Chỉ sở hữu phần mình hiểu** | export clone dữ liệu gốc rồi ghi đè đúng những khoá tool sở hữu; khoá lạ **đi qua nguyên vẹn** |
+| **Dữ liệu gốc đi theo đối tượng** | giữ tham chiếu bản gốc trên chính đối tượng, không tra lại theo toạ độ hay vị trí mảng lúc export |
+| **Import và Export sống cạnh nhau** | hai chiều của cùng cụm dữ liệu trong một file; nghiệm thu bằng round-trip (§4.3) |
 
 ## 3.9 Editor tool
 
@@ -853,32 +707,28 @@ Tiêu chí: **một tool là một đơn vị gói kín** · **thứ dùng chung
 đổi giữa các lần vẽ lại phải có sẵn**.
 
 > **Nền tảng** — IMGUI (`OnGUI`, `EditorWindow`, `PropertyDrawer`): một lần tương tác gây nhiều lần gọi
-> `OnGUI` cho **cùng một state**, mỗi lần chạy lại toàn bộ hàm — thứ không đổi mà bị tạo lại trong đó
-> là rác thuần. `GUIStyle`, `GUIContent` có icon chỉ tồn tại sau khi `GUI.skin` và `EditorGUIUtility`
-> sẵn sàng, nên không khởi tạo được ở static initializer.
+> `OnGUI` cho **cùng một state**. `GUIStyle`, `GUIContent` có icon chỉ tồn tại sau khi `GUI.skin` và
+> `EditorGUIUtility` sẵn sàng, nên không khởi tạo được ở static initializer.
 
-**Sổ tay** — *áp cho IMGUI*; UI Toolkit có mô hình repaint khác hẳn nên bảng này không áp:
+**Sổ tay** — *áp cho IMGUI*; UI Toolkit có mô hình repaint khác nên bảng này không áp:
 
 | Cấp cache | Kỹ thuật | Khi nào dùng |
 |---|---|---|
 | Static eager | `static readonly` | giá trị bất biến: `Color`, `GUILayoutOption[]`, `GUIContent` chỉ có text |
 | Static lazy + guard | init một lần trong `EnsureStyles()` | thứ cần `GUI.skin` hoặc `EditorGUIUtility` |
-| Instance lazy | null-check init ở cấp window | style riêng từng tool |
 | Dirty-flag | chỉ rebuild khi dữ liệu đổi | layout options khi window resize |
 | Event-phase | tính nặng chỉ ở `EventType.Layout` | filter, sort, format — `Repaint` dùng lại kết quả |
 
 **Tool có người dùng thì UX là một phần của thiết kế:**
 
 - **Vùng UI phải nói lên ranh giới** — thứ khác vai trò (ghi vào dữ liệu / chỉ đổi cách xem / dùng ở
-  mọi lúc) không nằm chung một vùng. Ranh giới phải giải thích bằng một cột trong hướng dẫn là ranh
-  giới người dùng sẽ nhầm.
+  mọi lúc) không nằm chung một vùng.
 - **Điều kiện vẽ và điều kiện bấm được suy từ một nguồn** (§3.4) — phá thì nút đang hiện mà bấm không
   có gì xảy ra.
 - **Không giấu thứ có thật**: điều kiện vẽ là *"có dữ liệu"*, không phải *"tra được tài nguyên để
-  vẽ"* — tra thiếu thì vẽ dạng báo lỗi kèm id, không để dữ liệu biến mất khỏi màn hình trong khi vẫn
-  được xử lý và ghi ra file. Field chỉ-đọc vẫn phải hiện, khác kiểu với field sửa được.
+  vẽ"* — tra thiếu thì vẽ dạng báo lỗi kèm id. Field chỉ-đọc vẫn phải hiện, khác kiểu với field sửa được.
 - **Phép kiểm tính hợp lệ chạy khi được hỏi**, không chạy nền theo mỗi thay đổi: lúc đang dựng thì dữ
-  liệu **luôn** chưa hợp lệ, cảnh báo nền hiện đúng lúc chưa thể sửa.
+  liệu **luôn** chưa hợp lệ.
 
 ---
 
@@ -887,34 +737,27 @@ Tiêu chí: **một tool là một đơn vị gói kín** · **thứ dùng chung
 ## 4.1 Khi nào dùng tới toán, và sâu tới đâu
 
 Mở ra khi **developer yêu cầu**, hoặc khi **agent thấy toán giải bài toán tốt hơn hẳn** — trường hợp
-sau thì nêu kèm được–mất để developer quyết, không tự đưa vào (NT5).
+sau thì nêu kèm được–mất để developer quyết (NT5).
 
-**Mặc định là không cần toán.** Phần lớn logic gameplay là trạng thái và luật rời rạc; toán là một lớp
-phức tạp phải trả bằng nhu cầu thật (NT1). Xét hết cách rẻ hơn và dễ chỉnh hơn trước: `AnimationCurve`
-hoặc bảng tra do designer chỉnh trong Inspector (NT4) · easing có sẵn · lerp · máy trạng thái · một
-hằng số chọn bằng tay. **Dấu hiệu đang ép toán vào chỗ không cần:** phải dẫn định luật nền để biện minh
-một phép nhân · công thức chỉ có một call site và không tham số nào thay đổi · designer không chỉnh được
-gì · kết quả thay bằng vài giá trị trong bảng là xong.
+**Mặc định là không cần toán.** Phần lớn logic gameplay là trạng thái và luật rời rạc. Xét hết cách rẻ
+hơn và dễ chỉnh hơn trước: `AnimationCurve` hoặc bảng tra do designer chỉnh trong Inspector (NT4) ·
+easing có sẵn · lerp · máy trạng thái · một hằng số chọn bằng tay. **Dấu hiệu đang ép toán vào chỗ không
+cần:** phải dẫn định luật nền để biện minh một phép nhân · công thức chỉ có một call site và không tham
+số nào thay đổi · designer không chỉnh được gì. **Bờ vực còn lại cũng sai:** bài toán vốn liên tục và có
+ràng buộc — dừng đúng chỗ, va chạm, nội suy cần đạo hàm liên tục — mà né toán thì thành một đống hằng số
+không ai hiểu. Toán đúng chỗ làm code **ngắn hơn**.
 
-**Bờ vực còn lại cũng sai:** bài toán vốn liên tục và có ràng buộc — dừng đúng chỗ, va chạm, nội suy
-cần đạo hàm liên tục — mà né toán thì thành một đống hằng số không ai hiểu, sửa chỗ này vỡ chỗ khác.
-Toán đúng chỗ làm code **ngắn hơn**.
-
-**Đã cần toán thì sâu vừa đủ cho tính năng:** mô hình đủ để chạy đúng và cho cảm giác đúng, không phải
-đúng nhất về vật lý — xấp xỉ là **mặc định** (NT8). Khi **thật sự** cần bản đầy đủ thì **làm tử tế**:
-cắt nửa vời rồi bù bằng hằng số là cách sinh ra hệ không ai dám sửa.
+**Đã cần toán thì sâu vừa đủ cho tính năng:** xấp xỉ là **mặc định** (NT8). Khi **thật sự** cần bản đầy
+đủ thì **làm tử tế**: cắt nửa vời rồi bù bằng hằng số là cách sinh ra hệ không ai dám sửa.
 
 **Núm phơi ra là đại lượng người tune nhìn thấy trên màn hình, không phải tham số trung gian của công
-thức.** Biên độ là đúng độ lệch thật, số lần lắc là đúng số đếm được bằng mắt. Một "điểm đích" mà đỉnh
-không bao giờ chạm, hay một tốc độ bị làm tròn ngầm thành số lần, buộc người tune giải ngược công thức
-mới ra cảm giác — và đổi núm không đổi thứ họ tưởng. Hình dạng chuyển động gọi tên được theo pha
-(xuống → về → lên → về) thì dựng từ hàm có sẵn đúng hình dạng đó, chọn pha cho đúng hướng, thay vì
-công thức tự chế phải dẫn giải mới hiểu.
+thức.** Biên độ là đúng độ lệch thật, số lần lắc là đúng số đếm được bằng mắt. Hình dạng chuyển động gọi
+tên được theo pha thì dựng từ hàm có sẵn đúng hình dạng đó, thay vì công thức tự chế phải dẫn giải mới hiểu.
 
 ## 4.2 Cần thì phải cho hiểu sâu
 
 Người đọc phải **hiểu hiện tượng** · **tin công thức là suy ra được** · **kiểm lại được** bằng tay.
-Mạch dưới dành cho công thức **không hiển nhiên** (NT10).
+Mạch dưới dành cho công thức **không hiển nhiên**.
 
 | # | Câu hỏi người đọc sẽ hỏi | Phải trả lời được gì | Sổ tay — dạng trình bày |
 |---|---|---|---|
@@ -922,20 +765,13 @@ Mạch dưới dành cho công thức **không hiển nhiên** (NT10).
 | 2 | Vì sao mô hình đó đúng? | định luật hoặc định lý gốc | diagram |
 | 3 | Phương trình là gì? | phương trình chi phối, ý nghĩa từng ký hiệu | `$$…$$` kèm bảng ký hiệu |
 | 4 | Vì sao chọn cái này? | các lựa chọn đã cân, tiêu chí loại | bảng so sánh có cột ✓ |
-| 5 | Từ phương trình gốc ra nghiệm trong code thế nào? | từng bước biến đổi, **không nhảy bước**, mỗi bước một câu vì sao | đánh số ①②③ |
+| 5 | Từ phương trình gốc ra nghiệm trong code thế nào? | từng bước biến đổi, **không nhảy bước** | đánh số ①②③ |
 | 6 | Làm sao tin nghiệm này đúng? | giá trị tại các mốc biên so với kỳ vọng | bảng "mốc → kỳ vọng → ✓" |
 
-Không thương lượng:
-
-- **Trực giác trước, ký hiệu sau** — ý niệm bằng lời thường ("càng xa đích thì đi càng nhanh"), rồi
-  mới ra phương trình.
-- **Suy ra, không áp đặt** — công thức chốt *dẫn ra* từ nguyên lý gốc, không "xuất hiện từ hư không"
-  rồi giải thích ngược.
-- **Ngoại lệ: thứ chọn bằng cảm giác** — hằng số tinh chỉnh, đường cong tự chế thì nói thẳng "chọn
-  bằng tai và mắt, số này cho cảm giác X". **Đừng bịa dẫn giải vật lý** cho giá trị chọn bằng cảm nhận:
-  nó làm hỏng niềm tin vào cả phần thật sự có dẫn giải.
-- **Lệch vật lý chuẩn là bình thường, không phải lỗi cần bào chữa** (NT8) — chỉ nêu lệch ở đâu, vì
-  sao, khi nào mới cần bản đầy đủ.
+Không thương lượng: **trực giác trước, ký hiệu sau** · **suy ra, không áp đặt** — công thức chốt *dẫn
+ra* từ nguyên lý gốc · **thứ chọn bằng cảm giác thì nói thẳng** "chọn bằng tai và mắt, số này cho cảm
+giác X" — đừng bịa dẫn giải vật lý cho nó, vì nó làm hỏng niềm tin vào phần thật sự có dẫn giải · **lệch
+vật lý chuẩn là bình thường** (NT8) — chỉ nêu lệch ở đâu, vì sao, khi nào mới cần bản đầy đủ.
 
 ## 4.3 Đối chiếu công thức với code
 
@@ -956,33 +792,27 @@ giống" (NT8). Đây là đối chiếu **công thức với code**, không ph�
 # §5 — Tài liệu
 
 Mỗi hệ thống và mỗi tool có tài liệu riêng, đặt cùng thư mục với nó. **Thay đổi hệ thống thì cập nhật
-tài liệu trong cùng lần làm** — riêng `.html` theo nhịp mốc.
-
-Một utility lẻ trong thư mục phẳng (`Utilities/ExtensionMethods/`) mà có tài liệu hay demo đi kèm thì
-**xuống thư mục con mang tên nó** (`ExtensionMethods/ScrollRect/` gồm `.cs` · `.md` · `.html`): tài liệu
-vẫn cạnh code, mà thư mục phẳng không lẫn ba loại file của mười utility. Chuyển thư mục **không** là
-lý do bỏ bản `.md` — chuỗi `code → .md → .html` dưới đây vẫn đủ ba mắt.
+tài liệu trong cùng lần làm** — riêng `.html` theo nhịp mốc. Một utility lẻ trong thư mục phẳng mà có
+tài liệu hay demo đi kèm thì **xuống thư mục con mang tên nó** (`.cs` · `.md` · `.html` cạnh nhau).
 
 | Loại | Vai trò | Vòng đời |
 |---|---|---|
 | **`.md`** | tài liệu **agent đọc** để hiểu và phát triển hệ — bản đặc, plain text, rẻ token; nguồn sinh `.html` | cập nhật **cùng lần làm** với mỗi thay đổi |
 | **`.html`** | tài liệu **developer và game designer đọc** — trực quan hóa 100% nội dung `.md`; agent không đọc bản này khi đã có `.md` | đồng bộ từ `.md` theo **mốc** — developer yêu cầu, hoặc chốt xong một cụm thay đổi |
-| **Plan** (khi developer yêu cầu) | để developer **tự code lại** nhằm học | luôn là `.md`; theo task |
+| **Plan** (khi developer yêu cầu, và mọi code vào Horcrux) | để developer **tự code lại** nhằm học và chịu trách nhiệm framework | luôn là `.md`; theo task |
 | **Manual** (khi tool có người dùng không phải developer) | người dùng đọc để **thao tác** — luật viết ở §5.4 | sống cùng tool |
 
-**Ai viết: agent, cả bốn loại.** Nghiệm thu tài liệu là **đối chiếu máy móc với code**, đúng chỗ máy
-hơn người ở sức và nhất quán chéo (§2.8). Developer **chốt nội dung**: dòng nào lệch thiết kế thì
-developer phân xử, agent sửa. Riêng **Plan** có phân công khác — ở §5.3.
+**Ai viết: agent, cả bốn loại.** Nghiệm thu tài liệu là **đối chiếu máy móc với code** (§2.8). Developer
+**chốt nội dung**: dòng nào lệch thiết kế thì developer phân xử, agent sửa.
 
 **Quy trình:** phỏng vấn ngữ cảnh (§2.1) và đối chiếu hiểu biết về code (§2.2) → đọc **tất cả** source,
 hiểu 100% data flow, lifecycle, lý do mỗi quyết định → viết `.md` → sinh `.html` từ `.md` → khi được
 yêu cầu thì viết Plan.
 
-**Chuỗi sự thật một chiều `code → .md → .html`** (một dạng "hai bản buộc khớp thì suy từ một nguồn",
-§3.4): code là chuẩn, hai tài liệu phản ánh **100% thiết kế đang chạy trong code**. **Không gộp, không
-xóa** hai bản. Lệch thì sửa xuôi theo chuỗi: `.html` lệch → đối chiếu `.md` với code trước, rồi đồng bộ
-`.html` từ `.md`. **"100%" là không mất nội dung khi chuyển bản, không phải viết cho nhiều** — trần độ
-dài do §5.4 canh, trên cả hai bản.
+**Chuỗi sự thật một chiều `code → .md → .html`** (§3.4): code là chuẩn, hai tài liệu phản ánh **100%
+thiết kế đang chạy trong code**. **Không gộp, không xóa** hai bản. Lệch thì sửa xuôi theo chuỗi: `.html`
+lệch → đối chiếu `.md` với code trước, rồi đồng bộ `.html` từ `.md`. "100%" là không mất nội dung khi
+chuyển bản, không phải viết cho nhiều — trần độ dài do §5.4 canh.
 
 **Sổ tay** — checklist mỗi lần đồng bộ: soát "không viết theo trí nhớ" và "ở thì hiện tại" của §5.4 ·
 đổi tên hay xóa file tài liệu thì grep **tham chiếu chết** trong code comment, file hướng dẫn agent của
@@ -992,21 +822,18 @@ dự án, tài liệu khác.
 
 Tổ chức theo **đường đi của dữ liệu** (input → processing → output), không theo "lý thuyết → thiết kế →
 code": người đọc cần lần theo được một giá trị từ lúc vào đến lúc ra. Code trích nguyên văn, không viết
-lại. Bảng metrics tổng kết đặt cuối.
+lại. Luồng dữ liệu vẽ bằng ASCII vì `.md` được đọc bằng nhiều công cụ.
 
-**Sổ tay** — luồng dữ liệu vẽ bằng ASCII vì `.md` được đọc bằng nhiều công cụ; công cụ chắc chắn render
-được mermaid thì dùng mermaid cũng được (NT6).
-
-**Một mục bắt buộc: "Trước khi chạy", với mọi hệ cần wire tay** — hợp đồng đi kèm của việc hệ không tự
-setup hộ (§3.6). Nghiệm thu: người chưa từng mở hệ dựng lại được **từ 0** chỉ bằng mục này, theo thứ
-tự, không đọc code hay hỏi ai. Viết bằng **thao tác và nhãn thật trên UI** — đường dẫn menu, tên ô
-trong Inspector, thứ kéo vào ô nào — mỗi bước kèm *"thiếu bước này thì hỏng ở đâu"*. Hệ không cần wire
-gì thì không có mục này.
+**Một mục bắt buộc: "Trước khi chạy", với mọi hệ cần wire tay** (§3.6). Nghiệm thu: người chưa từng mở
+hệ dựng lại được **từ 0** chỉ bằng mục này, theo thứ tự, không đọc code hay hỏi ai. Viết bằng **thao
+tác và nhãn thật trên UI** — đường dẫn menu, tên ô trong Inspector, thứ kéo vào ô nào — mỗi bước kèm
+*"thiếu bước này thì hỏng ở đâu"*. Hệ không cần wire gì thì không có mục này.
 
 **Còn lại là kho mục để chọn, không phải form để điền.** Mỗi mục đưa vào phải gọi tên được **câu hỏi
 của người đọc** mà nó trả lời; hệ nhỏ có ba mục là bình thường. Kho: Data structures · Core algorithm ·
-Lifecycle · Implementation details · Framework integration · Design decisions · Safety và error ·
-Platform issues · Architecture (file tree kèm vai trò) · Testing · Extension · Performance.
+Lifecycle · Framework integration · Design decisions (kèm "đã sai một lần" và "cố ý KHÔNG làm") ·
+Safety và error · Platform issues · Architecture (file tree kèm vai trò) · Testing · Extension ·
+Performance.
 
 **Nghiệm thu:** lần theo được một giá trị từ input tới output mà không nhảy section · mỗi so sánh đều
 thấy **tiêu chí** và **kết luận** · dựng được `.html` 100% từ file này mà **không cần mở source**.
@@ -1019,99 +846,77 @@ thấy **tiêu chí** và **kết luận** · dựng được `.html` 100% từ 
 
 Giữ **cấu trúc section của `.md`** để hai bản đối chiếu được. "Không viết theo trí nhớ" (§5.4) áp cả
 cho **số liệu trong demo**. **Để hiểu, không để chép code**: chữ ký API thành bảng, chỉ giữ code khi
-đoạn code *là* thứ cần minh hoạ.
-
-Trực quan hóa **theo loại nội dung**: so sánh thì bảng · luồng dữ liệu thì diagram · quan hệ định
-lượng thì công thức · giá trị biến thiên liên tục thì Canvas · quá trình nhiều bước thì step. Demo chỉ
-làm khi bảng và text **không đủ** để thấy hành vi.
+đoạn code *là* thứ cần minh hoạ. Trực quan hóa **theo loại nội dung**: so sánh thì bảng · luồng dữ liệu
+thì diagram · quan hệ định lượng thì công thức · giá trị biến thiên liên tục thì Canvas · quá trình
+nhiều bước thì step. Demo chỉ làm khi bảng và text **không đủ** để thấy hành vi.
 
 **Nghiệm thu:** đủ 100% nội dung nguồn · single file · TOC khớp section thật · đọc được trên màn hình
-nhỏ · người đọc *hiểu* được hệ mà không cần đọc code · mở trang không tương tác thì không tiến trình
-nào chạy · mỗi demo thao tác được và cho thấy đúng hành vi đang nói tới.
+nhỏ · mở trang không tương tác thì không tiến trình nào chạy · mỗi demo thao tác được và cho thấy đúng
+hành vi đang nói tới.
 
 **Sổ tay** — copy `DOCS_TEMPLATE.html`, thay các chỗ `{…}`, xoá section mẫu và khối demo mẫu. Khối xây
-sẵn, thứ template tự làm, và **bảng cấm trong draw loop và handler của Canvas/DOM** nằm trong khối
-hướng dẫn ở đầu chính file đó (NT7). Không dùng thư viện tô màu code (NT1).
+sẵn và **bảng cấm trong draw loop của Canvas/DOM** nằm trong khối hướng dẫn ở đầu file đó (NT7). Không
+dùng thư viện tô màu code (NT1).
 
 ## 5.3 Plan — để developer tự triển khai
 
 Tiêu chí: **tự chứa**. Developer code lại được từ đầu đến cuối mà **không phải suy đoán**, không phải
-mở tài liệu khác. Các task xếp theo **thứ tự phụ thuộc**, mỗi task chỉ cần thứ đã có ở task trước.
-Hệ có lõi toán (§4.1) thì mục `§0` của Plan dẫn giải tại chỗ theo mạch §4.2.
+mở tài liệu khác. Các task xếp theo **thứ tự phụ thuộc**, mỗi task chỉ cần thứ đã có ở task trước. Hệ
+có lõi toán thì mục `§0` của Plan dẫn giải tại chỗ theo mạch §4.2.
 
-**Plan chạm cả framework dùng chung lẫn consumer thì phần framework chỉ thêm** — member mới mang mặc định
-(`virtual`), API cũ giữ nguyên — để task framework xong là compile sạch và consumer chưa áp dụng vẫn chạy
-như cũ; mỗi task sau cũng là một mốc compile sạch. Xoá API cũ là việc riêng, sau khi mọi consumer đã chuyển.
-Developer gõ framework trước rồi mới áp ra: lỗi đỏ kéo dài qua nhiều task là không biết task nào hỏng.
+**Phân công: lõi developer viết, test agent viết.** Plan tồn tại vì developer muốn tự gõ lại để học, và
+vì **mọi dòng vào Horcrux developer tự gõ** (§2.4). Test thì agent viết và chạy (§2.8), nên Plan **chỉ có
+danh sách case sẽ kiểm**, không có code test. **Nhịp:** developer code xong lõi → agent đọc code thật
+rồi mới viết test, vì chữ ký lúc viết Plan còn là nháp. Việc phát sinh giữa lúc đang làm Plan thì đầu
+ra là Plan, không tạo file code; chỗ đặt đầu ra chưa rõ thì hỏi một câu (NT5). *Đã sai một lần:* tạo hai
+file `.cs` mới khi developer đang chờ một mục trong Plan.
 
-**Phân công riêng của Plan: lõi developer viết, test agent viết.** Plan tồn tại vì developer muốn tự gõ
-lại để học, nên code lõi trong Plan là bản để đọc và gõ, không phải để agent commit — ngoài Plan thì
-agent viết code như mọi task khác, **trừ framework dùng chung (bộ này là Horcrux): mọi dòng vào đó
-developer tự gõ, trong hay ngoài Plan**; agent viết plan hoặc đoạn mẫu, review, test. Framework đi theo
-mọi dự án sau nên developer phải hiểu và chịu trách nhiệm từng dòng; và nó là repo riêng, agent sửa vào
-đó là sửa chung cho dự án khác. Test thì agent viết và chạy (§2.8), nên Plan **chỉ có danh sách case
-sẽ kiểm**, không có code test. **Nhịp:** developer code xong lõi → agent đọc code thật rồi mới viết
-test, vì chữ ký lúc viết Plan còn là nháp. Danh sách case là chỗ developer veto hoặc thêm case.
+**Plan chạm cả Horcrux lẫn consumer thì phần Horcrux chỉ thêm** — member mới mang mặc định (`virtual`),
+API cũ giữ nguyên — để task framework xong là compile sạch và consumer chưa áp dụng vẫn chạy như cũ;
+mỗi task sau cũng là một mốc compile sạch. Xoá API cũ là việc riêng, sau khi mọi consumer đã chuyển.
 
-**Việc phát sinh giữa lúc đang làm Plan thì đầu ra là Plan.** Developer nhờ thêm một overload hay một biến
-thể trong bối cảnh Plan thì viết vào Plan, không tạo file code — Plan tồn tại vì developer muốn tự gõ lõi.
-Chỗ đặt đầu ra chưa rõ thì hỏi một câu (NT5), không chọn hộ. *Đã sai một lần:* tạo hai file `.cs` mới khi
-developer đang chờ một mục trong Plan; phải xoá cả file lẫn `.meta`.
-
-**Developer gõ lệch plan là bình thường** (NT6). Lượt kiểm của agent sau mỗi step: compile, rồi **so code
-với plan và phân loại từng chỗ lệch** — tư tưởng thì chưng cất vào file này (§2.6) · lỗi thì báo kèm bằng chứng (§2.2)
-· trôi thì sync plan theo code (§5.4). Chỗ lệch là nơi tư tưởng lộ ra rõ nhất, và cũng là nơi lỗi mới sinh.
-
-**Sổ tay** — kho phần cho mỗi task, **chỉ lấy phần task này cần**: Files (đường dẫn chính xác) ·
-Interfaces (consumes và produces, chữ ký đầy đủ) · bảng "toán → code" trỏ về `§0` · bảng lý do cho
-mỗi quyết định thiết kế và tối ưu · **code hoàn chỉnh dán được** với comment trỏ công thức nguồn ·
-**Editor setup** khi chạm scene hoặc prefab — mục riêng của task, không xen vào code và bảng lý do (§5.4) ·
-**bảng case kiểm thử** (input → kỳ vọng, kèm biên theo §2.8) · **danh sách cheat** chọn theo tiêu chí cheat ở §2.8, kèm lý do từng lệnh.
-
-**Plan không thuật lại code.** Bảng lý do ghi *quyết định và vì sao chọn nó*, không kể *code làm gì*
-(§5.4).
-
-**Dẫn giải của Plan dừng ở luồng; Editor setup thì đầy đủ.** Người đọc Plan là developer đang có agent
-bên cạnh, nên kênh bù cho chỗ chưa rõ là **hỏi trực tiếp** — dẫn giải chỉ cần đủ lần theo luồng (dữ
-liệu đi đâu, bước nào gọi bước nào, quyết định trái trực giác vì sao), không dẫn dắt dài như tài liệu
-module; câu hỏi lặp lại thì ghi câu trả lời ngược vào Plan (§5.4). Chiều gọn đó **không áp cho Editor
-setup**: bước tay thiếu không có compile error nào bắt, và developer tra lại nó lúc dựng — mục đó viết
-đủ để làm theo từng bước không phải hỏi.
+**Developer gõ lệch plan là bình thường** (NT6). Lượt kiểm của agent sau mỗi step: compile, rồi **so
+code với plan và phân loại từng chỗ lệch** theo §2.6.
 
 **Hai loại Plan, hai hình dạng code.** Hệ **chưa có code** thì mỗi khối là **một file trọn vẹn** để
 chép. Hệ **đang có code** thì Plan là **chuỗi chỗ đổi theo thứ tự**: mỗi bước một chỗ — file · dòng
-hiện tại · đoạn cũ → đoạn mới; dòng không nhắc là dòng giữ nguyên. Chép nguyên khối chỉ khi gần mọi
-dòng của khối đều đổi, và kèm một dòng "so với cũ". Chép cả file cho hệ đang có là bắt developer tự so
-từng dòng để tìm chỗ khác — đúng việc Plan phải làm hộ.
+hiện tại · đoạn cũ → đoạn mới; dòng không nhắc là dòng giữ nguyên. Chép cả file cho hệ đang có là bắt
+developer tự so từng dòng để tìm chỗ khác — đúng việc Plan phải làm hộ.
 
-**Code trong plan — bốn đảm bảo:** **vừa đủ** và **mở đường mai** (NT1) · **đúng với công thức đã
-chốt** — "code khớp công thức", không phải "công thức phải khớp vật lý" (NT8) · **hiệu năng** theo NT2
-và §3.3 · **self-document** theo §3.7.
+**Dẫn giải của Plan dừng ở luồng; Editor setup thì đầy đủ.** Người đọc Plan là developer đang có agent
+bên cạnh, nên kênh bù cho chỗ chưa rõ là **hỏi trực tiếp**; câu hỏi lặp lại thì ghi câu trả lời ngược
+vào Plan. Chiều gọn đó **không áp cho Editor setup**: bước tay thiếu không có compile error nào bắt.
+
+**Sổ tay** — kho phần cho mỗi task, **chỉ lấy phần task này cần**: Files (đường dẫn chính xác) ·
+Interfaces (consumes và produces, chữ ký đầy đủ) · bảng "toán → code" trỏ về `§0` · bảng lý do cho
+mỗi quyết định thiết kế — ghi *quyết định và vì sao*, không kể *code làm gì* · **code hoàn chỉnh dán
+được** · **Editor setup** — mục riêng của task · **bảng case kiểm thử** (input → kỳ vọng, kèm biên theo
+§2.8) · **danh sách cheat** theo tiêu chí ở §2.8.
 
 **Nghiệm thu riêng:** có mục "Ngữ cảnh đã chốt" (§2.5) · mọi hàm có caller thật, hoặc có lý do phòng
-xa chữ ký nói được ra (NT1) · công thức đã đối chiếu với code (§4.3) · phần sẽ test có bảng case, không
+xa chữ ký nói được ra (NT1) · code **vừa đủ**, **đúng công thức đã chốt**, **đúng nhịp** (NT2),
+**self-document** (§3.7) · công thức đã đối chiếu với code (§4.3) · phần sẽ test có bảng case, không
 có code test.
 
 ## 5.4 Kỷ luật viết và bảo trì — áp cho mọi loại tài liệu
 
 **Cắt trước khi giao — bắt buộc.** Bản đầu luôn có nước. Cắt theo thứ tự: câu dẫn *"phần này sẽ nói
-về…"* · tóm tắt lại thứ vừa nói · câu chuyển tiếp · nhận xét về chất lượng thiết kế · ẩn dụ và câu chốt
-có vần · cùng một ý viết hai lần · lý do dài hơn một câu cho một khẳng định hiển nhiên (NT10). Cắt
-xong mà vẫn dài thì nội dung thật sự lớn — **tách file**, đừng nén chữ.
+về…"* · tóm tắt lại thứ vừa nói · câu chuyển tiếp · nhận xét về chất lượng thiết kế · ẩn dụ · cùng một
+ý viết hai lần · lý do dài hơn một câu cho một khẳng định hiển nhiên (NT10). Cắt xong mà vẫn dài thì
+nội dung thật sự lớn — **tách file**, đừng nén chữ.
 
-**Luật câu chữ của §2.3 áp cho tài liệu**: một câu một ý · hạn chế thuật ngữ · gọi khái niệm đúng tên
-trong code · kết luận trước, dẫn giải sau. Chỉ khác ở **trần**: đối thoại canh theo quyết định đang
+**Luật câu chữ của §2.3 áp cho tài liệu**, chỉ khác ở **trần**: đối thoại canh theo quyết định đang
 chờ, tài liệu canh theo **việc người đọc phải làm được sau khi đọc**.
 
 | Luật | Nghĩa là |
 |---|---|
-| **Mỗi tài liệu một người đọc** | mỗi loại trả lời đúng câu hỏi của người đọc nó; chép nội dung loại này sang loại kia là sai cả hai. **Cặp `.md`–`.html` không thuộc lỗi này** (§5): cùng nội dung, hai người đọc. Tool có người dùng không phải developer thì có **Manual riêng**: viết theo **nhãn thật trên UI**, trả lời *"bấm gì ra gì, dùng khi nào"* — không tên class, không lý giải cách cài đặt |
-| **Không chép lại thứ người đọc đã cầm trong tay** | `.md` và `.html` viết cho người mở được **code** — cột "vai trò" nói lại đúng tên hàm, dòng bảo đảm mà một dòng `catch` đã nói hết, metrics `O(n log n)` của một `Sort`: **bỏ**. Plan viết cho người **chưa có code**, chuẩn là các task trước trong Plan; Manual cho người **không đọc code**, chuẩn là màn hình trước mặt. Phép kiểm (NT1): *xoá dòng này thì người đọc mất gì* — đáp án "mở file kia ra xem" thì bỏ. **Ngoại lệ giữ bằng mọi giá:** danh sách chữ ký API trong `.md`, vì `.html` dựng từ `.md` mà không mở source (§5.1) |
-| **Không viết theo trí nhớ** | mọi tên file, signature, hằng số, nhãn UI đều mở code đối chiếu lại trước khi ghi — kể cả khi vừa viết chính dòng code đó (NT8). Nguồn sai nhiều nhất của tài liệu |
-| **Code đã tồn tại thì khối code trong Plan là bản sao nguyên văn** | đồng bộ bằng cách chép file rồi **so sánh máy**, không gõ lại — gõ tay là mở lại đúng nguồn sai mà luật trên đang chặn. Lý do ở lại bảng quyết định dưới khối; đó mới là thứ code không tự nói được. **Sổ tay** — script dò mỗi khối mở bằng `using`/`namespace` tới file `.cs` giống nhất (so danh sách dòng đã chuẩn hoá khoảng trắng), thay nguyên khối, giữ kiểu xuống dòng của file; chạy lại tới khi báo 0 khối lệch, rồi mới sửa prose tay theo bảng quyết định |
-| **Thao tác Editor là một mục riêng** | mọi việc developer phải làm bằng tay trong Editor — dựng prefab, kéo ô Inspector, tạo asset, thêm key remote config, menu — gom về **một mục riêng** ở mọi đầu ra: Plan (mục Editor setup của task, §5.3) · tài liệu module ("Trước khi chạy", §5.1) · **và câu trả lời trong chat** (§2.3). Không xen vào giữa logic và code: developer tìm lại việc phải làm bằng cách mở đúng một mục, không lọc lại từng dòng dẫn giải; bước setup trộn vào logic là bước bị đọc lướt qua rồi quên |
-| **Viết cho người đọc lần đầu, ở thì hiện tại** | NT10 áp cho tài liệu. **Ngoại lệ duy nhất:** sổ ghi bẫy *"đã sai một lần"* (§3.4) trong mục quyết định thiết kế — ghi **bài học**, không tường thuật thay đổi, và không lưu tên cũ (§3.7). **Sổ tay** — grep các cụm kể lịch sử ("trước đây", "bản cũ", "giờ đã") |
+| **Mỗi tài liệu một người đọc** | mỗi loại trả lời đúng câu hỏi của người đọc nó; chép nội dung loại này sang loại kia là sai cả hai. Cặp `.md`–`.html` không thuộc lỗi này: cùng nội dung, hai người đọc. Manual viết theo **nhãn thật trên UI**, trả lời *"bấm gì ra gì, dùng khi nào"* — không tên class |
+| **Không chép lại thứ người đọc đã cầm trong tay** | `.md` và `.html` viết cho người mở được **code** — cột "vai trò" nói lại đúng tên hàm, metrics `O(n log n)` của một `Sort`: **bỏ**. Plan viết cho người **chưa có code**; Manual cho người **không đọc code**. Phép kiểm: *xoá dòng này thì người đọc mất gì* — đáp án "mở file kia ra xem" thì bỏ. **Ngoại lệ:** danh sách chữ ký API trong `.md`, vì `.html` dựng từ `.md` mà không mở source |
+| **Không viết theo trí nhớ** | mọi tên file, signature, hằng số, nhãn UI đều mở code đối chiếu lại trước khi ghi — kể cả khi vừa viết chính dòng code đó (NT8). Nguồn sai nhiều nhất của tài liệu; áp cho cả prompt subagent (§2.7) |
+| **Code đã tồn tại thì khối code trong Plan là bản sao nguyên văn** | đồng bộ bằng cách chép file rồi **so sánh máy**, không gõ lại. **Sổ tay** — script dò mỗi khối mở bằng `using`/`namespace` tới file `.cs` giống nhất, thay nguyên khối; chạy lại tới khi báo 0 khối lệch, rồi mới sửa prose tay |
+| **Thao tác Editor là một mục riêng** | mọi việc developer phải làm bằng tay trong Editor gom về **một mục riêng** ở mọi đầu ra: Plan (Editor setup của task) · tài liệu module ("Trước khi chạy") · **câu trả lời trong chat** (§2.3). Bước setup trộn vào logic là bước bị đọc lướt qua rồi quên |
+| **Viết cho người đọc lần đầu, ở thì hiện tại** | NT10 áp cho tài liệu. **Ngoại lệ duy nhất:** sổ ghi bẫy *"đã sai một lần"* trong mục quyết định thiết kế — ghi **bài học**, không tường thuật thay đổi, không lưu tên cũ. **Sổ tay** — grep các cụm kể lịch sử ("trước đây", "bản cũ", "giờ đã") |
 | **Câu hỏi của người đọc là bằng chứng tài liệu chưa rõ** | trả lời xong phải để câu trả lời lại trong tài liệu, không để nó chết trong hội thoại |
 | **Mâu thuẫn thì SỬA dòng cũ** | không thêm dòng thứ hai nói ngược. **Riêng dòng cũ ghi quyết định hoặc ranh giới do developer đặt thì không tự sửa** — nêu chỗ lệch để developer phân xử (NT5) |
 | **Quyết định trái trực giác gom về một mục riêng** | chỗ cố ý trông "kém tối ưu" phải có lý do viết sẵn ở một nơi biết trước; người tối ưu sau đọc mục đó **trước khi đụng** (cùng họ với "cố ý KHÔNG làm" của §2.5) |
-| **Tư tưởng mới chưng cất ngay trong task** | task, câu hỏi, phản hồi nào xác lập **quy ước còn đúng ở lần sửa sau** thì ghi vào tài liệu module **trước khi báo hoàn thành** — quyết định chỉ sống trong hội thoại thì chết cùng hội thoại. Ghi *quy ước ở thì hiện tại*, không tường thuật task. **Liệt kê nguyên văn các dòng đã ghi trong báo cáo hoàn thành** để developer veto được bản khái quát sai. Thêm vào chính MY_SKILL thì theo §2.6 — quét cuối chat là bắt buộc, ghi thẳng rồi liệt kê để developer veto |
+| **Tư tưởng mới chưng cất ngay trong task** | task, câu hỏi, phản hồi nào xác lập **quy ước còn đúng ở lần sửa sau** thì ghi vào tài liệu module **trước khi báo hoàn thành**. Ghi *quy ước ở thì hiện tại*, không tường thuật task. **Liệt kê nguyên văn các dòng đã ghi trong báo cáo** để developer veto. Thêm vào chính file này thì theo §2.6 |
