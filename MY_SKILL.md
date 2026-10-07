@@ -120,7 +120,9 @@ sẽ gõ nguyên, nên thừa ở đó cũng là thừa.
 Khảo sát **toàn bộ** dự án, theo thứ tự: **hệ đang chạm và module nó gọi** → **Horcrux** (hệ ở
 `Foundations/`, helper ở `Utilities/`) → **phần còn lại của dự án** → **package đã cài**. Cả dự án lẫn
 Horcrux đều có thì **ưu tiên bản Horcrux** — nó đi theo mọi dự án sau, và bản trong dự án khi đó là một
-bản thứ hai cần đề xuất gộp (NT7). Nói rõ đã khảo sát đâu và kết luận gì (NT8).
+bản thứ hai cần đề xuất gộp (NT7). Nói rõ đã khảo sát đâu và kết luận gì (NT8): trong Plan là bảng
+**"Đã khảo sát"** ba cột — *nguồn · lấy gì · không lấy, vì sao* — gồm cả khuôn cũ trong dự án và thư viện
+bên thứ ba; cột "không lấy" là nơi ghi lý do để người sau không bê lại cái đã bị loại.
 
 | Cái có sẵn | Xử lý |
 |---|---|
@@ -170,7 +172,8 @@ Mọi thứ định đưa vào qua cùng một luật: **có nhu cầu thật ng
 | Chương, mục, demo | có người đọc cần nó để **làm được một việc cụ thể** |
 
 Thứ chỉ "có thể cần sau" chia theo **giá của việc thêm sau** (NT1): **rẻ** (thêm hàm hay mục mới, không
-sửa cái cũ) thì **để lại**, ghi một dòng ở "Mở rộng sau" (§2.5) · **đắt** (sửa chữ ký, đập cấu trúc,
+sửa cái cũ — **kể cả thêm một tham số tuỳ chọn có mặc định**: call site cũ không đổi, chỉ implementer
+sửa) thì **để lại**, ghi một dòng ở "Mở rộng sau" (§2.5) · **đắt** (chữ ký mà **mọi caller** phải sửa, đập cấu trúc,
 đảo chiều phụ thuộc) thì làm ngay. Tính mở rộng đến từ Open/Closed, không từ việc viết sẵn thứ chưa ai
 cần.
 
@@ -656,7 +659,9 @@ nhau — thứ duy nhất dùng được khi hệ hỏng lúc 2 giờ sáng. H�
   chạm trần là sửa gốc trước khi viết thêm chữ, hoặc phần đang viết thuộc về tài liệu (§5).
 - **Một từ = một nghĩa trong toàn hệ thống.** Khái niệm không đặt nổi tên riêng thường là khái niệm
   chưa rõ. **Tên hệ theo cơ chế nó cung cấp, không theo người dùng đầu tiên**: hệ overlay đặt tên theo
-  tutorial thành sai khi màn nhận thưởng cũng dùng nó.
+  tutorial thành sai khi màn nhận thưởng cũng dùng nó. **Trùng tên với một lớp di sản dự án cố ý giữ**
+  (contract đóng băng để kéo module từ dự án khác) thì framework **giữ tên của nó**; dự án giải trùng
+  bằng alias `using` ở đúng file lớp nối — không đổi tên framework theo di sản của một dự án.
 - **Đổi tên là đổi cả hệ** (NT10): code, comment, chuỗi debug, mọi tài liệu — cùng một lần làm, kiểm
   bằng grep; file `.cs` và thư mục đổi tên **trong Project window của Unity** để giữ `.meta` và GUID.
   **Ranh giới:** khoá wire format và dữ liệu đã serialize là **hợp đồng với hệ khác** — không đổi theo.
@@ -860,7 +865,7 @@ developer tự so từng dòng để tìm chỗ khác — đúng việc Plan ph�
 bên cạnh, nên kênh bù cho chỗ chưa rõ là **hỏi trực tiếp**; câu hỏi lặp lại thì ghi câu trả lời ngược
 vào Plan (§5.4). Chiều gọn đó **không áp cho Editor setup**: bước tay thiếu không có compile error nào bắt.
 
-**Sổ tay** — kho phần cho mỗi task, **chỉ lấy phần task này cần**: Files (đường dẫn chính xác) ·
+**Sổ tay** — kho phần cho mỗi task, **chỉ lấy phần task này cần**: bảng "Đã khảo sát" (§2.4) · Files (đường dẫn chính xác) ·
 Interfaces (consumes và produces, chữ ký đầy đủ) · bảng "toán → code" trỏ về `§0` · bảng lý do cho
 mỗi quyết định thiết kế — ghi *quyết định và vì sao*, không kể *code làm gì* · **code hoàn chỉnh dán
 được** · **Editor setup** — mục riêng của task · **bảng case kiểm thử** (input → kỳ vọng, kèm biên theo
