@@ -265,7 +265,7 @@ tiêu chí này (§5.3); developer bảo cần thêm thì mới thêm.
 > `#if`**, vì QA kiểm trên đúng bản người chơi cầm. Cách **mở** panel là của developer từng dự án, giấu
 > khỏi người chơi; agent không thiết kế và không viết nó. Trigger của SRDebugger để `Off`.
 
-**Sổ tay** — partial `<Hệ>.Debug.cs` giữ lệnh (với tới `private`), plain class `<Hệ>DebugOptions` giữ
+**Sổ tay** — partial `<Hệ>.Debug.cs` giữ lệnh (với tới `private`; ca `partial` được phép, §3.1), plain class `<Hệ>DebugOptions` giữ
 hàng UI, nhận hệ qua constructor · `Init/Dispose` ở `Awake/OnDestroy` · container `internal sealed`,
 không public gì ngoài hàng vì SRDebugger quét mọi public member · hàng đọc là `string` read-only · lệnh
 có tham số = một property số + một method không tham số · `INotifyPropertyChanged` bắn `null` sau mỗi
@@ -357,13 +357,20 @@ cùng một cách chia có thể đúng ở hệ nhiều người chạm và th�
 > kéo tham chiếu qua nhiều object chỉ để gọi một dòng — khi đó callback vẫn chỉ là cửa gọi hàm có tên.
 > Bảo đảm engine có cho: trong một cây object vừa bật, `Awake` của cả cây chạy xong trước `Start` (§3.6).
 
+**`partial` chỉ để giảm độ dài file ở chỗ không có OOP để vi phạm.** Ba ca được phép: **Editor tool và
+Debug của một đối tượng** — không nằm trong đường chạy runtime của class · **static class chứa extension
+method** — không state, không kế thừa, tách theo nhóm cho file ngắn · **khối field serialize của một nhóm
+Inspector kèm property phơi chúng, không thân hàm** — là khai báo dữ liệu, không phải logic. Ngoài ba ca
+đó, một class phải chia file mới đọc nổi là một class ôm nhiều lý do thay đổi: **tách class, không tách
+file** (`S`). `partial` cho logic runtime là dấu hiệu SOLID và OOP chưa đạt, không phải công cụ tổ chức code.
+
 **Sổ tay** — hình dạng file và class đang dùng trong Horcrux:
 
 | Chỗ | Cách làm |
 |---|---|
-| Code chỉ có ở Editor | file `*.Editor.cs` khai `partial` của cùng class, **bên trong vẫn** `#if UNITY_EDITOR` — file runtime không bị `#if` cắt ngang, nút Editor đọc thẳng private member |
+| Code chỉ có ở Editor (ca `partial` được phép) | file `*.Editor.cs` khai `partial` của cùng class, **bên trong vẫn** `#if UNITY_EDITOR` — file runtime không bị `#if` cắt ngang, nút Editor đọc thẳng private member |
 | Nhận phụ thuộc | `MonoBehaviour<T>` cho component thường · `IInitializable<T>` khi class đã kế thừa base khác · không service locator bên trong hệ |
-| Helper thao tác lên một object có sẵn | extension method trên type đó, file partial `<Type>Extensions.<Nhóm>.cs` — call site đọc thành câu, tìm được từ chính object, không bao giờ che instance method (§3.4) |
+| Helper thao tác lên một object có sẵn (ca `partial` được phép) | extension method trên type đó, file partial `<Type>Extensions.<Nhóm>.cs` — call site đọc thành câu, tìm được từ chính object, không bao giờ che instance method (§3.4) |
 | Dựng host | hệ **không** tự `new GameObject` — host là component kéo tay vào scene, chu kỳ và collection đọc được trong Inspector (§3.6) |
 | Field serialize | nhóm bằng `[Splitter("References")]` (ô kéo) rồi `[Splitter("Configs")]` (số chỉnh), References đứng trước — mở Inspector thấy ngay thứ **phải nối** trước thứ có thể để mặc định |
 | Field private runtime | tiền tố `_` (`_module`, `_isOpen`); field `[SerializeField]` **không** `_` — đọc tên trong thân hàm biết giá trị đến từ Inspector hay từ code |
