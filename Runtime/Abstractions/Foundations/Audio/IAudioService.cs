@@ -1,12 +1,17 @@
-﻿namespace Horcrux.Runtime.Abstractions.Audio
+﻿using System;
+
+namespace Horcrux.Runtime.Abstractions.Audio
 {
-    public interface IAudioService : IService<IAudioService>
+    /// <summary>
+    /// SFX: many at once, each with its own pitch, bursts of one sound throttled. Music: one track at a time.
+    /// Enum must starts at 1: <c>0</c> reads as unassigned. Underlying type must be <c>int</c>.
+    /// </summary>
+    public interface IAudioService<TSfx, TMusic> : IAudioSetting, IService<IAudioService<TSfx, TMusic>>
+        where TSfx : struct, Enum
+        where TMusic : struct, Enum
     {
-        bool IsSfxOn { get; set; }
-        bool IsMusicOn { get; set; }
-        
-        void PlaySfx(AudioId audioId);
-        void PlayMusic(AudioId audioId);
+        void PlaySfx(TSfx sfx);
+        void PlayMusic(TMusic music);
         void StopMusic();
     }
 }
