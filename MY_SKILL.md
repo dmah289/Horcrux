@@ -421,6 +421,14 @@ kiểm: *nửa mà dự án viết có nằm trong ranh giới biên dịch củ
 > private field khai trên base · magic method của Unity (`OnDestroy`, `Awake`…) subclass đặt trùng tên
 > là che hẳn bản của base — khai `protected virtual` để `override`.
 
+**Framework sở hữu cơ chế, dự án sở hữu từ vựng.** Tập giá trị mà dự án đặt tên (khoá tra cứu, loại,
+trạng thái) thì framework khai là **type parameter** có ràng buộc, dự án chốt bằng class con; framework
+không dựng một kiểu bọc thay cho nó. Kiểu bọc của framework chỉ nói được "đây là một khoá", còn kiểu của
+dự án nói được *khoá nào*, nên chỉ kiểu của dự án cho compiler và công cụ authoring biết tập giá trị hợp
+lệ. Cách biểu diễn bên trong là việc nội bộ của framework: hạ về dạng rẻ một lần ở cửa vào, sau đó không
+phụ thuộc kiểu của dự án. Phép kiểm: *dự án có phải đổi kiểu bằng tay (cast, gõ số, gõ chuỗi) ở call site
+hoặc trong asset không?* Có thì framework đang giữ từ vựng hộ dự án.
+
 **Nâng một chức năng lên tái sử dụng khi người dùng thứ hai đang có thật** (NT7): hàm thuần → Utilities
 · có state hoặc nhiều biến thể → interface rồi tách implementation · chỉ khác một giá trị → thêm tham
 số. Đặt ở **tầng thấp nhất mà cả hai người dùng đều với tới được**, không thấp hơn. Thời điểm: khi sắp
