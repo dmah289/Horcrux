@@ -3,16 +3,18 @@
 Danh sách các static utility class dự kiến bổ sung cho `Horcrux.Runtime.Utilities.PhysXHelper`.
 Tất cả phải tuân thủ: **zero-GC** (thuần tính toán `float`/`struct`, không alloc/LINQ/closure trong hot path), self-documenting naming, XML doc đầy đủ, SOLID.
 
+> **Tween = PrimeTween.** Mọi mục dưới đây có phần chuyển động theo thời gian (nảy, đếm, fade, flash, ramp `timeScale`) **chạy bằng PrimeTween** (`useUnscaledTime` khi cần chạy lúc `timeScale = 0`), không có runner tween tự viết. Phần còn lại ở đây là toán thuần (`Easer`, `Interpolator`, `SquashStretch`…) cấp **giá trị** cho tween qua `Tween.Custom`. `EaseType` giữ làm enum toán; tween dùng `PrimeTween.Ease`.
+>
 > **Item combo-exclusive đã chuyển đi:** `ComboMeter` · `ChainReaction` · `HapticPattern` (ramp) và 2 hộp công thức "Combo ASMR" → xem `Runtime/Implementations/Composites/Combo/ComboSystem.md` § *Nguyên liệu đã chuyển từ Pendings.md*. Các item **dùng chung** vẫn ở đây, chỉ thêm nhãn trỏ plan.
 
 Đã có:
 - `HarmonicOscillator` (dao động điều hòa đơn giản, Sin/Cos).
-- `SquashStretch` — ✅ **đã triển khai** (`Horcrux.Runtime.Utilities.PhysXHelper.SquashStretch`): `GetVolumePreservingScale`, `GetSquashFromImpact`, `GetDirectionalStretch`, `GetSquashStretch` (nhận `startScale` và `endScale`).
-- `BezierCurveHelper` — ✅ **đã triển khai** (`PhysXHelper/BezierCurveHelper.cs`): `EvaluateQuadraticBezier`, `ComputeControlPoint` (cung trong mặt phẳng XY). Dùng bởi hai overload `CharmFlyArc` (`ArcFlightSpec`, `SquashStretchFlightSpec`) trong `TransformExtensions.CharmTween.cs`.
+- `SquashStretch` — ✅ **đã triển khai** (`Horcrux.Runtime.Utilities.PhysXHelper.SquashStretch`): `GetVolumePreservingScale`, `GetSquashFromImpact`, `GetDirectionalStretch`, `GetSquashStretch` (nhận `t` **đã ease**, `startScale`, `endScale`; ease do caller áp).
+- `BezierCurveHelper` — ✅ **đã triển khai** (`PhysXHelper/BezierCurveHelper.cs`): `EvaluateQuadraticBezier`, `ComputeControlPoint` (cung trong mặt phẳng XY). Dùng bởi `CharmFlyArc` (`ArcFlightSpec`, chỉ bay) trong `TransformExtensions.CharmTween.cs`.
 - `AudioPitchHelper` — ✅ **đã triển khai** (`Horcrux.Runtime.Utilities.AudioHelper`): `SemitonesToRatio`, `GetRampedPitch`, `GetDetunedPitch`.
 - `DampedOscillator` — ✅ **đã triển khai** (envelope · displacement · velocity · settling-time, bản `decay` và bản `halfLife`).
 - `GeometryHelper` — ⚠️ **một phần**: hiện chỉ có `RandomPointInAnnulus`/`RandomPointIn3DAnnulus`. Phần khoảng cách/closest-point (cần cho `StaggerHelper`) **chưa có**.
-- `Easing` — ✅ **đã triển khai** dưới dạng `Easer` ở namespace riêng `Horcrux.Runtime.Tweening.Easing` (10 họ Quad…Bounce × In/Out/InOut + Linear; entry point `Easer.Evaluate(EaseType, t)`). Mọi tham chiếu `← Easing` phía dưới trỏ tới class này — **không** làm lại trong `PhysXHelper`.
+- `Easing` — ✅ **đã triển khai** dưới dạng `Easer` ở namespace riêng `Horcrux.Runtime.Tweening.Easing` (10 họ Quad…Bounce × In/Out/InOut + Linear; entry point `Easer.Evaluate(EaseType, t)`). Mọi tham chiếu `← Easing` phía dưới trỏ tới class này — **không** làm lại trong `PhysXHelper`. `Easer` **không** làm easing cho tween (đó là việc của PrimeTween).
 - `InterpolationHelper` — ✅ **đã triển khai** dưới dạng `Interpolator` (`Horcrux.Runtime.Utilities.PhysXHelper`). Đã có: `InverseLerpUnclamped(+Precomputed)`, `Remap(+Precomputed)`, `SmootherStep` (quintic 6t⁵−15t⁴+10t³), `ExpDecay`/`DecayFactor` (`1−e^(−k·dt)`), `ExpDecayHalfLife(+Precomputed)`. Còn thiếu (bổ sung sau nếu cần): `SmoothStep` cubic (3t²−2t³). Mọi tham chiếu `← InterpolationHelper` phía dưới trỏ tới class này.
 
 ---
@@ -80,19 +82,19 @@ Mục tiêu: tạo cảm giác "đã tay, đã mắt, đã tai" (satisfying feed
 #### ~~`SquashStretch`~~ — ✅ **ĐÃ XONG** (`PhysXHelper/SquashStretch.cs`)
 - Giữ nguyên thể tích: nén theo Y thì phình theo X (`scaleX = 1/√scaleY`).
 - Ứng dụng: nhân vật nhảy/đáp đất, nút bấm, item pickup. Bí quyết "sống động" như jelly.
-- Đang được dùng bởi: `ComboMeter` (cú nảy mỗi nhịp) — `ComboSystem.md` Task 8 · `FlyRewardItem` (quà bay, phồng 1.3 co về 0.8) · `CharmFlyArc(SquashStretchFlightSpec)` (bay cung, giãn lúc rời, nén lúc chạm).
+- Đang được dùng bởi: `ComboMeter` (cú nảy mỗi nhịp) — `ComboSystem.md` Task 8 · `FlyRewardItem` (quà bay, phồng 1.3 co về 0.8) · `CharmSquashStretch(SquashStretchSpec)` (chỉ đổi scale; ghép với `CharmFlyArc` do caller).
 
 #### `Wobble` / `Jelly` ⭐ ưu tiên cao — rung rinh như thạch
-- Kết hợp `DampedOscillator` tạo hiệu ứng lắc lư tắt dần sau khi chạm/thả. Rất ASMR.
+- Kết hợp `DampedOscillator` tạo hiệu ứng lắc lư tắt dần sau khi chạm/thả. Rất ASMR. Chạy bằng `Tween.Custom` của PrimeTween, cấp giá trị từ `DampedOscillator`.
 
 #### `Overshoot` — vọt lố rồi ổn định
-- Animation chạy quá target một chút rồi bật về (EaseOutBack). Cảm giác "bén", có lực.
+- Animation chạy quá target một chút rồi bật về. Cảm giác "bén", có lực. **Dùng `Ease.OutBack` của PrimeTween**, không viết hàm riêng.
 
 #### `Pulse` / `Breathing` — nhịp thở
-- Scale/alpha dao động nhẹ liên tục (dùng `HarmonicOscillator`). Làm UI/collectible "thở", hút mắt.
+- Scale/alpha dao động nhẹ liên tục. Làm UI/collectible "thở", hút mắt. Chạy bằng PrimeTween lặp vô hạn (`cycles: -1`, `CycleMode.Yoyo`); `HarmonicOscillator` chỉ khi cần dạng sóng PrimeTween không có.
 
 #### `ColorFlash` — nháy màu khi hit
-- Blend nhanh về trắng rồi trả lại. Feedback va chạm tức thì.
+- Blend nhanh về trắng rồi trả lại. Feedback va chạm tức thì. Chạy bằng `Tween.Color` + `CycleMode.Yoyo` của PrimeTween.
 
 ### B. Juice chuyển động
 
@@ -114,7 +116,7 @@ Mục tiêu: tạo cảm giác "đã tay, đã mắt, đã tai" (satisfying feed
 - 📄 **Đã có plan:** `HitstopChannel` → `FeedbackSystem.md` Task 5. Lịch `timeScale` 2 pha **inline trong kênh** (chưa tách file — chưa có user thứ hai).
 
 #### `TimeScaleHelper` — slow-mo / ramp
-- Ease timeScale mượt vào/ra slow motion.
+- Ease timeScale mượt vào/ra slow motion bằng `Tween.Custom` của PrimeTween trên `Time.timeScale` (`useUnscaledTime: true`).
 - ⏳ **Chưa làm.** Phần lịch 2 pha đã có sẵn (inline trong `HitstopChannel`); khi làm slow-mo dài thì **tách nó ra đây** rồi cho cả hai dùng chung, cộng API `Begin/End` ref-count (hitstop là cue một-lần, slow-mo là trạng thái có vào/ra).
 
 ### D. Juice âm thanh (ASMR thực thụ)
@@ -179,10 +181,10 @@ ASMR đặc thù cho game puzzle: đến từ **tactile (chạm), order (trật 
 - Combo: flash → stagger pop → suck-in về tâm → burst. Đỉnh điểm giải tỏa khi hoàn thành hàng/cụm.
 
 #### `ProgressPop` — nảy khi tiến triển
-- Thanh progress/counter nảy nhẹ (overshoot) mỗi bước. Cảm giác "đang tiến".
+- Thanh progress/counter nảy nhẹ (overshoot) mỗi bước. Cảm giác "đang tiến". Dùng `Tween.PunchScale` hoặc `Ease.OutBack` của PrimeTween.
 
 #### `SortSettle` — sắp xếp về đúng chỗ
-- Khi phân loại đúng, các phần tử trượt mượt về hàng ngay ngắn (stagger + ease). ASMR "gọn gàng".
+- Khi phân loại đúng, các phần tử trượt mượt về hàng ngay ngắn (stagger + ease). ASMR "gọn gàng". Ease/`startDelay` của PrimeTween, delay theo khoảng cách lấy từ `StaggerHelper`.
 
 #### `CompletionSequence` — chuỗi thắng màn
 - Dàn feedback tuần tự khi giải xong: sáng dần, âm thanh crescendo, particle.
@@ -242,10 +244,10 @@ Các mảng bổ sung mở rộng cảm giác ra ngoài đối tượng: camera,
 ### L. Số liệu & phản hồi thông tin (dopamine trực tiếp)
 
 #### `CountUpAnimator` ⭐ ưu tiên cao — số nhảy tăng dần
-- Score/coin đếm lên mượt (ease-out) thay vì nhảy phựt. Cảm giác "tích lũy" gây nghiện.
+- Score/coin đếm lên mượt (ease-out) thay vì nhảy phựt. Cảm giác "tích lũy" gây nghiện. Chạy bằng `Tween.Custom` của PrimeTween.
 
 #### `FloatingText` — số bay lên rồi tan
-- Damage/điểm bật lên với overshoot + fade. Feedback tức thì.
+- Damage/điểm bật lên với overshoot + fade. Feedback tức thì. `Sequence` PrimeTween: `Ease.OutBack` cho scale, fade cho alpha.
 
 #### ~~`ComboMeter`~~ — ✅ **đã chuyển sang `ComboSystem.md`** (Task 8)
 - Thanh combo phồng/co theo streak. Bản hiện thực: thanh co theo **cửa sổ combo còn lại** + nảy (`SquashStretch` + `EaseType.OutBack`) mỗi nhịp + đổi màu theo bậc.
@@ -272,7 +274,7 @@ Nguyên tắc: **mỗi tầng chỉ phụ thuộc các tầng dưới nó**. Là
 
 ### Tầng 0 — Nền toán học thuần (zero dependency)
 Làm trước tiên vì mọi thứ khác đều gọi tới. Thuần `float`/`struct`, không phụ thuộc nhau.
-1. `Easing` — ✅ **đã xong** (`Tweening.Easing.Easer`). Nền của mọi animation.
+1. `Easing` — ✅ **đã xong** (`Tweening.Easing.Easer`). Nền của toán thuần (SquashStretch, Interpolator…); tween thì PrimeTween lo easing.
 2. `HarmonicOscillator` — ✅ đã có.
 3. `InterpolationHelper` — ✅ **đã xong** (`Interpolator`). `Remap`, `SmootherStep`, exp-decay lerp độc lập framerate.
 4. **`RandomHelper`** — gaussian, weighted, jitter, shuffle (dùng cho shake/granular). **Item nền còn lại → làm kế tiếp.**
@@ -289,12 +291,12 @@ Các "động cơ" chuyển động mà lớp juice sẽ nhờ tới.
 ### Tầng 2 — Juice nguyên tử (← Tầng 0–1)
 Hiệu ứng đơn lẻ, là "viên gạch" cho các combo tầng trên.
 11. `SquashStretch` — ✅ **đã xong**. Viên gạch thị giác dùng khắp nơi (đang dùng ở `ComboMeter`).
-12. **`Overshoot`** ← `Easing` (EaseOutBack). Dùng cho pop/progress/floating text. *(Plan: `PhysXHelper/2026-07-25-overshoot.md`)*
-13. **`Wobble` / `Jelly`** ← `DampedOscillator`.
-14. **`Pulse` / `Breathing`** ← `HarmonicOscillator`.
+12. **`Overshoot`** ← PrimeTween `Ease.OutBack`. Dùng cho pop/progress/floating text.
+13. **`Wobble` / `Jelly`** ← `DampedOscillator` + PrimeTween `Tween.Custom`.
+14. **`Pulse` / `Breathing`** ← PrimeTween (lặp Yoyo).
 15. **`Shake`** ⭐ (trauma-based) — 📄 plan: `TraumaShake.cs` ở `FeedbackSystem.md` Task 1. Dùng `noise.cnoise`, **không** cần `RandomHelper`.
-16. **`ColorFlash`** ← `InterpolationHelper`. *(Plan: `PhysXHelper/2026-07-25-colorflash.md`)*
-17. **`TimeScaleHelper`** ← `Easing` — 📄 plan (phần hitstop): `FeedbackSystem.md` Task 2.
+16. **`ColorFlash`** ← PrimeTween `Tween.Color`.
+17. **`TimeScaleHelper`** ← PrimeTween — 📄 plan (phần hitstop): `FeedbackSystem.md` Task 2.
 18. `AudioPitchHelper` — ✅ **đã xong** (pitch ramp). Xương sống thính giác của combo.
 19. **`HapticHelper`** ⭐ — 📄 plan: `Foundations/Haptics/HapticSystem.md` (`IHapticService` + `IHapticBackend`).
 20. **`StaggerHelper` / `RippleDelay`** ⭐ ← `GeometryHelper` (delay theo khoảng cách).
@@ -313,10 +315,10 @@ Mỗi class ghép vài viên gạch tầng 2 thành một hành vi hoàn chỉnh
 30. **`GranularSettle`** ⭐ ← `DampedOscillator` + `RandomHelper` (jitter tắt dần). Đặc sản falling_sand.
 31. **`Cascade` / `FallSettle`** ← `SquashStretch` + `Wobble` + `StaggerHelper`.
 32. **`RippleEffect`** ⭐ ← `HarmonicOscillator` + `InterpolationHelper`.
-33. **`CountUpAnimator`** ⭐ ← `Easing`/`InterpolationHelper`.
-34. **`FloatingText`** ← `Overshoot` + fade.
-35. **`ProgressPop`** ← `Overshoot`.
-36. **`SortSettle`** ← `StaggerHelper` + `Easing`.
+33. **`CountUpAnimator`** ⭐ ← PrimeTween `Tween.Custom`.
+34. **`FloatingText`** ← PrimeTween `Sequence` (`Ease.OutBack` + fade).
+35. **`ProgressPop`** ← PrimeTween `Tween.PunchScale`.
+36. **`SortSettle`** ← `StaggerHelper` + PrimeTween.
 37. **`ProceduralSway`** ⭐ ← noise nhiều tần số (Perlin).
 38. **`IdleBreathe`** ← `Pulse`.
 39. ~~`HapticPattern`~~ → **đổi tên `HapticRamp`**, đã chuyển: `HapticRampChannel` ở `FeedbackSystem.md` Task 5.

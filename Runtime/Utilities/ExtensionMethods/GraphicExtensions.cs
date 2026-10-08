@@ -1,8 +1,4 @@
-﻿using System.Threading;
-using Cysharp.Threading.Tasks;
-using Horcrux.Runtime.Tweening.Easing;
-using Horcrux.Runtime.Utilities.Tweening;
-using UnityEngine;
+﻿using UnityEngine;
 using UnityEngine.UI;
 
 namespace Horcrux.Runtime.Utilities.ExtensionMethods
@@ -17,22 +13,6 @@ namespace Horcrux.Runtime.Utilities.ExtensionMethods
             Color color = self.color;
             color.a = alpha;
             self.color = color;
-        }
-        
-        public static async UniTask CharmAlpha(this Graphic self, float from, float to,
-            EaseType ease, float duration, CancellationToken ct)
-        {
-            await CharmTween.CastAsync(duration, ease, spell, ct, onComplete);
-            
-            void spell(float t)
-            {
-                self.SetAlpha(Mathf.Lerp(from, to, Easer.Evaluate(ease, t)));
-            }
-            
-            void onComplete()
-            {
-                self.SetAlpha(to);
-            }
         }
     }
 }

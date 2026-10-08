@@ -1,7 +1,5 @@
 ﻿using System.Threading;
-using Cysharp.Threading.Tasks;
-using Horcrux.Runtime.Tweening.Easing;
-using Horcrux.Runtime.Utilities.Tweening;
+using PrimeTween;
 using TMPro;
 using UnityEngine;
 
@@ -9,27 +7,13 @@ namespace Horcrux.Runtime.Utilities.ExtensionMethods
 {
     public static class TextMeshProExtensionMethods
     {
-        public static async UniTask CharmCount(this TextMeshProUGUI self, int start, int end, string format, EaseType easeType, float duration,
-            float delaySeconds = 0f, CancellationToken ct = default)
+        public static Tween CharmCount(this TMP_Text self, int start, int end, string format, float duration,
+            float startDelay = 0f, CancellationToken ct = default)
         {
-            try
-            {
-                if (delaySeconds > 0f)
-                    await UniTask.Delay((int)(delaySeconds * 1000f), DelayType.UnscaledDeltaTime,
-                        cancellationToken: ct);
+            return Tween.Custom(0f, 1f, duration, spell, Ease.Linear, startDelay: startDelay, useUnscaledTime: true)
+                .SetCancellationToken(ct);
 
-                await CharmTween.CastAsync(duration, easeType, spell, ct);
-            }
-            finally
-            {
-                if (self != null)
-                    self.SetText(format, end);
-            }
-
-            void spell(float t)
-            {
-                self.SetText(format, Mathf.RoundToInt(Mathf.Lerp(start, end, t)));
-            }
+            void spell(float t) => self.SetText(format, Mathf.RoundToInt(Mathf.Lerp(start, end, t)));
         }
     }
 }

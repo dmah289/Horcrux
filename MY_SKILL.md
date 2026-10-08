@@ -549,6 +549,7 @@ trong vòng dispatch).
 > |---|---|---|
 > | Async | **UniTask**, không coroutine, không `Task` | propagate `CancellationToken` xuống toàn bộ chain; tham số token **không mang `= default`** khi mọi caller đều có token — mặc định chỉ cho phép quên truyền mà compiler không báo |
 > | Load asset | **Addressables** qua `AssetReference`, cho **đơn vị nạp theo nhu cầu** (màn, popup) | không string key; giữ `AsyncOperationHandle` để `Release()`. Prefab con nằm trong prefab cha đã nạp thì `[SerializeField]` kéo thẳng — nhưng con **chia đời sống với cha**: thứ phải hiện **khi cha đang đóng** không được là con của cha |
+> | Tween | **PrimeTween**, không tự viết runner tween · `EaseType` tự viết chỉ giữ cho toán thuần | tween của UI đặt `useUnscaledTime`; object bị huỷ hay trả pool thì dừng tween của nó |
 > | Anim UI | `Time.unscaledDeltaTime` · `DelayType.UnscaledDeltaTime` | popup phải chạy khi `timeScale` bằng 0 |
 > | Data lớn | `NativeArray` / `NativeList` | khi truyền GPU hoặc Job System |
 > | Tài nguyên nặng | cache `RenderTexture`, `Texture2D`… | có đường dọn dẹp trong `OnDestroy()` |
@@ -731,6 +732,11 @@ không ai hiểu. Toán đúng chỗ làm code **ngắn hơn**.
 **Núm phơi ra là đại lượng người tune nhìn thấy trên màn hình, không phải tham số trung gian của công
 thức.** Biên độ là đúng độ lệch thật, số lần lắc là đúng số đếm được bằng mắt. Hình dạng chuyển động gọi
 tên được theo pha thì dựng từ hàm có sẵn đúng hình dạng đó, thay vì công thức tự chế phải dẫn giải mới hiểu.
+
+**Chuyển động mà quãng đường không cố định — khoảng cách, chênh lệch giá trị, độ dài đoạn còn lại — thì núm
+là tốc độ, không phải thời lượng.** Thời lượng cố định trên quãng đường đổi làm tốc độ cảm nhận đổi theo: đoạn
+ngắn lê thê, đoạn dài vội. Tốc độ giữ một nhịp thống nhất ở mọi quãng đường, và chuyển động bị ngắt giữa chừng đi
+tiếp từ chỗ đang đứng mà không đổi nhịp. Thời lượng chỉ là núm đúng khi quãng đường cố định giữa hai mốc đã định.
 
 ## 4.2 Cần thì phải cho hiểu sâu
 

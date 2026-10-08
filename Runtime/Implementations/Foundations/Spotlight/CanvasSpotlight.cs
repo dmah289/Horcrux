@@ -1,11 +1,10 @@
 ﻿using System.Threading;
 using Cysharp.Threading.Tasks;
 using Horcrux.Runtime.Abstractions.LiveOps;
-using Horcrux.Runtime.Tweening.Easing;
 using Horcrux.Runtime.Utilities;
 using Horcrux.Runtime.Utilities.Common;
 using Horcrux.Runtime.Utilities.ExtensionMethods;
-using Horcrux.Runtime.Utilities.Tweening;
+using PrimeTween;
 using Sisus.Init;
 using UnityEngine;
 using UnityEngine.UI;
@@ -74,11 +73,8 @@ namespace Horcrux.Runtime.Implementations.LiveOps
         
         public UniTask FadeDimAsync(float toAlpha, float duration, CancellationToken ct)
         {
-            float fromAlpha = dim.color.a;
-            return CharmTween.CastAsync(duration, EaseType.Linear,spell, ct, onComplete);
-
-            void spell(float t) => dim.SetAlpha(Mathf.Lerp(fromAlpha, toAlpha, t));
-            void onComplete() => dim.SetAlpha(toAlpha);
+            return Tween.Alpha(dim, toAlpha, duration, Ease.Linear, useUnscaledTime: true)
+                .SetCancellationToken(ct);
         }
         
         public void Release()
@@ -132,7 +128,7 @@ namespace Horcrux.Runtime.Implementations.LiveOps
             Debug.LogError($"[CanvasSpotlight] : {target.transform.position}");
             handGroup.CharmPointAndBob(target.transform.position, _handToTargetDir, 
                 _highlightConfig.HandTargetOffset, _highlightConfig.TargetPadding,
-                EaseType.OutQuad, handOneWayDuration, _bobCts.Token).Forget();
+                Ease.OutQuad, handOneWayDuration, _bobCts.Token);
             
         }
 

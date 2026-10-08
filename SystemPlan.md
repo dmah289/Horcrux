@@ -1,7 +1,8 @@
 # Horcrux SDK — SystemPlan (tài liệu tư duy trước khi phát triển)
 
 > **Phạm vi:** chỉ **runtime**. Editor tooling nằm ngoài SDK (Phụ lục C).
-> **Đã có trong SDK, không làm lại:** Object Pooling · EventBus · Remote Config · Tweening/Easing · PhysXHelper · MonoSingleton/SingletonSO · `IService<T>`.
+> **Tween dùng PrimeTween** (package `com.kyrylokuzyk.primetween`), không tự viết runner tween; mọi dòng "Tweening" ở dưới là PrimeTween. `EaseType` giữ cho toán thuần, tween thì dùng `PrimeTween.Ease`.
+> **Đã có trong SDK, không làm lại:** Object Pooling · EventBus · Remote Config · Easing (`EaseType`/`Easer`, toán thuần) · PhysXHelper · MonoSingleton/SingletonSO · `IService<T>`.
 
 ## Ngữ cảnh đã chốt (2026-08-29)
 
@@ -1033,12 +1034,12 @@ OnPointerClick:
 | Không kế thừa `UnityEngine.UI.Button` | `Button` mang theo `Selectable`/navigation/transition không dùng tới | Mất navigation bàn phím (mobile không cần) |
 | Cooldown ở **nút**, `IsBusy` ở container (§7) | Hai lớp phòng thủ ở hai tầng: nút chặn theo thời gian, container chặn theo trạng thái | — |
 | Mọi feedback dùng `IOptionalService` | Nút phải chạy trong scene chưa có audio/haptic/analytics (prefab preview, test) | Thiếu service thì im lặng — cố ý |
-| Tween ở `unscaledTime` | Nút trong popup pause phải còn phản hồi | — |
+| Tween ở `unscaledTime` (`useUnscaledTime: true` của PrimeTween) | Nút trong popup pause phải còn phản hồi | — |
 
 **Cạm bẫy**
 - Tween scale mà **không** lưu `originalScale` lúc `Awake` → sai nếu prefab có scale ≠ 1.
 - Cooldown bằng `Time.time` → sai khi `timeScale = 0`. Dùng `unscaledTime`.
-- Kill tween trong `OnDestroy`; `SetActive(false)` giữa lúc animate → tween treo, scale đứng ở 0.9.
+- Dừng tween của object trong `OnDestroy` (`Tween.StopAll(target)`); `SetActive(false)` giữa lúc animate → tween treo, scale đứng ở 0.9.
 
 **Xong khi:** §0.6 + spam 10 tap chỉ 1 click qua · chạy được trong scene không có audio/haptic/analytics · thêm 1 loại feedback mới không sửa `InteractiveButton`.
 
@@ -1100,7 +1101,7 @@ ToastService (subscribe) ──► pool.Rent<ToastBar>()  ← Object Pool của 
 - Dựng UI toast bằng code (`new GameObject` + add component + `ContentSizeFitter` + rebuild layout) — đắt, alloc nhiều, không đổi skin được.
 - Toast dùng `Destroy` thay pool → GC spike đúng lúc gameplay dồn dập.
 - Toast không dùng canvas riêng `sortingOrder` cao → bị popup che.
-- Tween không `Kill` khi trả pool → instance tái dùng còn tween cũ.
+- Tween không dừng (`Tween.StopAll(target)`) khi trả pool → instance tái dùng còn tween cũ.
 
 ### 11b. Notification Badge (red-dot)
 

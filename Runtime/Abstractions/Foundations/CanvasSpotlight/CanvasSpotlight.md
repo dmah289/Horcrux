@@ -70,7 +70,7 @@ highlight.Release();                                                            
 |---|---|
 | `Focus(target, extra, config)`: tay neo vào **target đầu**; `extra` chỉ được nâng, không có tay riêng | một tay, một đích; nội dung lễ (`extra`) là canvas con của target nên sáng cùng |
 | `FadeDimAsync(toAlpha, duration, ct)` đổi alpha lớp tối, **tap vẫn bị nuốt tới `Release`** | lễ cần màn tối mờ dần mà người chơi chưa chạm được UI dưới; `Release` mới trả tương tác |
-| `FadeDimAsync` chạy bằng thời gian unscaled, huỷ thì đặt alpha đích ngay | nhất quán với `CharmTween`; không để lớp tối kẹt nửa chừng |
+| `FadeDimAsync` là `Tween.Alpha` unscaled, huỷ thì dừng tại alpha hiện tại | PrimeTween lo tween, không snap về đích; `Release` luôn chạy nên lớp tối không kẹt |
 | `Focus` lần sau luôn đặt lại alpha về `dimAlpha` | fade về 0 ở lượt trước không làm lượt sau không tối |
 | `Release` trả **mọi** canvas đã nhớ (tối đa hai) | caller chỉ gọi một `Release` trong `finally` |
 

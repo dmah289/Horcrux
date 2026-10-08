@@ -1,10 +1,8 @@
 ﻿using System.Threading;
 using Cysharp.Threading.Tasks;
 using Horcrux.Runtime.Tweening.Easing;
-using Horcrux.Runtime.Utilities.Common;
 using Horcrux.Runtime.Utilities.ExtensionMethods;
-using Horcrux.Runtime.Utilities.PhysXHelper;
-using Horcrux.Runtime.Utilities.Tweening;
+using PrimeTween;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -38,8 +36,12 @@ namespace Horcrux.Runtime.Utilities.UI
             bool burstFired = false;
 
             await UniTask.WhenAll(
-                selfRect.CharmPunchScale(Vector3.one, 0.2f, duration, ct: ct),
-                CharmTween.CastAsync(duration, EaseType.Linear, FlySequence, ct, Land));
+                Tween.PunchScale(selfRect, Vector3.one * 0.2f, duration, frequency: 2, enableFalloff: false,
+                    easeBetweenShakes: Ease.InOutSine, useUnscaledTime: true),
+                Tween.Custom(0f, 1f, duration, FlySequence, Ease.Linear, useUnscaledTime: true)
+                    .SetCancellationToken(ct));
+            
+            gameObject.SetActive(false);
 
             void FlySequence(float t)
             {
@@ -52,11 +54,6 @@ namespace Horcrux.Runtime.Utilities.UI
                     PlayBurst();
                 }
             }
-
-            void Land()
-            {
-                gameObject.SetActive(false);
-            }
         }
 
         #endregion
@@ -68,6 +65,8 @@ namespace Horcrux.Runtime.Utilities.UI
             if (burst == null)
                 return;
 
+            burst.SetActive(false);
+            burst.SetActive(true);
             burst.Play();
         }
 

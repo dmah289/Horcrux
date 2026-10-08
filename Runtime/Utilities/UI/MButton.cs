@@ -1,8 +1,4 @@
-﻿using System;
-using System.Threading;
-using Cysharp.Threading.Tasks;
-using Horcrux.Runtime.Tweening.Easing;
-using Horcrux.Runtime.Utilities.ExtensionMethods;
+﻿using PrimeTween;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
@@ -16,22 +12,21 @@ namespace Horcrux.Runtime.Utilities.UI
         [SerializeField] private Transform target;
         
         [Splitter("Press")]
-        [SerializeField] private float pressedScale = 0.9f;
-        [SerializeField] private EaseType pressEase = EaseType.OutQuad;
-        [SerializeField] private float pressDuration = 0.3f;
+        [SerializeField] private float dipScale = 0.95f;
+        [SerializeField] private Ease dipEase = Ease.OutQuad;
+        [SerializeField, Min(0.05f)] private float dipSpeed = 1f;
         
         [Splitter("Release")]
-        [SerializeField] private bool overshoot;
-        [SerializeField] private float overshootDuration = 0.2f;
-        [SerializeField] private float overshootScale = 1.1f;
-        [SerializeField] private EaseType overshootEase = EaseType.OutQuad;
-        [SerializeField] private float settleDuration = 0.05f;
+        [SerializeField] private bool enableOvershoot;
+        [SerializeField, Min(0.05f)] private float overshootSpeed = 1f;
+        [SerializeField] private float overshootScale = 1.05f;
+        [SerializeField] private Ease overshootEase = Ease.OutQuad;
 
         private Button _selfBtn;
         private Transform _targetToTween;
         private Vector3 _restScale;
-        
-        private CancellationTokenSource _cts;
+        private float _restScaleMagnitude;
+        private Sequence _motion;
         private bool _isPressed;
 
         #region Unity Callbacks
@@ -41,6 +36,7 @@ namespace Horcrux.Runtime.Utilities.UI
             _selfBtn = GetComponent<Button>();
             _targetToTween = target != null ? target : transform;
             _restScale = _targetToTween.localScale;
+            _restScaleMagnitude = _restScale.magnitude;
         }
 
         private void OnEnable()
@@ -51,61 +47,48 @@ namespace Horcrux.Runtime.Utilities.UI
 
         private void OnDisable()
         {
-            Cancel();
+            _motion.Stop();
         }
         
         public void OnPointerDown(PointerEventData eventData)
         {
             if (!_selfBtn.interactable)
                 return;
-
+            
             _isPressed = true;
-            Restart(PressAsync);
+            _motion.Stop();
+            _motion = Sequence.Create(ScaleFromTo(_targetToTween.localScale, _restScale * dipScale, dipSpeed, dipEase));
         }
         
         public void OnPointerUp(PointerEventData eventData)
         {
-            Release();
+            if (!_isPressed)
+                return;
+            
+            _isPressed = false;
+            _motion.Stop();
+            Vector3 currScale = _targetToTween.localScale;
+            
+            if (!enableOvershoot)
+            {
+                _motion = Sequence.Create(ScaleFromTo(currScale, _restScale, dipSpeed, dipEase));
+                return;
+            }
+            
+            Vector3 overshootVector = _restScale * overshootScale;
+            _motion = Sequence.Create(ScaleFromTo(currScale, overshootVector, overshootSpeed, overshootEase))
+                .Chain(ScaleFromTo(overshootVector, _restScale, dipSpeed, dipEase));
         }
 
         #endregion
 
         #region Class Methods
 
-        private async UniTask PressAsync(CancellationToken ct)
+        private Tween ScaleFromTo(Vector3 start, Vector3 end, float speed, Ease ease)
         {
-            await _targetToTween.CharmScale(_restScale * pressedScale, pressEase, pressDuration, ct: ct);
-        }
-
-        private void Restart(Func<CancellationToken, UniTask> tween)
-        {
-            Cancel();
-            _cts = new CancellationTokenSource();
-            tween(_cts.Token).Forget();
-        }
-
-        private void Release()
-        {
-            if (!_isPressed)
-                return;
-
-            _isPressed = false;
-            Restart(ReleaseAsync);
-        }
-
-        private async UniTask ReleaseAsync(CancellationToken ct)
-        {
-            if (overshoot)
-                await _targetToTween.CharmScale(_restScale * overshootScale, overshootEase, overshootDuration, ct: ct);
-            
-            await _targetToTween.CharmScale(_restScale, EaseType.Linear, settleDuration, ct: ct);
-        }
-
-        private void Cancel()
-        {
-            _cts?.Cancel();
-            _cts?.Dispose();
-            _cts = null;
+            float scaleRatioDist = (end - start).magnitude / _restScaleMagnitude;
+            float duration = scaleRatioDist / speed;
+            return Tween.Scale(_targetToTween, start, end, duration, ease, useUnscaledTime: true);
         }
 
         #endregion

@@ -1,7 +1,6 @@
 ﻿using System.Threading;
 using Cysharp.Threading.Tasks;
-using Horcrux.Runtime.Tweening.Easing;
-using Horcrux.Runtime.Utilities.Tweening;
+using PrimeTween;
 using TMPro;
 using UnityEngine;
 
@@ -15,7 +14,7 @@ namespace Horcrux.Runtime.Utilities.UI
         
         [Splitter("Configs")]
         [SerializeField] private float fullWidth;
-        [SerializeField] private EaseType ease;
+        [SerializeField] private Ease ease;
         [SerializeField] private float speed;
 
         #region API
@@ -25,13 +24,11 @@ namespace Horcrux.Runtime.Utilities.UI
             Write(curr, goal);
         }
 
-        public async UniTask PlayAsync(int from, int to, int goal, CancellationToken ct)
+        public UniTask PlayAsync(int from, int to, int goal, CancellationToken ct)
         {
             float duration = Mathf.Abs(to - from) / Mathf.Max(0.0001f, speed);
-            await CharmTween.CastAsync(duration, ease, spell, ct, onComplete);
-            
-            void spell(float t) => Write(Mathf.Lerp(from, to, t), goal);
-            void onComplete() => Write(to, goal);
+            return Tween.Custom(from, to, duration, value => Write(value, goal), ease,
+                useUnscaledTime: true).SetCancellationToken(ct);
         }
 
         #endregion

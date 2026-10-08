@@ -1241,7 +1241,7 @@ namespace Horcrux.Runtime.Implementations.Combo
             // OutBack vọt trên 1 rồi lắng ⇒ cú nảy CÓ LỰC. GetSquashStretch giữ thể tích: nén Y thì
             // phình X — thứ làm hiệu ứng "sống".
             _popTransform.localScale = SquashStretch.GetSquashStretch(
-                t, EaseType.OutBack, popMinScale, 1f, popAxis, CoordinateSystem.XY);
+                Easer.Evaluate(EaseType.OutBack, t), popMinScale, 1f, popAxis, CoordinateSystem.XY);
         }
 
         #region Internals

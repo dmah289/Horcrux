@@ -10,7 +10,8 @@
         "UniTask.Addressables",
         "Unity.Mathematics",
         "UnityEngine.UI",
-        "Unity.TextMeshPro"
+        "Unity.TextMeshPro",
+        "PrimeTween.Runtime"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
