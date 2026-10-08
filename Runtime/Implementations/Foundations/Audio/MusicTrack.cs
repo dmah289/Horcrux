@@ -1,19 +1,16 @@
 ﻿using System;
-using Horcrux.Runtime.Abstractions.Audio;
 using UnityEngine;
 
 namespace Horcrux.Runtime.Implementations.Audio
 {
     [Serializable]
-    public class MusicTrack
+    public class MusicTrack<TMusic> where TMusic : struct, Enum
     {
-        [SerializeField] private string displayName;
-        [SerializeField, Tooltip("Mapping AudioId Value")] private int id;
+        [SerializeField] private TMusic id;
         [SerializeField] private AudioClip clip;
-        [SerializeField, Range(0, 1)] private float volume;
+        [SerializeField, Range(0, 1)] private float volume = 1f;
         
-        public string DisplayName => displayName;
-        public AudioId Id => id;
+        public TMusic Id => id;
         public AudioClip Clip => clip;
         public float Volume => volume;
     }

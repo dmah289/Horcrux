@@ -4,14 +4,15 @@ using UnityEngine;
 
 namespace Horcrux.Runtime.Implementations.Audio
 {
-    [CreateAssetMenu(fileName = "AudioCatalog", menuName = "Horcrux/Audio Catalog")]
-    public partial class AudioCatalog : ScriptableObject
+    public abstract partial class AudioCatalog<TSfx, TMusic> : ScriptableObject
+        where TSfx : struct, Enum
+        where TMusic : struct, Enum
     {
-        [SerializeField] private AudioEntry[] entries =  Array.Empty<AudioEntry>();
-        [SerializeField] private MusicTrack[] tracks = Array.Empty<MusicTrack>();
+        [SerializeField] private AudioEntry<TSfx>[] entries =  Array.Empty<AudioEntry<TSfx>>();
+        [SerializeField] private MusicTrack<TMusic>[] tracks = Array.Empty<MusicTrack<TMusic>>();
         
-        public IReadOnlyList<AudioEntry> Entries => entries;
-        public IReadOnlyList<MusicTrack> Tracks => tracks;
+        public IReadOnlyList<AudioEntry<TSfx>> Entries => entries;
+        public IReadOnlyList<MusicTrack<TMusic>> Tracks => tracks;
         
         
     }

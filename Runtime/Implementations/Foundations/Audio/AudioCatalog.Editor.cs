@@ -1,9 +1,13 @@
-﻿using Sirenix.OdinInspector;
+﻿using System;
+using System.Collections.Generic;
+using Sirenix.OdinInspector;
 using UnityEngine;
 
 namespace Horcrux.Runtime.Implementations.Audio
 {
-    public partial class AudioCatalog
+    public abstract partial class AudioCatalog<TSfx, TMusic>
+        where TSfx : struct, Enum
+        where TMusic : struct, Enum
     {
         #if UNITY_EDITOR
 
@@ -28,20 +32,26 @@ namespace Horcrux.Runtime.Implementations.Audio
 
         private bool IsMusicTrackValid(int index)
         {
-            MusicTrack track = tracks[index];
-            string label = $"music track #{index} '{track.DisplayName}'";
+            MusicTrack<TMusic> track = tracks[index];
+            string label = $"Music track #{index} ({track.Id})";
 
-            if (!track.Id.IsValid)
+            if (EqualityComparer<TMusic>.Default.Equals(track.Id, default))
             {
-                Debug.LogError($"[AudioCatalog]: {label} has Id 0 (unassigned).", this);
+                Debug.LogError($"[AudioCatalog]: {label} has no Id (unassigned).", this);
+                return false;
+            }
+
+            if (!Enum.IsDefined(typeof(TMusic), track.Id))
+            {
+                Debug.LogError($"[AudioCatalog]: {label} is no member of {typeof(TMusic).Name}.", this);
                 return false;
             }
 
             for (int j = 0; j < index; j++)
             {
-                if (tracks[j].Id.Equals(track.Id))
+                if (EqualityComparer<TMusic>.Default.Equals(tracks[j].Id, track.Id))
                 {
-                    Debug.LogError($"[AudioCatalog]: {label} repeats Id {track.Id} of music track #{j}. Only the first one plays.", this);
+                    Debug.LogError($"[AudioCatalog]: {label} repeats Id {track.Id} of Music track #{j}. Only the first one plays.", this);
                     return false;
                 }
             }
@@ -57,20 +67,26 @@ namespace Horcrux.Runtime.Implementations.Audio
 
         private bool IsEntryValid(int index)
         {
-            AudioEntry entry = entries[index];
-            string label = $"entry #{index} '{entry.DisplayName}'";
+            AudioEntry<TSfx> entry = entries[index];
+            string label = $"Sfx entry #{index} ({entry.Id})";
 
-            if (!entry.Id.IsValid)
+            if (EqualityComparer<TSfx>.Default.Equals(entry.Id, default))
             {
-                Debug.LogError($"[AudioCatalog]: {label} has Id 0 (unassigned).", this);
+                Debug.LogError($"[AudioCatalog]: {label} has no Id (unassigned).", this);
+                return false;
+            }
+
+            if (!Enum.IsDefined(typeof(TSfx), entry.Id))
+            {
+                Debug.LogError($"[AudioCatalog]: {label} is no member of {typeof(TSfx).Name}.", this);
                 return false;
             }
 
             for (int j = 0; j < index; j++)
             {
-                if (entries[j].Id.Equals(entry.Id))
+                if (EqualityComparer<TSfx>.Default.Equals(entries[j].Id, entry.Id))
                 {
-                    Debug.LogError($"[AudioCatalog]: {label} repeats Id {entry.Id} of entry #{j}. Only the first one plays.", this);
+                    Debug.LogError($"[AudioCatalog]: {label} repeats Id {entry.Id} of Sfx entry #{j}. Only the first one plays.", this);
                     return false;
                 }
             }
@@ -90,7 +106,7 @@ namespace Horcrux.Runtime.Implementations.Audio
             int invalidAmount = LogInvalidEntries();
 
             if (invalidAmount == 0)
-                Debug.Log($"[AudioCatalog]: {entries.Length} entries, {tracks.Length} music tracks — ids unique and assigned, every slot has a clip.", this);
+                Debug.Log($"[AudioCatalog]: {entries.Length} Sfx entries, {tracks.Length} Music tracks — ids unique and assigned, every slot has a clip.", this);
         }
 
         #endif
