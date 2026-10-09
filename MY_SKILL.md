@@ -385,7 +385,7 @@ file** (`S`). `partial` cho logic runtime là dấu hiệu SOLID và OOP chưa �
 | Chỗ | Cách làm |
 |---|---|
 | Code chỉ có ở Editor (ca `partial` được phép) | file `*.Editor.cs` khai `partial` của cùng class, **bên trong vẫn** `#if UNITY_EDITOR` — file runtime không bị `#if` cắt ngang, nút Editor đọc thẳng private member |
-| Nhận phụ thuộc | `MonoBehaviour<T>` cho component thường · `IInitializable<T>` khi class đã kế thừa base khác · không service locator bên trong hệ |
+| Nhận phụ thuộc | `MonoBehaviour<T>` cho component thường · `IInitializable<T>` khi class đã kế thừa base khác · không service locator bên trong hệ · **object sinh lúc chạy (`Instantiate` prefab) tự nhận service qua `Init` của chính nó** — không truyền service vào hàm `Instantiate` hay nơi sinh, nơi sinh không phải biết object con cần gì |
 | Helper thao tác lên một object có sẵn (ca `partial` được phép) | extension method trên type đó, file partial `<Type>Extensions.<Nhóm>.cs` — call site đọc thành câu, tìm được từ chính object, không bao giờ che instance method (§3.4) |
 | Dựng host | hệ **không** tự `new GameObject` — host là component kéo tay vào scene, chu kỳ và collection đọc được trong Inspector (§3.6) |
 | Field serialize | nhóm bằng `[Splitter("References")]` (ô kéo) rồi `[Splitter("Configs")]` (số chỉnh), References đứng trước — mở Inspector thấy ngay thứ **phải nối** trước thứ có thể để mặc định |
