@@ -77,7 +77,7 @@ namespace Horcrux.Runtime.Implementations.Audio
 
         public void PlaySfx(TSfx sfx, float pitchScale)
         {
-            PlaySfx(sfx, pitchScale);
+            Play(sfx, pitchScale);
         }
 
         public void PlayMusic(TMusic music)
