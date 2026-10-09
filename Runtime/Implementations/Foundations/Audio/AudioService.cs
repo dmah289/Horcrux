@@ -12,7 +12,7 @@ namespace Horcrux.Runtime.Implementations.Audio
         where TMusic : struct, Enum
     {
         private const float PitchSpread = 0.05f;
-        private const float RandomPitch = -1f;
+        private const float RandomPitch = 0f;
         
         [Splitter("References")]
         [SerializeField] private AudioSource[] voices = Array.Empty<AudioSource>();

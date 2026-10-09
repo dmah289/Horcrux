@@ -141,7 +141,7 @@ namespace Horcrux.Tests
             var track = new MusicTrack<TestMusic>();
 
             Assert.AreEqual(1f, entry.Volume);
-            Assert.AreEqual(0.05f, entry.MinIntervalSeconds);
+            Assert.AreEqual(0.03f, entry.MinIntervalSeconds);
             Assert.AreEqual(1f, track.Volume);
         }
 

@@ -196,6 +196,39 @@ namespace Horcrux.Tests
         }
 
         [Test]
+        public void PlaySfx_PitchScaleOne_PlaysAtExactlyOne()
+        {
+            Rig rig = Build(Entries(Entry(TestSfx.A, _clip)));
+
+            rig.Service.PlaySfx(TestSfx.A, 1f);
+
+            Assert.AreEqual(1f, rig.Voices[0].pitch);
+        }
+
+        [Test]
+        public void PlaySfx_PitchScale_PlaysAtExactlyThatPitch()
+        {
+            Rig rig = Build(Entries(Entry(TestSfx.A, _clip)));
+
+            rig.Service.PlaySfx(TestSfx.A, 1.2599f);
+
+            Assert.AreEqual(1.2599f, rig.Voices[0].pitch, 1e-5f);
+        }
+
+        [Test]
+        public void PlaySfx_PitchScale_BusyUntilIsClipLengthOverPitchScale()
+        {
+            Rig rig = Build(Entries(Entry(TestSfx.A, _clip, minInterval: 0f)));
+
+            rig.Service.PlaySfx(TestSfx.A, 1.5f);
+            float now = Time.unscaledTime;
+
+            float busyUntil = ((float[])BusyUntilField.GetValue(rig.Service))[0];
+            Assert.AreEqual(1.5f, rig.Voices[0].pitch, 1e-5f);
+            Assert.AreEqual(_clip.length / 1.5f, busyUntil - now, 1e-4f);
+        }
+
+        [Test]
         public void SfxOff_WhilePlaying_ClearsEveryBusyMark()
         {
             Rig rig = Build(Entries(Entry(TestSfx.A, _clip, minInterval: 0f)));
