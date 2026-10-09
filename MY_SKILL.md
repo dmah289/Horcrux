@@ -342,6 +342,12 @@ quên tick trên một instance không để lại dấu vết (§3.6). Hai ch�
 > `CancellationTokenSource`. Ba lý do: field serialize bị đổi lúc Play **không quay lại** khi dừng Play
 > — ra "máy tôi chạy được" không một dòng log · asset chỉ nạp lúc có người chạm lần đầu nên **không có
 > thứ tự khởi tạo** để dựa vào · không có mốc kết thúc nào để đóng token.
+>
+> Ngoại lệ có điều kiện: **bảng tra dẫn xuất từ chính dữ liệu của asset** (id → chỉ số) thuộc về asset —
+> cùng chủ với dữ liệu nguồn, không ai khác dựng lại. Field đó **không serialize** và **luôn do host dựng
+> lại bằng một hàm tường minh (`Clear` rồi điền) ở boot**: asset không có thứ tự khởi tạo, và field
+> không serialize sống qua các lần Play khi tắt domain reload nên không tự mới lại. State đổi lúc chạy
+> (mốc thời gian, trạng thái đang chọn) vẫn ở host.
 
 **Ba hình dạng composite — viết lý do ra tại chỗ trước khi dùng.** Không cấm, nhưng mặc định là không,
 và mỗi lần dùng phải gọi tên được thứ bậc thấp hơn không làm được. Thước đo là **phạm vi bài toán**:
@@ -498,7 +504,7 @@ ca sai nào**; guard hay không guard chỉ là hai đường tới cùng đích
 
 | Cái sai lộ ra… | Xử lý | Vì sao |
 |---|---|---|
-| **Ngay lúc authoring, hoặc nổ ngay lần Play đầu** — và **đã kiểm là nó nổ thật** | **để nó nổ**, không guard | exception thô và `LogError` đẹp chặn developer ngang nhau; đổi cái trước thành cái sau là trả phí **vĩnh viễn trong build** cho một lần đọc log dễ hơn |
+| **Ngay lúc authoring, hoặc nổ ngay lần Play đầu** — và **đã kiểm là nó nổ thật** | **để nó nổ**, không guard | exception thô và `LogError` đẹp chặn developer ngang nhau; đổi cái trước thành cái sau là trả phí **vĩnh viễn trong build** cho một lần đọc log dễ hơn. Bảng tra dựng từ dữ liệu authoring dùng `Add`, không `TryAdd`: id trùng nổ ở boot thay vì để cái đầu thắng im lặng |
 | **Sai lúc setup nhưng không nổ** — view lẽ ra đã gắn mà chưa, hệ thiếu wire chạy tiếp thiếu một tính năng | **`LogError` rồi thoát**, kể cả khi lặp mỗi lượt | thoát im lặng biến một bước setup thiếu thành một tính năng vắng mặt cả phiên mà không ai biết |
 | **Lọt qua authoring rồi sai âm thầm** giữa gameplay | **guard đầy đủ** — bất biến thật, về bảng trên | Editor không bắt chắc được: reference chỉ có lúc runtime · null ở một prefab variant · sai chỉ hiện ở một tổ hợp cấu hình · thành null sau `Destroy` · **dữ liệu từ ngoài** (import, server, save) |
 | **Ca hợp lệ** — chưa tới lượt, chưa có gì để làm | **thoát im lặng** | không phải lỗi |
@@ -513,7 +519,7 @@ thoát, để cái thiếu lộ thành ô trống thay vì hiện dữ liệu c�
 §3.9 là cho Editor tool, nơi người nhìn màn hình là người sửa được dữ liệu; trong build người nhìn là
 người chơi.
 
-**"Để nó nổ" đứng được nhờ vế *nổ* — phải kiểm, không được giả định.** Bốn hình dạng nó **không** nổ:
+**"Để nó nổ" đứng được nhờ vế *nổ* — phải kiểm, không được giả định.** Năm hình dạng nó **không** nổ:
 
 | Hình dạng | Vì sao im lặng | Trả về chỗ nổ bằng |
 |---|---|---|
@@ -521,6 +527,7 @@ người chơi.
 | **Host bắt lỗi fail-open** — vòng dispatch, chain boot log rồi bỏ qua step lỗi | thiếu wire thành **một dòng log lúc boot** rồi cả phiên chạy thiếu hẳn một hệ | hệ tự đứng được không cần host đó, hoặc thiếu nó phải hỏng ở **cửa mà người chơi chạm** |
 | **Vòng lặp nhận sai token** | hủy là hành vi hợp đồng, không log (§3.5) | mỗi loop chỉ ra được token của nó là đời của ai |
 | **Chỗ nổ nằm trong `#if DEBUG`** | bản release không có dòng đó — cùng một ca thành null chạy tiếp rồi NRE ở chỗ khác | đọc `#if` bao quanh mọi guard của thư viện ngoài trước khi tin vào nó |
+| **Nổ trễ — mảng hoặc pool kéo tay có ô trống mà đường chạy chỉ chạm tới ô đó khi các ô trước đã bận** | lần Play đầu và mọi lần chơi nhẹ đều qua; hỏng đúng lúc tải cao | một bước kiểm ở authoring duyệt mảng (nút Validate chạy khi được hỏi, §3.9) — **không** sinh bản sao đã lọc null lúc chạy để canh, vì đó là code che lỗi setup (§3.6) |
 
 *Đã sai một lần, nguồn của hai hàng đầu:* một hệ lưu dữ liệu có field khoảng thời gian không default —
 quên điền ra 0, thành ghi đĩa **mỗi frame**; cùng hệ gắn loop tự lưu vào token của pha boot mà runner
@@ -654,6 +661,7 @@ nhau — thứ duy nhất dùng được khi hệ hỏng lúc 2 giờ sáng. H�
   class, DTO) PascalCase như property — người đọc ngoài class thấy `step.Goal`, không cần biết nó là
   field hay property. Khoá wire format sinh từ tên field thì casing là hợp đồng: chốt trước khi bản dữ
   liệu đầu tiên rời máy developer.
+- **Tên GameObject theo dạng `abc_xyz_0`: chỉ chữ cái thường, số và `_`** — không hoa, không cách, không dấu. Một dạng cho mọi nơi đặt tên (tay trong Editor lẫn code `new GameObject(...)`, cùng nhóm thì đánh số hậu tố) nên tên đoán được và tìm được bằng text, không phụ thuộc người đặt. Chỉ áp cho GameObject; type, member theo các luật trên.
 - **Hai chế độ loại trừ nhau là `enum` hai phần tử, không `bool`**: `ScrollDirection.Upwards` đọc được
   ở cả Inspector lẫn call site; `bool` chỉ nói một phía, và chế độ thứ ba thêm vào `bool` là đổi kiểu.
   **Chuỗi bước có bước lúc có lúc không là `enum` bước, không bộ đếm**: enum nói thẳng đang ở đâu; bước

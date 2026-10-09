@@ -21,7 +21,7 @@ Implementations/Foundations/Audio/
 ├── AudioCatalog.cs         AudioCatalog<TSfx,TMusic> abstract ScriptableObject chứa entry[] + track[] — game điền, Horcrux không biết clip nào
 ├── AudioCatalog.Editor.cs  nút Validate (Odin [Button])
 ├── AudioService.cs         AudioService<TSfx,TMusic> abstract host MonoBehaviour: SFX (tra entry → throttle → cao độ → cấp voice) + Music (một source riêng)
-└── AudioService.Editor.cs  OnValidate ép cờ voice và cờ music source · context menu thêm 12 voice
+└── AudioService.Editor.cs  nút Setup Audio Sources (dựng voice + music source) · nút Configure All Sources ép cờ · nút Validate References
 
 Dự án (Category Jam):
 GameSfx · GameMusic (enum, số tường minh từ 1) · GameAudioCatalog : AudioCatalog<GameSfx,GameMusic> · GameAudioService : AudioService<GameSfx,GameMusic> + [Service]
@@ -46,7 +46,7 @@ music là một source riêng.
 | **Tên** | `Giả định (cần xác nhận):` `AudioCatalog` · `AudioEntry` · `AudioService` · `IAudioSetting` · `IsSfxOn` · `PlaySfx`. Đã chốt: `MusicTrack` · `IsMusicOn` · `PlayMusic` · `StopMusic` · id là enum của dự án, hệ generic theo hai enum, dự án kế thừa. Đổi tên trước khi gõ, không đổi sau. |
 | **Cố ý KHÔNG làm + lý do** | ① **`pitchScale` / `volumeScale` trên `PlaySfx`** — không caller. Thêm sau là **một tham số tuỳ chọn**, call site cũ không đổi; pitch đã là một biến cục bộ ở đường phát nên thêm không phải thiết kế lại. ② **Interface cho catalog và entry** — chỉ có một implementation; tách khi có nguồn dữ liệu thứ hai (remote, procedural). ③ **SFX 3D** (`PlaySfxAt`, `spatialBlend`) — mọi call site hiện tại là 2D. ④ **Crossfade, fade, pause/resume nhạc, `PlayDynamic` (nhạc đổi theo trạng thái), mixer group** — chưa chốt cần; mỗi cái là thêm method hoặc field. Music bản tối thiểu **có** trong plan. ⑤ **Nhiều clip biến thể cho một tiếng** (chọn ngẫu nhiên, tuần tự, theo trọng số) — mỗi entry đúng **một** clip; phát triển sau. Khi thêm, đổi `Clip` thành mảng và throttle sang khoá theo clip (§0.3). ⑥ **Lưu bền `IsSfxOn`** — game đã có save riêng. ⑦ **Kiểu id riêng của Horcrux bọc `int`** — framework không sở hữu từ vựng của dự án: struct bọc `int` không chặn số bừa và không cho Inspector biết tên; enum của dự án làm được cả hai. ⑧ **Gộp `IAudioSetting` vào interface generic** — consumer chỉ cần hai cờ (cầu nối Setting, composite Horcrux) sẽ phải gọi tên enum của dự án. |
 | **Quyết định trái trực giác** | Voice là **mảng `AudioSource` kéo tay** thay vì pool tạo lúc chạy — số voice là hằng cấu hình trong một asset, thiếu thì lộ ô trống. Throttle khoá theo **clip** chứ không theo id — xem §0.3. Hết voice thì **cướp voice sắp xong** thay vì bỏ tiếng mới — tiếng mới là phản hồi người chơi vừa gây ra. **Không object pool runtime**: mảng voice đã là pool cố định (tạo sẵn lúc authoring, cho mượn–cướp–trả, không `Instantiate`/`Destroy` ở đường phát); `ObjectPool<AudioSource>` thêm cấp phát khi lớn lên và giấu số voice khỏi Inspector. **Hệ generic theo hai enum, `abstract` + class con rỗng của dự án** thay cho một service không generic nhận số: hai enum cho compile-time phân biệt SFX và music, Inspector vẽ dropdown tên, và dự án không cast hay gõ số — đổi lại mỗi dự án khai hai class con và gắn `[Service]` lên class con (`Inherited = false`). **Music có `AudioSource` riêng, ngoài mảng voice** — SFX cướp voice không bao giờ cắt nhạc. Tắt Music rồi bật lại thì bài đang chọn phát lại từ đầu: `PlayMusic` lúc tắt chỉ ghi nhớ bài, không phát. |
-| **Mở rộng sau** (đều additive) | `PlaySfx(TSfx, float pitchScale)` cho pitch ramp · `PlaySfxAt` · crossfade (PrimeTween) · `PauseMusic`/`ResumeMusic` · `AudioMixerGroup` trên service, `OnValidate` gán cho mọi voice · `IAudioCatalog` khi có nguồn thứ hai · nạp catalog qua `AssetReference` · hàm đổi enum → `int` ở `Utilities/` nếu Profiler cho thấy `Dictionary` khoá enum cấp phát (Task 3, case #19). |
+| **Mở rộng sau** (đều additive) | `PlaySfx(TSfx, float pitchScale)` cho pitch ramp · `PlaySfxAt` · crossfade (PrimeTween) · `PauseMusic`/`ResumeMusic` · `AudioMixerGroup` trên service, `ConfigureAllSources` gán cho mọi voice · `IAudioCatalog` khi có nguồn thứ hai · nạp catalog qua `AssetReference` · hàm đổi enum → `int` ở `Utilities/` nếu Profiler cho thấy `Dictionary` khoá enum cấp phát (Task 3, case #19). |
 
 ### Đã khảo sát trước khi viết
 
@@ -101,7 +101,7 @@ Những số dưới chọn bằng tai, không dẫn ra từ đâu; là điểm 
 | `PitchSpread` | 0.05 | hằng `const` trong `AudioService`, không có ô Inspector |
 | `minIntervalSeconds` | 0.05 | asset `AudioCatalog`, per-entry |
 | `volume` | 1.0 | asset `AudioCatalog`, per-entry |
-| Số voice | 12 | mảng `Voices` trên host |
+| Số voice | 5 | mảng `Voices` trên host |
 
 Cách tune: sửa số trong asset, nhấn Play. Không sửa code (trừ `PitchSpread`, hằng một dòng).
 
@@ -114,14 +114,13 @@ game: GameAudio.Play(GameSfx.BoxReceive)         (lớp nối trong dự án, Ta
   └─> IAudioService<GameSfx, GameMusic>.Service.PlaySfx(GameSfx.BoxReceive)
         │
         ├─ !IsSfxOn ──────────────────────────────────────────> return (im lặng, hợp lệ)
-        ├─ _entryIndexById[sfx] ─ thiếu ──────────────────────> LogError, return
-        ├─ entry.Clip null ───────────────────────────────────> LogError, return
-        ├─ now − _lastPlayTime[entry] < minInterval ─────────> return (throttle, hợp lệ)
+        ├─ catalog.TryGetEntryById(sfx) ─ thiếu ──────────────────────> LogError, return
+        ├─ now − _lastPlayTimeById[sfx] < minInterval ────────> return (throttle, hợp lệ)
         ├─ pitch = Random(1 − s, 1 + s)
         ├─ voice = RentVoice(now)                              rảnh đầu tiên, hết thì cướp sắp xong
         └─ voice.clip/volume/pitch ← entry ; Play()
-           _voiceBusyUntil[voice] = now + clip.length / pitch
-           _lastPlayTime[entry] = now
+           _voicesBusyUntil[voice] = now + clip.length / pitch
+           _lastPlayTimeById[sfx] = now
 ```
 
 `now = Time.unscaledTime`: popup pause đặt `timeScale = 0`, throttle và mốc rảnh phải tiếp tục đúng.
@@ -129,14 +128,14 @@ game: GameAudio.Play(GameSfx.BoxReceive)         (lớp nối trong dự án, Ta
 ```
 game: GameAudio.PlayMusic(GameMusic.Level)
   └─> IAudioService<GameSfx, GameMusic>.Service.PlayMusic(GameMusic.Level)
-        ├─ _musicIndexById[music] ─ thiếu ────────────> LogError, return
-        ├─ _currMusicIndex = index                    nhớ bài đã chọn, kể cả khi Music đang tắt
+        ├─ catalog.TryGetMusicById(music) ─ thiếu ────────────> LogError, return
+        ├─ _currMusicTrack = track                    nhớ bài đã chọn, kể cả khi Music đang tắt
         └─ ApplyMusicState()
               ├─ !IsMusicOn hoặc chưa chọn bài ─────> musicSource.Stop()
-              ├─ đang phát đúng clip đó ────────────> chỉ cập nhật volume (gọi lại cùng bài không restart)
-              └─ else ──────────────────────────────> clip/volume ← track ; Play()   (loop do OnValidate ép)
+              ├─ đang phát đúng clip đó ────────────> không làm gì (gọi lại cùng bài không restart)
+              └─ else ──────────────────────────────> volume/clip ← track ; Play()   (loop do Setup / Configure All Sources ép)
 
-IsMusicOn setter, StopMusic ─> cùng ApplyMusicState (StopMusic đặt _currMusicIndex = −1 trước)
+IsMusicOn setter, StopMusic ─> cùng ApplyMusicState (StopMusic đặt _currMusicTrack = null trước)
 ```
 
 ---
@@ -232,7 +231,7 @@ namespace Horcrux.Runtime.Abstractions.Audio
 
 **Interfaces:**
 - Consumes: `AudioClip`; không còn phụ thuộc `Abstractions/`.
-- Produces: `AudioEntry<TSfx>` (5 field authoring) · `MusicTrack<TMusic>` (4 field) · `AudioCatalog<TSfx, TMusic> : ScriptableObject` abstract (`Entries`, `Tracks`).
+- Produces: `AudioEntry<TSfx>` (5 field authoring) · `MusicTrack<TMusic>` (4 field) · `AudioCatalog<TSfx, TMusic> : ScriptableObject` abstract (`Entries`, `Tracks`, `BuildTables`, `TryGetEntryById`, `TryGetMusicById`).
 
 **Quyết định thiết kế:**
 
@@ -245,7 +244,7 @@ namespace Horcrux.Runtime.Abstractions.Audio
 | `AudioEntry` là `class`, không `struct` | Unity serialize, sống suốt đời asset ⇒ không cấp phát theo tần số phát; struct bị copy mỗi lần đọc qua property |
 | `volume` mặc định `1f` | `float` mặc định `0` là giá trị hợp lệ: entry mới thêm vào danh sách **im lặng** mà không một dòng log. Mặc định đặt ngay trong khai báo |
 | `[Min(0f)]` cho interval | Kẹp dải **lúc authoring** thay cho clamp runtime; ô quên điền không thể mang giá trị âm |
-| Catalog **chỉ là dữ liệu** | Không dictionary, không con trỏ chọn clip trong SO: field đổi lúc Play không quay lại khi dừng Play, asset không có thứ tự khởi tạo. Mọi bảng tra và state ở service |
+| Catalog giữ dữ liệu **và bảng tra id → entry / track** (`BuildTables`, `TryGetEntryById`, `TryGetMusicById`) | Bảng tra là hàm thuần của hai mảng serialize, cùng chủ với dữ liệu nguồn nên không ai khác dựng lại. Field không serialize trong SO sống qua các lần Play khi tắt domain reload ⇒ `BuildTables` luôn `Clear` rồi dựng lại, service gọi ở `Awake`. **State đổi lúc chạy** (mốc throttle, voice, bài đang chọn) vẫn ở service: không con trỏ chọn clip, không mốc thời gian trong SO |
 | Validate **chỉ ở Editor, khi được hỏi** (nút), không `OnValidate`, không chạy ở `Awake` | Đang dựng danh sách thì dữ liệu luôn chưa hợp lệ, `OnValidate` sẽ đỏ console sau mỗi lần thêm phần tử. Runtime tự bảo vệ bằng log "không có trong catalog" ở đường phát |
 | Validate kiểm thêm `Enum.IsDefined` | Xoá một giá trị khỏi enum thì asset vẫn giữ số cũ; Inspector hiện số trần. Chỉ lộ ra khi được hỏi |
 | Trùng id kiểm O(n²) không `HashSet`; kiểm **riêng từng bảng** | n ≈ 16, chạy khi bấm nút. Hai bảng tra độc lập; trùng giữa hai bảng không gây lỗi |
@@ -287,6 +286,41 @@ namespace Horcrux.Runtime.Abstractions.Audio
 | 11 | `MusicTrack[] tracks = Array.Empty<MusicTrack>()` | `MusicTrack<TMusic>[] tracks = Array.Empty<MusicTrack<TMusic>>()` | |
 | 13 | `IReadOnlyList<AudioEntry> Entries` | `IReadOnlyList<AudioEntry<TSfx>> Entries` | |
 | 14 | `IReadOnlyList<MusicTrack> Tracks` | `IReadOnlyList<MusicTrack<TMusic>> Tracks` | |
+
+Thêm hai field bảng tra, `BuildTables` và hai hàm tra. `using System.Collections.Generic;` đã có ở dòng 2. Theo thứ tự region: field cạnh hai field serialize, `Properties` giữ `Entries`/`Tracks`, `API` giữ ba hàm:
+
+```csharp
+private readonly Dictionary<TSfx, AudioEntry<TSfx>> _entryById = new();
+private readonly Dictionary<TMusic, MusicTrack<TMusic>> _musicById = new();
+
+#region API
+
+public bool TryGetEntryById(TSfx id, out AudioEntry<TSfx> entry)
+    => _entryById.TryGetValue(id, out entry);
+
+public bool TryGetMusicById(TMusic id, out MusicTrack<TMusic> music)
+    => _musicById.TryGetValue(id, out music);
+
+public void BuildTables()
+{
+    _entryById.Clear();
+    _musicById.Clear();
+
+    for (int i = 0; i < entries.Length; i++)
+        _entryById.Add(entries[i].Id, entries[i]);
+
+    for (int i = 0; i < tracks.Length; i++)
+        _musicById.Add(tracks[i].Id, tracks[i]);
+}
+
+#endregion
+```
+
+| Quyết định | Vì sao |
+|---|---|
+| Bảng tra id → entry / track nằm ở catalog, không ở service | Trả thẳng đối tượng, không trả chỉ số: không caller nào cần chỉ số (throttle khoá theo id, bài đang chọn giữ tham chiếu). Bảng là hàm thuần của hai mảng serialize, cùng chủ với dữ liệu nguồn. State đổi lúc chạy (mốc throttle, voice, bài đang chọn) vẫn ở service |
+| `BuildTables` luôn `Clear` rồi dựng lại, service gọi ở `Awake` | Field không serialize trong SO sống qua các lần Play khi tắt domain reload; không `Clear` thì bảng cũ còn sót |
+| Trùng id: `Add`, ném `ArgumentException` ở `BuildTables` | Trùng là lỗi authoring nổ ngay lần Play đầu: để nó nổ thay vì cái đầu thắng im lặng. Nút Validate báo sớm hơn từ lúc authoring |
 
 - [ ] **Step 4: `AudioCatalog.Editor.cs`**
 
@@ -357,6 +391,11 @@ public sealed class GameAudioCatalog : AudioCatalog<GameSfx, GameMusic> { }
 | Entry SFX id `1` và music track id `1` | `LogInvalidEntries() == 0` (hai bảng độc lập) |
 | Catalog rỗng | trả `0`, không log |
 | Entry mới thêm trong Inspector | `volume == 1`, `minIntervalSeconds == 0.05` |
+| `BuildTables()` với entry id `1, 2` rồi `TryGetEntryById(2)` | `true`, đúng đối tượng entry thứ hai |
+| `TryGetEntryById` / `TryGetMusicById` với id không có trong catalog | `false` |
+| Hai entry cùng id, `BuildTables()` | ném `ArgumentException` |
+| `BuildTables()` hai lần, giữa hai lần đổi mảng entries | bảng khớp mảng mới, không còn id cũ |
+| Entry SFX id `1` và track id `1` | hai bảng độc lập, mỗi bên tra ra đối tượng riêng |
 
 - [ ] **Step 8: Commit** — `feat(sdk): audio catalog generic over the game's id enums`
 
@@ -364,7 +403,7 @@ public sealed class GameAudioCatalog : AudioCatalog<GameSfx, GameMusic> { }
 
 ### Task 3: `AudioService<TSfx, TMusic>`
 
-**Files:** `Assets/Horcrux/Runtime/Implementations/Foundations/Audio/AudioService.cs` · `AudioService.Editor.cs` (cả hai chưa có trên đĩa, chép nguyên file)
+**Files:** `Assets/Horcrux/Runtime/Implementations/Foundations/Audio/AudioService.cs` · `AudioService.Editor.cs`
 
 **Interfaces:**
 - Consumes: `AudioCatalog<TSfx, TMusic>`, `AudioEntry<TSfx>`, `MusicTrack<TMusic>` (cùng hệ, nhận class cụ thể qua `[SerializeField]`).
@@ -374,7 +413,7 @@ public sealed class GameAudioCatalog : AudioCatalog<GameSfx, GameMusic> { }
 
 | §0 | Code |
 |---|---|
-| §0.1 mốc rảnh | `_voiceBusyUntil[voice] = now + clip.length / pitch` |
+| §0.1 mốc rảnh | `_voicesBusyUntil[voice] = now + clip.length / pitch` |
 | §0.2 pitch ngẫu nhiên | `Random.Range(1f - PitchSpread, 1f + PitchSpread)` — hằng, không clamp |
 | §0.3 throttle biên đóng | `now - last < minInterval → return`; `last` khởi tạo `float.NegativeInfinity` để lần đầu luôn qua |
 
@@ -383,23 +422,24 @@ public sealed class GameAudioCatalog : AudioCatalog<GameSfx, GameMusic> { }
 | Quyết định | Vì sao |
 |---|---|
 | `abstract` + dự án khai class con rỗng, `[Service]` gắn ở class con | Generic `MonoBehaviour` không add vào GameObject được; class con chốt hai enum. `[Service]` khai `Inherited = false` nên khai ở base **không** tới class con — đây là bước setup, ghi ở "Trước khi chạy" |
-| `Awake` và `OnValidate` là `protected virtual` | Class con của dự án đặt trùng tên sẽ che hẳn bản của base: voice không được gom, bảng tra không được dựng, im lặng |
-| Bảng tra `Dictionary<TSfx,int>` / `Dictionary<TMusic,int>` khoá thẳng bằng enum | Không đổi sang `int`, không phụ thuộc underlying type. Chỉ không boxing khi comparer mặc định của enum là bản generic (đúng ở Unity 6) — case #19 là phép kiểm; không đạt thì thêm hàm đổi enum → `int` ở `Utilities/` và đổi khoá bảng |
+| `Awake` và `ConfigureAllSources` là `protected virtual` | Class con của dự án đặt trùng tên sẽ che hẳn bản của base: bảng tra không được dựng, mốc throttle không được điền, cờ voice không được ép — im lặng |
+| Bảng tra `Dictionary<TSfx, AudioEntry<TSfx>>` / `Dictionary<TMusic, MusicTrack<TMusic>>` (trong catalog) khoá thẳng bằng enum | Không đổi sang `int`, không phụ thuộc underlying type. Chỉ không boxing khi comparer mặc định của enum là bản generic (đúng ở Unity 6) — case #19 là phép kiểm; không đạt thì thêm hàm đổi enum → `int` ở `Utilities/` và đổi khoá bảng |
 | Entry chưa gán id (`default`) vẫn vào bảng tra như một khoá | Chỉ lộ khi caller truyền `default`; nút Validate (Task 2) báo từ lúc authoring. Một nhánh canh ở runtime là code cho ca đã có chỗ bắt |
-| Voice = mảng `AudioSource` kéo tay trên cùng GameObject | Số voice là hằng cấu hình trong một asset ⇒ kéo thả, ô trống có người nhìn. Một GameObject đủ vì chỉ phát 2D. Không `PlayOneShot` trên một source vì mọi tiếng sẽ chung một `pitch` |
-| Compact mảng voice ở `Awake` thành `_voices` không null | Ô trống log một lần ở boot; đường phát không kiểm null 12 lần mỗi tiếng |
-| Mọi bảng tra dựng ở `Awake` | `_entryIndexById` · `_musicIndexById` · `_lastPlayTimeByEntry` · `_voiceBusyUntil`. Sau `Awake`, `PlaySfx` không cấp phát |
-| Throttle lưu theo chỉ số entry (`float[]`) chứ không `Dictionary<AudioClip,_>` | Chỉ số đã có trong tay; mảng không hash, không cấp phát. Cùng một clip ở hai entry thì throttle riêng — chấp nhận, không có ca thật |
+| Voice = mảng `AudioSource` kéo tay, mỗi source một GameObject con (dựng bằng `SetupAudioSources`), dùng thẳng, không dựng bản sao lọc null | Số voice là hằng cấu hình trong một asset ⇒ kéo thả. Ô trống là lỗi setup, **nổ trễ**: `RentVoice` chỉ chạm ô đó khi các voice trước đã bận, tức đúng lúc combo dồn — nên bắt ở authoring bằng nút `ValidateReferences` (chạy khi được hỏi, không `OnValidate`, vì lúc đang kéo thả mảng luôn chưa đủ). Không `PlayOneShot` trên một source vì mọi tiếng sẽ chung một `pitch` |
+| Mọi cấp phát dồn về `Awake` | `catalog.BuildTables()` · `_lastPlayTimeById` · `_voicesBusyUntil`. Sau `Awake`, `PlaySfx` không cấp phát |
+| Throttle lưu `Dictionary<TSfx, float>` khoá theo id, dựng đủ khoá ở `Awake` | Cùng khoá với bảng tra nên không cần chỉ số. Ghi đè giá trị của khoá có sẵn không cấp phát; **phải điền đủ mọi id ở `Awake`** (giá trị đầu `NegativeInfinity`) vì thêm khoá mới lúc chạy mới cấp phát. Mỗi tiếng tốn 3 lần băm (tra entry, đọc mốc, ghi mốc) thay vì 1 (tra chỉ số rồi truy cập mảng) — nhịp mỗi tương tác, ~20 lần/giây, không đáng. Cùng một clip ở hai entry thì throttle riêng — chấp nhận, không có ca thật |
 | Rảnh đầu tiên, hết thì cướp voice có `busyUntil` nhỏ nhất | Bỏ tiếng mới là bỏ phản hồi người chơi vừa gây ra; voice sắp xong bị cắt ít gây chú ý nhất |
 | Kiểm cả `busyUntil` và `isPlaying` | Mốc là dự tính (§0.1); `isPlaying` là sự thật của engine |
 | `Time.unscaledTime` | Popup pause đặt `timeScale = 0`; `Time.time` đứng yên ⇒ throttle đóng băng, mọi tiếng sau bị bỏ |
-| Giá trị enum lạ, entry không clip ⇒ `LogError` mỗi lần, không throw | Sai lúc setup mà không nổ ⇒ phải báo, kể cả lặp. Throw giữa gameplay là trả giá cho một lỗi cấu hình. Chuỗi nội suy chứa enum boxing, nhưng chỉ ở đường lỗi |
+| Giá trị enum lạ ⇒ `LogError` mỗi lần, không throw | Id không có trong catalog là lỗi setup **không nổ** (tra thiếu chỉ trả `false`) ⇒ phải báo, kể cả lặp. Chuỗi nội suy chứa enum boxing, nhưng chỉ ở đường lỗi |
+| Catalog, `musicSource`, mảng voice rỗng, `clip` null **không có guard runtime** | Mỗi cái nổ thật ở lần chạm đầu (NRE hoặc `IndexOutOfRange`) và nút Validate báo từ lúc authoring (`ValidateReferences` cho service, `ValidateEntries` cho catalog). Guard ở đây là phí vĩnh viễn trong build cho một lần đọc log dễ hơn |
 | Bị throttle, `IsSfxOn = false` ⇒ im lặng | Ca hợp lệ, không phải lỗi |
+| `StopAllVoices` thoát khi `_voicesBusyUntil` còn rỗng | Setter `IsSfxOn` có thể chạy trước `Awake` (cầu nối Setting ghi `false` từ save sớm hơn host). Trước `Awake` mảng mốc chưa cấp mà `voices` đã có từ Inspector; chưa có voice nào phát nên thoát là đúng. Case #34 |
 | `IsSfxOn = false` dừng voice, **không** xoá mốc throttle | Mốc là `unscaledTime` tăng đều; chỉ chặn trong `minInterval` ≈ 0.05s sau khi bật lại — không có ca "bỏ oan" |
-| Service **không** gọi validate của catalog | Validate là nút Editor (Task 2). Dữ liệu sai lộ ra ở đường phát bằng log, không bằng một lượt quét ở boot |
+| Service **không** gọi validate của catalog | Validate là nút Editor (Task 2). Dữ liệu sai lộ ra ở đường phát, không bằng một lượt quét ở boot |
 | Music: một `musicSource` riêng, một hàm `ApplyMusicState` | `IsMusicOn`, `PlayMusic`, `StopMusic` chỉ đổi trạng thái (cờ, bài đang chọn) rồi gọi một hàm làm source khớp trạng thái ⇒ một cửa ghi lên source, không ba nơi tự `Play`/`Stop` lệch nhau (§3.4) |
 | `PlayMusic` lúc `IsMusicOn = false` chỉ nhớ bài | Bật lại thì đúng bài game đã chọn phát; game không phải gọi lại `PlayMusic` sau mỗi lần toggle |
-| Gọi lại đúng bài đang phát không restart | So `clip`; level mới gọi `PlayMusic` cùng bài không bị giật nhạc |
+| Gọi lại đúng bài đang phát không restart; `volume` chỉ gán khi đổi bài | So `clip`; level mới gọi `PlayMusic` cùng bài không bị giật nhạc. Volume là hằng của track nên không cần gán lại |
 | Giá trị music lạ ⇒ `LogError`, **giữ bài hiện tại** | Sai lúc setup không nổ ⇒ phải báo; cắt nhạc đang chạy vì một giá trị sai là phá thêm |
 | Không `DontDestroyOnLoad` | Host là component kéo vào scene; đời sống do scene quyết. Game đặt nó ở scene persistent của nó |
 
@@ -413,11 +453,11 @@ public sealed class GameAudioService : AudioService<GameSfx, GameMusic> { }
 ```
 
    `Giả định (cần xác nhận):` `[Service]` của InitArgs nhận nhiều defining type trong một attribute — kiểm lúc compile.
-2. Mở scene dịch vụ persistent của game (Category Jam: `Assets/_Game/Scenes/Service.unity`). Tạo GameObject `[Audio]` → Add Component `GameAudioService`.
-3. Kéo asset catalog (Task 2) vào ô **Catalog**. Thiếu: mỗi `PlaySfx` log một error "not in the catalog".
-4. Chuột phải tiêu đề component `GameAudioService` → **Add 12 Voices**: 12 `AudioSource` được thêm vào chính GameObject và điền vào **Voices**. Muốn số khác thì add tay rồi kéo vào mảng; `OnValidate` tự tắt `Play On Awake`, `Loop`, đặt `Spatial Blend = 0` cho mọi voice trong mảng. Thiếu voice: mỗi `PlaySfx` log một error.
-5. Add Component `AudioSource` thứ 13 lên cùng GameObject, kéo vào ô **Music Source** (không kéo vào **Voices**). `OnValidate` tự đặt `Loop = true`, tắt `Play On Awake`, `Spatial Blend = 0`. Thiếu: mỗi lần gọi `PlayMusic`, `StopMusic`, hoặc set `IsMusicOn` log một error.
-6. Save scene. Kiểm: mảng **Voices** không có ô `None`, ô **Music Source** và **Catalog** có giá trị, Console không error.
+2. Mở scene dịch vụ persistent của game (Category Jam: `Assets/_Game/Scenes/Service.unity`). Tạo GameObject `audio` → Add Component `GameAudioService`.
+3. Kéo asset catalog (Task 2) vào ô **Catalog**. Thiếu: `Awake` ném `NullReferenceException`.
+4. Trên component `GameAudioService` bấm nút **Setup Audio Sources**: tạo 5 GameObject con `sfx_voice_0..4`, mỗi cái một `AudioSource`, điền vào **Voices**; tạo thêm GameObject con `music_source` với một `AudioSource`, điền vào ô **Music Source**. Bấm lại chỉ bù ô còn trống, không tạo trùng. Muốn số voice khác thì thêm ô vào mảng rồi bấm lại. Mọi source được đặt `Play On Awake` tắt, `Spatial Blend = 0`, `Loop` tắt (riêng music `Loop` bật). Thiếu voice: mỗi `PlaySfx` ném `IndexOutOfRangeException`; ô `None` chỉ nổ khi các voice trước đã bận (combo dồn). Thiếu `Loop` ở music: nhạc phát một lần rồi im; `PlayMusic` ném `NullReferenceException` khi thiếu ô **Music Source**.
+5. Sau khi tự kéo hoặc đổi cờ một source bằng tay, bấm **Configure All Sources** để ép lại bốn cờ trên; nút không tạo gì mới.
+6. Bấm nút **Validate References** trên component. Console phải có **một dòng log** xác nhận, không error — thiếu catalog, music source, voice hoặc có ô `None` đều báo ở đây. Save scene.
 
 - [ ] **Step 1: `AudioService.cs`**
 
@@ -427,44 +467,29 @@ using System.Collections.Generic;
 using Horcrux.Runtime.Abstractions.Audio;
 using Horcrux.Runtime.Utilities;
 using UnityEngine;
+using Random = UnityEngine.Random;
 
 namespace Horcrux.Runtime.Implementations.Audio
 {
-    /// <summary>Plays 2D SFX: find entry → throttle per sound → random pitch → rent a voice. No allocation per play. Also keeps one looping music track.</summary>
-    /// <remarks>
-    /// Abstract: a game derives one sealed class, closes <typeparamref name="TSfx"/> and <typeparamref name="TMusic"/> with its enums,
-    /// and puts <c>[Service]</c> on it — the attribute is not inherited from here.
-    /// Voices are <see cref="AudioSource"/> components assigned in the Inspector, not created at runtime: a missing one shows
-    /// as an empty slot while authoring, and the voice count is tuned without recompiling.
-    /// Music has its own source outside the voices, so a stolen voice never cuts the music.
-    /// All lookup tables and play state live here, never in <see cref="AudioCatalog{TSfx,TMusic}"/>.
-    /// </remarks>
     public abstract partial class AudioService<TSfx, TMusic> : MonoBehaviour, IAudioService<TSfx, TMusic>
         where TSfx : struct, Enum
         where TMusic : struct, Enum
     {
-        /// <summary>Each play draws pitch uniformly in [1 − spread, 1 + spread]. Fixed: not tuned per sound.</summary>
         private const float PitchSpread = 0.05f;
-
+        
         [Splitter("References")]
+        [SerializeField] private AudioSource[] voices;
+        [SerializeField] private AudioSource musicSource;
         [SerializeField] private AudioCatalog<TSfx, TMusic> catalog;
-
-        [SerializeField, Tooltip("One AudioSource per simultaneous sound. When all are busy, the one closest to finishing is taken over.")]
-        private AudioSource[] voices = Array.Empty<AudioSource>();
-
-        [SerializeField, Tooltip("Plays the music track. Not one of the voices, so SFX never take it over.")]
-        private AudioSource musicSource;
-
-        private bool _isSfxOn = true;
+        
         private bool _isMusicOn = true;
-        private int _currMusicIndex = -1;
-        private readonly Dictionary<TMusic, int> _musicIndexById = new();
-        private AudioSource[] _voices = Array.Empty<AudioSource>();
-        private float[] _voiceBusyUntil = Array.Empty<float>();
-        private readonly Dictionary<TSfx, int> _entryIndexById = new();
-        private float[] _lastPlayTimeByEntry = Array.Empty<float>();
-
-
+        private bool _isSfxOn = true;
+        private MusicTrack<TMusic> _currMusicTrack;
+        
+        private readonly Dictionary<TSfx, float> _lastPlayTimeById = new();
+        private float[] _voicesBusyUntil = Array.Empty<float>();
+        
+        
         #region Properties
 
         public bool IsSfxOn
@@ -474,197 +499,137 @@ namespace Horcrux.Runtime.Implementations.Audio
             {
                 _isSfxOn = value;
 
-                if (!value)
+                if (!_isSfxOn)
                     StopAllVoices();
             }
         }
 
         public bool IsMusicOn
         {
-            get => _isMusicOn;
+            get =>  _isMusicOn;
             set
             {
                 _isMusicOn = value;
                 ApplyMusicState();
             }
         }
-
+        
         #endregion
 
         #region Unity Callbacks
 
         protected virtual void Awake()
         {
-            CollectVoices();
-            BuildEntryTables();
+            catalog.BuildTables();
+            
+            _lastPlayTimeById.Clear();
+            for (int i = 0; i < catalog.Entries.Count; i++)
+                _lastPlayTimeById[catalog.Entries[i].Id] = float.NegativeInfinity;
+            
+            _voicesBusyUntil = new float[voices.Length];
         }
 
         #endregion
 
         #region API
-
+        
         public void PlaySfx(TSfx sfx)
         {
             if (!_isSfxOn)
                 return;
 
-            if (!_entryIndexById.TryGetValue(sfx, out int entryIndex))
+            if (!catalog.TryGetEntryById(sfx, out AudioEntry<TSfx> entry))
             {
                 Debug.LogError($"[AudioService]: Sfx {sfx} is not in the catalog.", this);
                 return;
             }
-
-            AudioEntry<TSfx> entry = catalog.Entries[entryIndex];
+            
+            float now = UnityEngine.Time.unscaledTime;
+            if (now - _lastPlayTimeById[sfx] < entry.MinIntervalSeconds)
+                return;
+            
             AudioClip clip = entry.Clip;
-
-            if (clip == null)
-            {
-                Debug.LogError($"[AudioService]: Sfx {sfx} has no clip.", this);
-                return;
-            }
-
-            if (_voices.Length == 0)
-            {
-                Debug.LogError("[AudioService]: No Sfx voice assigned — use 'Add 12 Voices' on the component.", this);
-                return;
-            }
-
-            float now = Time.unscaledTime;
-
-            if (now - _lastPlayTimeByEntry[entryIndex] < entry.MinIntervalSeconds)
-                return;
-
-            float pitch = UnityEngine.Random.Range(1f - PitchSpread, 1f + PitchSpread);
+            float pitch = Random.Range(1f - PitchSpread, 1 + PitchSpread);
             int voiceIndex = RentVoice(now);
-            AudioSource voice = _voices[voiceIndex];
-
+            AudioSource voice = voices[voiceIndex];
+            
             voice.clip = clip;
-            voice.volume = entry.Volume;
             voice.pitch = pitch;
+            voice.volume = entry.Volume;
             voice.Play();
 
-            _voiceBusyUntil[voiceIndex] = now + clip.length / pitch;
-            _lastPlayTimeByEntry[entryIndex] = now;
+            _voicesBusyUntil[voiceIndex] = now + clip.length / pitch;
+            _lastPlayTimeById[sfx] = now;
         }
 
         public void PlayMusic(TMusic music)
         {
-            if (!_musicIndexById.TryGetValue(music, out int musicIndex))
+            if(!catalog.TryGetMusicById(music, out MusicTrack<TMusic> track))
             {
                 Debug.LogError($"[AudioService]: Music {music} is not in the catalog.", this);
                 return;
             }
-
-            _currMusicIndex = musicIndex;
+            
+            _currMusicTrack = track;
             ApplyMusicState();
         }
 
         public void StopMusic()
         {
-            _currMusicIndex = -1;
+            _currMusicTrack = null;
             ApplyMusicState();
         }
-
+        
         #endregion
 
         #region Class Methods
 
-        private void CollectVoices()
+        private void StopAllVoices()
         {
-            int assignedAmount = 0;
-
+            if (voices == null || voices.Length == 0 || _voicesBusyUntil == null || _voicesBusyUntil.Length == 0)
+                return;
+            
             for (int i = 0; i < voices.Length; i++)
             {
-                if (voices[i] != null)
-                    assignedAmount++;
-                else
-                    Debug.LogError($"[AudioService]: Sfx Voices[{i}] is empty.", this);
-            }
-
-            _voices = new AudioSource[assignedAmount];
-            _voiceBusyUntil = new float[assignedAmount];
-
-            for (int i = 0, v = 0; i < voices.Length; i++)
-            {
-                if (voices[i] != null)
-                    _voices[v++] = voices[i];
+                voices[i].Stop();
+                _voicesBusyUntil[i] = 0f;
             }
         }
 
-        private void BuildEntryTables()
-        {
-            if (catalog == null)
-            {
-                Debug.LogError("[AudioService]: Catalog is not assigned — every Sfx and Music will be dropped.", this);
-                return;
-            }
-
-            IReadOnlyList<AudioEntry<TSfx>> entries = catalog.Entries;
-            _lastPlayTimeByEntry = new float[entries.Count];
-            Array.Fill(_lastPlayTimeByEntry, float.NegativeInfinity);
-
-            for (int i = 0; i < entries.Count; i++)
-                _entryIndexById.TryAdd(entries[i].Id, i);   // first one wins; duplicates are reported by the catalog's Validate button
-
-            IReadOnlyList<MusicTrack<TMusic>> tracks = catalog.Tracks;
-
-            for (int i = 0; i < tracks.Count; i++)
-                _musicIndexById.TryAdd(tracks[i].Id, i);
-        }
-
-        /// <summary>Single place that makes the music source match <see cref="IsMusicOn"/> and the chosen track.</summary>
         private void ApplyMusicState()
         {
-            if (musicSource == null)
-            {
-                Debug.LogError("[AudioService]: Music Source is not assigned — music is dropped.", this);
-                return;
-            }
-
-            if (!_isMusicOn || _currMusicIndex < 0)
+            if (!_isMusicOn || _currMusicTrack == null)
             {
                 musicSource.Stop();
                 return;
             }
 
-            MusicTrack<TMusic> track = catalog.Tracks[_currMusicIndex];
-            musicSource.volume = track.Volume;
-
-            if (musicSource.isPlaying && musicSource.clip == track.Clip)
+            if (musicSource.isPlaying && musicSource.clip == _currMusicTrack.Clip)
                 return;
-
-            musicSource.clip = track.Clip;
+            
+            musicSource.volume = _currMusicTrack.Volume;
+            musicSource.clip = _currMusicTrack.Clip;
             musicSource.Play();
         }
 
-        /// <summary>First idle voice; when none, the one that finishes soonest is taken over.</summary>
         private int RentVoice(float now)
         {
             int soonestIndex = 0;
             float soonestBusyUntil = float.MaxValue;
 
-            for (int i = 0; i < _voices.Length; i++)
+            for (int i = 0; i < voices.Length; i++)
             {
-                if (now >= _voiceBusyUntil[i] && !_voices[i].isPlaying)
+                if (now >= _voicesBusyUntil[i] && !voices[i].isPlaying)
                     return i;
 
-                if (_voiceBusyUntil[i] < soonestBusyUntil)
+                if (_voicesBusyUntil[i] < soonestBusyUntil)
                 {
-                    soonestBusyUntil = _voiceBusyUntil[i];
+                    soonestBusyUntil = _voicesBusyUntil[i];
                     soonestIndex = i;
                 }
             }
 
             return soonestIndex;
-        }
-
-        private void StopAllVoices()
-        {
-            for (int i = 0; i < _voices.Length; i++)
-            {
-                _voices[i].Stop();
-                _voiceBusyUntil[i] = 0f;
-            }
         }
 
         #endregion
@@ -676,6 +641,7 @@ namespace Horcrux.Runtime.Implementations.Audio
 
 ```csharp
 using System;
+using Sirenix.OdinInspector;
 using UnityEngine;
 
 namespace Horcrux.Runtime.Implementations.Audio
@@ -684,11 +650,12 @@ namespace Horcrux.Runtime.Implementations.Audio
         where TSfx : struct, Enum
         where TMusic : struct, Enum
     {
-#if UNITY_EDITOR
-        private const int DefaultVoiceAmount = 12;
+        #if UNITY_EDITOR
 
-        /// <summary>Three flags each cause a different silent bug: a bang on load, a sound that never ends, a 2D effect heard from afar.</summary>
-        protected virtual void OnValidate()
+        private const int DefaultVoiceAmount = 5;
+
+        [Button]
+        protected virtual void ConfigureAllSources()
         {
             for (int i = 0; i < voices.Length; i++)
             {
@@ -703,19 +670,70 @@ namespace Horcrux.Runtime.Implementations.Audio
             }
         }
 
-        [ContextMenu("Add 12 Voices")]
-        private void AddDefaultVoices()
+        [Button]
+        private void ValidateReferences()
         {
-            var added = new AudioSource[DefaultVoiceAmount];
+            int invalidAmount = 0;
 
-            for (int i = 0; i < DefaultVoiceAmount; i++)
+            if (catalog == null)
             {
-                added[i] = UnityEditor.Undo.AddComponent<AudioSource>(gameObject);
-                ConfigureVoice(added[i]);
+                Debug.LogError("[AudioService]: Catalog is not assigned.", this);
+                invalidAmount++;
             }
 
-            voices = added;
+            if (musicSource == null)
+            {
+                Debug.LogError("[AudioService]: Music Source is not assigned.", this);
+                invalidAmount++;
+            }
+
+            if (voices.Length == 0)
+            {
+                Debug.LogError("[AudioService]: No Sfx voice assigned — use 'Setup Audio Sources' on the component.", this);
+                invalidAmount++;
+            }
+
+            for (int i = 0; i < voices.Length; i++)
+            {
+                if (voices[i] == null)
+                {
+                    Debug.LogError($"[AudioService]: Sfx Voices[{i}] is empty.", this);
+                    invalidAmount++;
+                }
+            }
+
+            if (invalidAmount == 0)
+                Debug.Log($"[AudioService]: Catalog, Music Source and {voices.Length} Sfx voices assigned.", this);
+        }
+
+        [Button("Setup Audio Sources")]
+        private void SetupAudioSources()
+        {
+            UnityEditor.Undo.RecordObject(this, "Setup Audio Sources");
+
+            if (voices.Length < DefaultVoiceAmount)
+                Array.Resize(ref voices, DefaultVoiceAmount);
+
+            for (int i = 0; i < voices.Length; i++)
+            {
+                if (voices[i] == null)
+                    voices[i] = CreateAudioSource($"sfx_voice_{i}");
+            }
+
+            if (musicSource == null)
+                musicSource = CreateAudioSource("music_source");
+
+            ConfigureAllSources();
             UnityEditor.EditorUtility.SetDirty(this);
+        }
+
+        private AudioSource CreateAudioSource(string objectName)
+        {
+            var child = new GameObject(objectName);
+            UnityEditor.Undo.RegisterCreatedObjectUndo(child, "Setup Audio Sources");
+            child.transform.SetParent(transform, false);
+
+            return child.AddComponent<AudioSource>();
         }
 
         private static void ConfigureVoice(AudioSource voice)
@@ -724,7 +742,8 @@ namespace Horcrux.Runtime.Implementations.Audio
             voice.loop = false;
             voice.spatialBlend = 0f;
         }
-#endif
+
+        #endif
     }
 }
 ```
@@ -735,15 +754,15 @@ namespace Horcrux.Runtime.Implementations.Audio
 |---|---|---|
 | 1 | `PlaySfx(sfx)` khi `IsSfxOn = false` | không voice nào `isPlaying` |
 | 2 | `PlaySfx((TestSfx)99)` (giá trị không có trong catalog) | 1 error `[AudioService]:`, không throw |
-| 3 | Chưa gán catalog | 1 error ở `Awake`; mỗi `PlaySfx` thêm 1 error, không throw |
-| 4 | Mảng `Voices` rỗng | mỗi `PlaySfx` 1 error, không throw |
-| 5 | `Voices` có 1 ô `None` giữa 12 | 1 error ở `Awake`; 11 voice vẫn phát |
+| 3 | Chưa gán catalog | `Awake` ném `NullReferenceException`; `ValidateReferences` báo 1 error |
+| 4 | Mảng `Voices` rỗng | `PlaySfx` ném `IndexOutOfRangeException`; `ValidateReferences` báo 1 error |
+| 5 | `Voices` có 1 ô `None` ở chỉ số 3 trong 5 | `ValidateReferences` báo 1 error nêu `Voices[3]`; 3 lần phát đồng thời đầu bình thường, lần thứ 4 ném `NullReferenceException` |
 | 6 | `PlaySfx(sfx hợp lệ)` | voice được chọn có `clip == entry.Clip`, `volume == entry.Volume` |
-| 7 | Entry có `clip = null` | mỗi `PlaySfx` 1 error `[AudioService]:`, không throw |
+| 7 | Entry có `clip = null` | `PlaySfx` ném `NullReferenceException`; nút Validate của catalog báo 1 error |
 | 8 | Hai entry khác id, cùng frame, `minInterval = 0.05` | cả hai phát (throttle theo entry) |
 | 9 | 100 lần phát, `minInterval = 0`, mỗi lần cách nhau 1 giây | luôn dùng đúng clip đó, không treo |
 | 10 | 20 lần cùng id cùng frame, `minInterval = 0.05` | phát **1** lần |
-| 11 | 20 lần cùng id cùng frame, `minInterval = 0` | phát 12 lần rồi cướp voice; `busyUntil` của voice bị cướp là nhỏ nhất trước đó |
+| 11 | 20 lần cùng id cùng frame, `minInterval = 0` | phát 5 lần rồi cướp voice; `busyUntil` của voice bị cướp là nhỏ nhất trước đó |
 | 12 | 2 lần cách đúng `minInterval` | cả hai phát (biên đóng) |
 | 13 | `timeScale = 0`, 2 lần cách 0.1s thật | lần hai phát |
 | 14 | 1000 lần phát | mọi `voice.pitch` trong `[0.95, 1.05]`, không phải lúc nào cũng bằng 1 |
@@ -752,7 +771,8 @@ namespace Horcrux.Runtime.Implementations.Audio
 | 17 | `IsSfxOn = false` khi đang phát | mọi voice `isPlaying == false` ngay |
 | 18 | Lần phát đầu tiên sau `Awake` | không bị throttle (`NegativeInfinity`) |
 | 19 | Profiler: 20 lần phát/giây, 10 giây, bản build IL2CPP | **0 B** GC Alloc trên đường `PlaySfx` (khoá `TestSfx : int`), và trên `PlayMusic` lặp cùng nhịp (khoá `TestMusic : byte`) — cũng là phép kiểm cho việc khoá bảng tra bằng enum. Tiền kiểm chỉ riêng `Dictionary` khoá enum (chưa cần `AudioService`): `Tests/PlayMode/EnumKeyedLookupAllocationTests.cs`, chạy trên player IL2CPP |
-| 20 | Bật `Play On Awake` trên một voice rồi rời Inspector | `OnValidate` tắt lại |
+| 20 | Bật `Play On Awake` trên một voice rồi bấm `ConfigureAllSources` | `playOnAwake == false` |
+| 36 | Bấm `SetupAudioSources` hai lần liên tiếp | 5 voice + 1 music source, không tạo thêm GameObject con ở lần hai; `musicSource.loop == true`, mọi voice `loop == false` |
 | 21 | `PlayMusic(music)` khi `IsMusicOn = true` | `musicSource.isPlaying`, `clip` và `volume` đúng track, `loop == true` |
 | 22 | `PlayMusic((TestMusic)99)` khi đang phát bài A | 1 error `[AudioService]:`, bài A vẫn phát |
 | 23 | `PlayMusic(A)` rồi `PlayMusic(B)` | `clip == B` |
@@ -761,11 +781,13 @@ namespace Horcrux.Runtime.Implementations.Audio
 | 26 | `IsMusicOn = false`, `PlayMusic(A)`, rồi `IsMusicOn = true` | sau `PlayMusic` chưa phát; sau bật phát bài A |
 | 27 | `PlayMusic(A)`, `StopMusic()`, bật tắt `IsMusicOn` | không phát (bài đã bị bỏ chọn) |
 | 28 | `IsSfxOn = false` khi nhạc đang phát | nhạc vẫn phát |
-| 29 | 20 lần `PlaySfx` liên tiếp hết voice, nhạc đang phát | nhạc không bị cắt (`musicSource` không nằm trong `_voices`) |
-| 30 | Chưa gán `musicSource`, gọi `PlayMusic`, `StopMusic`, set `IsMusicOn` | mỗi lệnh 1 error, không throw |
-| 31 | `PlayMusic` khi chưa gán catalog | 1 error "not in the catalog", không throw |
+| 29 | 20 lần `PlaySfx` liên tiếp hết voice, nhạc đang phát | nhạc không bị cắt (`musicSource` không nằm trong `voices`) |
+| 30 | Chưa gán `musicSource`, gọi `PlayMusic` | ném `NullReferenceException`; `ValidateReferences` báo 1 error |
+| 31 | `ValidateReferences` với đủ catalog, music source, 5 voice | đúng 1 log, 0 error |
 | 32 | `PlaySfx` rồi đọc qua `IAudioSetting` | `IsSfxOn` và `IsMusicOn` đọc qua interface thấy đúng giá trị vừa set qua `IAudioService<,>` (cùng một object) |
-| 33 | Hai entry trùng id | phát entry **đầu**, không throw |
+| 33 | Hai entry trùng id | `Awake` ném `ArgumentException` (từ `BuildTables`) |
+| 34 | `IsSfxOn = false` trước `Awake` (host vừa dựng, voice đã gán) | không throw |
+| 35 | Một track trùng clip với bài đang phát nhưng khác `volume`, `PlayMusic` hai lần | lần hai không restart; `volume` giữ theo bài đầu |
 
 - [ ] **Step 4: Commit** — `feat(sdk): add AudioService (authored voices, per-sound throttle, random pitch, music source)`
 
@@ -787,14 +809,14 @@ vụ gameplay. Chúng ở hai assembly khác nhau; file nào cần cả hai thì
 | `static class GameAudio { Play(GameSfx) · PlayMusic(GameMusic) · StopMusic() }` | `Assets/_Gameplay/Scripts/Common/GameAudio.cs` | Mỗi hàm một dòng: `IAudioService<GameSfx, GameMusic>.Service.PlaySfx(sfx)`, `PlayMusic(music)`, `StopMusic()`. Chỉ rút ngắn tên interface đã đóng generic cho 20 call site; không còn phép đổi kiểu |
 | Đổi call site của `MusicController` | Grep `MusicController` trong `_Gameplay`, `_Game` | `Play(name)` → `GameAudio.PlayMusic(GameMusic.X)`; `Stop()` → `GameAudio.StopMusic()`. `Pause`/`Continue`/`PlayDynamic` còn caller thì **dừng, hỏi developer** — ngoài bản tối thiểu |
 | Đổi 20 call site | `Box`, `BoxAnimation`, `BoxesContainer`, `CacheHoles`, `ShoppingCart`, `CacheHole`, `GoodsItem`, `NormalMovingShelf`, `NormalShelf`, `SingleMovingShelf`, `GameDirector.Events` | `GameAudio.Play(GameSfx.X)`. Combo: `GameSfx.BoxCombo2..6` theo `comboNumber`, giữ nguyên 5 clip — `Giả định (cần xác nhận):` chưa đổi sang pitch ramp vì đó là đổi cảm giác chơi |
-| Cầu nối setting | `Assets/_Game/Scripts/Common/GameplayAudioToggle.cs`, component trên `[Audio]` | `MonoBehaviour<IAudioPersistentData, IAudioSetting>` (không cần biết `GameSfx`): `Init` set `IsSfxOn = Sound`, `IsMusicOn = Music` rồi `RegisterOnSoundChange` + `RegisterOnMusicChange`; `OnDestroy` unregister cả hai. Thay cho 4 dòng ở `CategoryGameController.Start` |
+| Cầu nối setting | `Assets/_Game/Scripts/Common/GameplayAudioToggle.cs`, component trên `audio` | `MonoBehaviour<IAudioPersistentData, IAudioSetting>` (không cần biết `GameSfx`): `Init` set `IsSfxOn = Sound`, `IsMusicOn = Music` rồi `RegisterOnSoundChange` + `RegisterOnMusicChange`; `OnDestroy` unregister cả hai. Thay cho 4 dòng ở `CategoryGameController.Start` |
 | Gỡ hệ cũ | `Assets/_Gameplay/Scripts/Common/Audio/` (15 file, gồm `MusicController` + `MusicContainer`) · `Addressables/Prefabs/Sounds/` (16 prefab) · nhóm Addressables SFX · `Constant.AudioID.cs` · `GameplaySession.SfxOn` · instance `AudioController` trong `Service.unity` | Xoá sau khi mọi call site đã chuyển và chơi thử xong. Grep `AudioController`, `MusicController`, `AUDIO_`, `SfxOn` phải trả 0 |
 | Ghi vào contract doc | `docs/ScrewDom_Contract.md` mục 2 | Một dòng: `SoundController` đóng băng cho LiveOps; audio gameplay đi qua Horcrux; không gộp hai bên |
 
 **Editor setup (agent liệt kê lại đầy đủ khi tới task này):** tạo `AudioCatalog_Gameplay` (từ `GameAudioCatalog`) với 16 entry,
 id chọn từ dropdown `GameSfx`, clip lấy từ 16 prefab `sfx_*` hiện tại; thêm **Tracks** id chọn từ dropdown `GameMusic`, clip lấy từ
-`MusicContainer` hiện tại · `[Audio]` trong `Service.unity` với `GameAudioService` theo Task 3 (gồm ô **Music Source**) ·
-add `GameplayAudioToggle` lên `[Audio]` · xoá instance prefab `AudioController` và `MusicController` khỏi `Service.unity`.
+`MusicContainer` hiện tại · `audio` trong `Service.unity` với `GameAudioService` theo Task 3 (gồm ô **Music Source**) ·
+add `GameplayAudioToggle` lên `audio` · xoá instance prefab `AudioController` và `MusicController` khỏi `Service.unity`.
 
 **Kịch bản chơi thử (developer):** vào level 1 → tap 3 item cùng loại → nghe tiếng tap mỗi lần, tiếng nhận box
 khi item vào box, tiếng combo khác nhau ở box thứ 2–6 liên tiếp · mở Setting, tắt Sound giữa lúc đang có tiếng →

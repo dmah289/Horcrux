@@ -1408,7 +1408,7 @@ Bức tranh tổng — chi tiết từng bước ở mục **Editor setup** củ
 ```
 [Ticker]      TickerService                                   TickerSystem.md   Task 3
 [Haptic]      HapticService                                   HapticSystem.md   Task 2
-[Audio]       AudioService   + AudioCatalog + 12 voice        AudioSystem.md    Task 2, 3
+audio       AudioService   + AudioCatalog + 12 voice        AudioSystem.md    Task 2, 3
 [Feedback]    FeedbackDispatcher + 4 kênh (entry ở Inspector) FeedbackSystem.md Task 3, 4, 5
 CameraFollow  └─ FeedbackCameraRig └─ Camera                  FeedbackSystem.md Task 5
 [Combo]       ComboSystem + ComboFeedbackBridge               ComboSystem.md    Task 4, 5
@@ -1438,7 +1438,7 @@ Bảng nghiệm thu — **định nghĩa "xong"** của cả 5 plan:
 | 8 | Trên Android thật | **cảm** được rung mạnh dần theo bậc |
 | 9 | App background 60s giữa chuỗi | quay lại combo **vẫn còn**, cửa sổ như trước |
 | 10 | Xoá GameObject `[Feedback]` rồi chạy lại | 1 warning; combo + meter **vẫn** chạy đúng |
-| 11 | Xoá `[Audio]` (giữ Feedback) | mất tiếng; rung + hitstop + shake + meter **vẫn** chạy |
+| 11 | Xoá `audio` (giữ Feedback) | mất tiếng; rung + hitstop + shake + meter **vẫn** chạy |
 | 12 | Profiler suốt phiên | 0 B GC Alloc/frame khi idle; không spike lúc dồn nhịp |
 
 - [ ] **Step 3: Cập nhật `Pendings.md`** — Nhóm 7-F: xoá `ChainReaction` → trỏ "Giai đoạn 2" của file này. Xoá 2 hộp *"Combo ASMR đã nhất"* / *"Combo đa giác quan hoàn hảo"* → trỏ § *Nguyên liệu đã chuyển*. Cập nhật Roadmap mục 39/40/41.
