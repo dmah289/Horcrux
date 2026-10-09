@@ -11,6 +11,7 @@ namespace Horcrux.Runtime.Abstractions.Audio
         where TMusic : struct, Enum
     {
         void PlaySfx(TSfx sfx);
+        void PlaySfx(TSfx sfx, float pitchScale);
         void PlayMusic(TMusic music);
         void StopMusic();
     }

@@ -13,7 +13,7 @@ mỗi lần phát. Music: một bài loop, đổi bài là cắt rồi phát bà
 ```
 Abstractions/Foundations/Audio/
 ├── IAudioSetting.cs       IsSfxOn · IsMusicOn  (không generic)
-└── IAudioService.cs        IAudioService<TSfx,TMusic> : IAudioSetting — PlaySfx(TSfx) · PlayMusic(TMusic) · StopMusic
+└── IAudioService.cs        IAudioService<TSfx,TMusic> : IAudioSetting — PlaySfx(TSfx) · PlaySfx(TSfx, float pitchScale) · PlayMusic(TMusic) · StopMusic
 
 Implementations/Foundations/Audio/
 ├── AudioEntry.cs           AudioEntry<TSfx>: một tiếng SFX: id · clip · volume · minInterval  (class [Serializable])
@@ -38,15 +38,15 @@ music là một source riêng.
 
 | Nhóm | Chốt |
 |---|---|
-| **Ai gọi** | Gameplay của dự án, qua `IAudioService<GameSfx, GameMusic>` tiêm thẳng vào từng nơi gọi, không static, không lớp nối (Task 4). Ở Category Jam: 20 call site hiện gọi `AudioController.Instance.PlaySoundEffect(string)` không kèm vị trí, 16 tiếng, trong đó 5 tiếng combo `sfx_box_combo2..6` là 5 clip riêng. Music: `MusicController` của `_Gameplay` không còn caller nào ngoài chính nó — bỏ hẳn; nhạc khởi bằng `PlayMusic` ở nơi vào level, và toggle Music trong Setting (`IAudioPersistentData.RegisterOnMusicChange`). |
+| **Ai gọi** | Gameplay của dự án, qua `IAudioService<GameSfx, GameMusic>` tiêm thẳng vào từng nơi gọi, không static, không lớp nối (Task 4). Ở Category Jam: 20 call site hiện gọi `AudioController.Instance.PlaySoundEffect(string)` không kèm vị trí, 16 tiếng, trong đó 5 tiếng combo `sfx_box_combo2..6` là 5 clip riêng — gộp thành **một** entry `BoxCombo`, cao độ tăng dần do call site truyền `pitchScale` (§0.5), catalog còn 12 entry. Music: `MusicController` của `_Gameplay` không còn caller nào ngoài chính nó — bỏ hẳn; nhạc khởi bằng `PlayMusic` ở nơi vào level, và toggle Music trong Setting (`IAudioPersistentData.RegisterOnMusicChange`). |
 | **Mục tiêu** | Tiếng gameplay phát đúng frame sự kiện. Nghiệm thu bằng chơi thử: tap item, nhận box, hoàn thành box 3 lần liên tiếp, dùng 3 booster — mỗi hành động có đúng một tiếng, không chói khi nhiều box hoàn thành cùng lúc, tắt Sound trong Setting thì im ngay. Vào level có nhạc nền loop; tắt Music thì nhạc dừng, bật lại thì nhạc phát lại; tắt Music không ảnh hưởng SFX và ngược lại. |
 | **Ngân sách** | Nhịp *mỗi tương tác*; cao điểm ~10–20 lần/giây có thể cùng frame khi cascade. **Hot path đã xác nhận**: mọi cấp phát dồn về `Awake`, đường `PlaySfx` không `new`, không LINQ, không boxing. |
 | **Ranh giới** | Service chỉ lo: tra entry · throttle · cấp voice · áp tham số · giữ một bài nhạc đang phát. Danh mục clip và danh sách bài nhạc là **asset của game**. Hai cờ `IsSfxOn` / `IsMusicOn` là **property** game set từ save của nó — service không biết hệ save. **Foundation**: không gọi hệ Horcrux nào khác. |
 | **Chỗ đặt** | Horcrux. Không type nào mang domain dự án. Lớp nối (enum id, asset catalog, cầu nối setting) nằm trong dự án. |
 | **Tên** | `Giả định (cần xác nhận):` `AudioCatalog` · `AudioEntry` · `AudioService` · `IAudioSetting` · `IsSfxOn` · `PlaySfx`. Đã chốt: `MusicTrack` · `IsMusicOn` · `PlayMusic` · `StopMusic` · id là enum của dự án, hệ generic theo hai enum, dự án kế thừa. Đổi tên trước khi gõ, không đổi sau. |
-| **Cố ý KHÔNG làm + lý do** | ① **`pitchScale` / `volumeScale` trên `PlaySfx`** — không caller. Thêm sau là **một tham số tuỳ chọn**, call site cũ không đổi; pitch đã là một biến cục bộ ở đường phát nên thêm không phải thiết kế lại. ② **Interface cho catalog và entry** — chỉ có một implementation; tách khi có nguồn dữ liệu thứ hai (remote, procedural). ③ **SFX 3D** (`PlaySfxAt`, `spatialBlend`) — mọi call site hiện tại là 2D. ④ **Crossfade, fade, pause/resume nhạc, `PlayDynamic` (nhạc đổi theo trạng thái), mixer group** — chưa chốt cần; mỗi cái là thêm method hoặc field. Music bản tối thiểu **có** trong plan. ⑤ **Nhiều clip biến thể cho một tiếng** (chọn ngẫu nhiên, tuần tự, theo trọng số) — mỗi entry đúng **một** clip; phát triển sau. Khi thêm, đổi `Clip` thành mảng và throttle sang khoá theo clip (§0.3). ⑥ **Lưu bền `IsSfxOn`** — game đã có save riêng. ⑦ **Kiểu id riêng của Horcrux bọc `int`** — framework không sở hữu từ vựng của dự án: struct bọc `int` không chặn số bừa và không cho Inspector biết tên; enum của dự án làm được cả hai. ⑧ **Gộp `IAudioSetting` vào interface generic** — consumer chỉ cần hai cờ (cầu nối Setting, composite Horcrux) sẽ phải gọi tên enum của dự án. |
+| **Cố ý KHÔNG làm + lý do** | ① **`volumeScale` trên `PlaySfx`** — không caller. Thêm sau là một overload. Pitch có cửa riêng `PlaySfx(sfx, pitchScale)` vì combo là caller thật (§0.5); công thức và mức kẹp nằm ở call site, entry không biết. ② **Interface cho catalog và entry** — chỉ có một implementation; tách khi có nguồn dữ liệu thứ hai (remote, procedural). ③ **SFX 3D** (`PlaySfxAt`, `spatialBlend`) — mọi call site hiện tại là 2D. ④ **Crossfade, fade, pause/resume nhạc, `PlayDynamic` (nhạc đổi theo trạng thái), mixer group** — chưa chốt cần; mỗi cái là thêm method hoặc field. Music bản tối thiểu **có** trong plan. ⑤ **Nhiều clip biến thể cho một tiếng** (chọn ngẫu nhiên, tuần tự, theo trọng số) — mỗi entry đúng **một** clip; phát triển sau. Khi thêm, đổi `Clip` thành mảng và throttle sang khoá theo clip (§0.3). ⑥ **Lưu bền `IsSfxOn`** — game đã có save riêng. ⑦ **Kiểu id riêng của Horcrux bọc `int`** — framework không sở hữu từ vựng của dự án: struct bọc `int` không chặn số bừa và không cho Inspector biết tên; enum của dự án làm được cả hai. ⑧ **Gộp `IAudioSetting` vào interface generic** — consumer chỉ cần hai cờ (cầu nối Setting, composite Horcrux) sẽ phải gọi tên enum của dự án. |
 | **Quyết định trái trực giác** | Voice là **mảng `AudioSource` kéo tay** thay vì pool tạo lúc chạy — số voice là hằng cấu hình trong một asset, thiếu thì lộ ô trống. Throttle khoá theo **clip** chứ không theo id — xem §0.3. Hết voice thì **cướp voice sắp xong** thay vì bỏ tiếng mới — tiếng mới là phản hồi người chơi vừa gây ra. **Không object pool runtime**: mảng voice đã là pool cố định (tạo sẵn lúc authoring, cho mượn–cướp–trả, không `Instantiate`/`Destroy` ở đường phát); `ObjectPool<AudioSource>` thêm cấp phát khi lớn lên và giấu số voice khỏi Inspector. **Hệ generic theo hai enum, `abstract` + class con rỗng của dự án** thay cho một service không generic nhận số: hai enum cho compile-time phân biệt SFX và music, Inspector vẽ dropdown tên, và dự án không cast hay gõ số — đổi lại mỗi dự án khai hai class con và gắn `[Service]` lên class con (`Inherited = false`). **Music có `AudioSource` riêng, ngoài mảng voice** — SFX cướp voice không bao giờ cắt nhạc. Tắt Music rồi bật lại thì bài đang chọn phát lại từ đầu: `PlayMusic` lúc tắt chỉ ghi nhớ bài, không phát. |
-| **Mở rộng sau** (đều additive) | `PlaySfx(TSfx, float pitchScale)` cho pitch ramp · `PlaySfxAt` · crossfade (PrimeTween) · `PauseMusic`/`ResumeMusic` · `AudioMixerGroup` trên service, `ConfigureAllSources` gán cho mọi voice · `IAudioCatalog` khi có nguồn thứ hai · nạp catalog qua `AssetReference` · hàm đổi enum → `int` ở `Utilities/` nếu Profiler cho thấy `Dictionary` khoá enum cấp phát (Task 3, case #19). |
+| **Mở rộng sau** (đều additive) | `PlaySfxAt` · crossfade (PrimeTween) · `PauseMusic`/`ResumeMusic` · `AudioMixerGroup` trên service, `ConfigureAllSources` gán cho mọi voice · `IAudioCatalog` khi có nguồn thứ hai · nạp catalog qua `AssetReference` · hàm đổi enum → `int` ở `Utilities/` nếu Profiler cho thấy `Dictionary` khoá enum cấp phát (Task 3, case #19). |
 
 ### Đã khảo sát trước khi viết
 
@@ -81,7 +81,8 @@ Mỗi lần phát rút `pitch` đều trong `[1 − s, 1 + s]` với `s` là **h
 Cùng một tiếng lặp 20 lần nghe không còn là cái máy; 5% lệch nghe được mà chưa thành "nốt khác".
 
 `s` là hằng nhỏ nên `pitch` luôn trong `[0.95, 1.05]`: dương, hữu hạn, nên `t_play` ở §0.1 luôn hữu hạn.
-Cần tắt hoặc chỉnh cho từng tiếng khi có ca thật ⇒ thêm field vào `AudioEntry` lúc đó.
+Cần tắt hoặc chỉnh cho từng tiếng khi có ca thật ⇒ thêm field vào `AudioEntry` lúc đó. Cửa `pitchScale` (§0.5) là
+ca thật đầu tiên, và nó **không** dùng jitter.
 
 ### 0.3. Throttle theo tiếng, biên đóng
 
@@ -101,9 +102,28 @@ Những số dưới chọn bằng tai, không dẫn ra từ đâu; là điểm 
 | `PitchSpread` | 0.05 | hằng `const` trong `AudioService`, không có ô Inspector |
 | `minIntervalSeconds` | 0.05 | asset `AudioCatalog`, per-entry |
 | `volume` | 1.0 | asset `AudioCatalog`, per-entry |
+| `comboSemitonesPerStep` | 2 | `[SerializeField]` trên `Box` (call site) |
+| `comboMaxStep` | 4 | `[SerializeField]` trên `Box` (call site) |
 | Số voice | 8 | mảng `Voices` trên host |
 
 Cách tune: sửa số trong asset, nhấn Play. Không sửa code (trừ `PitchSpread`, hằng một dòng).
+
+### 0.5. Cao độ do call site truyền
+
+`PlaySfx(sfx, pitchScale)` phát với `pitch = pitchScale` **đúng nguyên giá trị**: không jitter (±5% ≈ 0,85 nửa
+cung, xoá mất bậc 1 nửa cung), không kẹp. Hợp đồng: `pitchScale > 0`; `0` là giá trị cửa không-pitch dùng để
+chọn jitter nên không dùng được làm pitch. `1` là tiếng gốc.
+
+Combo là caller duy nhất: bậc `step = comboNumber − 2 ≥ 0` (combo 2 là tiếng gốc), mỗi bậc cao thêm một số nửa cung
+— một nửa cung là nhân tần số với cùng hệ số $2^{1/12}$, nên các bậc nghe cách đều:
+
+$$\text{pitchScale} = 2^{\,\min(\text{step},\ \text{comboMaxStep}) \cdot \text{comboSemitonesPerStep} / 12}$$
+
+Mốc kiểm (`2`, `4`): bậc 0 → 1,0000 · bậc 1 → 1,1225 · bậc 2 → 1,2599 · bậc 4 → 1,5874 · bậc 9 → 1,5874 (kẹp).
+Pitch cao nhất 1,5874 làm clip ngắn còn 63%. Hai số chọn bằng tai, không dẫn từ đâu.
+
+Throttle vẫn khoá theo entry: hai lần combo trong `minInterval` bị bỏ tiếng sau — chấp nhận, vì hai nốt khác cao
+độ phát cùng lúc nghe lệch tông.
 
 ---
 
@@ -116,7 +136,7 @@ game: _audio.PlaySfx(GameSfx.BoxReceive)         (_audio: IAudioService<GameSfx,
         ├─ !IsSfxOn ──────────────────────────────────────────> return (im lặng, hợp lệ)
         ├─ catalog.TryGetEntryById(sfx) ─ thiếu ──────────────────────> LogError, return
         ├─ now − _lastPlayTimeById[sfx] < minInterval ────────> return (throttle, hợp lệ)
-        ├─ pitch = Random(1 − s, 1 + s)
+        ├─ pitch = Random(1 − s, 1 + s)             cửa PlaySfx(sfx, pitchScale): pitch = pitchScale, không jitter
         ├─ voice = RentVoice(now)                              rảnh đầu tiên, hết thì cướp sắp xong
         └─ voice.clip/volume/pitch ← entry ; Play()
            _voicesBusyUntil[voice] = now + clip.length / pitch
@@ -194,7 +214,7 @@ namespace Horcrux.Runtime.Abstractions.Audio
 }
 ```
 
-- [ ] **Step 2: thay toàn bộ `IAudioService.cs`** (cả 12 dòng đổi, chép nguyên file)
+- [ ] **Step 2: thay toàn bộ `IAudioService.cs`** (chép nguyên file; có overload `PlaySfx(TSfx, float pitchScale)`, §0.5)
 
 ```csharp
 using System;
@@ -211,6 +231,10 @@ namespace Horcrux.Runtime.Abstractions.Audio
     {
         /// <param name="sfx">Catalog entry. A value missing from the catalog logs an error and plays nothing.</param>
         void PlaySfx(TSfx sfx);
+
+        /// <summary>Plays <paramref name="sfx"/> at exactly <paramref name="pitchScale"/>. No random pitch.</summary>
+        /// <param name="pitchScale">Playback speed ratio, must be above 0. 1 is the original pitch.</param>
+        void PlaySfx(TSfx sfx, float pitchScale);
 
         /// <summary>Replaces the current track. Same track again keeps playing. While <see cref="IAudioSetting.IsMusicOn"/> is off, only remembers the choice.</summary>
         /// <param name="music">Music track in the catalog. A value missing from it logs an error and keeps the current track.</param>
@@ -415,6 +439,7 @@ public sealed class GameAudioCatalog : AudioCatalog<GameSfx, GameMusic> { }
 |---|---|
 | §0.1 mốc rảnh | `_voicesBusyUntil[voice] = now + clip.length / pitch` |
 | §0.2 pitch ngẫu nhiên | `Random.Range(1f - PitchSpread, 1f + PitchSpread)` — hằng, không clamp |
+| §0.5 pitch do call site | `pitchScale` dùng nguyên, thay dòng rút pitch ngẫu nhiên, không jitter |
 | §0.3 throttle biên đóng | `now - last < minInterval → return`; `last` khởi tạo `float.NegativeInfinity` để lần đầu luôn qua |
 
 **Quyết định thiết kế:**
@@ -426,6 +451,7 @@ public sealed class GameAudioCatalog : AudioCatalog<GameSfx, GameMusic> { }
 | Bảng tra `Dictionary<TSfx, AudioEntry<TSfx>>` / `Dictionary<TMusic, MusicTrack<TMusic>>` (trong catalog) khoá thẳng bằng enum | Không đổi sang `int`, không phụ thuộc underlying type. Chỉ không boxing khi comparer mặc định của enum là bản generic (đúng ở Unity 6) — case #19 là phép kiểm; không đạt thì thêm hàm đổi enum → `int` ở `Utilities/` và đổi khoá bảng |
 | Entry chưa gán id (`default`) vẫn vào bảng tra như một khoá | Chỉ lộ khi caller truyền `default`; nút Validate (Task 2) báo từ lúc authoring. Một nhánh canh ở runtime là code cho ca đã có chỗ bắt |
 | Voice = mảng `AudioSource` kéo tay, mỗi source một GameObject con (dựng bằng `SetupAudioSources`), dùng thẳng, không dựng bản sao lọc null | Số voice là hằng cấu hình trong một asset ⇒ kéo thả. Ô trống là lỗi setup, **nổ trễ**: `RentVoice` chỉ chạm ô đó khi các voice trước đã bận, tức đúng lúc combo dồn — nên bắt ở authoring bằng nút `ValidateReferences` (chạy khi được hỏi, không `OnValidate`, vì lúc đang kéo thả mảng luôn chưa đủ). Không `PlayOneShot` trên một source vì mọi tiếng sẽ chung một `pitch` |
+| Hai cửa `PlaySfx(sfx)` và `PlaySfx(sfx, pitchScale)` cùng đi vào một thân `Play`; `RandomPitch = 0f` chọn nguồn pitch | Throttle, rent voice, mốc rảnh chỉ có **một bản**; hai cửa chỉ khác nguồn pitch (một dòng). `0` không phải pitch hợp lệ (`clip.length / 0` làm voice kẹt vĩnh viễn) nên dùng làm dấu "không truyền" mà không thêm cờ `bool` hay nhân thân hàm ra hai bản |
 | Mọi cấp phát dồn về `Awake` | `catalog.BuildTables()` · `_lastPlayTimeById` · `_voicesBusyUntil`. Sau `Awake`, `PlaySfx` không cấp phát |
 | Throttle lưu `Dictionary<TSfx, float>` khoá theo id, dựng đủ khoá ở `Awake` | Cùng khoá với bảng tra nên không cần chỉ số. Ghi đè giá trị của khoá có sẵn không cấp phát; **phải điền đủ mọi id ở `Awake`** (giá trị đầu `NegativeInfinity`) vì thêm khoá mới lúc chạy mới cấp phát. Mỗi tiếng tốn 3 lần băm (tra entry, đọc mốc, ghi mốc) thay vì 1 (tra chỉ số rồi truy cập mảng) — nhịp mỗi tương tác, ~20 lần/giây, không đáng. Cùng một clip ở hai entry thì throttle riêng — chấp nhận, không có ca thật |
 | Rảnh đầu tiên, hết thì cướp voice có `busyUntil` nhỏ nhất | Bỏ tiếng mới là bỏ phản hồi người chơi vừa gây ra; voice sắp xong bị cắt ít gây chú ý nhất |
@@ -476,6 +502,7 @@ namespace Horcrux.Runtime.Implementations.Audio
         where TMusic : struct, Enum
     {
         private const float PitchSpread = 0.05f;
+        private const float RandomPitch = 0f;
         
         [Splitter("References")]
         [SerializeField] private AudioSource[] voices = Array.Empty<AudioSource>();
@@ -533,34 +560,9 @@ namespace Horcrux.Runtime.Implementations.Audio
 
         #region API
         
-        public void PlaySfx(TSfx sfx)
-        {
-            if (!_isSfxOn)
-                return;
+        public void PlaySfx(TSfx sfx) => Play(sfx, RandomPitch);
 
-            if (!catalog.TryGetEntryById(sfx, out AudioEntry<TSfx> entry))
-            {
-                Debug.LogError($"[AudioService]: Sfx {sfx} is not in the catalog.", this);
-                return;
-            }
-            
-            float now = UnityEngine.Time.unscaledTime;
-            if (now - _lastPlayTimeById[sfx] < entry.MinIntervalSeconds)
-                return;
-            
-            AudioClip clip = entry.Clip;
-            float pitch = Random.Range(1f - PitchSpread, 1 + PitchSpread);
-            int voiceIndex = RentVoice(now);
-            AudioSource voice = voices[voiceIndex];
-            
-            voice.clip = clip;
-            voice.pitch = pitch;
-            voice.volume = entry.Volume;
-            voice.Play();
-
-            _voicesBusyUntil[voiceIndex] = now + clip.length / pitch;
-            _lastPlayTimeById[sfx] = now;
-        }
+        public void PlaySfx(TSfx sfx, float pitchScale) => Play(sfx, pitchScale);
 
         public void PlayMusic(TMusic music)
         {
@@ -583,6 +585,37 @@ namespace Horcrux.Runtime.Implementations.Audio
         #endregion
 
         #region Class Methods
+
+        private void Play(TSfx sfx, float pitchScale)
+        {
+            if (!_isSfxOn)
+                return;
+
+            if (!catalog.TryGetEntryById(sfx, out AudioEntry<TSfx> entry))
+            {
+                Debug.LogError($"[AudioService]: Sfx {sfx} is not in the catalog.", this);
+                return;
+            }
+            
+            float now = UnityEngine.Time.unscaledTime;
+            if (now - _lastPlayTimeById[sfx] < entry.MinIntervalSeconds)
+                return;
+            
+            AudioClip clip = entry.Clip;
+            float pitch = pitchScale == RandomPitch
+                ? Random.Range(1f - PitchSpread, 1 + PitchSpread)
+                : pitchScale;
+            int voiceIndex = RentVoice(now);
+            AudioSource voice = voices[voiceIndex];
+            
+            voice.clip = clip;
+            voice.pitch = pitch;
+            voice.volume = entry.Volume;
+            voice.Play();
+
+            _voicesBusyUntil[voiceIndex] = now + clip.length / pitch;
+            _lastPlayTimeById[sfx] = now;
+        }
 
         private void StopAllVoices()
         {
@@ -788,12 +821,15 @@ namespace Horcrux.Runtime.Implementations.Audio
 | 33 | Hai entry trùng id | `Awake` ném `ArgumentException` (từ `BuildTables`) |
 | 34 | `IsSfxOn = false` trước `Awake` (host vừa dựng, voice đã gán) | không throw |
 | 35 | Một track trùng clip với bài đang phát nhưng khác `volume`, `PlayMusic` hai lần | lần hai không restart; `volume` giữ theo bài đầu |
+| 37 | `PlaySfx(sfx, 1f)` | `voice.pitch == 1f` đúng (không jitter) |
+| 38 | `PlaySfx(sfx, 1.2599f)` | `voice.pitch == 1.2599f` |
+| 39 | 10 lần `PlaySfx(sfx, 1.5f)` (`minInterval = 0`) | mọi `voice.pitch == 1.5f`; `busyUntil − now == clip.length / 1.5f` |
 
 **Test đã viết** (chưa chạy trên Unity): `Tests/PlayMode/AudioServiceTests.cs` (hành vi runtime, kể cả thời gian; host dựng không active, nối field bằng reflection, rồi bật để `Awake` chạy) · `Tests/PlayMode/AudioServiceEditorTests.cs` (ba nút `SetupAudioSources`, `ConfigureAllSources`, `ValidateReferences`, gọi qua reflection, bọc `#if UNITY_EDITOR`). Cả hai nằm ở assembly PlayMode vì một `MonoBehaviour` khai trong assembly chỉ-Editor của EditMode không add vào GameObject được (*Can't add script behaviour … it is an editor script*); `TestSfx` / `TestMusic` / `TestAudioCatalog` / `TestAudioService` cũng ở đó. Test cần source đang phát dùng `Assume.That(AudioCanPlay())`: máy không có thiết bị audio thì ra *inconclusive*, `Control_AudioSourceReportsPlaying` báo lý do.
 
 **Chưa phủ, vì sao:** #12 biên đóng chính xác (cần đồng hồ giả hoặc tiêm thời gian; có `PlaySfx_AfterIntervalElapsed_PlaysAgain` kiểm phía "đã qua khoảng") · #19 0 B GC (Profiler trên IL2CPP, developer chạy) · #9 đổi từ "cách nhau 1 giây" thành 100 lần cùng frame với `minInterval = 0` · #16 gộp vào test pitch (#14) · #11 kiểm voice bị cướp bằng clip của entry thứ hai, không đọc `busyUntil` trước–sau.
 
-- [ ] **Step 4: Commit** — `feat(sdk): add AudioService (authored voices, per-sound throttle, random pitch, music source)`
+- [ ] **Step 4: Commit** — `feat(sdk): add AudioService (authored voices, per-sound throttle, random pitch, pitchScale, music source)`
 
 ---
 
@@ -817,7 +853,14 @@ Làm lần lượt từng file: `Box`, `BoxAnimation`, `BoxesContainer`, `CacheH
 - Xoá `using` thừa. Compile sạch rồi sang file kế.
 
 Riêng hai chỗ:
-- **Combo** (`Box.cs`): `GameSfx.BoxCombo2..6` theo `comboNumber`, kẹp ở 6, giữ 5 clip. `Giả định (cần xác nhận):` chưa đổi sang pitch ramp vì đó là đổi cảm giác chơi.
+- **Combo** (`Box.cs:170`): một entry `GameSfx.BoxCombo`, cao độ tăng theo bậc combo, tính tại call site (§0.5). Hai số tinh chỉnh là field `[SerializeField]` trên `Box`, mặc định ngay trong khai báo (không cần kéo gì): `[SerializeField, Min(0f)] private float comboSemitonesPerStep = 2f;` và `[SerializeField, Min(0)] private int comboMaxStep = 4;`. Dòng cũ `AudioController.Instance.PlaySoundEffect(Constant.GetComboAudioID(comboNumber > 6 ? 6 : comboNumber))` đổi thành:
+
+  ```csharp
+  float pitchScale = Mathf.Pow(2f, Mathf.Min(comboNumber - 2, comboMaxStep) * comboSemitonesPerStep / 12f);
+  _audio.PlaySfx(GameSfx.BoxCombo, pitchScale);
+  ```
+
+  Vẫn trong `if (comboNumber > 1)`, nên combo 2 là bậc 0, `pitchScale = 1`. Clip gốc của entry lấy từ `sfx_box_combo2`. `Giả định (cần xác nhận):` pitch cao nhất 1,5874 làm clip ngắn còn 63% và mỏng hơn clip combo6 cũ — đổi cảm giác chơi, nghiệm thu bằng chơi thử; không hợp thì chỉnh hai số trên `Box` trong Inspector, không sửa code.
 - **Tiếng thua** (`GameDirector.Events:211`): `GameDirector` là class thuần nên không nhận được `_audio`. Xoá 2 dòng phát tiếng ở `OnGameEnded` và phát ở nơi đã nhận `_audio`: `CategoryGameController.OnOutOfMoves`, `_audio.PlaySfx(GameSfx.LoseGame)` ngay dòng đầu. Đây đúng thời điểm tiếng cũ phát (lúc hết nước đi, trước popup hồi sinh). `Giả định (cần xác nhận):` nếu muốn tiếng chỉ kêu khi thua hẳn thì chuyển vào `Lose()`, nhưng đó là đổi hành vi.
 
 **Bước 2 — Khởi nhạc nền, bỏ `MusicController`.**
@@ -832,27 +875,27 @@ Tạo `Assets/_Game/Scripts/Common/GameplayAudioToggle.cs`, `MonoBehaviour<IAudi
 `OnDestroy` unregister cả hai. Đặt component trên GameObject `audio`.
 
 **Bước 4 — Gỡ hệ cũ** (chỉ sau khi mọi call site đã đổi và chơi thử xong).
-Xoá: `Assets/_Gameplay/Scripts/Common/Audio/Scripts/` (gồm `MusicController` + `MusicContainer`), `Addressables/Prefabs/Sounds/` (16 prefab) và nhóm Addressables SFX, `Constant.AudioID.cs`, `GameplaySession.SfxOn`, instance `AudioController` trong `Service.unity`.
+Xoá: `Assets/_Gameplay/Scripts/Common/Audio/Scripts/` (gồm `MusicController` + `MusicContainer`), `Addressables/Prefabs/Sounds/` (16 prefab, gồm 5 prefab `sfx_box_combo2..6`) và nhóm Addressables SFX, `Constant.AudioID.cs` (gồm `GetComboAudioID`), `GameAudioIds.cs` bỏ `BoxCombo3..6`, `GameplaySession.SfxOn`, instance `AudioController` trong `Service.unity`.
 Grep `AudioController`, `MusicController`, `AUDIO_`, `SfxOn` phải trả 0.
 
 **Bước 5 — Ghi contract doc.** `docs/ScrewDom_Contract.md` mục 2, một dòng: `SoundController` đóng băng cho LiveOps; audio gameplay đi qua Horcrux; không gộp hai bên.
 
-**Editor setup (agent liệt kê lại đầy đủ khi tới task này):** tạo `AudioCatalog_Gameplay` (từ `GameAudioCatalog`) với 16 entry,
-id chọn từ dropdown `GameSfx`, clip lấy từ 16 prefab `sfx_*` hiện tại; thêm **Tracks** id chọn từ dropdown `GameMusic`, clip lấy từ
+**Editor setup (agent liệt kê lại đầy đủ khi tới task này):** tạo `AudioCatalog_Gameplay` (từ `GameAudioCatalog`) với **12** entry,
+id chọn từ dropdown `GameSfx`, clip lấy từ 12 prefab `sfx_*` hiện tại (không tính `sfx_box_combo3..6`; entry `BoxCombo` lấy clip của `sfx_box_combo2`) · `Box` prefab: **Combo Semitones Per Step** = 2, **Combo Max Step** = 4 (đã là mặc định, chỉ chỉnh khi tune); thêm **Tracks** id chọn từ dropdown `GameMusic`, clip lấy từ
 `MusicContainer` hiện tại · `audio` trong `Service.unity` với `GameAudioService` theo Task 3 (gồm ô **Music Source**) ·
 add `GameplayAudioToggle` lên `audio` · xoá instance prefab `AudioController` và `MusicController` khỏi `Service.unity`.
 
 **Kịch bản chơi thử (developer):** vào level 1 → tap 3 item cùng loại → nghe tiếng tap mỗi lần, tiếng nhận box
-khi item vào box, tiếng combo khác nhau ở box thứ 2–6 liên tiếp · mở Setting, tắt Sound giữa lúc đang có tiếng →
+khi item vào box, hoàn thành 6 box liên tiếp (combo 2 → 6): tiếng combo **cao dần đều** theo từng bậc, dừng tăng từ combo 6, không chói, không lệch tông · mở Setting, tắt Sound giữa lúc đang có tiếng →
 im ngay, bật lại → tiếng kế tiếp phát · dùng booster Tray, Magnet, Cart → mỗi cái một tiếng · để thua → tiếng thua · nhạc nền loop khi vào level; mở Setting tắt Music → nhạc dừng ngay, SFX vẫn kêu; bật lại → nhạc phát lại; tắt Sound → nhạc vẫn phát · đổi sang level/màn khác gọi cùng bài → nhạc không giật về đầu.
-Dấu hiệu hỏng: nhạc bị cắt khi nhiều SFX dồn, nhạc không phát lại sau khi bật Music, console đỏ `[AudioService]:` hoặc `[AudioCatalog]:`, tiếng phát trễ hơn hiệu ứng hình, tiếng chói khi nhiều box hoàn thành cùng lúc.
+Dấu hiệu hỏng: nhạc bị cắt khi nhiều SFX dồn, nhạc không phát lại sau khi bật Music, console đỏ `[AudioService]:` hoặc `[AudioCatalog]:`, tiếng phát trễ hơn hiệu ứng hình, tiếng chói khi nhiều box hoàn thành cùng lúc, bậc combo 5–6 chói hoặc bị cắt cụt (hạ **Combo Semitones Per Step** / **Combo Max Step** trên `Box`), hai bậc đầu khó phân biệt (tăng **Combo Semitones Per Step**), hai box hoàn thành trong 0,05s mất tiếng của box sau (hạ `Min Interval Seconds` của `BoxCombo` nếu muốn nghe cả hai).
 
 ---
 
 ### Task 5: Test · SystemPlan · tài liệu module (agent)
 
 - [ ] Test EditMode trong `Assets/Horcrux/Tests/EditMode/AudioServiceTests.cs` và `AudioCatalogTests.cs` theo hai bảng case ở Task 2 và 3; dựng host bằng `new GameObject` + `AddComponent<TestAudioService>` (hai enum và `TestAudioCatalog` của Task 2, Step 6; `TestAudioService` của Task 3), bắt log bằng `LogAssert.Expect` với regex `^\[AudioService\]: `.
-- [ ] Cập nhật dòng §8 Audio trong `Assets/Horcrux/SystemPlan.md`: `Foundation`, 8 file, generic theo hai enum của dự án, API `IAudioSetting` 2 member + `IAudioService<,>` 3 member (SFX + Music tối thiểu), không `pitchScale`; cột "ngoài plan" giữ `PlaySfxAt`, crossfade, pause/resume nhạc, `PlayDynamic`, mixer group, thêm `pitchScale`.
+- [ ] Cập nhật dòng §8 Audio trong `Assets/Horcrux/SystemPlan.md`: `Foundation`, 8 file, generic theo hai enum của dự án, API `IAudioSetting` 2 member + `IAudioService<,>` 4 member (SFX + SFX có `pitchScale` + Music tối thiểu); cột "ngoài plan" giữ `PlaySfxAt`, crossfade, pause/resume nhạc, `PlayDynamic`, mixer group, `volumeScale`.
 - [ ] Viết `AudioSystem.md` tài liệu module (thay file plan này sau khi code xong) với mục **Trước khi chạy** lấy từ Editor setup của Task 2 và 3; rồi `.html`.
 
 ---

@@ -12,6 +12,7 @@ namespace Horcrux.Runtime.Implementations.Audio
         where TMusic : struct, Enum
     {
         private const float PitchSpread = 0.05f;
+        private const float RandomPitch = -1f;
         
         [Splitter("References")]
         [SerializeField] private AudioSource[] voices = Array.Empty<AudioSource>();
@@ -68,34 +69,15 @@ namespace Horcrux.Runtime.Implementations.Audio
         #endregion
 
         #region API
-        
+
         public void PlaySfx(TSfx sfx)
         {
-            if (!_isSfxOn)
-                return;
+            Play(sfx, RandomPitch);
+        }
 
-            if (!catalog.TryGetEntryById(sfx, out AudioEntry<TSfx> entry))
-            {
-                Debug.LogError($"[AudioService]: Sfx {sfx} is not in the catalog.", this);
-                return;
-            }
-            
-            float now = UnityEngine.Time.unscaledTime;
-            if (now - _lastPlayTimeById[sfx] < entry.MinIntervalSeconds)
-                return;
-            
-            AudioClip clip = entry.Clip;
-            float pitch = Random.Range(1f - PitchSpread, 1 + PitchSpread);
-            int voiceIndex = RentVoice(now);
-            AudioSource voice = voices[voiceIndex];
-            
-            voice.clip = clip;
-            voice.pitch = pitch;
-            voice.volume = entry.Volume;
-            voice.Play();
-
-            _voicesBusyUntil[voiceIndex] = now + clip.length / pitch;
-            _lastPlayTimeById[sfx] = now;
+        public void PlaySfx(TSfx sfx, float pitchScale)
+        {
+            PlaySfx(sfx, pitchScale);
         }
 
         public void PlayMusic(TMusic music)
@@ -119,6 +101,36 @@ namespace Horcrux.Runtime.Implementations.Audio
         #endregion
 
         #region Class Methods
+        
+        private void Play(TSfx sfx, float pitchScale)
+        {
+            if (!_isSfxOn)
+                return;
+
+            if (!catalog.TryGetEntryById(sfx, out AudioEntry<TSfx> entry))
+            {
+                Debug.LogError($"[AudioService]: Sfx {sfx} is not in the catalog.", this);
+                return;
+            }
+            
+            float now = UnityEngine.Time.unscaledTime;
+            if (now - _lastPlayTimeById[sfx] < entry.MinIntervalSeconds)
+                return;
+            
+            AudioClip clip = entry.Clip;
+            float pitch = Mathf.Approximately(pitchScale, RandomPitch)
+                ? Random.Range(1f - PitchSpread, 1 + PitchSpread) : pitchScale;
+            int voiceIndex = RentVoice(now);
+            AudioSource voice = voices[voiceIndex];
+            
+            voice.clip = clip;
+            voice.pitch = pitch;
+            voice.volume = entry.Volume;
+            voice.Play();
+
+            _voicesBusyUntil[voiceIndex] = now + clip.length / pitch;
+            _lastPlayTimeById[sfx] = now;
+        }
 
         private void StopAllVoices()
         {
