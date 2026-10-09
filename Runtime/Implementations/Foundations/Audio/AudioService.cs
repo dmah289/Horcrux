@@ -14,7 +14,7 @@ namespace Horcrux.Runtime.Implementations.Audio
         private const float PitchSpread = 0.05f;
         
         [Splitter("References")]
-        [SerializeField] private AudioSource[] voices;
+        [SerializeField] private AudioSource[] voices = Array.Empty<AudioSource>();
         [SerializeField] private AudioSource musicSource;
         [SerializeField] private AudioCatalog<TSfx, TMusic> catalog;
         

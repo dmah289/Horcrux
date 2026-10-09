@@ -1,7 +1,7 @@
 {
     "name": "Horcrux.PlayModeTests",
     "rootNamespace": "Horcrux.Tests",
-    "references": [ "UnityEngine.TestRunner" ],
+    "references": [ "com.horcrux.runtime", "UnityEngine.TestRunner" ],
     "includePlatforms": [],
     "overrideReferences": true,
     "precompiledReferences": [ "nunit.framework.dll" ],

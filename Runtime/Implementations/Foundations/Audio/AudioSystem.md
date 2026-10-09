@@ -101,7 +101,7 @@ Những số dưới chọn bằng tai, không dẫn ra từ đâu; là điểm 
 | `PitchSpread` | 0.05 | hằng `const` trong `AudioService`, không có ô Inspector |
 | `minIntervalSeconds` | 0.05 | asset `AudioCatalog`, per-entry |
 | `volume` | 1.0 | asset `AudioCatalog`, per-entry |
-| Số voice | 5 | mảng `Voices` trên host |
+| Số voice | 8 | mảng `Voices` trên host |
 
 Cách tune: sửa số trong asset, nhấn Play. Không sửa code (trừ `PitchSpread`, hằng một dòng).
 
@@ -455,7 +455,7 @@ public sealed class GameAudioService : AudioService<GameSfx, GameMusic> { }
    `Giả định (cần xác nhận):` `[Service]` của InitArgs nhận nhiều defining type trong một attribute — kiểm lúc compile.
 2. Mở scene dịch vụ persistent của game (Category Jam: `Assets/_Game/Scenes/Service.unity`). Tạo GameObject `audio` → Add Component `GameAudioService`.
 3. Kéo asset catalog (Task 2) vào ô **Catalog**. Thiếu: `Awake` ném `NullReferenceException`.
-4. Trên component `GameAudioService` bấm nút **Setup Audio Sources**: tạo 5 GameObject con `sfx_voice_0..4`, mỗi cái một `AudioSource`, điền vào **Voices**; tạo thêm GameObject con `music_source` với một `AudioSource`, điền vào ô **Music Source**. Bấm lại chỉ bù ô còn trống, không tạo trùng. Muốn số voice khác thì thêm ô vào mảng rồi bấm lại. Mọi source được đặt `Play On Awake` tắt, `Spatial Blend = 0`, `Loop` tắt (riêng music `Loop` bật). Thiếu voice: mỗi `PlaySfx` ném `IndexOutOfRangeException`; ô `None` chỉ nổ khi các voice trước đã bận (combo dồn). Thiếu `Loop` ở music: nhạc phát một lần rồi im; `PlayMusic` ném `NullReferenceException` khi thiếu ô **Music Source**.
+4. Trên component `GameAudioService` bấm nút **Setup Audio Sources**: tạo 8 GameObject con `sfx_voice_0..7`, mỗi cái một `AudioSource`, điền vào **Voices**; tạo thêm GameObject con `music_source` với một `AudioSource`, điền vào ô **Music Source**. Bấm lại chỉ bù ô còn trống, không tạo trùng. Muốn số voice khác thì thêm ô vào mảng rồi bấm lại. Mọi source được đặt `Play On Awake` tắt, `Spatial Blend = 0`, `Loop` tắt (riêng music `Loop` bật). Thiếu voice: mỗi `PlaySfx` ném `IndexOutOfRangeException`; ô `None` chỉ nổ khi các voice trước đã bận (combo dồn). Thiếu `Loop` ở music: nhạc phát một lần rồi im; `PlayMusic` ném `NullReferenceException` khi thiếu ô **Music Source**.
 5. Sau khi tự kéo hoặc đổi cờ một source bằng tay, bấm **Configure All Sources** để ép lại bốn cờ trên; nút không tạo gì mới.
 6. Bấm nút **Validate References** trên component. Console phải có **một dòng log** xác nhận, không error — thiếu catalog, music source, voice hoặc có ô `None` đều báo ở đây. Save scene.
 
@@ -478,7 +478,7 @@ namespace Horcrux.Runtime.Implementations.Audio
         private const float PitchSpread = 0.05f;
         
         [Splitter("References")]
-        [SerializeField] private AudioSource[] voices;
+        [SerializeField] private AudioSource[] voices = Array.Empty<AudioSource>();
         [SerializeField] private AudioSource musicSource;
         [SerializeField] private AudioCatalog<TSfx, TMusic> catalog;
         
@@ -652,7 +652,7 @@ namespace Horcrux.Runtime.Implementations.Audio
     {
         #if UNITY_EDITOR
 
-        private const int DefaultVoiceAmount = 5;
+        private const int DefaultVoiceAmount = 8;
 
         [Button]
         protected virtual void ConfigureAllSources()
@@ -706,7 +706,7 @@ namespace Horcrux.Runtime.Implementations.Audio
                 Debug.Log($"[AudioService]: Catalog, Music Source and {voices.Length} Sfx voices assigned.", this);
         }
 
-        [Button("Setup Audio Sources")]
+        [Button]
         private void SetupAudioSources()
         {
             UnityEditor.Undo.RecordObject(this, "Setup Audio Sources");
@@ -762,7 +762,7 @@ namespace Horcrux.Runtime.Implementations.Audio
 | 8 | Hai entry khác id, cùng frame, `minInterval = 0.05` | cả hai phát (throttle theo entry) |
 | 9 | 100 lần phát, `minInterval = 0`, mỗi lần cách nhau 1 giây | luôn dùng đúng clip đó, không treo |
 | 10 | 20 lần cùng id cùng frame, `minInterval = 0.05` | phát **1** lần |
-| 11 | 20 lần cùng id cùng frame, `minInterval = 0` | phát 5 lần rồi cướp voice; `busyUntil` của voice bị cướp là nhỏ nhất trước đó |
+| 11 | 20 lần cùng id cùng frame, `minInterval = 0` | phát 8 lần rồi cướp voice; `busyUntil` của voice bị cướp là nhỏ nhất trước đó |
 | 12 | 2 lần cách đúng `minInterval` | cả hai phát (biên đóng) |
 | 13 | `timeScale = 0`, 2 lần cách 0.1s thật | lần hai phát |
 | 14 | 1000 lần phát | mọi `voice.pitch` trong `[0.95, 1.05]`, không phải lúc nào cũng bằng 1 |
@@ -772,7 +772,7 @@ namespace Horcrux.Runtime.Implementations.Audio
 | 18 | Lần phát đầu tiên sau `Awake` | không bị throttle (`NegativeInfinity`) |
 | 19 | Profiler: 20 lần phát/giây, 10 giây, bản build IL2CPP | **0 B** GC Alloc trên đường `PlaySfx` (khoá `TestSfx : int`), và trên `PlayMusic` lặp cùng nhịp (khoá `TestMusic : byte`) — cũng là phép kiểm cho việc khoá bảng tra bằng enum. Tiền kiểm chỉ riêng `Dictionary` khoá enum (chưa cần `AudioService`): `Tests/PlayMode/EnumKeyedLookupAllocationTests.cs`, chạy trên player IL2CPP |
 | 20 | Bật `Play On Awake` trên một voice rồi bấm `ConfigureAllSources` | `playOnAwake == false` |
-| 36 | Bấm `SetupAudioSources` hai lần liên tiếp | 5 voice + 1 music source, không tạo thêm GameObject con ở lần hai; `musicSource.loop == true`, mọi voice `loop == false` |
+| 36 | Bấm `SetupAudioSources` hai lần liên tiếp | 8 voice + 1 music source, không tạo thêm GameObject con ở lần hai; `musicSource.loop == true`, mọi voice `loop == false` |
 | 21 | `PlayMusic(music)` khi `IsMusicOn = true` | `musicSource.isPlaying`, `clip` và `volume` đúng track, `loop == true` |
 | 22 | `PlayMusic((TestMusic)99)` khi đang phát bài A | 1 error `[AudioService]:`, bài A vẫn phát |
 | 23 | `PlayMusic(A)` rồi `PlayMusic(B)` | `clip == B` |
@@ -783,11 +783,15 @@ namespace Horcrux.Runtime.Implementations.Audio
 | 28 | `IsSfxOn = false` khi nhạc đang phát | nhạc vẫn phát |
 | 29 | 20 lần `PlaySfx` liên tiếp hết voice, nhạc đang phát | nhạc không bị cắt (`musicSource` không nằm trong `voices`) |
 | 30 | Chưa gán `musicSource`, gọi `PlayMusic` | ném `NullReferenceException`; `ValidateReferences` báo 1 error |
-| 31 | `ValidateReferences` với đủ catalog, music source, 5 voice | đúng 1 log, 0 error |
+| 31 | `ValidateReferences` với đủ catalog, music source, 8 voice | đúng 1 log, 0 error |
 | 32 | `PlaySfx` rồi đọc qua `IAudioSetting` | `IsSfxOn` và `IsMusicOn` đọc qua interface thấy đúng giá trị vừa set qua `IAudioService<,>` (cùng một object) |
 | 33 | Hai entry trùng id | `Awake` ném `ArgumentException` (từ `BuildTables`) |
 | 34 | `IsSfxOn = false` trước `Awake` (host vừa dựng, voice đã gán) | không throw |
 | 35 | Một track trùng clip với bài đang phát nhưng khác `volume`, `PlayMusic` hai lần | lần hai không restart; `volume` giữ theo bài đầu |
+
+**Test đã viết** (chưa chạy trên Unity): `Tests/PlayMode/AudioServiceTests.cs` (hành vi runtime, kể cả thời gian; host dựng không active, nối field bằng reflection, rồi bật để `Awake` chạy) · `Tests/PlayMode/AudioServiceEditorTests.cs` (ba nút `SetupAudioSources`, `ConfigureAllSources`, `ValidateReferences`, gọi qua reflection, bọc `#if UNITY_EDITOR`). Cả hai nằm ở assembly PlayMode vì một `MonoBehaviour` khai trong assembly chỉ-Editor của EditMode không add vào GameObject được (*Can't add script behaviour … it is an editor script*); `TestSfx` / `TestMusic` / `TestAudioCatalog` / `TestAudioService` cũng ở đó. Test cần source đang phát dùng `Assume.That(AudioCanPlay())`: máy không có thiết bị audio thì ra *inconclusive*, `Control_AudioSourceReportsPlaying` báo lý do.
+
+**Chưa phủ, vì sao:** #12 biên đóng chính xác (cần đồng hồ giả hoặc tiêm thời gian; có `PlaySfx_AfterIntervalElapsed_PlaysAgain` kiểm phía "đã qua khoảng") · #19 0 B GC (Profiler trên IL2CPP, developer chạy) · #9 đổi từ "cách nhau 1 giây" thành 100 lần cùng frame với `minInterval = 0` · #16 gộp vào test pitch (#14) · #11 kiểm voice bị cướp bằng clip của entry thứ hai, không đọc `busyUntil` trước–sau.
 
 - [ ] **Step 4: Commit** — `feat(sdk): add AudioService (authored voices, per-sound throttle, random pitch, music source)`
 
