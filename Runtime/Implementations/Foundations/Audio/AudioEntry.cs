@@ -9,7 +9,7 @@ namespace Horcrux.Runtime.Implementations.Audio
         [SerializeField] private TSfx id;
         [SerializeField] private AudioClip clip;
         [SerializeField, Range(0, 1)] private float volume = 1f;
-        [SerializeField, Min(0f)] private float minIntervalSeconds = 0.05f;
+        [SerializeField, Min(0f)] private float minIntervalSeconds = 0.03f;
         
         public TSfx Id => id;
         public AudioClip Clip => clip;
