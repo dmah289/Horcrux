@@ -38,7 +38,7 @@ music là một source riêng.
 
 | Nhóm | Chốt |
 |---|---|
-| **Ai gọi** | Gameplay của dự án, qua một lớp nối mỏng do agent viết (Task 4). Ở Category Jam: 20 call site hiện gọi `AudioController.Instance.PlaySoundEffect(string)` không kèm vị trí, 16 tiếng, trong đó 5 tiếng combo `sfx_box_combo2..6` là 5 clip riêng. Music: `MusicController` của `_Gameplay` (`Play(name)`, `Stop`) và toggle Music trong Setting (`IAudioPersistentData.RegisterOnMusicChange`). |
+| **Ai gọi** | Gameplay của dự án, qua `IAudioService<GameSfx, GameMusic>` tiêm thẳng vào từng nơi gọi, không static, không lớp nối (Task 4). Ở Category Jam: 20 call site hiện gọi `AudioController.Instance.PlaySoundEffect(string)` không kèm vị trí, 16 tiếng, trong đó 5 tiếng combo `sfx_box_combo2..6` là 5 clip riêng. Music: `MusicController` của `_Gameplay` không còn caller nào ngoài chính nó — bỏ hẳn; nhạc khởi bằng `PlayMusic` ở nơi vào level, và toggle Music trong Setting (`IAudioPersistentData.RegisterOnMusicChange`). |
 | **Mục tiêu** | Tiếng gameplay phát đúng frame sự kiện. Nghiệm thu bằng chơi thử: tap item, nhận box, hoàn thành box 3 lần liên tiếp, dùng 3 booster — mỗi hành động có đúng một tiếng, không chói khi nhiều box hoàn thành cùng lúc, tắt Sound trong Setting thì im ngay. Vào level có nhạc nền loop; tắt Music thì nhạc dừng, bật lại thì nhạc phát lại; tắt Music không ảnh hưởng SFX và ngược lại. |
 | **Ngân sách** | Nhịp *mỗi tương tác*; cao điểm ~10–20 lần/giây có thể cùng frame khi cascade. **Hot path đã xác nhận**: mọi cấp phát dồn về `Awake`, đường `PlaySfx` không `new`, không LINQ, không boxing. |
 | **Ranh giới** | Service chỉ lo: tra entry · throttle · cấp voice · áp tham số · giữ một bài nhạc đang phát. Danh mục clip và danh sách bài nhạc là **asset của game**. Hai cờ `IsSfxOn` / `IsMusicOn` là **property** game set từ save của nó — service không biết hệ save. **Foundation**: không gọi hệ Horcrux nào khác. |
@@ -53,7 +53,7 @@ music là một source riêng.
 | Nguồn | Lấy | Không lấy, vì |
 |---|---|---|
 | `Kelsey.IAudioService` + `SoundController` (contract ScrewDom, giữ nguyên cho LiveOps) | Cầu nối setting: `IAudioPersistentData.RegisterOnSoundChange` → cờ của service (Task 4) | 30 method, mỗi tiếng một method, 25 method rỗng — catalog + id thay cho việc đó. Phụ thuộc Feel. |
-| `MusicController` + `MusicContainer` của `_Gameplay` | Hành vi cần giữ: phát theo tên, `Stop`, tắt theo Setting | Kế thừa `BaseAudioController`, khoá chuỗi, `PlayDynamic` + filter + mixer — chưa có nhu cầu chốt; gỡ ở Task 4. |
+| `MusicController` + `MusicContainer` của `_Gameplay` | Hành vi cần giữ: phát nhạc nền, tắt theo Setting (không còn `Stop`/`Play(name)` vì 0 caller) | Kế thừa `BaseAudioController`, khoá chuỗi, `PlayDynamic` + filter + mixer — chưa có nhu cầu chốt; gỡ ở Task 4. |
 | `AudioController` + `SoundEffectController` của `_Gameplay` | Chưa lấy gì (chọn clip không trùng `RandomButPickOnce` để dành khi có nhiều clip) | 15 file, 4 lớp (controller → effect → container → pool) để phát một clip; khoá chuỗi; coroutine mỗi lần phát; `maxInstances` per entry chồng vai với throttle. |
 | `MMSoundManager` (Feel) | Xác nhận công thức voice rảnh `clip.length / |pitch|` (§0.1) | `PlayOptions` hơn 40 field — tham số authoring thuộc catalog, không thuộc call site. Coroutine `AutoDisableAudioSource` mỗi lần phát là rác GC đúng lúc combo dồn. Track qua mixer là "Mở rộng sau". |
 | Horcrux `Utilities/` | — | Không có helper audio nào trên đĩa. Pitch ngẫu nhiên là một dòng `Random.Range`, viết tại chỗ. |
@@ -110,8 +110,8 @@ Cách tune: sửa số trong asset, nhấn Play. Không sửa code (trừ `Pitch
 ## Luồng dữ liệu
 
 ```
-game: GameAudio.Play(GameSfx.BoxReceive)         (lớp nối trong dự án, Task 4)
-  └─> IAudioService<GameSfx, GameMusic>.Service.PlaySfx(GameSfx.BoxReceive)
+game: _audio.PlaySfx(GameSfx.BoxReceive)         (_audio: IAudioService<GameSfx, GameMusic>, tiêm vào nơi gọi — Task 4)
+  └─> GameAudioService.PlaySfx(GameSfx.BoxReceive)
         │
         ├─ !IsSfxOn ──────────────────────────────────────────> return (im lặng, hợp lệ)
         ├─ catalog.TryGetEntryById(sfx) ─ thiếu ──────────────────────> LogError, return
@@ -799,23 +799,43 @@ namespace Horcrux.Runtime.Implementations.Audio
 
 ### Task 4: Lớp nối Category Jam (agent viết, sau khi Task 3 compile)
 
-Hai hệ cùng tên `IAudioService` cùng tồn tại có chủ ý: `Kelsey.IAudioService` + `SoundController` là
-lớp contract ScrewDom, đóng băng để kéo LiveOps; `Horcrux.Runtime.Abstractions.Audio.IAudioService<,>` phục
-vụ gameplay. Chúng ở hai assembly khác nhau; file nào cần cả hai thì dùng alias
-`using HxAudio = Horcrux.Runtime.Abstractions.Audio;`.
+Hai hệ cùng tên `IAudioService` cùng tồn tại có chủ ý: `Kelsey.IAudioService` + `SoundController` là lớp
+contract ScrewDom, đóng băng để kéo LiveOps; `IAudioService<GameSfx, GameMusic>` (Horcrux) phục vụ gameplay.
+Hai tên khác số tham số kiểu nên cùng `using` không xung đột, không cần alias.
 
-| Việc | Ở đâu | Ghi chú |
-|---|---|---|
-| Thêm tham chiếu `com.horcrux.runtime` | `Assets/_Gameplay/CategoryJam.Gameplay.asmdef` | Chiều phụ thuộc: gameplay → Horcrux |
-| `enum GameSfx` gán số tường minh từ `= 1` | `Assets/_Gameplay/Scripts/Definition/GameSfx.cs` | 16 giá trị thay 11 hằng chuỗi + `GetComboAudioID`. Số đã vào asset là wire format: phần tử mới thêm ở cuối |
-| `enum GameMusic` gán số tường minh từ `= 1` | `Assets/_Gameplay/Scripts/Definition/GameMusic.cs` | Liệt kê bài từ `MusicContainer` hiện tại; `Giả định (cần xác nhận):` số bài đọc từ asset khi tới task này |
-| `GameAudioCatalog` · `GameAudioService` | `Assets/_Gameplay/Scripts/Common/Audio/` | Hai class con rỗng như Editor setup của Task 2 và 3. `[Service]` gắn ở `GameAudioService`, không ở base |
-| `static class GameAudio { Play(GameSfx) · PlayMusic(GameMusic) · StopMusic() }` | `Assets/_Gameplay/Scripts/Common/GameAudio.cs` | Mỗi hàm một dòng: `IAudioService<GameSfx, GameMusic>.Service.PlaySfx(sfx)`, `PlayMusic(music)`, `StopMusic()`. Chỉ rút ngắn tên interface đã đóng generic cho 20 call site; không còn phép đổi kiểu |
-| Đổi call site của `MusicController` | Grep `MusicController` trong `_Gameplay`, `_Game` | `Play(name)` → `GameAudio.PlayMusic(GameMusic.X)`; `Stop()` → `GameAudio.StopMusic()`. `Pause`/`Continue`/`PlayDynamic` còn caller thì **dừng, hỏi developer** — ngoài bản tối thiểu |
-| Đổi 20 call site | `Box`, `BoxAnimation`, `BoxesContainer`, `CacheHoles`, `ShoppingCart`, `CacheHole`, `GoodsItem`, `NormalMovingShelf`, `NormalShelf`, `SingleMovingShelf`, `GameDirector.Events` | `GameAudio.Play(GameSfx.X)`. Combo: `GameSfx.BoxCombo2..6` theo `comboNumber`, giữ nguyên 5 clip — `Giả định (cần xác nhận):` chưa đổi sang pitch ramp vì đó là đổi cảm giác chơi |
-| Cầu nối setting | `Assets/_Game/Scripts/Common/GameplayAudioToggle.cs`, component trên `audio` | `MonoBehaviour<IAudioPersistentData, IAudioSetting>` (không cần biết `GameSfx`): `Init` set `IsSfxOn = Sound`, `IsMusicOn = Music` rồi `RegisterOnSoundChange` + `RegisterOnMusicChange`; `OnDestroy` unregister cả hai. Thay cho 4 dòng ở `CategoryGameController.Start` |
-| Gỡ hệ cũ | `Assets/_Gameplay/Scripts/Common/Audio/` (15 file, gồm `MusicController` + `MusicContainer`) · `Addressables/Prefabs/Sounds/` (16 prefab) · nhóm Addressables SFX · `Constant.AudioID.cs` · `GameplaySession.SfxOn` · instance `AudioController` trong `Service.unity` | Xoá sau khi mọi call site đã chuyển và chơi thử xong. Grep `AudioController`, `MusicController`, `AUDIO_`, `SfxOn` phải trả 0 |
-| Ghi vào contract doc | `docs/ScrewDom_Contract.md` mục 2 | Một dòng: `SoundController` đóng băng cho LiveOps; audio gameplay đi qua Horcrux; không gộp hai bên |
+Không có `static class GameAudio`: mỗi nơi phát tiếng **nhận** `IAudioService<GameSfx, GameMusic>` qua InitArgs
+(`GameAudioService` đã đăng ký service) và lưu vào field `_audio`.
+
+**Bước 1 — Đổi từng nơi phát tiếng (11 file, 20 call site).**
+Làm lần lượt từng file: `Box`, `BoxAnimation`, `BoxesContainer`, `CacheHoles`, `ShoppingCart`, `CacheHole`,
+`GoodsItem`, `NormalMovingShelf`, `NormalShelf`, `SingleMovingShelf`, `GameDirector.Events`. Với mỗi file:
+- Thêm field `private IAudioService<GameSfx, GameMusic> _audio;`.
+- Cách nhận phụ thuộc, theo base của class:
+  - Base là `MonoBehaviour` thuần (`BoxAnimation`, `ShoppingCart`): kế thừa `MonoBehaviour<IAudioService<GameSfx, GameMusic>>`, viết `protected override void Init(IAudioService<GameSfx, GameMusic> audio) => _audio = audio;`.
+  - Đã có base riêng (`BaseManager`, `DisposableEntity`, `Hole`, `Shelf`): thêm `IInitializable<IAudioService<GameSfx, GameMusic>>`, viết `public void Init(IAudioService<GameSfx, GameMusic> audio) => _audio = audio;`. `Shelf` đã có `Init()` không tham số; chữ ký khác nên không đụng.
+- Thay `AudioController.Instance.PlaySoundEffect(Constant.AUDIO_X)` bằng `_audio.PlaySfx(GameSfx.X)`.
+- Xoá `using` thừa. Compile sạch rồi sang file kế.
+
+Riêng hai chỗ:
+- **Combo** (`Box.cs`): `GameSfx.BoxCombo2..6` theo `comboNumber`, kẹp ở 6, giữ 5 clip. `Giả định (cần xác nhận):` chưa đổi sang pitch ramp vì đó là đổi cảm giác chơi.
+- **Tiếng thua** (`GameDirector.Events:211`): `GameDirector` là class thuần nên không nhận được `_audio`. Xoá 2 dòng phát tiếng ở `OnGameEnded` và phát ở nơi đã nhận `_audio`: `CategoryGameController.OnOutOfMoves`, `_audio.PlaySfx(GameSfx.LoseGame)` ngay dòng đầu. Đây đúng thời điểm tiếng cũ phát (lúc hết nước đi, trước popup hồi sinh). `Giả định (cần xác nhận):` nếu muốn tiếng chỉ kêu khi thua hẳn thì chuyển vào `Lose()`, nhưng đó là đổi hành vi.
+
+**Bước 2 — Khởi nhạc nền, bỏ `MusicController`.**
+Grep `MusicController` trong `Assets` không có caller nào ngoài thư mục `Audio/`, nên không có call site nào để đổi.
+- `CategoryGameController` đổi sang `MonoBehaviour<IAudioService<GameSfx, GameMusic>>`, gọi `_audio.PlayMusic(GameMusic.Level)` ngay sau `Subscribe()` trong `Start`.
+- Bỏ khối `AudioController.Initialize(sfxOn)` (4 dòng, `Service.TryGet`) ở cùng hàm.
+- `Stop`/`Pause`/`Continue`/`PlayDynamic` không ai gọi: bỏ theo, không thay thế.
+
+**Bước 3 — Cầu nối Setting.**
+Tạo `Assets/_Game/Scripts/Common/GameplayAudioToggle.cs`, `MonoBehaviour<IAudioPersistentData, IAudioSetting>` (không cần biết `GameSfx`):
+`Init` gán `IsSfxOn = Sound`, `IsMusicOn = Music`, rồi `RegisterOnSoundChange` + `RegisterOnMusicChange`;
+`OnDestroy` unregister cả hai. Đặt component trên GameObject `audio`.
+
+**Bước 4 — Gỡ hệ cũ** (chỉ sau khi mọi call site đã đổi và chơi thử xong).
+Xoá: `Assets/_Gameplay/Scripts/Common/Audio/Scripts/` (gồm `MusicController` + `MusicContainer`), `Addressables/Prefabs/Sounds/` (16 prefab) và nhóm Addressables SFX, `Constant.AudioID.cs`, `GameplaySession.SfxOn`, instance `AudioController` trong `Service.unity`.
+Grep `AudioController`, `MusicController`, `AUDIO_`, `SfxOn` phải trả 0.
+
+**Bước 5 — Ghi contract doc.** `docs/ScrewDom_Contract.md` mục 2, một dòng: `SoundController` đóng băng cho LiveOps; audio gameplay đi qua Horcrux; không gộp hai bên.
 
 **Editor setup (agent liệt kê lại đầy đủ khi tới task này):** tạo `AudioCatalog_Gameplay` (từ `GameAudioCatalog`) với 16 entry,
 id chọn từ dropdown `GameSfx`, clip lấy từ 16 prefab `sfx_*` hiện tại; thêm **Tracks** id chọn từ dropdown `GameMusic`, clip lấy từ
