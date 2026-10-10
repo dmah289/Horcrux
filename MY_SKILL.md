@@ -426,6 +426,9 @@ kiểm: *nửa mà dự án viết có nằm trong ranh giới biên dịch củ
 > một) khai ở base **không** tới subclass · `GetType().GetFields(NonPublic | Instance)` **không** thấy
 > private field khai trên base · magic method của Unity (`OnDestroy`, `Awake`…) subclass đặt trùng tên
 > là che hẳn bản của base — khai `protected virtual` để `override`.
+>
+> **Lớp nối với code di sản không có asmdef phải nằm trong Assembly-CSharp.** asmdef không tham chiếu
+> được Assembly-CSharp, và bọc di sản bằng asmdef sẽ vỡ khi di sản gọi ngược sang module clone về sau.
 
 **Framework sở hữu cơ chế, dự án sở hữu từ vựng.** Tập giá trị mà dự án đặt tên (khoá tra cứu, loại,
 trạng thái) thì framework khai là **type parameter** có ràng buộc, dự án chốt bằng class con; framework
