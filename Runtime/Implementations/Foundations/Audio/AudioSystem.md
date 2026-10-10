@@ -1,7 +1,7 @@
 # Audio System
 
-Phát **SFX 2D** và **một bài nhạc nền** theo id enum của dự án. Gameplay gọi
-`_audio.PlaySfx(GameSfx.TapItem)`; dữ liệu clip nằm trong một asset catalog do game điền, SDK không biết clip nào.
+Phát **SFX 2D** và **một bài nhạc nền** theo id enum của dự án. Game gọi
+`_audio.PlaySfx(GameSfx.Click)`; dữ liệu clip nằm trong một asset catalog do game điền, SDK không biết clip nào.
 
 - SFX: nhiều tiếng cùng lúc, mỗi lần phát lệch cao độ ±5%, một tiếng bị gọi dồn trong cùng frame chỉ phát một lần, **0 B cấp phát** ở đường phát.
 - Music: một bài loop, đổi bài là cắt rồi phát bài mới, bật/tắt độc lập với SFX.
@@ -32,7 +32,7 @@ Hai class con rỗng là bắt buộc: generic `MonoBehaviour`/`ScriptableObject
 ## Luồng phát một tiếng
 
 ```
-_audio.PlaySfx(GameSfx.BoxReceive)
+_audio.PlaySfx(GameSfx.Click)
    ├─ IsSfxOn = false ─────────────────────────> im lặng (hợp lệ)
    ├─ id không có trong catalog ───────────────> LogError, bỏ
    ├─ now − lần phát trước của entry < minInterval ─> bỏ (throttle, hợp lệ)
@@ -50,10 +50,10 @@ _audio.PlaySfx(GameSfx.BoxReceive)
 
 ```csharp
 // enum: gán số TƯỜNG MINH, bắt đầu từ 1 — 0 là "chưa gán"
-public enum GameSfx   { TapItem = 1, BoxReceive = 2 /* … */ }
+public enum GameSfx   { Click = 1, Win = 2 /* … */ }
 public enum GameMusic { Level = 1 }
 
-[CreateAssetMenu(fileName = "AudioCatalog", menuName = "CategoryJam/Audio Catalog")]
+[CreateAssetMenu(fileName = "AudioCatalog", menuName = "Game/Audio Catalog")]
 public sealed class GameAudioCatalog : AudioCatalog<GameSfx, GameMusic> { }
 
 [Service(typeof(IAudioService<GameSfx, GameMusic>), typeof(IAudioSetting), FindFromScene = true)]
@@ -64,14 +64,14 @@ Số trong enum là wire format của asset: **không đánh số lại**, chỉ
 
 ### 2. Dựng catalog
 
-1. `Create → CategoryJam → Audio Catalog`.
+1. `Create → Game → Audio Catalog` (tên menu do `[CreateAssetMenu]` của bạn khai).
 2. **Entries**: mỗi tiếng một phần tử — chọn `Id` từ dropdown `GameSfx`, kéo `Clip`, chỉnh `Volume` (mặc định 1) và `Min Interval Seconds` (mặc định 0.03).
 3. **Tracks**: mỗi bài nhạc một phần tử — `Id` từ dropdown `GameMusic`, `Clip`, `Volume`.
 4. Bấm **Validate Entries**: Console phải có **một dòng log**, không error.
 
 ### 3. Dựng host trong scene
 
-1. Scene dịch vụ persistent (Category Jam: `Assets/_Game/Scenes/Service.unity`): tạo GameObject `audio`, Add Component `GameAudioService`.
+1. Scene sống suốt phiên chơi (scene persistent / bootstrap của game): tạo GameObject `audio`, Add Component `GameAudioService`.
 2. Kéo catalog vào ô **Catalog**.
 3. Bấm **Setup Audio Sources**: tạo 8 GameObject con `sfx_voice_0..7` + `music_source`, điền vào **Voices** / **Music Source**, ép cờ (`Play On Awake` tắt, `Spatial Blend = 0`, `Loop` tắt; riêng music `Loop` bật). Bấm lại chỉ bù ô thiếu. Muốn nhiều voice hơn: thêm ô vào mảng rồi bấm lại.
 4. Bấm **Validate References**: một dòng log, không error. Lưu scene.
@@ -81,15 +81,15 @@ Số trong enum là wire format của asset: **không đánh số lại**, chỉ
 Nhận service qua InitArgs, không static:
 
 ```csharp
-// class đã có base riêng (BaseManager, DisposableEntity, Hole…): IInitializable + Initializer trên prefab
-public class GoodsItem : DisposableEntity, IInitializable<IAudioService<GameSfx, GameMusic>>
+// class đã có base riêng: IInitializable + gắn Initializer (component ẩn) trên prefab
+public class Button : BaseWidget, IInitializable<IAudioService<GameSfx, GameMusic>>
 {
     private IAudioService<GameSfx, GameMusic> _audio;
     public void Init(IAudioService<GameSfx, GameMusic> audio) => _audio = audio;
 }
 
 // class MonoBehaviour thuần: MonoBehaviour<T>, tự nhận, không cần Initializer
-public class ShoppingCart : MonoBehaviour<IAudioService<GameSfx, GameMusic>>
+public class Player : MonoBehaviour<IAudioService<GameSfx, GameMusic>>
 {
     private IAudioService<GameSfx, GameMusic> _audio;
     protected override void Init(IAudioService<GameSfx, GameMusic> audio) => _audio = audio;
@@ -97,40 +97,65 @@ public class ShoppingCart : MonoBehaviour<IAudioService<GameSfx, GameMusic>>
 ```
 
 ```csharp
-_audio.PlaySfx(GameSfx.TapItem);          // cao độ ngẫu nhiên ±5%
-_audio.PlaySfx(GameSfx.BoxCombo2, 1.26f); // cao độ chỉ định, không jitter
-_audio.PlayMusic(GameMusic.Level);        // vào level; gọi lại cùng bài thì không restart
+_audio.PlaySfx(GameSfx.Click);            // cao độ ngẫu nhiên ±5%
+_audio.PlaySfx(GameSfx.Jump, 1.26f);      // cao độ chỉ định, không jitter
+_audio.PlayMusic(GameMusic.Level);        // vào màn; gọi lại cùng bài thì không restart
 _audio.StopMusic();
 ```
 
-`Initializer` là component ẩn: thêm trên prefab, để ô argument trống thì lấy từ service.
+`Initializer` thêm trên prefab; để ô argument trống thì lấy từ service.
 
 ### 5. Nối Setting (bật/tắt Sound, Music)
 
-Consumer chỉ cần hai cờ nên lấy `IAudioSetting` (không generic). Category Jam: `GameplayAudioToggle`
-(`Assets/_Game/Scripts/Common/`), đặt trên GameObject `audio`:
+Service không biết hệ lưu của game: game tự ghi hai cờ từ save của nó. Consumer chỉ cần hai cờ nên lấy
+`IAudioSetting` (không generic, không phải gọi tên enum của dự án):
 
 ```csharp
-public class GameplayAudioToggle : MonoBehaviour<IAudioPersistentData, IAudioSetting>
+public class AudioSettingBridge : MonoBehaviour<IMySaveData, IAudioSetting>
 {
-    protected override void Init(IAudioPersistentData data, IAudioSetting audio)
+    private IMySaveData _save;
+    private IAudioSetting _audio;
+
+    protected override void Init(IMySaveData save, IAudioSetting audio)
     {
-        audio.IsSfxOn = data.Sound;
-        audio.IsMusicOn = data.Music;
-        data.RegisterOnSoundChange(on => audio.IsSfxOn = on);   // thực tế lưu delegate để Unregister ở OnDestroy
-        data.RegisterOnMusicChange(on => audio.IsMusicOn = on);
+        _save = save;
+        _audio = audio;
+
+        _audio.IsSfxOn = _save.SoundOn;                  // áp giá trị đã lưu ngay lúc khởi động
+        _audio.IsMusicOn = _save.MusicOn;
+        _save.OnSoundChanged += SetSfx;                  // rồi bám theo mỗi lần người chơi đổi
+        _save.OnMusicChanged += SetMusic;
     }
+
+    private void OnDestroy()
+    {
+        _save.OnSoundChanged -= SetSfx;
+        _save.OnMusicChanged -= SetMusic;
+    }
+
+    private void SetSfx(bool on) => _audio.IsSfxOn = on;
+    private void SetMusic(bool on) => _audio.IsMusicOn = on;
 }
 ```
 
-### 6. Combo nhiều bậc
+Đặt component trên GameObject `audio`. Cờ có thể được ghi trước `Awake` của host: an toàn.
 
-Mỗi bậc là một entry riêng (clip thu sẵn nghe hay hơn một clip bị đẩy pitch). Category Jam: `GameSfx.BoxCombo2..6`, chọn theo `comboNumber`, kẹp ở 6:
+### 6. Một tiếng nhiều bậc (combo, chuỗi)
+
+Cách chính: **mỗi bậc một entry** với clip thu sẵn, rồi chọn entry theo bậc và kẹp ở bậc cuối. Clip thu sẵn nghe hay hơn một clip bị đẩy pitch cao (ngắn lại, mỏng đi).
 
 ```csharp
-private static readonly GameSfx[] ComboSfxs = { GameSfx.BoxCombo2, GameSfx.BoxCombo3, GameSfx.BoxCombo4, GameSfx.BoxCombo5, GameSfx.BoxCombo6 };
+private static readonly GameSfx[] ComboSfxs = { GameSfx.Combo2, GameSfx.Combo3, GameSfx.Combo4 };
 
-_audio.PlaySfx(ComboSfxs[Mathf.Min(comboNumber, ComboSfxs.Length + 1) - 2]);   // trong if (comboNumber > 1)
+_audio.PlaySfx(ComboSfxs[Mathf.Min(combo, ComboSfxs.Length + 1) - 2]);   // combo ≥ 2; từ bậc cuối trở đi lặp tiếng cuối
+```
+
+Khi chỉ có một clip và muốn tăng dần bằng cao độ, dùng `PlaySfx(sfx, pitchScale)`; công thức do call site giữ,
+ví dụ nửa cung mỗi bậc:
+
+```csharp
+float pitchScale = Mathf.Pow(2f, Mathf.Min(step, maxStep) * semitonesPerStep / 12f);
+_audio.PlaySfx(GameSfx.Combo, pitchScale);
 ```
 
 ### 7. Thêm một tiếng mới
@@ -197,13 +222,12 @@ Validate chỉ chạy khi bấm: không `OnValidate` (đang kéo thả danh sác
 | **`RandomPitch = -1f` là dấu "không truyền pitch"** | so bằng `Mathf.Approximately`. `pitchScale = 0` **không** bị đổi thành ngẫu nhiên mà làm `clip.length / 0` vô hạn ⇒ voice không bao giờ rảnh. Đừng truyền 0 |
 | **Dictionary khoá enum** | không boxing khi comparer mặc định của enum là bản generic (đúng ở Unity 6). Nếu Profiler IL2CPP cho thấy cấp phát: đổi khoá sang `int` ở `Utilities/` |
 | **Mọi cấp phát dồn về `Awake`** | throttle là `Dictionary` điền đủ mọi id ở `Awake`; thêm khoá lúc chạy mới cấp phát |
-| **Không `DontDestroyOnLoad`** | host là component trong scene; đời sống do scene quyết. Category Jam đặt nó ở scene `Service` |
+| **Không `DontDestroyOnLoad`** | host là component trong scene; đời sống do scene quyết. Đặt nó ở scene sống suốt phiên chơi |
 | **Trùng id trong catalog** | `BuildTables` ném `ArgumentException` ở `Awake` (cái đầu không thắng im lặng); Validate báo sớm hơn |
-| **Hai hệ cùng tên `IAudioService` cùng tồn tại** | `Kelsey.IAudioService` + `SoundController` là contract ScrewDom đóng băng cho LiveOps; Horcrux `IAudioService<,>` phục vụ gameplay. Khác số tham số kiểu nên không xung đột, không cần alias |
 
 ## Chưa làm (thêm sau đều additive)
 
-`PlaySfxAt` / `spatialBlend` (SFX 3D) · `volumeScale` · crossfade (PrimeTween) · `PauseMusic`/`ResumeMusic` · `PlayDynamic` · `AudioMixerGroup` (gán ở `ConfigureAllSources`) · nhiều clip cho một tiếng (chọn ngẫu nhiên / tuần tự; đổi `Clip` thành mảng, throttle sang khoá theo clip) · giới hạn số tiếng đồng thời cho **từng** entry (`maxInstances`, hệ audio cũ có) · `IAudioCatalog` khi có nguồn dữ liệu thứ hai.
+`PlaySfxAt` / `spatialBlend` (SFX 3D) · `volumeScale` · crossfade (PrimeTween) · `PauseMusic`/`ResumeMusic` · `PlayDynamic` · `AudioMixerGroup` (gán ở `ConfigureAllSources`) · nhiều clip cho một tiếng (chọn ngẫu nhiên / tuần tự; đổi `Clip` thành mảng, throttle sang khoá theo clip) · giới hạn số tiếng đồng thời cho **từng** entry (`maxInstances`) · `IAudioCatalog` khi có nguồn dữ liệu thứ hai.
 
 ## Chữ ký
 
