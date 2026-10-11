@@ -690,6 +690,19 @@ nhau — thứ duy nhất dùng được khi hệ hỏng lúc 2 giờ sáng. H�
   sửa tay được (nhiều scene, prefab variant, dữ liệu người dùng), và gỡ **sau khi** asset đã lưu lại
   theo tên mới. *Đã sai một lần:* gỡ cầu khi asset còn key cũ — Unity nạp thành entry rỗng, không một
   dòng lỗi lúc import, hệ tự tắt ở lần Play đầu.
+  **Sổ tay** — phạm vi đổi tên một thực thể chọn theo **kiểu**, không theo tên: mọi định danh có kiểu là
+  thực thể đó hoặc collection của nó, hoặc tên nói về nó. Giữ định danh chỉ khoá hay ID, wire format, biến
+  lặp chung. Định danh mơ hồ mở ngữ cảnh trước khi đưa vào bảng. Tên do người đề xuất cũng phải qua
+  kiểm nghĩa bằng code trước khi đổi: `itemID → categoryId` nghe hợp dự án, nhưng code cho thấy category
+  được gán lên ID theo từng level, ID là khoá ghép — đặt sai thì người đọc sau tin tên hơn tin code.
+  Nghiệm thu sau đổi tên: quét **mọi** định danh cũ trên **mọi** file YAML (kể cả `propertyPath` của
+  prefab variant, `m_MethodName` của UnityEvent), không dựa vào danh sách field serialize lập tay —
+  compile sạch chỉ chứng minh code, không chứng minh asset; so token `.cs` cũ/mới với **chuỗi ký tự là
+  một lớp riêng**, liệt kê hết chuỗi đã đổi. *Đã sai một lần:* bảng ánh xạ lập từ grep theo tên bắt nhầm
+  biến của helper chung và config không liên quan; compile vẫn sạch nên chỉ diff của file ngoài vùng thực
+  thể mới lộ ra. *Đã sai một lần:* so diff bằng cách chuẩn hoá hai vế che mất thay đổi trong chuỗi ký tự
+  — thư mục mod `"Items"` bị đổi theo tên member mà không ai thấy. *Đã sai một lần:* danh sách field
+  serialize lập tay sót một field, key YAML còn tên cũ ở bốn prefab, giá trị sẽ về default khi import.
 
 ## 3.8 Dữ liệu đi qua tool — import/export
 
