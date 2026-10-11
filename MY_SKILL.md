@@ -575,7 +575,9 @@ trong vòng dispatch).
 > `finally` đặt **trong** `while` chạy **mỗi vòng**, đặt ngay sau `Delay` chạy khi delay vừa xong — chỉ
 > một `try/finally` bọc toàn thân mới cho "đúng một lần". `UniTask.Yield(ct)` **ném** ở `await` khi bị
 > hủy, nên `if (ct.IsCancellationRequested)` đứng sau nó là code chết. Giá trị mặc định của tham số trên
-> method `virtual` lấy theo **kiểu khai báo của biến lúc gọi**, không theo override.
+> method `virtual` lấy theo **kiểu khai báo của biến lúc gọi**, không theo override. `UniTask` là struct: field chưa gán là `default`, không có source nên báo
+> **Succeeded** — `await` trên nó trả về ngay, im lặng; field chờ phải được gán trước khi rời class, tức tiền đề
+> đứng ở đầu mỗi cửa public (§3.4), không chỉ ở `Awake`.
 
 **Trình diễn một thay đổi cho người chơi.** Dữ liệu đổi ở một nơi và người chơi thấy nó ở nơi khác, có
 khi sau nhiều lần đổi. Luật cho mọi trình diễn kiểu đó:

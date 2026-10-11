@@ -10,7 +10,7 @@ using Sisus.Init;
 namespace Horcrux.Runtime.Implementations.LiveOps
 {
     [Service(typeof(ILiveOpsHost), FindFromScene = true)]
-    public class LiveOpsHost : BaseBootStep, ILiveOpsHost, IInitializable<ITimeService>
+    public class LiveOpsHost : ABootStep, ILiveOpsHost, IInitializable<ITimeService>
     {
         private const int TickMilliseconds = 1000;
 

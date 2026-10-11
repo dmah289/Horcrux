@@ -111,7 +111,7 @@ sống bằng event phải được cập nhật bằng đường khác, hoặc 
 1. Người chơi vuốt ra home. Unity bắn `OnApplicationPause(true)` **và** `OnApplicationFocus(false)` —
    cả hai, trên cả Android lẫn iOS.
 2. Host gộp hai tín hiệu thành một cạnh: `SaveDriver` bằng cờ `inBackground` của nó, `SaveBootstep` bằng
-   cờ `isInBackground` của `BootstrapRunner`. Cái tới trước lật cờ, cái thứ hai là no-op.
+   cờ `isInBackground` của `BootstrapService`. Cái tới trước lật cờ, cái thứ hai là no-op.
 3. Cạnh vào background → `FlushAll()`. Đây là **chốt sổ**: mọi thứ từ lần autosave gần nhất tới giờ.
 4. Swipe-kill trong app switcher. `OnApplicationQuit` **không** chạy — nhưng bước 3 đã lưu rồi.
 
@@ -146,7 +146,7 @@ một entry không bao giờ lưu mà không ai biết.
 |---|---|
 | `FlushAll()` **trước** `Initialize()` | `entries` còn rỗng → không ghi gì. Quên `Initialize()` **không** làm mặc định đè lên save thật; cái mất là dữ liệu chưa được load và game chạy trên default trong RAM |
 | `FlushNow()` trên entry chưa qua `Setup` (quên `[MarkedPersistence]`, hoặc gọi trước `Initialize()`) | `_owner` null → `LogError` *"No collection owns …"* rồi thoát. Đọc/ghi `Value` trên entry đó vẫn chạy im lặng trong RAM |
-| Quit hoặc vào background giữa lúc cold boot chưa xong, với `SaveBootstep` | `BootstrapRunner` chỉ fan-out `OnAppQuit` và `OnGoToBackground` khi `IsInitialized` của **runner** đã bật → **không flush**, và ca quit cũng không reset cờ. Chấp nhận có chủ đích: ca đó chưa có dữ liệu đáng mất. `SaveDriver` không có cổng này |
+| Quit hoặc vào background giữa lúc cold boot chưa xong, với `SaveBootstep` | `BootstrapService` chỉ fan-out `OnAppQuit` và `OnGoToBackground` khi `IsInitialized` của **`BootstrapService`** đã bật → **không flush**, và ca quit cũng không reset cờ. Chấp nhận có chủ đích: ca đó chưa có dữ liệu đáng mất. `SaveDriver` không có cổng này |
 | `ReadPayload` nhận đúng chuỗi `"null"` | `JsonConvert` trả null → rơi về `CloneDefault()`, kết cục `Loaded`, và `storedPayload` = `"null"` — đúng thứ kho đang giữ. Payload của mặc định khác `"null"`, nên **flush kế ghi mặc định xuống đĩa** và kho khớp lại với RAM |
 | Entry bị `ScanEntries` loại (khoá rỗng, khoá trùng, field sai kiểu) | mỗi ca một `LogError` nêu tên field. `Initialize()` **bỏ qua** số bị loại mà `ScanEntries` trả về — chỉ nút `ValidateKeys` đọc con số đó và tổng kết |
 | Sửa `PlayerPrefs` bằng tay lúc đang Play | không có đường reload giữa phiên: `LoadAllEntries` chỉ chạy trong `Initialize()`. Phải Play lại. Xem/sửa/xoá bằng tool `Assets/Horcrux/Editor/PlayerPrefsEditor` |
@@ -329,7 +329,7 @@ Xem bảng "Hai host" dưới để chọn. Kéo tay component host vào scene, 
 | Đường | Làm gì | Dùng được cho |
 |---|---|---|
 | **Service** | không làm gì thêm — collection đã khai `[Service(typeof(BasePersistenceDataCollection), …)]` ở bước 2, InitArgs tự đưa vào `Init` | chỉ `SaveDriver`, vì nó là `MonoBehaviour<T>`. **Đây là đường dự án này đang chạy** |
-| **Initializer** | Inspector của host → mục **Init** → **Add Initializer** (hoặc chuột phải header component → **Generate Initializer**) → kéo asset vào ô argument | cả hai host. **Bắt buộc với `SaveBootstep`**: nó kế thừa `BaseBootStep` nên là MonoBehaviour thường, InitArgs chỉ tự inject `IInitializable<T>` cho thứ bản thân là service |
+| **Initializer** | Inspector của host → mục **Init** → **Add Initializer** (hoặc chuột phải header component → **Generate Initializer**) → kéo asset vào ô argument | cả hai host. **Bắt buộc với `SaveBootstep`**: nó kế thừa `ABootStep` nên là MonoBehaviour thường, InitArgs chỉ tự inject `IInitializable<T>` cho thứ bản thân là service |
 
 Host là chỗ gọi `Initialize()` và chỗ giữ token cho vòng autosave. SDK **không** tự gọi.
 
@@ -369,8 +369,8 @@ cache của phiên trước sống.
 | Khai field entry ở class base thay vì class dẫn xuất | reflection quét `GetType()` với `NonPublic` + `Instance` — **không thấy** private field của base. Muốn khai ở base thì phải `protected` (xem `lastSeenUtcSeconds`) |
 | `Key` để rỗng | `ScanEntries` loại entry đó kèm `LogError`; nó không lưu gì |
 | `Default Value` để rỗng | người chơi mới bắt đầu bằng giá trị mặc định của kiểu (`0`, `false`, list rỗng) — mà ô trống **không phân biệt được** với ô cố ý điền số đó, nên không có gì báo. Mặc định đó **xuống đĩa ngay phiên đầu** (kịch bản 1), nên điền sai là điền sai vào save thật |
-| Không cấp asset cho host — thiếu cả dòng `[Service(typeof(BasePersistenceDataCollection))]` lẫn Initializer | `saveCollection` là null → `NullReferenceException` ở `Initialize()`. Ở `SaveDriver` thì đỏ console và `Start()` dừng; ở `SaveBootstep` thì `BootstrapRunner` **fail-open** — đỏ một dòng rồi cả phiên chạy tiếp **không có** persistence |
-| Đặt host trên object không sống suốt phiên | `destroyCancellationToken` chết theo scene unload → autosave **chết im lặng**, UniTask coi hủy là bình thường nên không log gì, chỉ còn flush lúc pause/quit. `SaveDriver.OnAwake` tự `DontDestroyOnLoad(gameObject)` nên nó đã tự chặn; `SaveBootstep` dựa vào `BootstrapRunner` cũng `DontDestroyOnLoad` |
+| Không cấp asset cho host — thiếu cả dòng `[Service(typeof(BasePersistenceDataCollection))]` lẫn Initializer | `saveCollection` là null → `NullReferenceException` ở `Initialize()`. Ở `SaveDriver` thì đỏ console và `Start()` dừng; ở `SaveBootstep` thì `BootstrapService` **fail-open** — đỏ một dòng rồi cả phiên chạy tiếp **không có** persistence |
+| Đặt host trên object không sống suốt phiên | `destroyCancellationToken` chết theo scene unload → autosave **chết im lặng**, UniTask coi hủy là bình thường nên không log gì, chỉ còn flush lúc pause/quit. `SaveDriver.OnAwake` tự `DontDestroyOnLoad(gameObject)` nên nó đã tự chặn; `SaveBootstep` dựa vào `BootstrapService` cũng `DontDestroyOnLoad` |
 | Wire **hai** host, hoặc gọi `Initialize()` thêm một lần ở chỗ khác | tiến độ chưa flush về mặc định, listener đã đăng ký bị xoá — **không một dòng log**. Sáu đường sinh ra nó: xem "Hai host" |
 | Không bấm `ValidateKeys` trước khi Play | bốn lỗi authoring chỉ báo lúc `Initialize()` chạy, hoặc muộn hơn nữa — xem "Nút Editor" |
 
@@ -378,13 +378,13 @@ cache của phiên trước sống.
 
 | | `SaveDriver` | `SaveBootstep` |
 |---|---|---|
-| Dùng khi | dự án **không** có Bootstrap | dự án có `BootstrapRunner` |
-| Là gì | `MonoBehaviour<BasePersistenceDataCollection>` kéo tay vào scene, tự `DontDestroyOnLoad` ở `OnAwake` | `BaseBootStep, IInitializable<BasePersistenceDataCollection>`, chạy trong pha boot |
+| Dùng khi | dự án **không** có Bootstrap | dự án có `BootstrapService` |
+| Là gì | `MonoBehaviour<BasePersistenceDataCollection>` kéo tay vào scene, tự `DontDestroyOnLoad` ở `OnAwake` | `ABootStep, IInitializable<BasePersistenceDataCollection>`, chạy trong pha boot |
 | Nhận collection | service (tự động) **hoặc** Initializer | **chỉ** Initializer — xem bước 4 |
 | Gọi `Initialize()` | `Start()` | `InitializeAsync()` |
-| Chạy autosave | `RunAutosaveAsync(destroyCancellationToken)` | `RunAutosaveAsync(destroyCancellationToken)` — **không** phải token của pha, runner refresh token đó mỗi lần load level |
-| Flush | cạnh vào background (`OnApplicationFocus` / `OnApplicationPause`, một lần cho mỗi lần vào) + `OnApplicationQuit` | `OnGoToBackground(true)` + `OnAppQuit`, cả hai chỉ chạy **sau khi** runner init xong |
-| Thứ tự với hệ khác | **không có thứ tự** — Unity không hứa thứ tự magic method giữa các MonoBehaviour, nên flush có thể chạy trước một hệ khác kịp ghi dữ liệu trong pause hook của nó | **có thứ tự** — runner fan-out pause/quit **ngược** thứ tự step, nên step khởi tạo sớm được flush muộn |
+| Chạy autosave | `RunAutosaveAsync(destroyCancellationToken)` | `RunAutosaveAsync(destroyCancellationToken)` — **không** phải token của pha, `BootstrapService` refresh token đó mỗi lần load level |
+| Flush | cạnh vào background (`OnApplicationFocus` / `OnApplicationPause`, một lần cho mỗi lần vào) + `OnApplicationQuit` | `OnGoToBackground(true)` + `OnAppQuit`, cả hai chỉ chạy **sau khi** `BootstrapService` init xong |
+| Thứ tự với hệ khác | **không có thứ tự** — Unity không hứa thứ tự magic method giữa các MonoBehaviour, nên flush có thể chạy trước một hệ khác kịp ghi dữ liệu trong pause hook của nó | **có thứ tự** — `BootstrapService` fan-out pause/quit **ngược** thứ tự step, nên step khởi tạo sớm được flush muộn |
 
 Cả hai gánh **đủ** trách nhiệm, nên chọn một là xong. Nhưng đây **không** phải lời khuyên về gọn gàng:
 `Initialize()` **không có guard**, nên host thứ hai là **mất dữ liệu**.
@@ -412,7 +412,7 @@ trong RAM biến mất.
 | Hai `SaveDriver` | tìm component `SaveDriver` trong **mọi** scene và prefab — phải đúng một, hoặc không có |
 | Hai `SaveBootstep` | tìm component `SaveBootstep` — phải đúng một, hoặc không có |
 | Một `SaveDriver` **và** một `SaveBootstep` | hai lần tìm ở trên, tổng lại phải đúng **một** |
-| Cùng một `SaveBootstep` nằm **hai lần** trong list `steps` của `BootstrapRunner` | mở runner trong Inspector, đếm |
+| Cùng một `SaveBootstep` nằm **hai lần** trong list `steps` của `BootstrapService` | mở `BootstrapService` trong Inspector, đếm |
 | Game code gọi `IPersistenceDataCollection.Initialize()` | grep `.Initialize()` trên kiểu save — chỉ hai host được gọi |
 | Prefab mang host, instantiate nhiều lần lúc chạy | host phải là object **kéo tay vào scene**, không bao giờ là prefab spawn |
 
@@ -592,7 +592,7 @@ chúng, và không ca nào trong game code có lý do chạm tới.
 | Type | Vai trò |
 |---|---|
 | `SaveDriver : MonoBehaviour<BasePersistenceDataCollection>` | `OnAwake` `DontDestroyOnLoad` · `Start` init + autosave · flush ở cạnh vào background và `OnApplicationQuit` |
-| `SaveBootstep : BaseBootStep, IInitializable<BasePersistenceDataCollection>` | `InitializeAsync` init + autosave · flush ở `OnGoToBackground(true)` và `OnAppQuit` |
+| `SaveBootstep : ABootStep, IInitializable<BasePersistenceDataCollection>` | `InitializeAsync` init + autosave · flush ở `OnGoToBackground(true)` và `OnAppQuit` |
 
 **`Horcrux.Runtime.Abstractions`** — `IService<out T>`: `static T Service` · `static bool TryGet(out T)`.
 

@@ -108,7 +108,7 @@ namespace Horcrux.Runtime.Implementations.Time
 | Ghi mốc mỗi `GuardWriteStepSecond = 60` | mỗi giây một lần dirty là autosave ghi PlayerPrefs vô ích; lùi ≤ 60s không ai lợi được gì |
 | Lùi giờ → đứng tại mốc | đơn giản, không cần trạng thái "đang bị lùi"; countdown chỉ đứng, không âm |
 | Getter ghi mốc | hệ không có nhịp riêng; caller 1 Hz duy nhất là `LiveOpsHost`. Ghi chỉ xảy ra sau `IsInitialized` và thưa 60s nên getter vẫn rẻ |
-| **`MonoBehaviour<T>`, không `BaseBootStep`** | Gỡ server time xong thì `InitializeAsync` rỗng, và một step rỗng trong `BootstrapRunner` là một mắt xích chỉ tồn tại để chờ việc chưa có. Base class trống ra thì dùng luôn `MonoBehaviour<T>` của Sisus — cùng kiểu với `SaveDriver`, và DI vào `Init` giống hệt. Hệ quả: `TimeService` **không** nằm trong list `steps`, **không** có `Order`, và `LiveOpsHost` chỉ cần đứng sau `SaveBootstep`. Không mất gì vì `UtcNowUnix` chưa bao giờ dựa vào thứ tự — nó tự hỏi `IsInitialized` |
+| **`MonoBehaviour<T>`, không `ABootStep`** | Gỡ server time xong thì `InitializeAsync` rỗng, và một step rỗng trong `BootstrapService` là một mắt xích chỉ tồn tại để chờ việc chưa có. Base class trống ra thì dùng luôn `MonoBehaviour<T>` của Sisus — cùng kiểu với `SaveDriver`, và DI vào `Init` giống hệt. Hệ quả: `TimeService` **không** nằm trong list `steps`, **không** có `Order`, và `LiveOpsHost` chỉ cần đứng sau `SaveBootstep`. Không mất gì vì `UtcNowUnix` chưa bao giờ dựa vào thứ tự — nó tự hỏi `IsInitialized` |
 | **Giữ `if !save.IsInitialized`** | Bỏ boot step rồi thì không còn cái gì xếp thứ tự cho `TimeService` nữa, nên guard này là thứ **duy nhất** đứng giữa caller sớm và một mốc bằng `0`. `UtcNowUnix` là getter công khai, caller ngoài chuỗi gọi được bất cứ lúc nào — `CollectionBridge` ở scene Game chẳng hạn. Bỏ guard là đọc mốc `0` rồi ghi mốc theo nó |
 
 ## §4 Trước khi chạy
@@ -116,8 +116,8 @@ namespace Horcrux.Runtime.Implementations.Time
 | Bước | Thiếu thì hỏng ở đâu |
 |---|---|
 | Asset save của dự án: điền Key cho field `Last Seen Utc Seconds` (nhóm Time), ví dụ `time_last_seen_utc`; bấm **Validate keys** | `LogError` "empty key" lúc `Initialize`, mốc không lưu → không chống lùi |
-| `Services.unity`: object `TimeService`, Init → kéo asset save. **Không** kéo vào list `steps` của `BootstrapRunner` — nó không phải step | `IService<ITimeService>.Service` ném ở caller đầu tiên |
-| **Save phải được load** — `TimeService` không còn ở trong chuỗi boot, nhưng `SaveBootstep` thì có. Runner tự gọi `InitializeAsync()` trong `Start`, nên chuỗi chạy ngay khi scene chứa runner load xong | save không load → `IsInitialized` mãi `false` → `UtcNowUnix` **vẫn trả giờ máy** và không bao giờ chống lùi. Im lặng tuyệt đối: hỏng kiểu này không lộ ở hệ Time mà lộ ở Collection |
+| `Services.unity`: object `TimeService`, Init → kéo asset save. **Không** kéo vào list `steps` của `BootstrapService` — nó không phải step | `IService<ITimeService>.Service` ném ở caller đầu tiên |
+| **Save phải được load** — `TimeService` không còn ở trong chuỗi boot, nhưng `SaveBootstep` thì có. `BootstrapService` tự gọi `InitializeAsync()` trong `Start`, nên chuỗi chạy ngay khi scene chứa service load xong | save không load → `IsInitialized` mãi `false` → `UtcNowUnix` **vẫn trả giờ máy** và không bao giờ chống lùi. Im lặng tuyệt đối: hỏng kiểu này không lộ ở hệ Time mà lộ ở Collection |
 | Nếu dời `TimeService` khỏi scene đầu: xác nhận `FindFromScene` thấy được scene nạp bằng Addressables | không thấy thì `ServiceInjector` chỉ `LogWarning "Service Not Found"` rồi trả `null`; `ITimeService.Service` ném NRE ở caller đầu |
 
 ## Kiểm
@@ -140,6 +140,6 @@ biên dịch và soát code theo §3.
 `offsetSeconds` cộng vào `UtcNowUnix`, cờ `IsServerTimeTrusted`, `ResyncAsync` lúc boot và lúc resume, và
 luật "chặn cấp thưởng theo giờ khi `!IsServerTimeTrusted`". Gỡ vì **chưa có caller**: không hệ nào ở bản
 Collection này đọc cờ đó, nên giữ lại là một contract không ai gọi và một `offsetSeconds` luôn bằng 0.
-Lúc làm lại thì `UtcNowUnix` mọc thêm `+ offsetSeconds`, và `TimeService` đổi base về `BaseBootStep`,
+Lúc làm lại thì `UtcNowUnix` mọc thêm `+ offsetSeconds`, và `TimeService` đổi base về `ABootStep`,
 `IInitializable<BasePersistenceDataCollection>` để có `InitializeAsync` gọi `ResyncAsync` — đúng hình dạng
 nó vừa bị gỡ khỏi. Kèm theo: kéo lại vào list `steps` với `Order` sau `SaveBootstep`.

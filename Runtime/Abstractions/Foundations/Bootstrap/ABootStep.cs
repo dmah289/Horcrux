@@ -5,9 +5,9 @@ using UnityEngine;
 namespace Horcrux.Runtime.Abstractions.Bootstrap
 {
     /// <summary>One step of the game's init chain.</summary>
-    public abstract class BaseBootStep : MonoBehaviour
+    public abstract class ABootStep : MonoBehaviour
     {
-        [SerializeField, Tooltip("Lower runs first. On a tie, the step listed earlier on the runner runs first.")]
+        [SerializeField, Tooltip("Lower runs first. On a tie, the step listed earlier on the service runs first.")]
         private int order;
         
         /// <summary>Lower runs first.</summary>

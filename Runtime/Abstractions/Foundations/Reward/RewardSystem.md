@@ -99,7 +99,7 @@ namespace Horcrux.Runtime.Implementations.Reward
 | `Register(typeId, handler)` thay `handler.TypeId` | một handler phục vụ nhiều typeId (3 loại booster) không phải viết 3 class |
 | Sync, không `UniTask` | grant là ghi số vào ví; anim thuộc caller |
 | Handler đăng ký ở `Start` | `FindFromScene` resolve service khi scene đã load; `Awake` có thể sớm hơn object service |
-| **Không** phải `BaseBootStep` | hệ này không có gì để init: không đọc save, không nhịp, không ràng thứ tự với hai step kia. Thêm nó vào `BootstrapRunner` chỉ để có một `InitializeAsync` rỗng là nói dối rằng có việc init. Nó chỉ cần **tồn tại** trong scene để `FindFromScene` thấy |
+| **Không** phải `ABootStep` | hệ này không có gì để init: không đọc save, không nhịp, không ràng thứ tự với hai step kia. Thêm nó vào `BootstrapService` chỉ để có một `InitializeAsync` rỗng là nói dối rằng có việc init. Nó chỉ cần **tồn tại** trong scene để `FindFromScene` thấy |
 
 ## §3 Trước khi chạy
 

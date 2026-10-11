@@ -171,7 +171,7 @@ Bảy hệ dưới đây đã được viết plan tự chứa, có code dán-đ
 
 | Hệ | File plan | Trong plan | **Ngoài** plan (vẫn ở tài liệu này) |
 |---|---|---|---|
-| 1 Bootstrap | `Implementations/Foundations/Bootstrap/BootstrapSystem.md` | `BootStep` (Order + 2 nhịp + 2 hook app) + `BootstrapRunner` (sort ổn định, fail-open, token vòng đời, `BootProgress`) + `IBootstrapService` (`IsInitialized` + `UntilInitialized`) + `IOptionalService<T>` (§0.2) + demo nghiệm thu. 7 file | manifest SO · parallel-in-phase · nhóm bước theo scene |
+| 1 Bootstrap | `Implementations/Foundations/Bootstrap/BootstrapSystem.md` | `BootStep` (Order + 2 nhịp + 2 hook app) + `BootstrapService` (sort ổn định, fail-open, token vòng đời, `BootProgress`) + `IBootstrapService` (`IsInitialized` + `UntilInitialized`) + `IOptionalService<T>` (§0.2) + demo nghiệm thu. 7 file | manifest SO · parallel-in-phase · nhóm bước theo scene |
 | 2 Persistence | **đã dựng xong:** `Abstractions/Foundations/Persistence/Persistence.md` | `PersistenceDataEntry<T>` (typed + on-change + nhớ payload kho đang giữ) + `BasePersistenceDataCollection` (scan field `[MarkedPersistence]`, load lúc `Initialize`, autosave, flush hai giai đoạn so payload) + hai host `SaveDriver` / `SaveBootstep`, chọn đúng một. Kho PlayerPrefs, payload JSON Newtonsoft. 7 file abstraction + 2 host | crypto decorator · cloud sync · migration version cho model · kho file trên đĩa · `Prefs<T>` và `ISerializer` — cả hai **cố ý không làm**, lý do ở `Persistence.md` |
 | 4a Ticker (+4b Time) | `Implementations/Foundations/Ticker/TickerSystem.md` | `ITicker` + **2 nhịp** (`ITickable`, `IPauseAware`) + 1 `Update` duy nhất, `IOptionalService<T>` (§0.2), `DeferredList<T>`. 6 file | **nhịp 1 Hz** (`ISecondTickable`), `Destroyed` event, `ITimeService`, chống tua giờ, `Countdown`, `TimeFormatter` |
 | §9 Haptics | `Implementations/Foundations/Haptics/HapticSystem.md` | `PlayCustom(HapticPattern)` + `IHapticBackend` (**2 member**) + backend Android có **biên độ**. 6 file | **bộ preset** (`EHapticPreset` + `Play(preset)`), rung liên tục (`Begin/End` + ref-count), waveform, impl vendor, `IHapticSettings` |
@@ -245,14 +245,14 @@ bộ điều phối **chủ động, duy nhất**, không phó mặc Unity.
 
 **Tư tưởng cốt lõi.**
 - Contract bước init **nhỏ**: thứ tự (`Order`) + `InitializeAsync(ct)`; vòng đời hai nhịp — init một lần
-  lúc boot, reinit mỗi nhịp load level; hook pause/quit. Runner chỉ biết contract, không biết bước làm gì.
+  lúc boot, reinit mỗi nhịp load level; hook pause/quit. Service chỉ biết contract, không biết bước làm gì.
 - **Reinit hai pha**: pha async tuần tự → pha sync "after" chạy khi *mọi* bước đã reinit xong — bước sau
   đọc state của bước trước mới chắc đúng.
-- **Token theo vòng đời**: runner cấp `CancellationToken`, refresh (cancel cũ, tạo mới) mỗi vòng init —
+- **Token theo vòng đời**: service cấp `CancellationToken`, refresh (cancel cũ, tạo mới) mỗi vòng init —
   mọi loop `.Forget()` của các hệ nhận token này, reload là huỷ sạch.
 - **Fail-open**: bước throw → log rõ + đi tiếp, không treo splash (chơi được offline tốt hơn không mở được
   app); tuyệt đối không `.Forget()` trần nuốt exception.
-- Runner phát **progress event theo bước** (index + tổng số + tên bước) cho splash hiển thị — không enum
+- Service phát **progress event theo bước** (index + tổng số + tên bước) cho splash hiển thị — không enum
   phase cứng: tên phase là nội dung riêng từng game, bước đã tự mang tên (user chốt 2026-08-29). Và một
   service *tuỳ chọn* cho hệ ngoài đăng ký callback "sau init" (`IOptionalService` — §0.2).
 - **Bất biến:** ① chiều ưu tiên định nghĩa ở **đúng một chỗ**, ghi rõ số nhỏ hay số lớn
@@ -264,15 +264,15 @@ bộ điều phối **chủ động, duy nhất**, không phó mặc Unity.
 
 | SDK sở hữu | Game điền |
 |---|---|
-| Contract bước init + runner (sort, await, token, phase event) | Các bước/manager cụ thể |
+| Contract bước init + service (sort, await, token, phase event) | Các bước/manager cụ thể |
 | Service "đã init xong" (optional) | Giá trị `Order` + wire danh sách bước trong scene/Inspector |
 
 **Phạm vi v1.**
-- Contract + runner một entry point + phase event + token vòng đời + hook pause/quit duyệt ngược.
+- Contract + service một entry point + phase event + token vòng đời + hook pause/quit duyệt ngược.
 - **Cố ý KHÔNG làm ở v1:** *manifest data-driven (SO)* — bản thiết kế trước từng chọn nó (lý do
   Open/Closed), hạ xuống mở rộng sau: chưa ai cần đổi thứ tự bước mà không compile; thêm sau là
   additive (một overload nhận config asset) · *chạy song song các bước cùng pha* — cold start chưa đo được
-  là chậm; thêm sau additive (cờ trên contract bước + `WhenAll` trong runner) · *auto-discovery* —
+  là chậm; thêm sau additive (cờ trên contract bước + `WhenAll` trong service) · *auto-discovery* —
   magic khó debug.
 - **Mở rộng sau:** manifest SO · parallel-in-phase · nhóm bước theo scene.
 

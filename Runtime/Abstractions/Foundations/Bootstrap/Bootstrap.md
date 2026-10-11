@@ -1,6 +1,6 @@
 # Bootstrap — một con đường khởi tạo duy nhất
 
-`BootstrapRunner` sắp các `BaseBootStep` theo `Order`, await **tuần tự**, và một bước ném exception thì
+`BootstrapService` sắp các `ABootStep` theo `Order`, await **tuần tự**, và một bước ném exception thì
 **vẫn vào được game**. Mỗi nhịp cấp một `CancellationToken` vòng đời: load level mới là mọi loop async
 của level trước bị huỷ sạch trước khi bước nào của level mới chạy.
 
@@ -12,7 +12,7 @@ Danh sách bước và giá trị `Order` là **cấu hình trong Inspector**, k
 
 ```csharp
 // Abstractions/Foundations/Bootstrap
-abstract class BaseBootStep : MonoBehaviour
+abstract class ABootStep : MonoBehaviour
 {
     int Order { get; }                                        // nguồn duy nhất: field `order` Inspector
     abstract UniTask InitializeAsync(CancellationToken ct);   // nhịp duy nhất BẮT BUỘC override
@@ -35,11 +35,13 @@ interface IBootstrapService : IService<IBootstrapService>     // cửa duy nhấ
 {
     bool    IsInitialized { get; }
     UniTask UntilInitializedAsync(CancellationToken ct = default);
+    UniTask InitializeAsync();                             // game gọi đúng một lần
+    UniTask ReinitializeAsync();                           // mỗi lần load level
 }
 
 // Implementations/Foundations/Bootstrap
 [Service(typeof(IBootstrapService), FindFromScene = true)]    // Sisus.Init tìm trong scene
-sealed class BootstrapRunner : MonoBehaviour, IBootstrapService
+class BootstrapService : MonoBehaviour, IBootstrapService
 {
     event Action<BootProgress> ProgressChanged;   // trước MỖI bước, cộng một nhịp đóng
     UniTask InitializeAsync();                    // game gọi đúng một lần
@@ -59,7 +61,7 @@ app quit    ──> OnAppQuit()                sync  n-1 ──────>   0
 ```
 
 Unity bắn **cả** `OnApplicationPause` lẫn `OnApplicationFocus` mỗi lượt xuống nền, trên Android và iOS
-đều vậy. Runner gom hai tín hiệu vào `HandleGoToBackground` — một trạng thái `isInBackground`: tín hiệu tới trước lật trạng thái
+đều vậy. `BootstrapService` gom hai tín hiệu vào `HandleGoToBackground` — một trạng thái `isInBackground`: tín hiệu tới trước lật trạng thái
 và fan-out, tín hiệu tới sau là no-op — bước nhận `OnGoToBackground` **đúng một lần** mỗi lượt.
 
 ---
@@ -67,7 +69,7 @@ và fan-out, tín hiệu tới sau là no-op — bước nhận `OnGoToBackgroun
 ## §2. Luồng dữ liệu
 
 ```
-   Inspector                 Awake                    InitializeAsync() / ReinitializeAsync()
+   Inspector               EnsureReady                InitializeAsync() / ReinitializeAsync()
 ┌──────────────┐      ┌─────────────────┐      ┌──────────────────────────────────────────┐
 │ steps: List  │      │ Preserve() task │      │ ① huỷ + dispose token cũ                 │
 │  ├ step.order│─────>│ sort ổn định    │─────>│ ② chờ isPhaseRunning == false            │
@@ -85,6 +87,10 @@ và fan-out, tín hiệu tới sau là no-op — bước nhận `OnGoToBackgroun
                                       nhịp init   ⇒ IsInitialized = true, nhả UntilInitializedAsync()
 ```
 
+`EnsureReady` chạy đúng **một** lần, ở lần chạm đầu tiên: `Awake`, hoặc sớm hơn khi `InitializeAsync` hay
+`UntilInitializedAsync` tới từ `Awake` của một object khác. Nó đứng ở đầu cả ba cửa, nên không đường gọi nào
+thấy `steps` chưa sort hay `initializedTask` còn là `default`.
+
 Số `order` trong Inspector thành nửa đầu khoá sort, rồi thành vị trí `i` trong `steps` — **vị trí đó
 chính là thứ tự chạy**, và cũng chính là `StepIndex` mà splash nhận. `Ratio01` đo "đã xong bao nhiêu
 bước", nên lúc bước đầu **đang chạy** tỉ lệ vẫn là 0.
@@ -96,7 +102,7 @@ bước", nên lúc bước đầu **đang chạy** tỉ lệ vẫn là 0.
 ### 3.1. Viết một bước
 
 ```csharp
-public sealed class RemoteConfigBootStep : BaseBootStep
+public sealed class RemoteConfigBootStep : ABootStep
 {
     public override async UniTask InitializeAsync(CancellationToken ct)
     {
@@ -118,27 +124,29 @@ public sealed class RemoteConfigBootStep : BaseBootStep
 | Cần **đọc state của bước khác** | + `AfterReinitialize` |
 | Phải flush khi app xuống nền hoặc thoát | + `OnGoToBackground` / `OnAppQuit` |
 
+**Hệ không có việc init thì không phải bước.** Vào chuỗi chỉ khi `InitializeAsync` có việc thật: await, đọc save, hay cần thứ tự với bước khác. Hệ chỉ cần tồn tại để `FindFromScene` thấy là `MonoBehaviour` thường (`TimeService`, `RewardService`, `AudioService`). Vào chuỗi để có mặt trong `steps` là một `InitializeAsync` rỗng nói dối có việc init, và dời việc của `Awake` sang pha boot mở cửa sổ gọi trước khi sẵn sàng.
+
 **Hai luật của một bước:**
 
 | Luật | Vì sao |
 |---|---|
 | `ct` truyền xuống **mọi** await và mọi loop bên trong | Đây là đường duy nhất để reinit huỷ được việc của level trước. Bước không nhận `ct` thì loop của nó sống qua mọi lần load level |
-| `.Forget()` thì tự bọc try/catch trong thân loop | `.Forget()` không có ai bắt exception cho nó. Fail-open của runner chỉ phủ phần **await được** của bước |
+| `.Forget()` thì tự bọc try/catch trong thân loop | `.Forget()` không có ai bắt exception cho nó. Fail-open của service chỉ phủ phần **await được** của bước |
 
 ### 3.2. Editor setup
 
-1. Một GameObject trong scene đầu, add `BootstrapRunner`.
-2. Mỗi bước là một component — đặt làm **con của runner** để đi theo `DontDestroyOnLoad` (§6).
+1. Một GameObject trong scene đầu, add `BootstrapService`.
+2. Mỗi bước là một component — đặt làm **con của service** để đi theo `DontDestroyOnLoad` (§6).
 3. Kéo mọi bước vào field `steps`, gán `order` trên từng bước.
 
 Lúc Play, `steps` trong Inspector là danh sách **đã sort** — đó là thứ tự chạy thật.
 
 ### 3.3. Gọi hai nhịp
 
-Runner **không tự chạy**. Game quyết thời điểm, vì nó phải phối hợp với splash và prompt hệ điều hành.
+`BootstrapService` **không tự chạy**. Game quyết thời điểm, vì nó phải phối hợp với splash và prompt hệ điều hành.
 
 ```csharp
-[SerializeField] private BootstrapRunner bootstrap;
+[SerializeField] private BootstrapService bootstrap;
 
 private async UniTaskVoid Start()
 {
@@ -171,13 +179,13 @@ if (IBootstrapService.TryGet(out IBootstrapService bootstrap))
     await bootstrap.UntilInitializedAsync(ct);
 ```
 
-`TryGet` khi thiếu runner là hợp lệ; `IService<IBootstrapService>.Service` khi thiếu runner là lỗi cấu hình.
+`TryGet` khi thiếu service là hợp lệ; `IService<IBootstrapService>.Service` khi thiếu service là lỗi cấu hình.
 
 ---
 
 ## §4. Hai luật thứ tự
 
-### 4.1. Giữa các bước — sort một lần ở `Awake`, khoá kép `(Order, index gốc Inspector)`
+### 4.1. Giữa các bước — sort một lần ở lần chạm đầu (`EnsureReady`), khoá kép `(Order, index gốc Inspector)`
 
 | Input (thứ tự Inspector) | Thứ tự chạy |
 |---|---|
@@ -205,7 +213,8 @@ khi** hook `OnAppQuit` của mọi bước đã chạy, vì hook cần token cò
 
 ## §5. Nghiệm thu
 
-Chưa có scene demo trong SDK — các phép kiểm chạy trong scene thật của game.
+Chưa có scene demo trong SDK — các phép kiểm dưới chạy trong scene thật của game. Riêng ca gọi tới trước `Awake`
+có test PlayMode: `Tests/PlayMode/BootstrapServiceTests.cs`.
 
 | Bảo đảm | Phép kiểm | Kỳ vọng |
 |---|---|---|
@@ -216,6 +225,7 @@ Chưa có scene demo trong SDK — các phép kiểm chạy trong scene thật c
 | Hook app chạy đúng một lần | `Debug.Log` trong `OnGoToBackground` của một bước. Editor: bấm pause, rồi alt-tab ra và về. Device: đưa app xuống nền rồi mở lại | Đúng **một** dòng `true` và **một** dòng `false` mỗi bước mỗi lượt — kể cả trên device, nơi Unity bắn cả Focus lẫn Pause |
 | Progress đủ cho splash | Subscribe `ProgressChanged`, in `Ratio01` và `StepName` | Tỉ lệ đi 0→1 · `IsFinished` đúng một lần mỗi nhịp · nhãn khớp tên GameObject |
 | Nhiều consumer chờ cold boot | Hai chỗ cùng `await UntilInitializedAsync()`, một chỗ gọi sau khi đã init xong | Cả ba đều trả về, không chỗ nào ném |
+| Gọi tới trước `Awake` | `BootstrapServiceTests` (PlayMode): host inactive, gọi `InitializeAsync` hoặc `UntilInitializedAsync`, rồi mới bật host, kể cả giữa lúc một bước đang await | Thứ tự vẫn theo khoá kép, mỗi bước đúng một lần; waiter chỉ nhả sau khi init xong |
 
 ---
 
@@ -223,13 +233,14 @@ Chưa có scene demo trong SDK — các phép kiểm chạy trong scene thật c
 
 | Bẫy | Hệ quả |
 |---|---|
-| **Runner không tự chạy** | Không ai gọi `InitializeAsync()` thì `UntilInitializedAsync` treo vĩnh viễn |
-| **Bước phải sống cùng đời runner** | Runner `DontDestroyOnLoad`, bước thì không tự động. Bước bị destroy lúc load scene làm `steps` giữ reference chết ⇒ nhịp sau ném `MissingReferenceException` **thoát ra khỏi** đường fail-open, vì đọc `step.name` để log cũng ném. Đặt bước làm con của runner (§3.2) |
+| **`BootstrapService` không tự chạy** | Không ai gọi `InitializeAsync()` thì `UntilInitializedAsync` treo vĩnh viễn |
+| **Bước phải sống cùng đời service** | `BootstrapService` `DontDestroyOnLoad`, bước thì không tự động. Bước bị destroy lúc load scene làm `steps` giữ reference chết ⇒ nhịp sau ném `MissingReferenceException` **thoát ra khỏi** đường fail-open, vì đọc `step.name` để log cũng ném. Đặt bước làm con của service (§3.2) |
+| **`default(UniTask)` là task đã xong** | `UniTask` không có source báo `Succeeded`. Một field chờ chưa gán mà lọt ra ngoài là consumer tưởng boot đã xong — im lặng. `EnsureReady` ở đầu mọi cửa public để field đó không bao giờ rời class ở trạng thái `default` |
 | **Thiết kế cho MỘT call site** | Ba lời gọi xếp hàng thì lời ở giữa không bị loại: nó chạy bằng token mới nhất, và lời sau nó **dùng lại** đúng token đó thay vì được cấp token mới. Người gọi phải là một — scene flow của game |
 | **Nhịp bị huỷ không có nhịp đóng** | Splash đứng ở giữa, rồi nhịp mới bắn lại từ index 0 nên tỉ lệ **tụt về sau** — splash phải chịu được điều đó |
-| **`ProgressChanged` không tự nhả** | Runner sống qua mọi scene, splash thì không. Thiếu `-=` là Console ồn exception sau mỗi lần đổi scene |
+| **`ProgressChanged` không tự nhả** | `BootstrapService` sống qua mọi scene, splash thì không. Thiếu `-=` là Console ồn exception sau mỗi lần đổi scene |
 | **Hook pause/quit im lặng trước khi init xong** | Cả hai chặn bằng `IsInitialized`. Quit giữa lúc đang boot: không bước nào được flush. Xuống nền giữa lúc boot: trạng thái không lật, nên lúc trở lại cũng **không** có `OnGoToBackground(false)` — không có resume mồ côi |
-| **Mất focus không xuống nền cũng là "xuống nền"** | Notification shade và permission dialog trên Android, Control Center trên iOS đều bắn `Focus(false)` mà không bắn `Pause(true)`. Runner coi đó là xuống nền: bước flush sớm hơn cần — đúng ý với "quit không hẹn trước" (§7); bước cần phân biệt hai ca thì không có cửa |
+| **Mất focus không xuống nền cũng là "xuống nền"** | Notification shade và permission dialog trên Android, Control Center trên iOS đều bắn `Focus(false)` mà không bắn `Pause(true)`. `BootstrapService` coi đó là xuống nền: bước flush sớm hơn cần — đúng ý với "quit không hẹn trước" (§7); bước cần phân biệt hai ca thì không có cửa |
 
 ---
 
@@ -237,25 +248,27 @@ Chưa có scene demo trong SDK — các phép kiểm chạy trong scene thật c
 
 | Quyết định | Lý do |
 |---|---|
-| `BaseBootStep` là **abstract MonoBehaviour**, không interface | Bước phải serialize được vào `List<>` trong Inspector (Editor-first). Interface cần thêm máy móc reference chưa tồn tại trong SDK |
+| `ABootStep` là **abstract MonoBehaviour**, không interface | Bước phải serialize được vào `List<>` trong Inspector (Editor-first). Interface cần thêm máy móc reference chưa tồn tại trong SDK |
 | `Order` có **một nguồn**: field serialize, property **không virtual** | Cho override `Order` ở code là tạo nguồn sự thật thứ hai, và tài liệu buộc phải chép lại một bảng "Order thật" |
-| Sort **tại chỗ** trên `steps`, không giữ list thứ hai | Hai list buộc khớp là chỗ lệch. Đánh đổi đã nhận: thứ tự tác giả gán trong Inspector không còn sau `Awake`. Bù lại mỗi lần chạy đều sort lại từ dữ liệu vừa deserialize nên kết quả không tích luỹ |
+| Sort **tại chỗ** trên `steps`, không giữ list thứ hai | Hai list buộc khớp là chỗ lệch. Đánh đổi đã nhận: thứ tự tác giả gán trong Inspector không còn sau lần chạm đầu. Bù lại mỗi lần chạy đều sort lại từ dữ liệu vừa deserialize nên kết quả không tích luỹ |
 | Pause đi **ngược**, resume đi **xuôi** | Pause là "quit không hẹn trước" trên mobile: hệ trên ghi vào hệ nền xong, hệ nền mới chốt sổ. Resume là init-nhẹ: hệ nền tỉnh trước, hệ trên tính dựa vào nó sau |
 | `OnApplicationPause` và `OnApplicationFocus` gom về **một** hook `OnGoToBackground` qua trạng thái `isInBackground`, không phải hai hook | Không magic method nào đủ một mình: quan sát trên device là Pause tin được trên Android, Focus tin được trên iOS — nên phải nghe cả hai. Nhưng cả hai đều bắn trên cả hai nền tảng, nên fan-out theo từng hook là mỗi bước chạy **hai lần** — đúng cái sai đầu bảng dưới, quay lại bằng đường khác. Một trạng thái lật thì bước nhận đúng một lần bất kể tín hiệu nào tới trước. Hai hook riêng thì việc chống chạy-hai-lần rơi về từng bước — giữ bằng kỷ luật, không bằng cấu trúc |
-| `ProgressChanged` **không** nằm trên `IBootstrapService` | Hệ ngoài chỉ cần "xong chưa / chờ xong". Splash nằm cùng scene với runner nên wire thẳng reference concrete |
+| `ProgressChanged` **không** nằm trên `IBootstrapService` | Hệ ngoài chỉ cần "xong chưa / chờ xong". Splash nằm cùng scene với service nên wire thẳng reference concrete |
 | Progress là `BootProgress` **theo bước**, không enum phase cứng | Tên phase là nội dung riêng từng game. Enum cứng bắt mọi game map bước→phase, tức một tri thức trùng phải giữ khớp ở hai nơi. Splash vẫn đủ dữ liệu: tỉ lệ + nhãn |
-| `initializedSource.Task.Preserve()` cache một bản ở `Awake` | `UniTask` mặc định chỉ await được **một** lần. `UntilInitializedAsync` bị nhiều consumer await ⇒ phải là bản `Preserve` |
+| Chuẩn bị (`Preserve`, sort) gom vào `EnsureReady`, gọi ở đầu `Awake`, `BeginPhaseAsync` và `UntilInitializedAsync` | Thứ tự `Awake` giữa các object do engine chọn, nên `InitializeAsync` hay `UntilInitializedAsync` có thể tới từ `Awake` của object khác, trước `Awake` của service. Chờ `Awake` là thêm một trạng thái và một frame trễ; guard là biến call site hợp lệ thành lỗi. Tiền đề đi vào từng cửa thì không đường gọi nào thấy service chưa sẵn sàng |
+| `initializedSource.Task.Preserve()` cache một bản ở `EnsureReady` | `UniTask` mặc định chỉ await được **một** lần. `UntilInitializedAsync` bị nhiều consumer await ⇒ phải là bản `Preserve` |
 | Cờ `isPhaseRunning` + `UniTask.Yield()`, không lưu `UniTask` của nhịp đang chạy | Cùng ràng buộc trên: task của nhịp cũ không await lại được từ nhịp mới |
 | `IsInitialized` **không** reset khi reinit | Nó mang nghĩa "cold boot đã xong", không phải "level đã sẵn sàng" |
 
-**Đã sai một lần** — bốn cái sai đã xảy ra thật, và cấu trúc hiện tại làm chúng không xảy ra lại được:
+**Đã sai một lần** — bốn cái sai đã xảy ra thật, một cái bắt được lúc review; cấu trúc hiện tại làm chúng không xảy ra lại được:
 
 | Cái sai | Cấu trúc chặn nó |
 |---|---|
-| Hook virtual đặt tên `OnApplicationPause` ngay trên base class của bước. Unity gọi magic method trên **mọi** MonoBehaviour trùng tên, bất kể access modifier ⇒ mỗi bước chạy hook **hai lần**: Unity gọi thẳng, cộng fan-out của runner. Sai âm thầm vì phần lớn handler idempotent | Hook tên `OnGoToBackground` / `OnAppQuit` — Unity không biết tên này, chỉ runner gọi |
+| Hook virtual đặt tên `OnApplicationPause` ngay trên base class của bước. Unity gọi magic method trên **mọi** MonoBehaviour trùng tên, bất kể access modifier ⇒ mỗi bước chạy hook **hai lần**: Unity gọi thẳng, cộng fan-out của service. Sai âm thầm vì phần lớn handler idempotent | Hook tên `OnGoToBackground` / `OnAppQuit` — Unity không biết tên này, chỉ service gọi |
 | Hai bước trùng ưu tiên đổi chỗ nhau giữa hai lần chạy. `List<T>.Sort` là introsort, **không ổn định** — bug "lúc được lúc không", khó tái lập nhất | Khoá kép có index gốc (§4.1, bất biến ②) |
-| Hai entry point sort **ngược chiều nhau** trên cùng một trường ưu tiên | Một comparator duy nhất, trong runner. Chiều khai ở `Order` + Tooltip (§4.1, bất biến ①) |
+| Hai entry point sort **ngược chiều nhau** trên cùng một trường ưu tiên | Một comparator duy nhất, trong service. Chiều khai ở `Order` + Tooltip (§4.1, bất biến ①) |
 | `.Forget()` trần nuốt exception của bước ⇒ loading treo vĩnh viễn | Fail-open có log: bước lỗi được nêu tên, chuỗi đi tiếp |
+| `Preserve` và sort đặt trong `Awake`. Gọi `InitializeAsync` từ `Awake` của object khác chạy bước theo thứ tự Inspector, và `Awake` tới giữa pha xáo list đang duyệt; `UntilInitializedAsync` trả `default(UniTask)` — đã xong — nên consumer đi tiếp trước khi boot | `EnsureReady` ở đầu mọi cửa public (§7) |
 
 ---
 
@@ -264,7 +277,7 @@ Chưa có scene demo trong SDK — các phép kiểm chạy trong scene thật c
 | Không có | Lý do | Thêm lại khi |
 |---|---|---|
 | `UntilReinitializedAsync` — bản đối xứng cho nhịp reinit | Cold boot là **latch một chiều**: xong rồi xong mãi nên người tới muộn hỏi được. "Level sẵn sàng" là **cạnh lặp lại**: cùng một `true` lúc nghĩa là level này, lúc là level trước — sai âm thầm. Chỗ biết chắc là nơi gọi: `await ReinitializeAsync()` (§3.3). Bước trong chuỗi thì dùng `AfterReinitialize` | Có consumer **ngoài** chuỗi bước và **không phải** call site. Khi đó cần thêm dấu "level đã cũ", không chỉ thêm hàm chờ |
-| Timeout và retry cho bước lỗi | Con số timeout hợp lý và thứ retry được đều là tri thức riêng của từng bước, runner không biết. Fail-open đưa quyết định về đúng chỗ đó. Đánh đổi: bước treo thì treo cả chuỗi và treo cả splash | — |
+| Timeout và retry cho bước lỗi | Con số timeout hợp lý và thứ retry được đều là tri thức riêng của từng bước, service không biết. Fail-open đưa quyết định về đúng chỗ đó. Đánh đổi: bước treo thì treo cả chuỗi và treo cả splash | — |
 | Guard chặn `InitializeAsync` gọi lần hai | Chỉ có một call site (§6). Đánh đổi: gọi lần hai chạy lại toàn bộ chuỗi — `IsInitialized` là latch, không phải guard | Có hơn một chỗ trong game gọi nhịp init |
 | Log liệt kê thứ tự bước sau khi sort | Danh sách `steps` trong Inspector lúc Play **là** danh sách đã sort — mở ra thấy đủ | Cần đọc thứ tự trên build device, chỗ không mở được Inspector |
 | Manifest data-driven (ScriptableObject) | Chưa ai cần đổi thứ tự bước mà không compile | Thêm overload nhận config asset — additive, không sửa chữ ký cũ |
@@ -282,11 +295,11 @@ Chưa có scene demo trong SDK — các phép kiểm chạy trong scene thật c
 |---|---|
 | Bước chạy sai thứ tự mong đợi | Trùng `Order` ⇒ thứ tự Inspector quyết (§4.1) · hoặc `order` sửa trên prefab mà bản trong scene có override |
 | `[Bootstrap] : X failed at Initialize. Skip (fail-open)` | Bước `X` ném exception, chuỗi đi tiếp. Exception thật ở dòng log ngay sau |
-| `MissingReferenceException` thoát ra từ trong runner | Một bước đã bị destroy nhưng còn trong `steps` (§6) |
+| `MissingReferenceException` thoát ra từ trong service | Một bước đã bị destroy nhưng còn trong `steps` (§6) |
 | Splash đứng lại ở giữa | Nhịp bị huỷ giữa chừng nên không có nhịp đóng (§6) |
 | Splash tụt tỉ lệ về 0 rồi chạy lại | Một nhịp mới đã tiếp quản nhịp đang chạy |
 | Console ồn exception từ splash sau khi đổi scene | Thiếu `-=` cho `ProgressChanged` (§6) |
-| `UntilInitializedAsync` ném `OperationCanceledException` | Runner bị destroy, nó nhả mọi consumer đang chờ · hoặc `ct` của chính consumer bị huỷ |
+| `UntilInitializedAsync` ném `OperationCanceledException` | `BootstrapService` bị destroy, nó nhả mọi consumer đang chờ · hoặc `ct` của chính consumer bị huỷ |
 | `UntilInitializedAsync` không bao giờ trả về | Chưa ai gọi `InitializeAsync()` · hoặc nhịp init bị huỷ trước khi tới cuối nên latch không bật |
 | `OnGoToBackground` / `OnAppQuit` không được gọi | `IsInitialized` còn `false` (§6) · hoặc trạng thái nền đã ở đúng phía — tín hiệu thứ hai của cùng một lượt là no-op (§1) |
 | `OnGoToBackground(true)` đến dù app vẫn hiện trên màn hình | Mất focus không xuống nền — dialog, notification shade, Control Center (§6) |
@@ -303,5 +316,5 @@ Chưa có scene demo trong SDK — các phép kiểm chạy trong scene thật c
 | Alloc mỗi bước | 1 `Delegate[]` từ `GetInvocationList()` | Chỉ khi `ProgressChanged` có listener. Không listener ⇒ 0 |
 | Alloc của `UntilInitializedAsync` | 0 khi đã init xong hoặc khi `ct` không huỷ được · 1 khi có `ct` thật | `AttachExternalCancellation` mới là chỗ cấp phát |
 | Alloc lúc chờ nhịp cũ thoát | 0 | `UniTask.Yield()` |
-| Alloc mỗi nhịp | 1 `CancellationTokenSource`; cái của nhịp liền trước bị `Dispose` | Cộng 1 `List` + 1 `Preserve` một lần ở `Awake` |
+| Alloc mỗi nhịp | 1 `CancellationTokenSource`; cái của nhịp liền trước bị `Dispose` | Cộng 1 `List` + 1 `Preserve` một lần ở `EnsureReady` |
 | Ngân sách thiết kế | cold start **1 lần** + reinit **mỗi lần load level** | **Không** phải hot path — mọi chỗ chọn bản dễ đọc |
