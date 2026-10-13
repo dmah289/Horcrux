@@ -1,159 +1,94 @@
-# Pooling System
+# Pooling — `PoolService<TKey>`
 
-## Flow
+Pool instance của prefab Addressables theo **key enum của dự án**. Dự án gọi `WarmAsync` khi vào màn dùng pool và `ReleaseAll` khi
+rời nó; giữa hai mốc đó pool sống qua mọi level. Mục tiêu: `Get`/`Return` không cấp phát, mọi guard O(1), prefab và instance ra
+khỏi memory khi release.
 
-```
-Initialize(ct)
-└── foreach poolConfigs
-    └── LoadAndCreatePool(config, ct)
-        ├── AssetReference.LoadAssetAsync<GameObject>()  → handle (giữ để Release)
-        ├── prefab.GetComponent<IPoolable>()             → prefab cache (giữ để Instantiate)
-        └── Pre-warm: Instantiate × initialPoolSize      → Add vào List (inactive)
+**Ranh giới.** Horcrux giữ cơ chế (bảng tra, warm, release, guard). Dự án giữ từ vựng: enum key, lớp con mang `[Service]`, thời
+điểm warm và release, hook reset trong `IPoolable` của từng prefab.
 
-Get<T>(parent)
-├── pool tồn tại
-│   ├── Lấy từ cuối List → instance còn sống → dùng lại
-│   └── List rỗng hoặc toàn destroyed → Instantiate(prefab)
-└── pool không tồn tại → throw InvalidOperationException
-→ SetParent → SetActive(true) → OnGetFromPool()
+## API
 
-Return<T>(instance)
-├── pool count >= maxPoolSize → Destroy (không gọi OnReturnToPool)
-├── instance đã nằm trong Inactive list → skip (chống double Return)
-└── pool chưa đầy → OnReturnToPool() → SetActive(false) → Add vào list
+| Thành viên | Chữ ký | Ghi chú |
+|---|---|---|
+| Lấy | `T Get<T>(TKey key, Transform parent) where T : Component, IPoolable` | instance đã active, đã `SetParent(parent)` (giữ world transform), đã gọi `OnGetFromPool`. Caller tự đặt vị trí. Key chưa warm: `LogError`, trả `null` |
+| Trả | `void Return<T>(T instance) where T : Component, IPoolable` | gọi `OnReturnToPool` rồi cất; pool đầy thì `Destroy`. Không cần key |
+| Xả | `void ReleaseAll()` | huỷ mọi instance active lẫn inactive, `ReleaseAsset` prefab, huỷ warm đang dở. `WarmAsync` lần sau dựng lại từ đầu |
+| Warm | `UniTask WarmAsync(CancellationToken ct)` | load prefab mọi config song song rồi pre-warm `initialPoolSize`. Chỉ gọi khi pool rỗng: key đã có là `LogError`. `OnDestroy` gọi `ReleaseAll` |
+| Hook prefab | `IPoolable { OnGetFromPool(); OnReturnToPool(); }` · `PoolableBehaviour` là bản rỗng để `override` | mọi lối ra khỏi vòng đời (kể cả `Destroy` khi đầy) đi qua `OnReturnToPool` |
+| Cấu hình | `PoolConfig<TKey> { TKey key; AssetReference prefab; [Min(0)] int initialPoolSize = 3; [Min(1)] int maxPoolSize = 5; }` | mảng `poolConfigs` trên component; số mặc định là nháp |
+| Kiểm config | nút `ValidateConfigs` trên Inspector (partial Editor) | báo prefab trống và key trùng; không chạy lúc boot |
 
-Dispose() / OnDestroy()
-└── foreach pool
-    ├── Destroy tất cả inactive instances
-    └── Addressables.Release(handle)     → asset ra khỏi memory
-```
+Truy cập qua `IPoolService<TKey>.Service` (bắt buộc, thiếu thì throw) hoặc `TryGet`.
 
-## Lifetime
-
-`PoolManager` gọi `DontDestroyOnLoad(this)` trong `Awake()` → tồn tại xuyên scene.
-Mọi instance inactive đều `SetParent(transform)` về PoolManager → cũng nằm trong DontDestroyOnLoad, không bị destroy khi chuyển scene.
-
-## Memory lifecycle
+## Luồng
 
 ```
-LoadAssetAsync   ──→  prefab vào memory (1 handle, ref count = 1)
-Instantiate × N  ──→  clone từ prefab (không tăng ref count)
-Release(handle)  ──→  prefab ra khỏi memory (ref count = 0)
+vào màn     await IPoolService<TKey>.Service.WarmAsync(ct) ─> mỗi config song song: key đã có ⇒ LogError, bỏ · prefab trống ⇒ LogError, bỏ
+                                                            ─> prefab.LoadAssetAsync ─> GetComponent<IPoolable> ─> entry ─> Instantiate × initialPoolSize (inactive, con của pool)
+rời màn     IPoolService<TKey>.Service.ReleaseAll() ─> huỷ warm dở ─> Destroy mọi active ─> Destroy mọi inactive ─> prefab.ReleaseAsset ─> hai bảng rỗng
+giữa hai mốc (Retry, level kế)  không chạm pool; entity Return trong Dispose của nó
+
+Get(key, parent)   _entryByKey[key] ─> Pop instance còn sống | Instantiate(prefab) ─> SetParent(parent) ─> cast T ─> _entryByActiveInstance.Add ─> SetActive(true) ─> OnGetFromPool
+Return(instance)   _entryByActiveInstance.Remove(instance, out entry) ─> OnReturnToPool ─> Inactive.Count ≥ max ⇒ Destroy | SetActive(false) ─> SetParent(pool) ─> Inactive.Push
 ```
 
-## Prefab yêu cầu
+**Hai bảng, một chủ ghi.** `_entryByKey: Dictionary<TKey, PoolEntry>` là pool của mỗi key (prefab, `maxPoolSize`, `Stack` inactive).
+`_entryByActiveInstance: Dictionary<Component, PoolEntry>` là instance đang active và pool nó thuộc về: `Return` tra bảng này nên
+không cần key, và `Remove` trả `false` chính là guard trả hai lần hay object lạ. Mỗi instance ở đúng một trong ba chỗ: bảng
+active, stack inactive, hoặc đã Destroy. Hash của `UnityEngine.Object` là instanceID nên hai thao tác dictionary không cấp phát.
 
-Mỗi prefab pool **bắt buộc** có Component implement `IPoolable`:
+**Huỷ warm.** Token warm là token con link với token của caller; `ReleaseAll` huỷ nó để load dở không ghi vào bảng sau khi đã release.
+`await` qua `SuppressCancellationThrow()`: huỷ là nhánh `bool`, không ném; `finally` gọi `prefab.ReleaseAsset()` khi huỷ hay load lỗi.
+Dùng `ReleaseAsset()` chứ không `Addressables.Release(handle)`: chỉ `ReleaseAsset` xoá handle mà `AssetReference` cache, nếu không
+lần `LoadAssetAsync` sau trả handle rỗng.
 
-```csharp
-public interface IPoolable
-{
-    void OnGetFromPool();     // reset state khi lấy ra
-    void OnReturnToPool();    // cleanup khi trả về
-}
-```
+## Trước khi chạy
 
-## Cách dùng
+| # | Thao tác | Thiếu thì |
+|---|---|---|
+| 1 | Dự án khai `enum` key số tường minh từ 1 và lớp con `[Service(typeof(IPoolService<Key>), FindFromScene = true)] class XPoolService : PoolService<Key> { }` | không có service để `IPoolService<Key>.Service` tra; throw ở lần gọi đầu |
+| 2 | Scene persistent: GameObject có `XPoolService`, điền `poolConfigs` (key, prefab Addressables, hai cỡ); bấm `ValidateConfigs` | prefab trống hay key trùng: `LogError` ở warm, key đó không có pool |
+| 3 | Dự án `await IPoolService<Key>.Service.WarmAsync(ct)` trước khi load màn dùng pool, **đúng một lần mỗi lần vào** (đọc chuyển màn ở chỗ đổi scene, không gọi mỗi level) | không gọi: `Get` log `has not been warmed`, trả `null` · gọi mỗi level: `LogError` `has already existed` cho từng key |
+| 4 | Mỗi prefab có một component `IPoolable` (hoặc `PoolableBehaviour`); `T` khi `Get` đúng component đó | thiếu `IPoolable`: `LogError` ở warm, bỏ config · `T` sai: `InvalidCastException` ở lần `Get` đầu |
+| 5 | Dự án gọi `ReleaseAll()` khi rời màn dùng pool; entity **không** `Return` trong `OnDestroy` | không gọi: bundle prefab nằm lại memory · `Return` trong `OnDestroy`: `LogError` khi `ReleaseAll` huỷ active |
 
-### 1. Tạo Component implement `IPoolable` hoặc kế thừa `PoolableBehaviour`:
+## Guard
 
-```csharp
-public class EnemyBullet : PoolableBehaviour
-{
-    public override void OnGetFromPool()    { /* reset velocity, damage... */ }
-    public override void OnReturnToPool()   { /* stop particles, cancel tweens... */ }
-}
-```
+| Ca | Xử lý |
+|---|---|
+| `Get` key chưa warm | `LogError`, trả `null` |
+| Instance inactive bị Destroy từ ngoài | `Get` bỏ qua kèm `LogError`, lấy cái kế hoặc Instantiate |
+| `Return` hai lần, hoặc instance không lấy từ pool | `LogError`, bỏ qua |
+| `Return(null)` | `ArgumentNullException` từ `Dictionary.Remove` |
+| `Return` instance đã Destroy | slot active được dọn, `LogError`, không chạm object |
+| `Return` khi `Inactive.Count ≥ maxPoolSize` | `OnReturnToPool` rồi `Destroy` |
+| Warm chồng lên warm đang chạy | `LogError`, bỏ lượt sau |
+| `WarmAsync` khi key đã có (gọi lại mà chưa `ReleaseAll`) | `LogError`, bỏ key đó |
+| Prefab không có `IPoolable`, hoặc hai config cùng key | `LogError`, `ReleaseAsset`, bỏ config |
+| `ReleaseAll` gọi lại khi đã rỗng | không log, không throw |
 
-### 2. Cấu hình Inspector
+## Bộ nhớ theo nhịp
 
-Trên GameObject có `PoolManager`, kéo prefab vào `poolConfigs[]`:
-
-| Field | Mô tả |
-|-------|-------|
-| `prefab` | AssetReference đến prefab (Addressable) |
-| `initialPoolSize` | Số instance pre-warm lúc init |
-| `maxPoolSize` | Giới hạn inactive trong pool, vượt → Destroy |
-
-### 3. Sử dụng runtime
-
-```csharp
-// Get — lấy từ pool (sync), không có pool → throw
-var bullet = IPoolManager.Service.Get<EnemyBullet>(firePoint);
-
-// Return — trả về pool, gọi OnReturnToPool()
-IPoolManager.Service.Return(bullet);
-
-// Cleanup toàn bộ khi chuyển scene
-IPoolManager.Service.Dispose();
-```
-
-## Nhiều prefab, cùng behavior (variant pattern)
-
-Pool dùng `Type` làm key → mỗi prefab cần 1 type riêng. Khi nhiều prefab chung behaviour, tạo abstract base chứa logic chung + thin subclass cho mỗi variant:
-
-```csharp
-// Shared behavior — abstract, không gắn trực tiếp vào prefab
-public abstract class BulletBase : PoolableBehaviour
-{
-    [SerializeField] private float speed;
-    [SerializeField] private int damage;
-
-    public override void OnGetFromPool()    { /* reset velocity, trail... */ }
-    public override void OnReturnToPool()   { /* stop particles, cancel tweens... */ }
-
-    // ... shared logic: Move(), Hit(), etc.
-}
-
-// Variant — 1 dòng mỗi loại, gắn vào prefab tương ứng
-public class RedBullet : BulletBase { }
-public class BlueBullet : BulletBase { }
-```
-
-**Inspector**: mỗi variant là 1 entry trong `poolConfigs[]`:
-
-| Config | Prefab | Component | Pool Key |
-|--------|--------|-----------|----------|
-| [0] | Bullet_Red.prefab | `RedBullet` | `typeof(RedBullet)` |
-| [1] | Bullet_Blue.prefab | `BlueBullet` | `typeof(BlueBullet)` |
-
-**Runtime**:
-
-```csharp
-var red  = IPoolManager.Service.Get<RedBullet>(firePoint);   // pool riêng
-var blue = IPoolManager.Service.Get<BlueBullet>(firePoint);   // pool riêng
-
-IPoolManager.Service.Return(red);
-IPoolManager.Service.Return(blue);
-```
-
-Cách này hoạt động vì:
-- `LoadAndCreatePool` lưu `poolable.GetType()` → runtime type (subclass), không phải base
-- `Get<T>()` dùng `typeof(T)` → match đúng subclass
-- `Return()` dùng `instance.GetType()` → match đúng subclass
-
-## Guard tự động
-
-| Case | Xử lý |
-|------|--------|
-| Pop instance bị Destroy (scene unload) | Skip, tạo mới từ prefab |
-| `Return(null)` | Throw `ArgumentNullException` |
-| `Return()` instance không thuộc pool nào | `Destroy` + log warning |
-| `Return()` khi pool đầy (`>= maxPoolSize`) | `Destroy` trực tiếp, không gọi `OnReturnToPool` |
-| `Return()` cùng instance 2 lần | Phát hiện qua `Inactive.Contains`, skip + log warning |
-| `Dispose()` gọi 2 lần | `_pools.Count == 0` → return ngay |
-| Prefab không có IPoolable | Log error, Release handle, skip config |
-| Duplicate config cho cùng type | Log warning, Release handle thừa, giữ pool đầu |
+Mỗi `Get`/`Return`: 0 byte heap sau khi hai dictionary đã đủ sức chứa (hai thao tác dictionary, một push/pop, một cast tham chiếu);
+chuỗi lỗi chỉ dựng ở nhánh lỗi. Mỗi warm: một mảng `UniTask[n]` và một CTS. Mỗi instance: một slot dictionary (~24 B) khi
+active, một slot stack (8 B) khi inactive; `Stack` đặt capacity = `maxPoolSize` ngay từ đầu nên không cấp phát lại.
 
 ## Cấu trúc file
 
 ```
-Abstractions/Pooling/                (contracts)
-├── IPoolable.cs                     OnGetFromPool, OnReturnToPool
-├── IPoolManager.cs                  Initialize, Get<T>, Return<T>, Dispose
-└── PoolableBehaviour.cs             Abstract MonoBehaviour base — convenience cho consumer
+Abstractions/Foundations/Pooling/
+├── IPoolable.cs            OnGetFromPool, OnReturnToPool
+├── IPoolService.cs         Get<T>, Return<T>, ReleaseAll — IService<IPoolService<TKey>>
+└── PoolableBehaviour.cs    MonoBehaviour + IPoolable rỗng để override
 
-Implementations/Pooling/             (implementations)
-├── PoolConfig.cs                    Serializable struct — prefab, sizes
-└── PoolManager.cs                   MonoBehaviour [Service] — LoadAssetAsync, List pool
+Implementations/Foundations/Pooling/
+├── PoolConfig.cs           [Serializable] key, prefab, initialPoolSize, maxPoolSize
+├── PoolService.cs          abstract partial PoolService<TKey> : MonoBehaviour — hai bảng, WarmAsync, Get/Return, ReleaseAll
+└── PoolService.Editor.cs   partial, #if UNITY_EDITOR, nút ValidateConfigs
 ```
+
+## Tests
+
+`Tests/PlayMode/PoolServiceTests.cs` (viết sau khi có caller đầu tiên): host `TestPoolService : PoolService<TestPool>`, entry chèn
+qua reflection với prefab tạo lúc chạy; các case ở bảng Guard, cộng 10 000 vòng `Get`/`Return` đo 0 B cấp phát.
