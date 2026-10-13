@@ -90,5 +90,11 @@ Implementations/Foundations/Pooling/
 
 ## Tests
 
-`Tests/PlayMode/PoolServiceTests.cs` (viết sau khi có caller đầu tiên): host `TestPoolService : PoolService<TestPool>`, entry chèn
-qua reflection với prefab tạo lúc chạy; các case ở bảng Guard, cộng 10 000 vòng `Get`/`Return` đo 0 B cấp phát.
+`Tests/PlayMode/PoolServiceTests.cs` — host `TestPoolService : PoolService<TestPool>` (`TestPoolService.cs`, cùng `TestPoolable`
+đếm số lần hook và `OtherPoolable` cho ca cast sai). Không chạm Addressables: entry `PoolEntry` chèn qua reflection vào
+`_entryByKey` với prefab là GameObject tạo lúc chạy và `AssetReference` rỗng (`IsValid()` false nên `ReleaseAll` bỏ qua
+`ReleaseAsset`). Phủ bảng Guard: Get khi pool rỗng / có sẵn / key chưa warm / `T` sai / instance inactive đã bị Destroy ngoài;
+Return bình thường / hai lần / instance lạ / chạm `maxPoolSize` (Destroy sau một frame) / `null` / sau `ReleaseAll`;
+`ReleaseAll` với 2 active + 3 inactive rồi gọi lần hai; 10 000 vòng `Get`/`Return` đo 0 B bằng `AllocationMeter`
+(`Tests/PlayMode/AllocationMeter.cs`, dùng chung với `EnumKeyedLookupAllocationTests`; số thật trên player IL2CPP).
+`WarmAsync` (load, chặn gọi chồng, huỷ từ `ReleaseAll`) cần Addressables build thật — kiểm tay trong Play.
