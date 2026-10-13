@@ -891,7 +891,9 @@ Plan, không tạo file code; chỗ đặt đầu ra chưa rõ thì hỏi một 
 
 **Plan chạm cả Horcrux lẫn consumer thì phần Horcrux chỉ thêm** — member mới mang mặc định (`virtual`),
 API cũ giữ nguyên — để task framework xong là compile sạch và consumer chưa áp dụng vẫn chạy như cũ;
-mỗi task sau cũng là một mốc compile sạch. Xoá API cũ là việc riêng, sau khi mọi consumer đã chuyển.
+mỗi task sau cũng là một mốc compile sạch **và một commit riêng** — plan lớn áp vào code theo từng bước của
+nó, bước nào compile sạch rồi mới commit, để từng chỗ đổi review và đảo được riêng. Xoá API cũ là việc riêng,
+sau khi mọi consumer đã chuyển.
 
 **Developer gõ lệch plan là bình thường** (NT6). Lượt kiểm của agent sau mỗi step: compile, rồi **so
 code với plan và phân loại từng chỗ lệch** theo §2.6.
