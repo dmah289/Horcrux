@@ -141,7 +141,9 @@ Horcrux đã có runner tween và class squash-stretch — cả mục phải vi�
 **Bê một khuôn có sẵn thì soi kỹ nhất đúng những chỗ khuôn cũ *cố ý* làm** — cân nhắc kỹ nghĩa là nó
 bám chặt ngữ cảnh cũ. Với mỗi quyết định cố ý, hỏi lý do gốc có còn đúng ở bài toán này không; hết thì
 đảo và ghi lý do tại đó. *Đã sai một lần:* bê một khuôn cố ý serialize giá trị runtime vào asset sang
-bài toán lưu dữ liệu người chơi — tiến độ người chơi đi vào asset rồi vào version control.
+bài toán lưu dữ liệu người chơi — tiến độ người chơi đi vào asset rồi vào version control. *Đã sai một lần:*
+đề xuất tối giản một hệ port từ dự án khác dựa trên bản port, trong khi bản port lấy nhầm nhánh A/B cũ và gộp
+sai một bước của thuật toán — hệ **port** thì diff với **bản nguồn hiện tại** và hỏi nhánh nào là lõi trước khi tối giản.
 
 **Hệ nguồn đã trả về kiểu thì nhận kiểu, không nhận chuỗi rồi tự parse lại.** Chuỗi trung gian là parse
 cài đặt ở hai nơi: hệ nguồn đã có đường parse, log lỗi và fallback; bản thứ hai phía consumer chép lại
