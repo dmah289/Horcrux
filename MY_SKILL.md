@@ -524,6 +524,12 @@ thoát, để cái thiếu lộ thành ô trống thay vì hiện dữ liệu c�
 §3.9 là cho Editor tool, nơi người nhìn màn hình là người sửa được dữ liệu; trong build người nhìn là
 người chơi.
 
+**Giá trị cấu hình ngoài đổi hành vi gameplay thì đứng yên suốt phiên.** Nhận bản mới ở **một** mốc
+boot có giới hạn thời gian; bản về muộn để phiên sau. Đổi giữa ván là hai luật chơi trên một ván, và
+các consumer đọc ở thời điểm khác nhau sẽ lệch nhau. Chờ ở boot thay vì chỉ dùng bản của phiên trước,
+vì người chơi mới phải vào đúng nhóm A/B ngay phiên đầu. Mốc "đã xong" bắn ở **mọi** đường ra — lỗi,
+quá hạn, mất mạng — để consumer rơi về cache hoặc mặc định thay vì chờ mãi.
+
 **"Để nó nổ" đứng được nhờ vế *nổ* — phải kiểm, không được giả định.** Năm hình dạng nó **không** nổ:
 
 | Hình dạng | Vì sao im lặng | Trả về chỗ nổ bằng |
