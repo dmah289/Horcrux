@@ -76,7 +76,7 @@ namespace Horcrux.Vendors.Firebase
             }
             catch (Exception e) when (e is not OperationCanceledException)
             {
-                Debug.LogWarning("[FirebaseRemoteConfigProvider]: Fetch failed. Using last session version.");
+                Debug.LogWarning($"[FirebaseRemoteConfigProvider]: Fetch failed - {e.Message}. Using last session version.");
             }
         }
 
