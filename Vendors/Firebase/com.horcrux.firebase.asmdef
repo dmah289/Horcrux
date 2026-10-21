@@ -1,0 +1,27 @@
+{
+    "name": "com.horcrux.firebase",
+    "rootNamespace": "",
+    "references": [
+        "com.horcrux.runtime",
+        "InitArgs",
+        "InitArgs.Services",
+        "UniTask"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [
+        "HORCRUX_FIREBASE_REMOTE_CONFIG"
+    ],
+    "versionDefines": [
+        {
+            "name": "com.google.firebase.remote-config",
+            "expression": "1.0.0",
+            "define": "HORCRUX_FIREBASE_REMOTE_CONFIG"
+        }
+    ],
+    "noEngineReferences": false
+}
