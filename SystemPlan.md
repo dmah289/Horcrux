@@ -38,6 +38,8 @@
 
 **Luật kiểm tra nhanh:** nếu một type trong SDK cần biết tên/enum riêng của một game → sai chỗ. Đẩy nó ra sau một interface do game implement.
 
+**Ngoại lệ — impl vendor không mang domain game:** được nằm trong Horcrux ở `Vendors/<Vendor>/`, ngoài `Runtime/`, với asmdef riêng chỉ compile khi dự án có gói vendor (`versionDefines` đặt define theo gói, `defineConstraints` đòi define đó). Lõi `Runtime/` không tham chiếu tới nó; game chỉ gọi tên contract, nên gỡ gói vendor thì game vẫn compile. Đang có: `Vendors/Firebase/FirebaseRemoteConfigProvider`.
+
 ## 0.2 Quy ước DI
 
 ```csharp

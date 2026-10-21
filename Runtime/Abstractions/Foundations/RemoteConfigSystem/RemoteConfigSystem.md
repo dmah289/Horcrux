@@ -26,20 +26,25 @@ BaseRemoteConfigCollection               GameRemoteConfig
                                            [CreateAssetMenu]
 RemoteConfig<T>                            → 1 field [MarkedRemoteConfig] cho mỗi biến
 MarkedRemoteConfig  (attribute)
-IRemoteConfigProvider  (contract)        IRemoteConfigProvider  (bản cài đặt thật)
+IRemoteConfigProvider  (contract)        lời gọi FetchAndActivateAsync lúc boot
 RemoteConfigCsv  (Editor authoring)      Resources/<ResourcePath>.asset
+
+SDK — com.horcrux.firebase (Vendors/Firebase, chỉ compile khi có gói Firebase Remote Config)
+──────────────────────────────
+FirebaseRemoteConfigProvider : IRemoteConfigProvider   [Service(typeof(IRemoteConfigProvider))]
 ```
 
-Ba thứ SDK **không** khai hộ được, luôn nằm phía dự án: `[Service]`, `[CreateAssetMenu]`, và đường
-dẫn Resources.
+Ba thứ SDK **không** khai hộ được, luôn nằm phía dự án: `[Service]` của collection, `[CreateAssetMenu]`,
+và đường dẫn Resources. Dự án chỉ gọi tên `IRemoteConfigProvider`, không gọi tên bản Firebase: gỡ gói
+Firebase thì asmdef vendor tắt mà dự án vẫn compile.
 
 ## Đường đi của một giá trị
 
 ```
 [Firebase / server]
-      │ fetch
+      │ FetchAndActivateAsync(timeout, ct)    ← dự án gọi một lần lúc boot
       ▼
-IRemoteConfigProvider                      ← dự án cài, đăng ký [Service]
+IRemoteConfigProvider                      ← Vendors/Firebase, hoặc bản dự án tự cài
       │ OnFetched   (hoặc IsFetched == true nếu đã fetch trước)
       ▼
 BaseRemoteConfigCollection.OnRemoteConfigFetched()
@@ -88,23 +93,23 @@ Cache chỉ được ghi khi parse **thành công**, nên một payload sai form
 
 ### 1. Provider (một lần cho cả dự án)
 
+Dự án có gói `com.google.firebase.remote-config` thì không phải viết gì:
+`Vendors/Firebase/FirebaseRemoteConfigProvider` tự compile và tự đăng ký `[Service]`. Vendor khác thì
+cài `IRemoteConfigProvider` theo cùng hợp đồng:
+
+| Thành viên | Hợp đồng |
+|---|---|
+| `FetchAndActivateAsync(timeout, ct)` | chỉ lời gọi đầu có tác dụng · chờ tối đa `timeout` (đếm giờ thật) rồi activate bản mới nhất đang giữ · fetch về muộn để phiên sau · `IsFetched = true` rồi bắn `OnFetched` đúng một lần ở **mọi** đường ra: xong, lỗi, quá hạn, huỷ |
+| `TryGetRemoteValue(key, out value)` | `false` khi server không khai key — collection rơi về cache rồi Inspector. Chuỗi rỗng server trả về thì trả `true`, để `RemoteConfig<T>` xử lý ca rỗng |
+
+Gọi fetch ở màn boot, chờ xong rồi mới vào game — giá trị đứng yên suốt phiên:
+
 ```csharp
-[Service(typeof(IRemoteConfigProvider))]
-public class FirebaseRemoteConfigProvider : IRemoteConfigProvider
-{
-    public event Action OnFetched;
-    public bool IsFetched { get; private set; }
-
-    public bool TryGetRemoteValue(string firebaseKey, out string value) { /* … */ }
-
-    public async UniTask FetchAsync()
-    {
-        // …
-        IsFetched = true;
-        OnFetched?.Invoke();
-    }
-}
+IGameRemoteConfig.Service.Initialize();
+await remoteConfigProvider.FetchAndActivateAsync(TimeSpan.FromSeconds(2), destroyCancellationToken);
 ```
+
+Người gọi chọn `timeout` vì đó là luật boot của game, không phải của provider.
 
 ### 2. Collection (một lần cho cả dự án)
 
@@ -247,6 +252,7 @@ bằng `#` hoặc `//` bị bỏ qua.
 | **`implicit operator T` bất đối xứng khi so sánh** | `variable == null` là so **THAM CHIẾU** và an toàn — `RemoteConfig<T>` không khai `operator ==`, literal `null` không có kiểu, nên tập candidate operator rỗng và C# dùng phép so tham chiếu có sẵn; operator không tham gia. Nhưng so với toán hạng **có kiểu `T`** thì `T.op_Equality` vào tập, phép so tham chiếu bị loại, và variable **bị convert**: với `RemoteConfig<string>` mà `Value` là null, `variable == null` ra `false` còn `variable == s` (`s` là `string` null) ra `true`. Hai dòng trông như nhau, trả lời ngược nhau. `ReferenceEquals(variable, null)` **không cần** — `== null` đã kiểm đúng field. Kiểm lại: biên dịch bản rút gọn bằng `Editor/Data/DotNetSdkRoslyn/csc.dll` trên `Editor/Data/NetCoreRuntime/dotnet.exe`, ca phân biệt là *variable không null nhưng `Value` bên trong null* |
 | **Ô import là `[NonSerialized]`** | `[SerializeField]` bọc trong `#if UNITY_EDITOR` làm Editor ghi field đó vào asset mà build strip nó đi → layout mismatch → **crash native** khi đọc asset (`Read N bytes but expected M bytes`). Muốn hiện trong Inspector mà không serialize thì `[NonSerialized, ShowInInspector]` |
 | **Field mark nhưng null hoặc sai kiểu** | `Initialize()` log tên field rồi `continue`, không ném — các biến còn lại vẫn apply và provider vẫn được wire |
+| **Provider là class thuần, vẫn một instance cho mọi người gọi** | InitArgs tự `new` class mang `[Service]` (constructor không tham số) **một lần**, trước `Awake` của scene đầu tiên (`LazyInit` mặc định `false`). Màn boot nhận qua `Init`, collection tra bằng `IRemoteConfigProvider.TryGet` — cùng một object, nên `OnFetched` màn boot kích là event collection đang nghe. Không cần `MonoBehaviour` vì provider không có gì để kéo thả, và đời của nó là cả phiên |
 | **Không tạo asset trực tiếp từ base** | `abstract` là cố ý: một collection không có biến nào thì không có việc gì làm. `[CreateAssetMenu]` nằm ở class dẫn xuất |
 | **Một asset cho cả dự án, không phải mỗi biến một SO** | mở một asset là thấy cả bảng cấu hình và import CSV vào được. Một class + một asset cho mỗi biến `bool` đắt hơn nhiều lần thứ nó mua |
 
@@ -257,7 +263,7 @@ bằng `#` hoặc `//` bị bỏ qua.
 | Type | Thành viên |
 |---|---|
 | `IRemoteConfig` | `string FirebaseKey { get; }` · `bool AllowFetching { get; set; }` · `void ApplyRemoteValue(IRemoteConfigProvider)` · `void ResetFetchedState()` |
-| `IRemoteConfigProvider : IService<IRemoteConfigProvider>` | `event Action OnFetched` · `bool IsFetched { get; }` · `bool TryGetRemoteValue(string firebaseKey, out string value)` |
+| `IRemoteConfigProvider : IService<IRemoteConfigProvider>` | `event Action OnFetched` · `bool IsFetched { get; }` · `UniTask FetchAndActivateAsync(TimeSpan timeout, CancellationToken ct)` · `bool TryGetRemoteValue(string firebaseKey, out string value)` |
 | `IRemoteConfigCollection` | `IEnumerable<IRemoteConfig> RemoteConfigs { get; }` · `IRemoteConfigProvider RemoteConfigProvider { get; }` · `void Initialize()` |
 
 **`Horcrux.Runtime.Implementations.RemoteConfigSystem`**
@@ -269,6 +275,8 @@ bằng `#` hoặc `//` bị bỏ qua.
 | `BaseRemoteConfigCollection : ScriptableObject, IRemoteConfigCollection` | `abstract` · `void Initialize()` · `protected virtual void OnRemoteConfigsApplied()` · `protected virtual void OnDestroy()` |
 | `RemoteConfigCsv` | `internal static` · `bool TryParse(Type, string csv, out object, out string report)` · `bool TryFormat(Type, object, out string csv, out string error)` |
 
+**`Horcrux.Vendors.Firebase`** — `FirebaseRemoteConfigProvider : IRemoteConfigProvider`, `[Service(typeof(IRemoteConfigProvider))]`.
+
 **`Horcrux.Runtime.Abstractions`** — `IService<out T>`: `static T Service` · `static bool TryGet(out T)`.
 
 ## Cấu trúc file
@@ -277,11 +285,14 @@ bằng `#` hoặc `//` bị bỏ qua.
 Runtime/Abstractions/Foundations/RemoteConfigSystem/
 ├── IRemoteConfig.cs              hợp đồng một biến
 ├── IRemoteConfigCollection.cs    hợp đồng collection — interface THUẦN, xem mục Bẫy
-└── IRemoteConfigProvider.cs      hợp đồng nguồn fetch
+├── IRemoteConfigProvider.cs      hợp đồng nguồn fetch
+└── RemoteConfigSystem.md         tài liệu này
 
 Runtime/Implementations/Foundations/RemoteConfigSystem/
 ├── RemoteConfig.cs               RemoteConfig<T> — giữ giá trị, parse, cache PlayerPrefs, nút JSON/CSV
 ├── BaseRemoteConfigCollection.cs abstract base + MarkedRemoteConfig — scan, wire, apply, 2 nút
-├── RemoteConfigCsv.cs            CSV ⇄ value, Editor authoring
-└── RemoteConfigSystem.md         tài liệu này
+└── RemoteConfigCsv.cs            CSV ⇄ value, Editor authoring
+
+Vendors/Firebase/                 asmdef com.horcrux.firebase — bật khi có com.google.firebase.remote-config
+└── FirebaseRemoteConfigProvider.cs
 ```

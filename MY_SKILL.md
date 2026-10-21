@@ -185,16 +185,18 @@ Với **mỗi chức năng mới**, trước khi viết, trả lời: *bê sang 
 
 | Chức năng | Nơi đặt | Ai viết |
 |---|---|---|
-| Không gọi tên type nào của dự án; dự án sau cũng cần | Horcrux — `Foundations/` nếu là hệ, `Utilities/` nếu là helper thuần | **developer tự gõ**, theo **Plan** agent viết (§5.3) |
-| Dựng trên nhiều hệ Horcrux, vẫn không mang domain dự án | Horcrux — `Composites/` | developer, theo Plan |
+| Không gọi tên type nào của dự án; dự án sau cũng cần | Horcrux — `Foundations/` nếu là hệ, `Utilities/` nếu là helper thuần | code: **developer tự gõ**, theo **Plan** agent viết (§5.3) · tài liệu: agent |
+| Dựng trên nhiều hệ Horcrux, vẫn không mang domain dự án | Horcrux — `Composites/` | code: developer, theo Plan · tài liệu: agent |
 | Gọi tên domain của dự án | dự án | agent |
 | Lõi chung + lớp nối dự án | **tách**: lõi vào Horcrux theo Plan; lớp nối agent viết trong dự án | cả hai |
 
 Phân loại là **đề xuất kèm giá**, developer quyết (NT5) — nhưng việc hỏi là bắt buộc: **im lặng viết vào
-dự án thứ vốn mang đi được là vi phạm**, vì sửa chỗ đặt sau là đập cả cây phụ thuộc. **Mọi dòng vào
-Horcrux developer tự gõ, trong hay ngoài Plan:** framework đi theo mọi dự án sau nên developer phải hiểu
-và chịu trách nhiệm từng dòng; agent viết Plan, đoạn mẫu, review, test. Áp cho cả việc **nâng** một
-chức năng đang có lên Horcrux khi có người dùng thứ hai (§3.2).
+dự án thứ vốn mang đi được là vi phạm**, vì sửa chỗ đặt sau là đập cả cây phụ thuộc. **Mọi dòng code
+vào Horcrux developer tự gõ, trong hay ngoài Plan:** framework đi theo mọi dự án sau nên developer phải
+hiểu và chịu trách nhiệm từng dòng chạy; agent viết Plan, đoạn mẫu, review, test. **Tài liệu trong
+Horcrux — tài liệu module, file này — agent viết** (§5): nghiệm thu tài liệu là đối chiếu với code, và
+developer chốt nội dung bằng veto. Áp cho cả việc **nâng** một chức năng đang có lên Horcrux khi có
+người dùng thứ hai (§3.2).
 
 ## 2.5 Ghi ngữ cảnh đã chốt vào đầu output
 
@@ -402,7 +404,10 @@ file** (`S`). `partial` cho logic runtime là dấu hiệu SOLID và OOP chưa �
 Ranh giới hệ thống phải **nhìn thấy được** trong cấu trúc dự án; mỗi hệ có một trách nhiệm gọi được
 tên. **Module không tham chiếu trực tiếp implementation của nhau** — cơ chế trung gian chọn theo bài
 toán (interface, event bus, dữ liệu thuần), miễn đạt: đổi implementation một bên mà bên kia không phải
-sửa. Bên trong một hệ thì không cần tầng này (`D` ở §3.1).
+sửa. Bên trong một hệ thì không cần tầng này (`D` ở §3.1). **Consumer cần gọi method nào thì method đó
+thuộc contract** — đăng ký service thêm dưới kiểu cụ thể để với tới method ngoài contract là gọi tên
+implementation qua ranh giới. *Đã sai một lần:* plan cho màn boot nhận bản cài đặt vendor để gọi hàm
+fetch; gỡ gói vendor là dự án hết compile, dù asmdef vendor đã được dựng để tắt theo gói.
 
 **Phân tầng theo mức phụ thuộc, quyết ngay từ đầu** (NT3): hệ **độc lập** (bê sang dự án khác được) ·
 hệ **kết hợp** (dựng trên nhiều hệ độc lập) · **Utilities** static và universal, không phụ thuộc hệ nào.
