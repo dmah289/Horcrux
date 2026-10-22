@@ -735,7 +735,9 @@ nhau — thứ duy nhất dùng được khi hệ hỏng lúc 2 giờ sáng. H�
   nội dung bên trong bị đổi theo.
   **Đổi đơn vị cũng là đổi cả hệ:** hằng số khoảng cách, lề, lực nhảy trong code mang đơn vị cũ. *Đã sai một lần:*
   đổi camera từ 41 sang 100 px/unit, quét asset kỹ nhưng không grep hằng số trong code; lần Play đầu grid rộng gấp
-  ba, bàn chơi to gấp đôi. Grep mọi hằng mang đơn vị **trước** lần chạy đầu, không đợi nhìn thấy.
+  ba, bàn chơi to gấp đôi. Grep mọi hằng mang đơn vị **trước** lần chạy đầu, không đợi nhìn thấy. Hằng **scale** bù cho cha
+  cũ (`localScale = 1.5`) và scale còn sót trên transform của prefab dựng lại cũng mang đơn vị cũ: dựng lại prefab thì đặt lại
+  scale của mọi transform, không chỉ sprite và size.
 
 ## 3.8 Dữ liệu đi qua tool — import/export
 
