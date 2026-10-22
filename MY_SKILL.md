@@ -93,7 +93,9 @@ nắm rõ từng ngóc ngách: code có thể do người khác viết, viết t
 dẫn và dòng · **(2) tôi hiểu ý định là gì** — phát biểu lại rồi hỏi thẳng có khớp thiết kế không ·
 **(3) developer đã biết chỗ này chưa** — chưa thì là chủ ý hay chỗ đã trôi. Kể lại toàn bộ code vừa đọc
 là bắt developer đọc tường thuật thay vì trả lời một câu hỏi. Mỗi lượt review đọc lại file hiện tại
-(NT8): báo lại lỗi đã sửa làm mất tin vào cả những phát hiện còn đúng.
+(NT8): báo lại lỗi đã sửa làm mất tin vào cả những phát hiện còn đúng. *Đã sai một lần:* báo hai sorting layer
+trong prefab là "đã chết" vì không thấy số đó trong TagManager — YAML của renderer ghi ID có dấu, TagManager ghi
+`uniqueID` không dấu. Số đọc từ hai file serialize chỉ so được khi đã quy về một kiểu, hoặc đọc qua API của engine.
 
 ## 2.3 Văn phong khi đối thoại
 
@@ -684,7 +686,8 @@ nhau — thứ duy nhất dùng được khi hệ hỏng lúc 2 giờ sáng. H�
   class, DTO) PascalCase như property — người đọc ngoài class thấy `step.Goal`, không cần biết nó là
   field hay property. Khoá wire format sinh từ tên field thì casing là hợp đồng: chốt trước khi bản dữ
   liệu đầu tiên rời máy developer.
-- **Tên GameObject theo dạng `abc_xyz_0`: chỉ chữ cái thường, số và `_`** — không hoa, không cách, không dấu. Một dạng cho mọi nơi đặt tên (tay trong Editor lẫn code `new GameObject(...)`, cùng nhóm thì đánh số hậu tố) nên tên đoán được và tìm được bằng text, không phụ thuộc người đặt. Chỉ áp cho GameObject; type, member theo các luật trên.
+- **Tên GameObject theo dạng `abc_xyz_0`: chỉ chữ cái thường, số và `_`** — không hoa, không cách, không dấu. Một dạng cho mọi nơi đặt tên (tay trong Editor lẫn code `new GameObject(...)`, cùng nhóm thì đánh số hậu tố) nên tên đoán được và tìm được bằng text, không phụ thuộc người đặt. Chỉ áp cho GameObject; type, member theo các luật trên. **Root của prefab mang tên
+  file** (Unity ép lại khi lưu) nên giữ tên file; luật áp cho mọi object con và object trong scene.
 - **Hai chế độ loại trừ nhau là `enum` hai phần tử, không `bool`**: `ScrollDirection.Upwards` đọc được
   ở cả Inspector lẫn call site; `bool` chỉ nói một phía, và chế độ thứ ba thêm vào `bool` là đổi kiểu.
   **Chuỗi bước có bước lúc có lúc không là `enum` bước, không bộ đếm**: enum nói thẳng đang ở đâu; bước
