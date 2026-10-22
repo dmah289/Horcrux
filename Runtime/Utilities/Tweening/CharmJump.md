@@ -96,7 +96,7 @@ CharmJump(B, h, d, ease)
 | Bẫy | Hệ quả |
 |---|---|
 | Điểm xuất phát chỉ biết **sau** khi Sequence đã dựng (ví dụ được gán trong `ChainCallback`) | `CharmJump` đọc `position` lúc gọi nên nhảy từ chỗ cũ. Ca này tự lái `t` bằng `Tween.Custom` rồi gọi `JumpArc.Evaluate`; closure là giá phải trả |
-| B thấp hơn A mà `h < −Δy/2` | card không bật lên lúc đầu, đi xuống ngay. `h < −Δy/4` (K < 0) thì cung võng xuống dưới cả đường thẳng. DOTween cũng vậy |
+| B thấp hơn A mà `h < −Δy/2` | vật không bật lên lúc đầu, đi xuống ngay. `h < −Δy/4` (K < 0) thì cung võng xuống dưới cả đường thẳng. DOTween cũng vậy |
 | Nhét Sequence `useUnscaledTime: true` vào một Sequence scaled | PrimeTween cảnh báo và Sequence cha thắng |
 | Gọi `CharmJump` lên object đang có tween position khác | hai tween cùng ghi `position`; tween nào chạy sau trong frame thắng ở trục nó ghi. Dừng tween cũ trước |
 | Dự án có extension method trùng tên với `Horcrux.Runtime.Utilities.ExtensionMethods` (ví dụ `SetAlpha`) | file `using` cả hai namespace thì call site báo lỗi ambiguous (CS0121). File chuyển sang Horcrux thì bỏ `using` namespace extension của dự án, để mọi extension trùng tên dùng bản Horcrux |

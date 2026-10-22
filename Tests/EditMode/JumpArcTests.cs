@@ -52,7 +52,7 @@ namespace Horcrux.Tests
             }
         }
 
-        // DOTween's one-jump DOJump: OutQuad height offset plus the Yoyo bump 4h·t(1−t), as Card computed it by hand.
+        // DOTween's one-jump DOJump: OutQuad height offset plus the Yoyo bump 4h·t(1−t), as the hand-written jump computed it.
         private static float DOTweenJumpHeight(float fromY, float toY, float height, float t)
             => fromY + (toY - fromY) * (t * (2f - t)) + height * 4f * t * (1f - t);
 
