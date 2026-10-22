@@ -126,6 +126,16 @@ namespace Horcrux.Tests
             Assert.That(_label.text, Is.EqualTo("Combo x2"));
         });
 
+        [Test]
+        public void PlayAsync_SameFrame_WritesStartWidth()
+        {
+            _bar.Set(0f, 1f, "x");
+
+            _bar.PlayAsync(1f, 0f, 1f, "x", CancellationToken.None).Forget();
+
+            Assert.That(_fill.rect.width, Is.EqualTo(FullWidth).Within(Tolerance));
+        }
+
         [UnityTest]
         public IEnumerator PlayAsync_ScaledTime_StandsStillWhileTimeScaleIsZero()
         {

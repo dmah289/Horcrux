@@ -38,6 +38,9 @@ namespace Horcrux.Runtime.Utilities.UI
             if (!TryWriteGoalAndLabel(goal, labelContent))
                 return UniTask.CompletedTask;
 
+            // The tween writes its first value on the next update; without this the old width shows for one frame.
+            WriteFill(from);
+
             float duration = Mathf.Abs(to - from) / Mathf.Max(0.0001f, speed);
             return Tween.Custom(this, from, to, duration, static (bar, value) => bar.WriteFill(value), ease,
                 useUnscaledTime: useUnscaledTime).SetCancellationToken(ct);
