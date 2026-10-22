@@ -308,7 +308,9 @@ bất biến · §3.5 async — **luật ngang mọi code** §3.7 naming · §3.
 > (đường tự tiêm thoát sớm, log chỉ có trong `#if DEV_MODE`). Ca này **bắt buộc** một `*Initializer`
 > kéo tay vào scene. Editor và tooling không bắt buộc dùng InitArgs — constructor injection hoặc static
 > factory ở đó hợp lệ. `Awake` của base gọi `Init` **trước** `OnAwake`, nên dùng phụ thuộc đã tiêm trong
-> `OnAwake` an toàn ngang `Start`.
+> `OnAwake` an toàn ngang `Start`. Initializer không phụ thuộc nhau được xếp theo assembly → namespace →
+> `FullName` và ghi `executionOrder` vào `.meta` mỗi lần Editor import: **đổi tên một Initializer là đổi thứ
+> tự `Awake`** giữa các object kích hoạt cùng lượt. Thứ tự cần thật thì khai `[InitAfter]`, không dựa vào tên.
 
 **Đổi từ resolve lười sang resolve sớm là dịch cửa sổ thất bại, không phải bỏ nó.** Gọi lúc dùng thì
 hỏng lúc dùng; nhận qua `Init` thì hỏng lúc khởi tạo. Đổi chiều nào cũng phải hỏi: **lúc đó thứ mình
@@ -721,6 +723,11 @@ nhau — thứ duy nhất dùng được khi hệ hỏng lúc 2 giờ sáng. H�
   thể mới lộ ra. *Đã sai một lần:* so diff bằng cách chuẩn hoá hai vế che mất thay đổi trong chuỗi ký tự
   — thư mục mod `"Items"` bị đổi theo tên member mà không ai thấy. *Đã sai một lần:* danh sách field
   serialize lập tay sót một field, key YAML còn tên cũ ở bốn prefab, giá trị sẽ về default khi import.
+  Đổi tên bằng luật thay máy móc thì nghiệm thu bằng **áp luật lên cây gốc rồi so từng blob với cây mới**,
+  theo cả đường dẫn; file đổi ngoài tập kỳ vọng là lỗi. So blob đã chuẩn hoá xuống dòng, không so file trên
+  đĩa. Luật chạy nhiều bước vẫn so với **cây gốc**, không so với cây của bước trước. *Đã sai một lần:* bước
+  sau chạy luật đường dẫn trên cây mà bước trước đã đổi thư mục cha, nhánh ngoại lệ không còn khớp, và tên
+  nội dung bên trong bị đổi theo.
 
 ## 3.8 Dữ liệu đi qua tool — import/export
 
