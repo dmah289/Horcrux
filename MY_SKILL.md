@@ -731,6 +731,9 @@ nhau — thứ duy nhất dùng được khi hệ hỏng lúc 2 giờ sáng. H�
   đĩa. Luật chạy nhiều bước vẫn so với **cây gốc**, không so với cây của bước trước. *Đã sai một lần:* bước
   sau chạy luật đường dẫn trên cây mà bước trước đã đổi thư mục cha, nhánh ngoại lệ không còn khớp, và tên
   nội dung bên trong bị đổi theo.
+  **Đổi đơn vị cũng là đổi cả hệ:** hằng số khoảng cách, lề, lực nhảy trong code mang đơn vị cũ. *Đã sai một lần:*
+  đổi camera từ 41 sang 100 px/unit, quét asset kỹ nhưng không grep hằng số trong code; lần Play đầu grid rộng gấp
+  ba, bàn chơi to gấp đôi. Grep mọi hằng mang đơn vị **trước** lần chạy đầu, không đợi nhìn thấy.
 
 ## 3.8 Dữ liệu đi qua tool — import/export
 
