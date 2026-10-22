@@ -687,7 +687,9 @@ nhau — thứ duy nhất dùng được khi hệ hỏng lúc 2 giờ sáng. H�
   field hay property. Khoá wire format sinh từ tên field thì casing là hợp đồng: chốt trước khi bản dữ
   liệu đầu tiên rời máy developer.
 - **Tên GameObject theo dạng `abc_xyz_0`: chỉ chữ cái thường, số và `_`** — không hoa, không cách, không dấu. Một dạng cho mọi nơi đặt tên (tay trong Editor lẫn code `new GameObject(...)`, cùng nhóm thì đánh số hậu tố) nên tên đoán được và tìm được bằng text, không phụ thuộc người đặt. Chỉ áp cho GameObject; type, member theo các luật trên. **Root của prefab mang tên
-  file** (Unity ép lại khi lưu) nên giữ tên file; luật áp cho mọi object con và object trong scene.
+  file** (Unity ép lại khi lưu) nên giữ tên file; luật áp cho mọi object con và object trong scene. *Đã sai một lần:*
+  đặt tên theo luật cho object mang một component bên thứ ba tự đổi tên object trong Editor — mỗi lần mở scene sinh
+  một override tên trên instance prefab. Component ép tên thì giữ đúng tên nó ép, ghi ngoại lệ tại chỗ.
 - **Hai chế độ loại trừ nhau là `enum` hai phần tử, không `bool`**: `ScrollDirection.Upwards` đọc được
   ở cả Inspector lẫn call site; `bool` chỉ nói một phía, và chế độ thứ ba thêm vào `bool` là đổi kiểu.
   **Chuỗi bước có bước lúc có lúc không là `enum` bước, không bộ đếm**: enum nói thẳng đang ở đâu; bước
