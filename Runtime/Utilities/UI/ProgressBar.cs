@@ -11,40 +11,62 @@ namespace Horcrux.Runtime.Utilities.UI
         [Splitter("References")]
         [SerializeField] private RectTransform fill;
         [SerializeField] private TextMeshProUGUI label;
-        
+
         [Splitter("Configs")]
+        [SerializeField] private bool useUnscaledTime = true;
         [SerializeField] private float fullWidth;
         [SerializeField] private Ease ease;
         [SerializeField] private float speed;
 
+        private float _goal;
+
         #region API
 
-        public void Set(int curr, int goal)
+        /// <param name="labelContent">Null keeps the current label text: fill only.</param>
+        public void Set(float curr, float goal, string labelContent)
         {
-            Write(curr, goal);
+            if (!TryWriteGoalAndLabel(goal, labelContent))
+                return;
+
+            WriteFill(curr);
         }
 
-        public UniTask PlayAsync(int from, int to, int goal, CancellationToken ct)
+        /// <summary>Label is written once at the start; only the fill width changes per frame.</summary>
+        /// <param name="labelContent">Null keeps the current label text: fill only.</param>
+        public UniTask PlayAsync(float from, float to, float goal, string labelContent, CancellationToken ct)
         {
+            if (!TryWriteGoalAndLabel(goal, labelContent))
+                return UniTask.CompletedTask;
+
             float duration = Mathf.Abs(to - from) / Mathf.Max(0.0001f, speed);
-            return Tween.Custom(from, to, duration, value => Write(value, goal), ease,
-                useUnscaledTime: true).SetCancellationToken(ct);
+            return Tween.Custom(this, from, to, duration, static (bar, value) => bar.WriteFill(value), ease,
+                useUnscaledTime: useUnscaledTime).SetCancellationToken(ct);
         }
 
         #endregion
 
         #region Class Methods
 
-        private void Write(float curr, int goal)
+        private bool TryWriteGoalAndLabel(float goal, string labelContent)
         {
             if (goal <= 0)
             {
-                Debug.LogError($"[ProgressBar]: Goal of {gameObject.name} <= 0");
-                return;
+                Debug.LogError($"[ProgressBar]: Goal of {gameObject.name} <= 0", this);
+                return false;
             }
-            
-            fill?.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, fullWidth * curr / goal);
-            label?.SetText("{0}/{1}", Mathf.RoundToInt(curr), goal);
+
+            _goal = goal;
+
+            if (label != null && labelContent != null)
+                label.SetText(labelContent);
+
+            return true;
+        }
+
+        private void WriteFill(float curr)
+        {
+            if (fill != null)
+                fill.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, fullWidth * curr / _goal);
         }
 
         #endregion
