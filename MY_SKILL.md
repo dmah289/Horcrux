@@ -390,7 +390,7 @@ file** (`S`). `partial` cho logic runtime là dấu hiệu SOLID và OOP chưa �
 |---|---|
 | Code chỉ có ở Editor (ca `partial` được phép) | file `*.Editor.cs` khai `partial` của cùng class, **bên trong vẫn** `#if UNITY_EDITOR` — file runtime không bị `#if` cắt ngang, nút Editor đọc thẳng private member |
 | Nhận phụ thuộc | `MonoBehaviour<T>` cho component thường · `IInitializable<T>` khi class đã kế thừa base khác · không service locator bên trong hệ · **object sinh lúc chạy (`Instantiate` prefab) tự nhận service qua `Init` của chính nó** — không truyền service vào hàm `Instantiate` hay nơi sinh, nơi sinh không phải biết object con cần gì |
-| Helper thao tác lên một object có sẵn (ca `partial` được phép) | extension method trên type đó, file partial `<Type>Extensions.<Nhóm>.cs` — call site đọc thành câu, tìm được từ chính object, không bao giờ che instance method (§3.4) |
+| Helper thao tác lên một object có sẵn (ca `partial` được phép) | extension method trên type đó, file partial `<Type>Extensions.<Nhóm>.cs` — call site đọc thành câu, tìm được từ chính object, không bao giờ che instance method (§3.4). File partial mới khai **đúng namespace của class gốc**, không theo thư mục: IDE sinh namespace theo thư mục thì ra một class thứ hai cùng tên mà compile vẫn sạch. *Đã sai một lần:* file sinh ra namespace lặp `Horcrux.Runtime.Horcrux.Runtime…`, consumer phải `using` một namespace lạ |
 | Dựng host | hệ **không** tự `new GameObject` — host là component kéo tay vào scene, chu kỳ và collection đọc được trong Inspector (§3.6) |
 | Field serialize | nhóm bằng `[Splitter("References")]` (ô kéo) rồi `[Splitter("Configs")]` (số chỉnh), References đứng trước — mở Inspector thấy ngay thứ **phải nối** trước thứ có thể để mặc định |
 | Field private runtime | tiền tố `_` (`_module`, `_isOpen`); field `[SerializeField]` **không** `_` — đọc tên trong thân hàm biết giá trị đến từ Inspector hay từ code |
@@ -466,7 +466,10 @@ và **không chạm vào bộ phận của base**, chỉ gọi động từ củ
 
 ## 3.3 Hiệu năng runtime
 
-Luật ở NT2; mục này là cách đạt. **Nghiệm thu:** chỉ ra được **chỗ đo** và **số trước–sau** (NT8).
+Luật ở NT2; mục này là cách đạt. **Nghiệm thu:** chỉ ra được **chỗ đo** và **số trước–sau** (NT8). Phép đo "0 cấp
+phát" đi kèm **đối chứng**: cùng dụng cụ phải bắt được một cấp phát cỡ đang tìm, nếu không thì "đạt" không chứng minh gì.
+*Đã sai một lần:* meter đo theo kích thước heap báo +0 B cho 1000 closure trong Editor, hai test "0 B" đạt vô nghĩa;
+recorder đếm từng GC.Alloc (`Is.Not.AllocatingGCMemory()` của Unity Test Framework) thì thấy.
 
 Trước khi cache hay tối ưu, hỏi ba câu theo thứ tự — "có" ở câu nào thì dừng ở đó: có thể **không cần
 tính** nó không · tính **một lần lúc authoring** được không (§3.6) · đổi **cấu trúc dữ liệu** để câu
