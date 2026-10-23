@@ -2842,7 +2842,7 @@ Hai lỗi phụ, nhỏ hơn nhưng rất hay gặp:
 
 ---
 
-*Tài liệu thiết kế. Khi bắt đầu hiện thực một hệ: đọc §0 → đọc mục của hệ đó → viết spec/plan riêng tự chứa, đặt file `.md` cạnh `Implementations/` của hệ, rồi cập nhật dòng tương ứng ở bảng tổng quan.*
+*Tài liệu thiết kế. Khi bắt đầu hiện thực một hệ: đọc §0 → đọc mục của hệ đó → viết spec/plan riêng tự chứa, đặt file `.md` trong `Plans/` ở gốc Horcrux, rồi cập nhật dòng tương ứng ở bảng tổng quan.*
 
 
 

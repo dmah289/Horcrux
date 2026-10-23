@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CharmJump — toán của DOJump</title>
+<script>document.documentElement.classList.add('js')</script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{color-scheme:dark;--bg:#0d1117;--bg2:#161b22;--bg3:#1c2333;--bg4:#242d3a;--tx:#e6edf3;--tx2:#8b949e;--tx3:#484f58;--ac:#58a6ff;--ac2:#bc8cff;--gr:#3fb950;--or:#d29922;--rd:#f85149;--bd:#30363d;--r:10px;--mono:'JetBrains Mono','Fira Code','Cascadia Code','SF Mono',monospace;--sans:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif}
+html{scroll-behavior:smooth;background:var(--bg);color:var(--tx);font:17px/1.7 var(--sans)}
+body{background:var(--bg)}
+a{color:var(--ac);text-decoration:none}a:hover{text-decoration:underline}
+#progress{position:fixed;top:0;left:0;height:3px;background:linear-gradient(90deg,var(--ac),var(--ac2));width:0;z-index:999;transition:width .1s}
+#header{max-width:920px;margin:0 auto;padding:4rem 1.5rem 2rem;border-bottom:1px solid var(--bd)}
+#header h1{font-size:clamp(2rem,5vw,3rem);font-weight:800;letter-spacing:-.03em;color:var(--ac);background:linear-gradient(135deg,var(--ac),var(--ac2));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+#header .sub{font-size:1.05rem;color:var(--tx2);margin-top:.4rem}
+#header .badge{display:inline-block;margin-top:.8rem;padding:.3em .9em;border:1px solid var(--bd);border-radius:99px;font-family:var(--mono);font-size:.78rem;color:var(--tx2)}
+main{max-width:920px;margin:0 auto;padding:0 1.5rem 6rem}
+section{padding-top:4rem}
+#toc{max-width:920px;margin:3rem auto;padding:0 1.5rem}
+#toc h2{font-size:1.3rem}
+#toc ol{columns:2;column-gap:2rem;padding-left:1.5em}
+#toc li{font-size:.92rem;margin-bottom:.3rem;break-inside:avoid}
+@media(max-width:600px){#toc ol{columns:1}#header,main,#toc{padding-left:1rem;padding-right:1rem}}
+footer{text-align:center;padding:3rem 1rem;color:var(--tx3);font-size:.85rem;border-top:1px solid var(--bd)}
+.js section .reveal{opacity:0;transform:translateY(24px);transition:opacity .6s ease,transform .6s ease}
+.js section .reveal.visible{opacity:1;transform:none}
+h2{font-size:1.9rem;font-weight:700;letter-spacing:-.02em;margin-bottom:1.5rem;padding-bottom:.5rem;border-bottom:1px solid var(--bd)}
+h3{font-size:1.3rem;font-weight:600;margin:2.5rem 0 1rem;color:var(--ac)}
+p,ul,ol{margin-bottom:1rem}ul,ol{padding-left:1.3em}li{margin-bottom:.3rem}
+strong{color:var(--tx);font-weight:600}
+em{color:var(--ac2);font-style:normal}
+code{font-family:var(--mono);font-size:.88em;background:var(--bg3);padding:.15em .4em;border-radius:4px;overflow-wrap:anywhere}
+pre{background:var(--bg3);border:1px solid var(--bd);border-radius:var(--r);padding:1rem 1.2rem;margin:1.2rem 0;overflow-x:auto}
+pre code{display:block;background:none;padding:0;font-size:.85rem;line-height:1.6;overflow-wrap:normal}
+.card{background:var(--bg2);border:1px solid var(--bd);border-radius:var(--r);padding:1.5rem;margin:1.5rem 0}
+.card-title{font-weight:600;margin-bottom:.75rem;font-size:1.05rem;color:var(--ac)}
+.note{border-left:3px solid var(--or);background:var(--bg2);padding:1rem 1.2rem;border-radius:0 var(--r) var(--r) 0;margin:1.5rem 0;font-size:.92rem;color:var(--tx2)}
+.note strong{color:var(--or)}
+.note.good{border-left-color:var(--gr)}.note.good strong{color:var(--gr)}
+.note.bad{border-left-color:var(--rd)}.note.bad strong{color:var(--rd)}
+.eq{background:var(--bg3);border:1px solid var(--bd);border-radius:var(--r);padding:1.1rem 1.3rem;margin:1.3rem 0;overflow-x:auto;text-align:center}
+.eq.boxed{border-color:var(--ac);box-shadow:0 0 0 1px var(--ac) inset}
+.eq-raw{font-family:var(--mono);font-size:.9rem;color:var(--tx2);text-align:left;white-space:pre-wrap}
+.arch{font-family:var(--mono);font-size:.82rem;line-height:1.8;white-space:pre;overflow-x:auto;padding:1rem;background:var(--bg3);border-radius:var(--r);color:var(--tx2)}
+.arch em{color:var(--ac);font-style:normal}
+.tbl{overflow-x:auto;margin:1.2rem 0}
+.tbl table{margin:0}
+table{width:100%;border-collapse:collapse;font-size:.92rem}
+th{text-align:left;padding:.6rem .8rem;border-bottom:2px solid var(--bd);color:var(--ac);font-weight:600;white-space:nowrap}
+td{padding:.5rem .8rem;border-bottom:1px solid var(--bd)}
+tr:last-child td{border:none}
+td code{white-space:nowrap;overflow-wrap:normal}
+td.num{font-family:var(--mono);text-align:right;white-space:nowrap}
+.perf-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem;margin:1.5rem 0}
+.perf-card{background:var(--bg3);border-radius:var(--r);padding:1.2rem;text-align:center}
+.perf-val{font-size:1.8rem;font-weight:800;color:var(--ac);background:linear-gradient(135deg,var(--ac),var(--ac2));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.perf-label{font-size:.82rem;color:var(--tx2);margin-top:.2rem}
+.demo{background:var(--bg2);border:1px solid var(--bd);border-radius:var(--r);padding:1.5rem;margin:2rem 0}
+.demo-title{font-family:var(--mono);font-size:.8rem;color:var(--ac2);text-transform:uppercase;letter-spacing:.08em;margin-bottom:1rem}
+.demo canvas{display:block;border-radius:8px;width:100%;height:auto}
+.demo-ctl{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:.8rem 1.5rem;margin-bottom:1rem;align-items:end}
+.demo-ctl label{display:block;font-size:.85rem;color:var(--tx2)}
+.demo-ctl .val{font-family:var(--mono);color:var(--ac2)}
+.demo button,.demo select{font:inherit;font-size:.88rem;padding:.4em 1em;background:var(--bg4);color:var(--tx);border:1px solid var(--bd);border-radius:6px;cursor:pointer}
+.demo button:hover,.demo select:hover{border-color:var(--ac);color:var(--ac)}
+.demo input[type=range]{width:100%;accent-color:var(--ac)}
+.readout{font-family:var(--mono);color:var(--ac2)}
+.legend{display:flex;flex-wrap:wrap;gap:.4rem 1.2rem;font-size:.82rem;color:var(--tx2);margin-top:.8rem}
+.legend i{display:inline-block;width:22px;height:0;border-top:3px solid;vertical-align:middle;margin-right:.4em}
+.legend i.dash{border-top-style:dashed}
+.legend i.dot{border-top-style:dotted}
+.outs{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:.4rem 1rem;margin-top:.8rem;font-size:.85rem;color:var(--tx2)}
+.outs b{display:block;font-weight:400;font-size:.75rem;color:var(--tx3)}
+.step{display:grid;grid-template-columns:2.2rem minmax(0,1fr);gap:.2rem 1rem;margin:1.6rem 0}
+.step .no{font-size:1.4rem;font-weight:800;color:var(--ac2);line-height:1.3}
+.ex{font-family:var(--mono);font-size:.85rem;background:var(--bg3);border-radius:6px;padding:.6rem .9rem;color:var(--tx2);margin:.6rem 0;white-space:pre-wrap}
+.ex .ok{color:var(--gr)}
+.c-ac{color:var(--ac)}.c-ac2{color:var(--ac2)}.c-gr{color:var(--gr)}.c-or{color:var(--or)}.c-rd{color:var(--rd)}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}.js section .reveal{opacity:1;transform:none;transition:none}#progress{transition:none}}
+@media print{#progress,#toc{display:none}.js section .reveal{opacity:1!important;transform:none!important}.card,.demo,.tbl{break-inside:avoid}}
+</style>
+</head>
+<body>
+<div id="progress"></div>
+
+<header id="header">
+  <h1>CharmJump — toán của DOJump</h1>
+  <p class="sub">Tile nhảy theo cung = đi thẳng từ A tới B, cộng thêm một cái "bướu" cong lên. Trang này dẫn từng bước từ cách DOTween dựng DOJump tới đúng một dòng công thức trong <code>JumpArc</code>.</p>
+  <span class="badge">DOJump · ease · lerp · parabol · Tween.Custom · 0 B</span>
+</header>
+
+<nav id="toc">
+  <h2>Mục lục</h2>
+  <ol>
+    <li><a href="#ket-luan">Kết luận trong một hình</a></li>
+    <li><a href="#nen">Bốn khái niệm nền</a></li>
+    <li><a href="#dotween">DOTween dựng DOJump thế nào</a></li>
+    <li><a href="#dan-giai">Biến đổi từng bước</a></li>
+    <li><a href="#ease">Vì sao ease cho từng tween con vẫn đúng</a></li>
+    <li><a href="#code">Từ công thức ra code</a></li>
+    <li><a href="#kiem">Kiểm mốc</a></li>
+    <li><a href="#he-qua">Hệ quả và bẫy</a></li>
+  </ol>
+</nav>
+
+<main>
+
+<!-- ======================================================================= -->
+<section id="ket-luan">
+  <h2>1. Kết luận trong một hình</h2>
+  <div class="reveal">
+    <p>Toàn bộ trang này chứng minh đúng một điều: <strong>độ cao của tile khi nhảy bằng độ cao của đường thẳng từ A tới B, cộng thêm một cái bướu</strong>.</p>
+    <div class="eq boxed" data-tex="y \;=\; \underbrace{y_A + \Delta y\cdot s}_{\text{đường thẳng A}\to\text{B}} \;+\; \underbrace{K\cdot s(1-s)}_{\text{cái bướu}}"></div>
+    <div class="eq" data-tex="K = \Delta y + 4h"></div>
+    <p><code>Δy = y<sub>B</sub> − y<sub>A</sub></code> là B cao hơn A bao nhiêu, <code>h</code> là độ nảy, <code>s</code> là tiến độ đã qua ease (mục 2).</p>
+    <p>Kéo các thanh trượt bên dưới để thấy ba thứ:</p>
+    <ul>
+      <li><span class="c-ac">đường cong xanh</span> là đường tile bay;</li>
+      <li><span class="c-or">vạch cam</span> là cái bướu, tức khoảng cách từ đường thẳng lên tới đường bay;</li>
+      <li><span style="color:var(--tx2)">các chấm xám</span> là vị trí tile sau mỗi khoảng thời gian bằng nhau. Đổi ease thì các chấm dồn lại hoặc giãn ra, nhưng <strong>đường bay giữ nguyên</strong>.</li>
+    </ul>
+
+    <div class="demo">
+      <div class="demo-title">Demo A — tile nhảy từ A tới B</div>
+      <div class="demo-ctl">
+        <label>Δy (B cao hơn A bao nhiêu) = <span class="val" id="aDyV"></span><input type="range" id="aDy" min="-3" max="3" step="0.1" value="1"></label>
+        <label>h (độ nảy) = <span class="val" id="aHV"></span><input type="range" id="aH" min="0" max="2.5" step="0.1" value="1"></label>
+        <label>ease <select id="aEase"></select></label>
+        <label>t (tiến độ thời gian) = <span class="val" id="aTV"></span><input type="range" id="aT" min="0" max="1" step="0.005" value="0.5"></label>
+      </div>
+      <div class="demo-ctl" style="grid-template-columns:auto 1fr"><button id="aPlay">Chạy một lượt</button><span style="font-size:.8rem;color:var(--tx3)">Trục ngang và trục dọc không cùng tỉ lệ.</span></div>
+      <canvas id="aCv"></canvas>
+      <div class="legend">
+        <span><i class="dash" style="border-color:var(--tx2)"></i>đường thẳng A→B</span>
+        <span><i style="border-color:var(--ac)"></i>đường bay</span>
+        <span><i style="border-color:var(--or)"></i>cái bướu K·s(1−s)</span>
+        <span><i class="dot" style="border-color:var(--tx2)"></i>chấm: vị trí sau mỗi 1/16 thời gian</span>
+      </div>
+      <div class="outs">
+        <span><b>t</b><span class="readout" id="aOutT"></span></span>
+        <span><b>s = ease(t)</b><span class="readout" id="aOutS"></span></span>
+        <span><b>y đường thẳng</b><span class="readout" id="aOutL"></span></span>
+        <span><b>K = Δy + 4h</b><span class="readout" id="aOutK"></span></span>
+        <span><b>bướu = K·s(1−s)</b><span class="readout" id="aOutB"></span></span>
+        <span><b>y = thẳng + bướu</b><span class="readout" id="aOutY"></span></span>
+        <span><b>y theo cách DOTween</b><span class="readout" id="aOutD"></span></span>
+        <span><b>chênh lệch</b><span class="readout" id="aOutE"></span></span>
+      </div>
+    </div>
+    <p>Ba ô cuối là phép kiểm: "y theo cách DOTween" tính bằng đúng cách DOTween làm (mục 3), "y = thẳng + bướu" tính bằng công thức gọn (mục 4). Chênh lệch luôn bằng 0, chỉ còn sai số làm tròn của máy.</p>
+  </div>
+</section>
+
+<!-- ======================================================================= -->
+<section id="nen">
+  <h2>2. Bốn khái niệm nền</h2>
+
+  <div class="reveal">
+    <h3>2.1 t — tiến độ thời gian</h3>
+    <p>Tween dài <code>duration</code> giây. Đã chạy được <code>elapsed</code> giây thì <strong>t = elapsed / duration</strong>, đi từ 0 (vừa bắt đầu) tới 1 (vừa xong). Ví dụ tween dài 0.4 s, đã chạy 0.1 s thì t = 0.25.</p>
+  </div>
+
+  <div class="reveal">
+    <h3>2.2 Ease — biến t thành s</h3>
+    <p>Ease là một hàm nhận <code>t</code> rồi trả về <code>s</code>. Nó quyết định <strong>nhịp</strong>: lúc nào đi nhanh, lúc nào đi chậm. Cả hai đầu luôn giữ nguyên: <code>ease(0) = 0</code> và <code>ease(1) = 1</code>.</p>
+    <table>
+      <thead><tr><th>Ease</th><th>Công thức</th><th>Cảm giác</th></tr></thead>
+      <tbody>
+        <tr><td><code>Linear</code></td><td><code>s = t</code></td><td>đều</td></tr>
+        <tr><td><code>OutQuad</code></td><td><code>s = t·(2 − t)</code></td><td>nhanh lúc đầu, chậm dần về cuối</td></tr>
+        <tr><td><code>InQuad</code></td><td><code>s = t·t</code></td><td>chậm lúc đầu, nhanh dần</td></tr>
+      </tbody>
+    </table>
+    <p><strong>OutQuad</strong> xuất hiện suốt trang này, nên nhớ vài con số của nó:</p>
+    <table>
+      <thead><tr><th>t</th><th>0</th><th>0.25</th><th>0.5</th><th>0.75</th><th>1</th></tr></thead>
+      <tbody><tr><td>OutQuad(t) = t(2−t)</td><td class="num">0</td><td class="num">0.4375</td><td class="num">0.75</td><td class="num">0.9375</td><td class="num">1</td></tr></tbody>
+    </table>
+    <p>Mới đi nửa thời gian (t = 0.5) mà đã tới 75% quãng đường, vì OutQuad lao nhanh lúc đầu.</p>
+
+    <div class="demo">
+      <div class="demo-title">Demo — một ease biến t thành s</div>
+      <div class="demo-ctl">
+        <label>ease <select id="eEase"></select></label>
+        <label>t = <span class="val" id="eTV"></span><input type="range" id="eT" min="0" max="1" step="0.005" value="0.5"></label>
+      </div>
+      <canvas id="eCv"></canvas>
+      <p style="margin-top:.6rem">s = <span class="readout" id="eS"></span></p>
+    </div>
+  </div>
+
+  <div class="reveal">
+    <h3>2.3 Lerp — điểm nằm giữa hai đầu</h3>
+    <p><strong>lerp(a, b, s) = a + (b − a)·s</strong>. Ra <code>a</code> khi s = 0, ra <code>b</code> khi s = 1, và nằm đúng giữa khi s = 0.5. Đây là "đi thẳng từ a tới b".</p>
+    <div class="ex">Ví dụ: lerp(0, 6, 0.5) = 0 + 6·0.5 = 3
+lerp(0, 2, 0.75) = 0 + 2·0.75 = 1.5</div>
+    <p>Trong trang này: <code>Δy = y<sub>B</sub> − y<sub>A</sub></code> là "B cao hơn A bao nhiêu", nên độ cao của đường thẳng tại s là <code>y<sub>A</sub> + Δy·s</code>.</p>
+  </div>
+
+  <div class="reveal">
+    <h3>2.4 Cái bướu s(1−s)</h3>
+    <p>Biểu thức <strong>s·(1 − s)</strong> bằng 0 ở hai đầu (s = 0 và s = 1) và lớn nhất ở giữa:</p>
+    <table>
+      <thead><tr><th>s</th><th>0</th><th>0.25</th><th>0.5</th><th>0.75</th><th>1</th></tr></thead>
+      <tbody>
+        <tr><td>s(1−s)</td><td class="num">0</td><td class="num">0.1875</td><td class="num">0.25</td><td class="num">0.1875</td><td class="num">0</td></tr>
+        <tr><td>4·s(1−s)</td><td class="num">0</td><td class="num">0.75</td><td class="num">1</td><td class="num">0.75</td><td class="num">0</td></tr>
+      </tbody>
+    </table>
+    <p>Đỉnh của s(1−s) chỉ cao 0.25. <strong>Nhân với 4 thì đỉnh thành đúng 1</strong>, và <code>4h·s(1−s)</code> là một cái bướu cao đúng <code>h</code>. Con số 4 trong <code>K = Δy + 4h</code> đến từ đây.</p>
+    <p>Hình dạng này là một <strong>parabol</strong>: đúng đường mà hòn đá ném lên vẽ ra (mục 8).</p>
+    <div class="demo">
+      <div class="demo-title">Đồ thị — s(1−s) và 4·s(1−s)</div>
+      <canvas id="bCv"></canvas>
+      <div class="legend">
+        <span><i style="border-color:var(--tx2)"></i>s(1−s): đỉnh 0.25</span>
+        <span><i style="border-color:var(--or)"></i>4·s(1−s): đỉnh 1</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================================================================= -->
+<section id="dotween">
+  <h2>3. DOTween dựng DOJump thế nào</h2>
+  <div class="reveal">
+    <p>Bên trong, <code>transform.DOJump(B, h, 1, duration)</code> của DOTween là một Sequence gồm ba tween chạy song song:</p>
+    <div class="arch">Sequence  (ease của caller, mặc định <em>OutQuad</em>, áp lên CẢ Sequence)
+ ├─ X: x đi từ xA tới xB, <em>Linear</em>
+ ├─ Z: z đi từ zA tới zB, <em>Linear</em>
+ └─ Y: hai phần cộng lại
+      ├─ (a) phần bù độ cao : Δy · OutQuad(s)          ← để cuối cùng tới đúng yB
+      └─ (b) phần nảy       : tween 0 → h, OutQuad, dài nửa thời gian,
+                              lặp 2 lần kiểu <em>Yoyo</em> (lượt 2 chạy ngược h → 0)</div>
+    <p>Gọi <strong>s</strong> là tiến độ <em>đã qua ease của Sequence</em>: <code>s = ease(t)</code>. Mọi tween con chỉ "thấy" s, không thấy t.</p>
+    <div class="note"><strong>Yoyo là gì.</strong> Tween lặp 2 lần: lượt 1 chạy xuôi (0 → h), lượt 2 phát lại đúng lượt 1 nhưng ngược thời gian (h → 0), giống tua ngược băng. Kết quả là tile đi lên trong nửa đầu và rơi xuống trong nửa sau.</div>
+    <p>Như vậy, theo đúng cách DOTween dựng:</p>
+    <div class="eq" data-tex="y_{\text{DOTween}} = y_A + \underbrace{\Delta y\cdot\text{OutQuad}(s)}_{\text{(a) bù độ cao}} + \underbrace{\text{nảy}(s)}_{\text{(b) Yoyo}}"></div>
+    <p>Công thức này đúng nhưng khó dùng: phần (b) có hai nhánh (đi lên, rơi xuống), và cần tới ba tween phối hợp. Mục 4 biến nó thành một dòng duy nhất.</p>
+  </div>
+</section>
+
+<!-- ======================================================================= -->
+<section id="dan-giai">
+  <h2>4. Biến đổi từng bước</h2>
+  <div class="reveal">
+    <p>Mỗi bước đi kèm một ví dụ số. Ví dụ chung: <strong>A cao 0, B cao 2 (Δy = 2), độ nảy h = 1</strong>.</p>
+
+    <div class="step"><div class="no">①</div><div>
+      <p><strong>Nửa đầu (s từ 0 tới 0.5): tile đi lên.</strong> Tween nảy chỉ dài nửa thời gian, nên trong nửa đầu, tiến độ riêng của nó là <code>u = 2s</code> (s = 0.5 thì u = 1, tức đã lên tới đỉnh). Độ nảy là <code>h·OutQuad(u)</code>:</p>
+      <div class="eq" data-tex="\begin{aligned}\text{nảy} &= h\cdot\text{OutQuad}(2s)\\ &= h\cdot 2s\,(2-2s)\\ &= h\cdot 2s\cdot 2(1-s)\\ &= 4h\cdot s(1-s)\end{aligned}"></div>
+      <div class="ex">s = 0.25 → u = 0.5 → h·OutQuad(0.5) = 1·0.75 = 0.75
+công thức gọn: 4·1·0.25·0.75 = 0.75  <span class="ok">✓ trùng</span></div>
+    </div></div>
+
+    <div class="step"><div class="no">②</div><div>
+      <p><strong>Nửa sau (s từ 0.5 tới 1): Yoyo chạy ngược.</strong> Lượt chạy ngược phát lại lượt 1 theo chiều thời gian đảo, nên tiến độ riêng của nó là <code>u = 2(1 − s)</code> (s = 0.5 thì u = 1, s = 1 thì u = 0):</p>
+      <div class="eq" data-tex="\begin{aligned}\text{nảy} &= h\cdot\text{OutQuad}\big(2(1-s)\big)\\ &= h\cdot 2(1-s)\,\big(2-2(1-s)\big)\\ &= h\cdot 2(1-s)\cdot 2s\\ &= 4h\cdot s(1-s)\end{aligned}"></div>
+      <div class="ex">s = 0.75 → u = 0.5 → h·OutQuad(0.5) = 0.75
+công thức gọn: 4·1·0.75·0.25 = 0.75  <span class="ok">✓ trùng</span></div>
+      <p>Hai nửa ra <strong>cùng một biểu thức</strong>. Hai nhánh đi lên và rơi xuống gộp lại thành một cái bướu duy nhất: <code>nảy = 4h·s(1−s)</code>.</p>
+    </div></div>
+
+    <div class="demo">
+      <div class="demo-title">Demo C — Yoyo hai nửa gộp thành một cái bướu</div>
+      <div class="demo-ctl">
+        <label>s = <span class="val" id="cSV"></span><input type="range" id="cS" min="0" max="1" step="0.005" value="0.3"></label>
+      </div>
+      <canvas id="cCv"></canvas>
+      <div class="legend">
+        <span><i style="border-color:var(--gr)"></i>nửa lên: h·OutQuad(2s)</span>
+        <span><i style="border-color:var(--rd)"></i>nửa xuống: h·OutQuad(2(1−s))</span>
+        <span><i class="dash" style="border-color:var(--ac)"></i>4h·s(1−s)</span>
+      </div>
+      <div class="outs">
+        <span><b>nửa đang chạy</b><span class="readout" id="cHalf"></span></span>
+        <span><b>u (tiến độ riêng của tween nảy)</b><span class="readout" id="cU"></span></span>
+        <span><b>h·OutQuad(u)</b><span class="readout" id="cDo"></span></span>
+        <span><b>4h·s(1−s)</b><span class="readout" id="cNew"></span></span>
+      </div>
+    </div>
+
+    <div class="step"><div class="no">③</div><div>
+      <p><strong>Cộng phần bù độ cao.</strong> Thay kết quả ② vào công thức của mục 3. Nhớ <code>OutQuad(s) = s(2 − s)</code>:</p>
+      <div class="eq" data-tex="y = y_A + \Delta y\cdot s(2-s) + 4h\cdot s(1-s)"></div>
+      <div class="ex">s = 0.5: y = 0 + 2·0.5·1.5 + 4·1·0.5·0.5 = 1.5 + 1 = 2.5</div>
+      <p>Đây chính là dòng code cũ trong <code>Tile.JumpPosition</code>: <code>from.y + (to.y − from.y)·(t·(2 − t)) + height·4·t·(1 − t)</code>.</p>
+    </div></div>
+
+    <div class="step"><div class="no">④</div><div>
+      <p><strong>Tách s(2−s) thành hai mảnh.</strong> Đây là mẹo duy nhất của cả bài:</p>
+      <div class="eq" data-tex="\begin{aligned}s(2-s) &= 2s - s^2\\ &= s + (s - s^2)\\ &= s + s(1-s)\end{aligned}"></div>
+      <div class="ex">s = 0.5: s(2−s) = 0.75   và   s + s(1−s) = 0.5 + 0.25 = 0.75  <span class="ok">✓</span></div>
+      <p>Thay vào ③ rồi gom hai số hạng cùng chứa <code>s(1−s)</code>:</p>
+      <div class="eq" data-tex="\begin{aligned}y &= y_A + \Delta y\cdot s\\ &\quad + \Delta y\cdot s(1-s) + 4h\cdot s(1-s)\\ &= \underbrace{y_A + \Delta y\cdot s}_{\text{đường thẳng}} + \underbrace{(\Delta y + 4h)}_{K}\cdot s(1-s)\end{aligned}"></div>
+    </div></div>
+
+    <div class="step"><div class="no">⑤</div><div>
+      <p><strong>Đọc kết quả.</strong> Độ cao = độ cao của đường thẳng A→B (lerp ở 2.3) + <code>K</code> lần cái bướu (2.4).</p>
+      <div class="ex">Ví dụ: K = Δy + 4h = 2 + 4 = 6
+s = 0.5: y = (0 + 2·0.5) + 6·0.25 = 1 + 1.5 = 2.5   <span class="ok">✓ trùng bước ③</span></div>
+      <p><strong>Vì sao K không phải chỉ 4h?</strong> Phần bù độ cao của DOTween dùng OutQuad, không đi thẳng. Nó vọt lên trước đường thẳng một khoảng <code>Δy·s(1−s)</code>, và khoảng này cũng có dạng bướu nên gộp vào K. Hệ quả: khi B cao hơn A, chính giữa cung nằm trên đường thẳng một khoảng <code>K/4 = h + Δy/4</code>, không phải h.</p>
+    </div></div>
+
+    <div class="demo">
+      <div class="demo-title">Demo B — đường thẳng + bướu = cách DOTween</div>
+      <div class="demo-ctl">
+        <label>Δy = <span class="val" id="dDyV"></span><input type="range" id="dDy" min="-3" max="3" step="0.1" value="2"></label>
+        <label>h = <span class="val" id="dHV"></span><input type="range" id="dH" min="0" max="2.5" step="0.1" value="1"></label>
+        <label>s = <span class="val" id="dSV"></span><input type="range" id="dS" min="0" max="1" step="0.005" value="0.5"></label>
+      </div>
+      <canvas id="dCv"></canvas>
+      <div class="legend">
+        <span><i class="dash" style="border-color:var(--tx2)"></i>đường thẳng y<sub>A</sub>+Δy·s</span>
+        <span><i style="border-color:var(--or)"></i>bướu K·s(1−s), cộng lên trên đường thẳng</span>
+        <span><i style="border-color:var(--ac)"></i>y gọn</span>
+        <span><i class="dot" style="border-color:var(--gr)"></i>y theo DOTween (③)</span>
+      </div>
+      <div class="outs">
+        <span><b>Δy·s(2−s) (DOTween)</b><span class="readout" id="dO1"></span></span>
+        <span><b>4h·s(1−s) (DOTween)</b><span class="readout" id="dO2"></span></span>
+        <span><b>tổng DOTween</b><span class="readout" id="dO3"></span></span>
+        <span><b>Δy·s (thẳng)</b><span class="readout" id="dN1"></span></span>
+        <span><b>K·s(1−s) (bướu)</b><span class="readout" id="dN2"></span></span>
+        <span><b>tổng gọn</b><span class="readout" id="dN3"></span></span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================================================================= -->
+<section id="ease">
+  <h2>5. Vì sao ease cho từng tween con vẫn đúng</h2>
+  <div class="reveal">
+    <p>DOTween áp ease lên <strong>cả Sequence</strong>. PrimeTween thì <code>Sequence.Create</code> chỉ nhận enum <code>Ease</code>, không nhận <code>Easing</code> (curve, parametric). Vì vậy <code>CharmJump</code> đưa ease xuống <strong>từng tween con</strong>. Câu hỏi: kết quả có giống không?</p>
+    <ol>
+      <li>Sau mục 4, mọi toạ độ của tile chỉ phụ thuộc vào <strong>s</strong>:
+        <ul>
+          <li><code>x = lerp(x<sub>A</sub>, x<sub>B</sub>, s)</code></li>
+          <li><code>z = lerp(z<sub>A</sub>, z<sub>B</sub>, s)</code></li>
+          <li><code>y = lerp(y<sub>A</sub>, y<sub>B</sub>, s) + K·s(1−s)</code></li>
+        </ul>
+      </li>
+      <li>Ba tween con chạy song song, cùng bắt đầu, cùng <code>duration</code>, nên tại mỗi khung hình chúng có <strong>cùng t</strong>.</li>
+      <li>Cùng t, cùng hàm ease thì ra cùng <code>s = ease(t)</code>. Ba tween con tự tính được đúng con s mà Sequence của DOTween lẽ ra phát xuống.</li>
+    </ol>
+    <div class="note good"><strong>Kết luận.</strong> Ease riêng cho từng con = ease chung cho cả Sequence, chỉ vì mọi thứ phụ thuộc cùng một s. Ở Demo A, đổi ease mà đường cong xanh không đổi; chỉ các chấm xám (vị trí sau mỗi khoảng thời gian bằng nhau) dồn hay giãn. <strong>Ease chỉ đổi nhịp, không đổi đường bay.</strong></div>
+    <div class="note"><strong>Chỗ cách này không áp được.</strong> Lý luận trên cần "mọi thứ chỉ phụ thuộc s". Nếu có một tween con trễ <code>startDelay</code> hay dài khác các con kia thì nó có t khác, và lý luận không còn đúng. <code>CharmJump</code> không có tween nào như vậy.</div>
+  </div>
+</section>
+
+<!-- ======================================================================= -->
+<section id="code">
+  <h2>6. Từ công thức ra code</h2>
+  <div class="reveal">
+    <h3>6.1 Vì sao không viết một tween Custom cho xong</h3>
+    <p>Cách dễ nhất là một <code>Tween.Custom(0f, 1f, …, t =&gt; transform.position = JumpArc.Evaluate(from, to, h, t))</code>, và Tile đang làm đúng như vậy. Nhưng lambda đó dùng <code>from</code>, <code>to</code>, <code>h</code>, là biến của hàm bên ngoài. C# phải cấp một object (closure) để giữ chúng, <strong>mỗi lần gọi một lần</strong>. Đó là rác cho GC dọn.</p>
+    <p>Muốn không có rác thì lambda phải là <code>static</code>, tức là không được dùng biến bên ngoài. Mọi thứ nó cần phải đến qua <strong>tham số</strong>. Mà PrimeTween chỉ đưa vào lambda hai thứ: <strong>target</strong> (Transform) và <strong>giá trị đang tween</strong> (tối đa một Vector4).</p>
+    <table>
+      <thead><tr><th>Cách</th><th>0 B</th><th>Nhận <code>Easing</code></th><th>Lồng vào Sequence</th><th>Ghi chú</th></tr></thead>
+      <tbody>
+        <tr><td>1 Custom + closure (Tile hiện tại)</td><td class="c-rd">✗</td><td class="c-gr">✓</td><td class="c-gr">✓</td><td>cấp phát closure mỗi lần gọi</td></tr>
+        <tr><td>1 Custom, nhét hết vào Vector4</td><td class="c-gr">✓</td><td class="c-gr">✓</td><td class="c-gr">✓</td><td><strong>không vừa</strong>: cần x<sub>A</sub>, z<sub>A</sub>, x<sub>B</sub>, z<sub>B</sub>, y tuyến tính, s, K = 7 số</td></tr>
+        <tr><td>Chép y nguyên 3 tween + Yoyo của DOTween</td><td class="c-gr">✓</td><td class="c-rd">✗</td><td class="c-gr">✓</td><td>ease phải đặt ở cấp Sequence, mà <code>Sequence.Create</code> chỉ nhận enum <code>Ease</code>; phần bù độ cao còn phải đọc tiến độ của tween khác</td></tr>
+        <tr><td><strong>X, Z có sẵn + 1 Custom cho Y</strong> (đã chọn)</td><td class="c-gr">✓</td><td class="c-gr">✓</td><td class="c-gr">✓</td><td>X, Z dùng <code>Tween.PositionX/Z</code>; Y chỉ cần 3 số</td></tr>
+      </tbody>
+    </table>
+
+    <h3>6.2 Mẹo nhét Y vào một Vector3</h3>
+    <p><code>Tween.Custom</code> làm một việc duy nhất: mỗi khung hình, nó tính <code>v = lerp(start, end, s)</code> cho từng thành phần, rồi đưa <code>v</code> vào lambda. Vậy ta chọn <code>start</code> và <code>end</code> sao cho ba thành phần của <code>v</code> chính là ba số công thức cần:</p>
+    <table>
+      <thead><tr><th>Thành phần</th><th>start</th><th>end</th><th>lerp ra</th><th>Là gì trong công thức</th></tr></thead>
+      <tbody>
+        <tr><td><code>v.x</code></td><td class="num">y<sub>A</sub></td><td class="num">y<sub>B</sub></td><td><code>y<sub>A</sub> + Δy·s</code></td><td>đường thẳng</td></tr>
+        <tr><td><code>v.y</code></td><td class="num">0</td><td class="num">1</td><td><code>s</code></td><td>tiến độ đã ease</td></tr>
+        <tr><td><code>v.z</code></td><td class="num">K</td><td class="num">K</td><td><code>K</code> (start = end nên không đổi)</td><td>hệ số bướu</td></tr>
+      </tbody>
+    </table>
+    <p>Lambda chỉ còn ráp lại: <code>y = v.x + v.z · v.y · (1 − v.y)</code>, đúng dòng <code>JumpArc.EvaluateHeight(v.x, v.z, v.y)</code>.</p>
+    <p>Lần theo ví dụ A cao 0, B cao 2, h = 1, tức K = 6. Start = <code>(0, 0, 6)</code>, end = <code>(2, 1, 6)</code>:</p>
+    <table>
+      <thead><tr><th>s</th><th>v = lerp(start, end, s)</th><th>y = v.x + v.z·v.y·(1−v.y)</th></tr></thead>
+      <tbody>
+        <tr><td class="num">0</td><td class="num">(0, 0, 6)</td><td class="num">0 + 6·0·1 = 0 = y<sub>A</sub></td></tr>
+        <tr><td class="num">0.25</td><td class="num">(0.5, 0.25, 6)</td><td class="num">0.5 + 6·0.1875 = 1.625</td></tr>
+        <tr><td class="num">0.5</td><td class="num">(1, 0.5, 6)</td><td class="num">1 + 6·0.25 = 2.5</td></tr>
+        <tr><td class="num">1</td><td class="num">(2, 1, 6)</td><td class="num">2 + 6·1·0 = 2 = y<sub>B</sub></td></tr>
+      </tbody>
+    </table>
+
+    <h3>6.3 Toàn cảnh <code>CharmJump</code></h3>
+    <div class="arch">CharmJump(B, h, duration, ease)
+  from = transform.position                    ← đọc một lần lúc gọi
+  K    = JumpArc.ComputeArcCoefficient(from.y, B.y, h)      = Δy + 4h
+  Sequence
+   ├─ Tween.PositionX(from.x → B.x, ease)                   x = lerp(xA, xB, s)
+   ├─ Tween.PositionZ(from.z → B.z, ease)                   z = lerp(zA, zB, s)
+   └─ Tween.Custom(transform, (from.y, 0, K) → (B.y, 1, K), <em>SetJumpY</em>, ease)
+         SetJumpY = <em>static</em> (self, v) =&gt; position.y = v.x + v.z·v.y·(1 − v.y)</div>
+    <table>
+      <thead><tr><th>Ký hiệu trong toán</th><th>Trong code</th></tr></thead>
+      <tbody>
+        <tr><td><code>K = Δy + 4h</code></td><td><code>JumpArc.ComputeArcCoefficient(fromY, toY, height)</code></td></tr>
+        <tr><td><code>đường thẳng + K·s(1−s)</code></td><td><code>JumpArc.EvaluateHeight(linearY, arcCoefficient, t)</code></td></tr>
+        <tr><td>điểm trên cung tại s, cho caller tự lái s</td><td><code>JumpArc.Evaluate(from, to, height, t)</code></td></tr>
+      </tbody>
+    </table>
+    <p><code>JumpArc.Evaluate</code> dành cho ca <code>Tile.MoveLocallyToCacheLeftSide</code>: điểm xuất phát chỉ biết được bên trong một callback, khi Sequence đã dựng xong. Ca đó vẫn phải dùng closure, nhưng dùng chung công thức với <code>CharmJump</code>, nên hai nơi không thể lệch nhau.</p>
+  </div>
+</section>
+
+<!-- ======================================================================= -->
+<section id="kiem">
+  <h2>7. Kiểm mốc</h2>
+  <div class="reveal">
+    <p>Lấy A ở gốc (0,0,0), h = 1. Cột cuối do trang này tự tính bằng JavaScript lúc mở, theo công thức gọn:</p>
+    <table>
+      <thead><tr><th>B</th><th>s</th><th>Kỳ vọng y</th><th>Theo công thức gọn</th><th>Máy tính</th></tr></thead>
+      <tbody id="checkRows"></tbody>
+    </table>
+    <p>Quét một lưới dày: Δy từ −3 tới 3 (bước 0.5), h từ 0 tới 3 (bước 0.25), s từ 0 tới 1 (bước 0.01). So công thức gọn với cách DOTween ở mục 3 (có Yoyo hai nhánh):</p>
+    <div class="perf-grid">
+      <div class="perf-card"><div class="perf-val" id="gridN">—</div><div class="perf-label">số điểm đã so</div></div>
+      <div class="perf-card"><div class="perf-val" id="gridErr">—</div><div class="perf-label">chênh lệch lớn nhất</div></div>
+    </div>
+    <p>Chênh lệch chỉ còn cỡ 10<sup>−15</sup>, là sai số làm tròn số thực của máy. Về toán, hai công thức là một.</p>
+  </div>
+</section>
+
+<!-- ======================================================================= -->
+<section id="he-qua">
+  <h2>8. Hệ quả và bẫy</h2>
+  <div class="reveal">
+    <h3>8.1 Ease Linear = ném xiên thật</h3>
+    <p>Với <code>Ease.Linear</code> thì s = t. Khi đó x đi đều theo thời gian, còn y là một đa thức bậc hai theo thời gian. Đó đúng là chuyển động của hòn đá ném xiên dưới trọng lực không đổi. Đạo hàm hai lần của y theo thời gian (<code>d</code> là duration):</p>
+    <div class="eq" data-tex="\frac{d^2y}{d\tau^2} = -\frac{2K}{d^2} \quad(\tau = t\cdot d \text{ là giây})"></div>
+    <p>Trọng lực "hiệu dụng" là <code>2K / d²</code>, không đổi trong suốt cú nhảy. Vì thế Tile dùng <code>Ease.Linear</code> cho cảm giác "như vật lý". OutQuad thì tile lao nhanh rồi lơ lửng ở cuối.</p>
+
+    <h3>8.2 Nhảy xuống thấp mà nảy nhỏ thì không bật lên</h3>
+    <p>Khi B thấp hơn A (Δy âm), có hai ngưỡng:</p>
+    <ul>
+      <li><strong>h &lt; −Δy/2</strong>: tile <strong>không bật lên</strong> lúc đầu mà đi xuống ngay, vì độ dốc lúc xuất phát đã âm (công thức dưới).</li>
+      <li><strong>h &lt; −Δy/4</strong>, tức K &lt; 0: cái bướu lộn ngược, đường bay <strong>võng xuống dưới</strong> cả đường thẳng A→B.</li>
+    </ul>
+    <p>Độ dốc lúc xuất phát là đạo hàm của y theo s tại s = 0, lấy từ công thức gọn:</p>
+    <div class="eq" data-tex="\begin{aligned}\left.\frac{dy}{ds}\right|_{s=0} &= \Delta y + K\\ &= 2\Delta y + 4h\end{aligned}"></div>
+    <div class="eq" data-tex="2\Delta y + 4h > 0 \iff h > -\frac{\Delta y}{2}"></div>
+    <div class="ex">Ví dụ: B thấp hơn A 3 đơn vị (Δy = −3), h = 1 → 2·(−3) + 4 = −2 &lt; 0: tile không bật lên mà đi xuống ngay.
+Muốn bật lên phải có h &gt; 1.5.  Thử ở Demo A: Δy = −3, kéo h qua lại quanh 1.5.</div>
+    <p>DOTween cũng như vậy, vì đây là cùng một công thức. Đây là tính chất của DOJump, không phải lỗi port.</p>
+
+    <h3>8.3 Ease vọt (OutBack) vẫn khớp</h3>
+    <p>Với ease vọt như OutBack, s vượt quá 1 một chút rồi quay về. Công thức gọn là một đa thức nên vẫn tính được ngoài [0, 1]. PrimeTween lerp không kẹp, nên tile vọt qua B theo đúng cung kéo dài rồi quay lại. Chọn OutBack ở Demo A để xem.</p>
+  </div>
+</section>
+
+</main>
+
+<footer>CategoryJam · CharmJump · <code>Horcrux.Runtime.Utilities.ExtensionMethods.JumpArc</code></footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script>
+const PALETTE = (() => {
+  const s = getComputedStyle(document.documentElement), p = {};
+  for (const k of ['bg','bg2','bg3','bg4','tx','tx2','tx3','ac','ac2','gr','or','rd','bd'])
+    p[k] = s.getPropertyValue('--' + k).trim();
+  return p;
+})();
+
+document.querySelectorAll('main table').forEach(t => {
+  if (t.parentElement.classList.contains('tbl')) return;
+  const box = document.createElement('div');
+  box.className = 'tbl';
+  t.replaceWith(box);
+  box.appendChild(t);
+});
+
+const io = new IntersectionObserver((entries, obs) => {
+  for (const e of entries) if (e.isIntersecting) { e.target.classList.add('visible'); obs.unobserve(e.target); }
+}, { threshold: .05 });
+document.querySelectorAll('.reveal').forEach(el => io.observe(el));
+
+const progressBar = document.getElementById('progress');
+let progressRaf = 0;
+function paintProgress() {
+  progressRaf = 0;
+  const h = document.documentElement, max = h.scrollHeight - h.clientHeight;
+  progressBar.style.width = (max > 0 ? h.scrollTop / max * 100 : 0) + '%';
+}
+addEventListener('scroll', () => { if (!progressRaf) progressRaf = requestAnimationFrame(paintProgress); }, { passive: true });
+
+document.querySelectorAll('.eq[data-tex]').forEach(el => {
+  const tex = el.getAttribute('data-tex');
+  if (window.katex) {
+    try { katex.render(tex, el, { displayMode: true, throwOnError: false }); return; }
+    catch (_) { }
+  }
+  el.classList.add('eq-raw');
+  el.textContent = tex;
+});
+
+/* Canvas co giãn theo bề ngang khung (CSS width:100%, height:auto); vẽ theo toạ độ logic W×H. */
+function setupCanvas(cv, w, h) {
+  const dpr = Math.min(devicePixelRatio || 1, 2);
+  cv.width = w * dpr; cv.height = h * dpr;
+  const ctx = cv.getContext('2d');
+  ctx.scale(dpr, dpr);
+  return ctx;
+}
+
+/* Bề ngang logic theo khung lúc mở trang, chiều cao giữ nguyên: màn hẹp thì đồ thị cao hơn tương đối, không bị dẹt. */
+const widthOf = cv => Math.max(300, Math.min(820, Math.floor(cv.parentElement.clientWidth)));
+
+/* ---------- toán: một nguồn cho mọi demo ---------- */
+const outQuad = u => u * (2 - u);
+const EASES = {
+  Linear: t => t,
+  OutQuad: outQuad,
+  InQuad: t => t * t,
+  InSine: t => 1 - Math.cos(t * Math.PI / 2),
+  OutBack: t => { const c = 1.70158, u = t - 1; return u * u * ((c + 1) * u + c) + 1; }
+};
+const arcK = (dy, h) => dy + 4 * h;                                   // JumpArc.ComputeArcCoefficient
+const heightCompact = (yA, dy, h, s) => yA + dy * s + arcK(dy, h) * s * (1 - s);   // JumpArc.Evaluate (y)
+function heightDOTween(yA, dy, h, s) {                                // mục 3: bù OutQuad + Yoyo hai nhánh
+  const u = s <= 0.5 ? 2 * s : 2 * (1 - s);
+  return yA + dy * outQuad(s) + h * outQuad(u);
+}
+const fmt = (x, n = 3) => (Math.abs(x) < 5e-13 ? 0 : x).toFixed(n);
+
+function fillEaseSelect(sel, initial) {
+  for (const k of Object.keys(EASES)) {
+    const o = document.createElement('option'); o.value = o.textContent = k; sel.appendChild(o);
+  }
+  sel.value = initial;
+}
+
+/* Khung đồ thị: ánh xạ toạ độ thế giới → pixel, vẽ lưới và nhãn. */
+function frame(ctx, W, H, pad, xr, yr) {
+  const X = x => pad.l + (x - xr[0]) / (xr[1] - xr[0]) * (W - pad.l - pad.r);
+  const Y = y => H - pad.b - (y - yr[0]) / (yr[1] - yr[0]) * (H - pad.t - pad.b);
+  return { X, Y };
+}
+function grid(ctx, W, H, m, xr, yr, xs, ys, xLabel, yLabel) {
+  ctx.fillStyle = PALETTE.bg3; ctx.fillRect(0, 0, W, H);
+  ctx.lineWidth = 1; ctx.font = '11px ' + getComputedStyle(document.body).fontFamily; ctx.fillStyle = PALETTE.tx3;
+  for (let x = Math.ceil(xr[0] / xs) * xs; x <= xr[1] + 1e-9; x += xs) {
+    ctx.strokeStyle = Math.abs(x) < 1e-9 ? PALETTE.tx3 : PALETTE.bd;
+    ctx.beginPath(); ctx.moveTo(m.X(x), m.Y(yr[0])); ctx.lineTo(m.X(x), m.Y(yr[1])); ctx.stroke();
+    ctx.fillText(+x.toFixed(2), m.X(x) + 3, m.Y(yr[0]) - 4);
+  }
+  for (let y = Math.ceil(yr[0] / ys) * ys; y <= yr[1] + 1e-9; y += ys) {
+    ctx.strokeStyle = Math.abs(y) < 1e-9 ? PALETTE.tx3 : PALETTE.bd;
+    ctx.beginPath(); ctx.moveTo(m.X(xr[0]), m.Y(y)); ctx.lineTo(m.X(xr[1]), m.Y(y)); ctx.stroke();
+    ctx.fillText(+y.toFixed(2), m.X(xr[0]) + 3, m.Y(y) - 3);
+  }
+  ctx.fillStyle = PALETTE.tx2;
+  if (xLabel) ctx.fillText(xLabel, W - 8 - ctx.measureText(xLabel).width, H - 6);
+  if (yLabel) ctx.fillText(yLabel, 8, 14);
+}
+function curve(ctx, m, f, a, b, color, width, dash) {
+  ctx.strokeStyle = color; ctx.lineWidth = width; ctx.setLineDash(dash || []);
+  ctx.beginPath();
+  for (let i = 0; i <= 200; i++) {
+    const s = a + (b - a) * i / 200, px = m.X(s), py = m.Y(f(s));
+    i ? ctx.lineTo(px, py) : ctx.moveTo(px, py);
+  }
+  ctx.stroke(); ctx.setLineDash([]);
+}
+function dot(ctx, x, y, r, color) { ctx.fillStyle = color; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill(); }
+
+/* ---------- Demo A: tile nhảy (x ngang, y dọc) ---------- */
+(function () {
+  const cv = document.getElementById('aCv');
+  const W = widthOf(cv), H = 380, ctx = setupCanvas(cv, W, H);
+  const $ = id => document.getElementById(id);
+  const inDy = $('aDy'), inH = $('aH'), inT = $('aT'), inEase = $('aEase'), btn = $('aPlay');
+  fillEaseSelect(inEase, 'Linear');
+  const XB = 6, xr = [-0.4, 6.8], yr = [-3.6, 5.8];
+  const m = frame(ctx, W, H, { l: 10, r: 10, t: 10, b: 10 }, xr, yr);
+  let raf = 0, playStart = 0;
+
+  function draw() {
+    const dy = +inDy.value, h = +inH.value, t = +inT.value, E = EASES[inEase.value];
+    $('aDyV').textContent = dy.toFixed(1); $('aHV').textContent = h.toFixed(1); $('aTV').textContent = t.toFixed(3);
+    grid(ctx, W, H, m, xr, yr, 1, 1, 'x', 'y');
+    const pos = s => [XB * s, heightCompact(0, dy, h, s)];
+
+    // đường thẳng A→B
+    ctx.strokeStyle = PALETTE.tx2; ctx.setLineDash([6, 5]); ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(m.X(0), m.Y(0)); ctx.lineTo(m.X(XB), m.Y(dy)); ctx.stroke(); ctx.setLineDash([]);
+
+    // đường bay: lấy mẫu theo t để thấy cả đoạn vọt của OutBack
+    ctx.strokeStyle = PALETTE.ac; ctx.lineWidth = 3; ctx.beginPath();
+    for (let i = 0; i <= 240; i++) { const p = pos(E(i / 240)); i ? ctx.lineTo(m.X(p[0]), m.Y(p[1])) : ctx.moveTo(m.X(p[0]), m.Y(p[1])); }
+    ctx.stroke();
+
+    // chấm sau mỗi 1/16 thời gian
+    for (let i = 0; i <= 16; i++) { const p = pos(E(i / 16)); dot(ctx, m.X(p[0]), m.Y(p[1]), 3, PALETTE.tx2); }
+
+    // A, B
+    dot(ctx, m.X(0), m.Y(0), 6, PALETTE.gr); dot(ctx, m.X(XB), m.Y(dy), 6, PALETTE.gr);
+    ctx.fillStyle = PALETTE.gr; ctx.font = 'bold 13px sans-serif';
+    ctx.fillText('A', m.X(0) - 4, m.Y(0) + 20); ctx.fillText('B', m.X(XB) - 4, m.Y(dy) + 20);
+
+    // điểm hiện tại + cái bướu
+    const s = E(t), lineY = dy * s, K = arcK(dy, h), bump = K * s * (1 - s), y = lineY + bump;
+    ctx.strokeStyle = PALETTE.or; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(m.X(XB * s), m.Y(lineY)); ctx.lineTo(m.X(XB * s), m.Y(y)); ctx.stroke();
+    dot(ctx, m.X(XB * s), m.Y(lineY), 4, PALETTE.tx2);
+    dot(ctx, m.X(XB * s), m.Y(y), 8, PALETTE.ac2);
+
+    const yd = heightDOTween(0, dy, h, s);
+    $('aOutT').textContent = t.toFixed(3); $('aOutS').textContent = fmt(s);
+    $('aOutL').textContent = fmt(lineY); $('aOutK').textContent = fmt(K, 2);
+    $('aOutB').textContent = fmt(bump); $('aOutY').textContent = fmt(y);
+    $('aOutD').textContent = fmt(yd); $('aOutE').textContent = Math.abs(y - yd).toExponential(1);
+  }
+
+  function stop() { if (raf) { cancelAnimationFrame(raf); raf = 0; } btn.textContent = 'Chạy một lượt'; }
+  function tick(now) {
+    if (!playStart) playStart = now;
+    const t = Math.min((now - playStart) / 1400, 1);
+    inT.value = t; draw();
+    if (t < 1) raf = requestAnimationFrame(tick); else stop();
+  }
+  btn.addEventListener('click', () => {
+    if (raf) return stop();
+    playStart = 0; btn.textContent = 'Dừng'; raf = requestAnimationFrame(tick);
+  });
+  for (const el of [inDy, inH, inEase]) el.addEventListener('input', draw);
+  inT.addEventListener('input', () => { stop(); draw(); });
+  draw();
+})();
+
+/* ---------- Demo ease: t → s ---------- */
+(function () {
+  const cv = document.getElementById('eCv');
+  const W = widthOf(cv), H = 300, ctx = setupCanvas(cv, W, H);
+  const sel = document.getElementById('eEase'), inT = document.getElementById('eT');
+  fillEaseSelect(sel, 'OutQuad');
+  const xr = [-0.05, 1.05], yr = [-0.2, 1.25];
+  const m = frame(ctx, W, H, { l: 10, r: 10, t: 10, b: 10 }, xr, yr);
+  function draw() {
+    const E = EASES[sel.value], t = +inT.value, s = E(t);
+    document.getElementById('eTV').textContent = t.toFixed(3);
+    grid(ctx, W, H, m, xr, yr, 0.25, 0.25, 't →', 's ↑');
+    curve(ctx, m, x => x, 0, 1, PALETTE.tx3, 1.5, [5, 5]);
+    curve(ctx, m, E, 0, 1, PALETTE.ac, 3);
+    ctx.strokeStyle = PALETTE.ac2; ctx.lineWidth = 1; ctx.setLineDash([3, 4]);
+    ctx.beginPath(); ctx.moveTo(m.X(t), m.Y(0)); ctx.lineTo(m.X(t), m.Y(s)); ctx.lineTo(m.X(0), m.Y(s)); ctx.stroke(); ctx.setLineDash([]);
+    dot(ctx, m.X(t), m.Y(s), 7, PALETTE.ac2);
+    document.getElementById('eS').textContent = fmt(s) + (sel.value === 'Linear' ? '' : '   (Linear sẽ ra ' + t.toFixed(3) + ')');
+  }
+  sel.addEventListener('input', draw); inT.addEventListener('input', draw);
+  draw();
+})();
+
+/* ---------- Đồ thị cái bướu (tĩnh) ---------- */
+(function () {
+  const cv = document.getElementById('bCv');
+  const W = widthOf(cv), H = 240, ctx = setupCanvas(cv, W, H);
+  const xr = [-0.05, 1.05], yr = [-0.1, 1.15];
+  const m = frame(ctx, W, H, { l: 10, r: 10, t: 10, b: 10 }, xr, yr);
+  grid(ctx, W, H, m, xr, yr, 0.25, 0.25, 's →', '');
+  curve(ctx, m, s => s * (1 - s), 0, 1, PALETTE.tx2, 2.5);
+  curve(ctx, m, s => 4 * s * (1 - s), 0, 1, PALETTE.or, 3);
+  dot(ctx, m.X(0.5), m.Y(0.25), 5, PALETTE.tx2);
+  dot(ctx, m.X(0.5), m.Y(1), 5, PALETTE.or);
+})();
+
+/* ---------- Demo C: Yoyo ---------- */
+(function () {
+  const cv = document.getElementById('cCv');
+  const W = widthOf(cv), H = 280, ctx = setupCanvas(cv, W, H);
+  const inS = document.getElementById('cS');
+  const h = 1, xr = [-0.05, 1.05], yr = [-0.1, 1.2];
+  const m = frame(ctx, W, H, { l: 10, r: 10, t: 10, b: 10 }, xr, yr);
+  function draw() {
+    const s = +inS.value;
+    document.getElementById('cSV').textContent = s.toFixed(3);
+    grid(ctx, W, H, m, xr, yr, 0.25, 0.25, 's →', 'nảy (h = 1)');
+    curve(ctx, m, x => 4 * h * x * (1 - x), 0, 1, PALETTE.ac, 7, [10, 8]);
+    curve(ctx, m, x => h * outQuad(2 * x), 0, 0.5, PALETTE.gr, 2.5);
+    curve(ctx, m, x => h * outQuad(2 * (1 - x)), 0.5, 1, PALETTE.rd, 2.5);
+    const up = s <= 0.5, u = up ? 2 * s : 2 * (1 - s), vDo = h * outQuad(u), vNew = 4 * h * s * (1 - s);
+    dot(ctx, m.X(s), m.Y(vDo), 8, up ? PALETTE.gr : PALETTE.rd);
+    document.getElementById('cHalf').textContent = up ? 'nửa lên (xuôi)' : 'nửa xuống (Yoyo ngược)';
+    document.getElementById('cU').textContent = (up ? '2s = ' : '2(1−s) = ') + u.toFixed(3);
+    document.getElementById('cDo').textContent = fmt(vDo);
+    document.getElementById('cNew').textContent = fmt(vNew);
+  }
+  inS.addEventListener('input', draw);
+  draw();
+})();
+
+/* ---------- Demo B: đường thẳng + bướu theo s ---------- */
+(function () {
+  const cv = document.getElementById('dCv');
+  const W = widthOf(cv), H = 340, ctx = setupCanvas(cv, W, H);
+  const $ = id => document.getElementById(id);
+  const inDy = $('dDy'), inH = $('dH'), inS = $('dS');
+  const xr = [-0.05, 1.05], yr = [-4, 6.5];
+  const m = frame(ctx, W, H, { l: 10, r: 10, t: 10, b: 10 }, xr, yr);
+  function draw() {
+    const dy = +inDy.value, h = +inH.value, s = +inS.value, K = arcK(dy, h);
+    $('dDyV').textContent = dy.toFixed(1); $('dHV').textContent = h.toFixed(1); $('dSV').textContent = s.toFixed(3);
+    grid(ctx, W, H, m, xr, yr, 0.25, 1, 's →', 'y (A cao 0)');
+    curve(ctx, m, x => dy * x, 0, 1, PALETTE.tx2, 1.5, [6, 5]);
+    // vạch bướu: từ đường thẳng lên tới đường bay
+    ctx.strokeStyle = PALETTE.or; ctx.lineWidth = 2;
+    for (let i = 1; i < 20; i++) {
+      const x = i / 20; ctx.beginPath(); ctx.moveTo(m.X(x), m.Y(dy * x)); ctx.lineTo(m.X(x), m.Y(heightCompact(0, dy, h, x))); ctx.stroke();
+    }
+    curve(ctx, m, x => heightCompact(0, dy, h, x), 0, 1, PALETTE.ac, 4);
+    curve(ctx, m, x => heightDOTween(0, dy, h, x), 0, 1, PALETTE.gr, 2, [2, 4]);
+    ctx.strokeStyle = PALETTE.ac2; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(m.X(s), m.Y(dy * s)); ctx.lineTo(m.X(s), m.Y(heightCompact(0, dy, h, s))); ctx.stroke();
+    dot(ctx, m.X(s), m.Y(heightCompact(0, dy, h, s)), 7, PALETTE.ac2);
+    const o1 = dy * s * (2 - s), o2 = 4 * h * s * (1 - s), n1 = dy * s, n2 = K * s * (1 - s);
+    $('dO1').textContent = fmt(o1); $('dO2').textContent = fmt(o2); $('dO3').textContent = fmt(o1 + o2);
+    $('dN1').textContent = fmt(n1); $('dN2').textContent = fmt(n2) + '  (K=' + K.toFixed(1) + ')'; $('dN3').textContent = fmt(n1 + n2);
+  }
+  for (const el of [inDy, inH, inS]) el.addEventListener('input', draw);
+  draw();
+})();
+
+/* ---------- Kiểm mốc ---------- */
+(function () {
+  const rows = [
+    { b: '(4, 0, 2)', dy: 0, s: 0, expect: 0, how: '0 + 4·0 = 0' },
+    { b: '(4, 0, 2)', dy: 0, s: 0.5, expect: 1, how: '0 + 4·0.25 = 1 (đỉnh = h)' },
+    { b: '(4, 0, 2)', dy: 0, s: 1, expect: 0, how: '0 + 4·0 = 0' },
+    { b: '(0, 2, 0)', dy: 2, s: 0.5, expect: 2.5, how: '1 + 6·0.25 = 2.5' },
+    { b: '(0, 2, 0)', dy: 2, s: 1, expect: 2, how: '2 + 6·0 = 2 = y<sub>B</sub>' }
+  ];
+  const body = document.getElementById('checkRows');
+  for (const r of rows) {
+    const got = heightCompact(0, r.dy, 1, r.s), ok = Math.abs(got - r.expect) < 1e-9;
+    const tr = document.createElement('tr');
+    tr.innerHTML = '<td class="num">' + r.b + '</td><td class="num">' + r.s + '</td><td class="num">' + r.expect +
+      '</td><td class="num">' + r.how + '</td><td class="num ' + (ok ? 'c-gr' : 'c-rd') + '">' + fmt(got) + (ok ? ' ✓' : ' ✗') + '</td>';
+    body.appendChild(tr);
+  }
+  let n = 0, maxErr = 0;
+  for (let dy = -3; dy <= 3 + 1e-9; dy += 0.5)
+    for (let h = 0; h <= 3 + 1e-9; h += 0.25)
+      for (let i = 0; i <= 100; i++) {
+        const s = i / 100;
+        maxErr = Math.max(maxErr, Math.abs(heightCompact(0, dy, h, s) - heightDOTween(0, dy, h, s)));
+        n++;
+      }
+  document.getElementById('gridN').textContent = String(n);
+  document.getElementById('gridErr').textContent = maxErr.toExponential(1);
+})();
+</script>
+</body>
+</html>

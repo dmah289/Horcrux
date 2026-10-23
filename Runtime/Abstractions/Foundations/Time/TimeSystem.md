@@ -20,7 +20,7 @@ Abstractions/Foundations/Persistence/BasePersistenceDataCollection.cs   + field 
 | Nguồn giờ | giờ máy UTC, không hiệu chỉnh |
 | Chống lùi | mốc lớn nhất từng thấy, lưu qua Persistence; giờ máy lùi → trả mốc, đứng yên |
 | Ai giữ mốc | `TimeService` — field nằm trong `BasePersistenceDataCollection` để mọi dự án có sẵn, không cần khai entry |
-| Server time | **không làm ở bản này** — không có caller nào cần. Contract `IServerTimeProvider`, offset và `IsServerTimeTrusted` chuyển hết sang `SystemPlan.md` §4b, xem §5 |
+| Server time | **không làm ở bản này** — không có caller nào cần. Contract `IServerTimeProvider`, offset và `IsServerTimeTrusted` chuyển hết sang `Plans/SystemPlan.md` §4b, xem §5 |
 | Caller | `LiveOpsHost` (mỗi giây, cấp `now` cho mọi module) · module khi cần `Refresh` ngoài nhịp (`CollectionModule`) |
 | Host | `MonoBehaviour<BasePersistenceDataCollection>` thường trong `Services.unity`, **không** phải boot step và **không** có `Order`. Gỡ server time xong thì bước boot không còn việc gì làm, mà thứ tự cũng không cần ai bảo đảm: guard `IsInitialized` nằm ngay trong getter. Chuỗi boot còn `SaveBootstep` (0) → `LiveOpsHost` (20) |
 
@@ -136,7 +136,7 @@ biên dịch và soát code theo §3.
 
 `Countdown` struct · `TimeFormatter` zero-GC · nhịp 1 Hz chuyển sang Ticker (4a).
 
-**Server time** — đã gỡ khỏi bản này, thiết kế đầy đủ ở `SystemPlan.md` §4b: contract `IServerTimeProvider`,
+**Server time** — đã gỡ khỏi bản này, thiết kế đầy đủ ở `Plans/SystemPlan.md` §4b: contract `IServerTimeProvider`,
 `offsetSeconds` cộng vào `UtcNowUnix`, cờ `IsServerTimeTrusted`, `ResyncAsync` lúc boot và lúc resume, và
 luật "chặn cấp thưởng theo giờ khi `!IsServerTimeTrusted`". Gỡ vì **chưa có caller**: không hệ nào ở bản
 Collection này đọc cờ đó, nên giữ lại là một contract không ai gọi và một `offsetSeconds` luôn bằng 0.

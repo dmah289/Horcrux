@@ -36,7 +36,7 @@ xử nằm ngay trong ô.
 |---|---|---|
 | 1 | **Vừa đủ — lõi chạy được trước, hình dạng mở để thêm, tối ưu khi có số đo** | **Đơn giản là mặc định.** Mỗi lớp phức tạp thêm phải trả bằng **một nhu cầu đang có thật** — "phòng khi cần", "cho đầy đủ", "chuẩn hơn" không phải nhu cầu. **Phép kiểm:** *xoá nó đi thì hỏng ở đâu* — không gọi được tên chỗ hỏng thì bỏ. **Giá của một dòng code nằm ở mọi lần đọc sau**, không ở lúc viết; agent sinh code gần như miễn phí nên hay quên vế này — đó là gốc của over-engineering. Chi phí đọc đo bằng *số file phải mở để lần hết một luồng* (asset kéo thả cũng tính, §3.6). Hai bờ vực: **xé vụn** (một tính năng rải qua nhiều mảnh, không mảnh nào nói được hành vi) và **gom bừa** (một class ôm nhiều lý do thay đổi) — tách chỉ theo **lý do thay đổi**, không theo "cho gọn mắt" hay "cho đúng pattern" (§3.1). **Thứ tự làm:** ① lõi chạy được và kiểm được từ input tới kết quả quan sát được → ② ca biên khi có input thật, cấu hình khi có call site → ③ tối ưu khi có số đo (NT2). "Lõi trước" cắt theo **chiều sâu**, không cắt vào mục đích: giao mốc không chạy được là thiếu, không phải gọn. **Mở đường mai** là hình dạng, không phải số lượng: bước kế tiếp là **thêm vào**, không đập ra làm lại. **Chỗ duy nhất đáng phòng xa là thứ sửa sau rất đắt**: chữ ký, ranh giới trách nhiệm, chiều phụ thuộc, chỗ đặt file — hàm thêm sau tốn hai phút, chữ ký sai sửa sau đập mọi caller. **Nghiệm thu:** gọi được tên bước kế tiếp và chỉ ra nó là "thêm" chứ không phải "sửa". → §2.4, §3.1 |
 | 2 | **Hiệu năng runtime — mỗi phép tính khai được nhịp của nó** | Nhịp là *mỗi frame* · *mỗi tương tác* · *mỗi lần dữ liệu đổi*. Hàm chạy lặp phải trả lời được nó thuộc nhịp nào; đặt ở nhịp nhanh hơn mức cần thì **không có gì báo sai**, chỉ có hệ chậm dần. **Câu phân xử với NT1: bản nhanh hơn có khó đọc hơn không?** Không — khai đúng nhịp · **không tạo rác ở chỗ chạy lặp** · **không tính lại thứ không đổi** (đầu vào chỉ đổi cùng cấu hình đọc một lần thì kết quả là hằng của phiên — dựng một lần, giữ trong field) — thì **làm luôn ở mọi nhịp, không cần đo**. Có — thêm tầng cache, viết tay vòng lặp, bẻ cấu trúc dữ liệu — thì phải có **chỗ đo và số trước–sau**, chỉ ở hot path đã xác nhận. Cách rẻ nhất thường là **làm phép tính biến mất**, không phải làm nó chạy nhanh hơn. → §3.3 |
-| 3 | **Module hoá — hệ độc lập là mặc định, mang đi được** | Mỗi hệ trả lời được: *bê sang dự án sau thì phải sửa gì?* Mặc định là **không sửa gì** — hệ không gọi tên type của dự án, phụ thuộc đi **một chiều: dự án → Horcrux**. **Hệ kết hợp** (dựng trên nhiều hệ khác nên không rời đi một mình được) là ngoại lệ phải gọi tên lý do và chỉ ra đường tách. **Câu phân xử với NT1: thứ phải thêm là gì?** Chỉ là **chiều phụ thuộc** và **chỗ đặt file** thì làm ngay — gần như miễn phí lúc đầu, sửa sau thì đập cả cây. Là một interface, một adapter, một tham số cho người dùng **chưa có** thì là phòng xa — bỏ. **Hệ quả:** Horcrux là package **tích luỹ qua các dự án** — mỗi lần làm mới hay cải thiện ở đó là mọi dự án sau hưởng — nên chức năng mang đi được thì **thuộc về Horcrux**, và cải thiện bản Horcrux luôn đứng trước viết bản riêng trong dự án (§2.4). → §3.2 |
+| 3 | **Module hoá — hệ độc lập là mặc định, mang đi được** | Mỗi hệ trả lời được: *bê sang dự án sau thì phải sửa gì?* Mặc định là **không sửa gì** — hệ không gọi tên type của dự án, phụ thuộc đi **một chiều: dự án → Horcrux**. **Hệ kết hợp** (dựng trên nhiều hệ khác nên không rời đi một mình được) là ngoại lệ phải gọi tên lý do và chỉ ra đường tách. **Câu phân xử với NT1: thứ phải thêm là gì?** Chỉ là **chiều phụ thuộc** và **chỗ đặt file** thì làm ngay — gần như miễn phí lúc đầu, sửa sau thì đập cả cây. Là một interface, một adapter, một tham số cho người dùng **chưa có** thì là phòng xa — bỏ. **Hệ quả:** Horcrux là package **tích luỹ qua các dự án** — mỗi lần làm mới hay cải thiện ở đó là mọi dự án sau hưởng — nên chức năng mang đi được thì **thuộc về Horcrux**, và bản riêng trong dự án chỉ tồn tại như **bản tạm** chờ chuyển vào Horcrux (§2.4). → §3.2 |
 | 4 | **Editor-first — code lo hành vi, Editor lo cấu hình và kết nối** | Thứ gì **làm chắc chắn được lúc authoring** thì không sinh code cho nó. **Phép kiểm là *chắc chắn*, không phải *tiện*.** Đang viết code chỉ để **tìm, nối, hoặc gán** thứ vốn đã tồn tại lúc authoring thì code đó đặt sai chỗ. Việc bắt buộc làm trước khi build là **một bước ghi trong tài liệu**, không phải code canh lúc chạy — và **tự tạo tệ hơn tự canh**, vì nó giấu việc setup còn thiếu. Ngoại lệ nằm ở *thời điểm biết được* (spawn runtime, số lượng động, dữ liệu từ server), không ở *độ tiện khi viết code*. **Câu phân xử với "wiring trong asset không grep được": số chỗ phải nối là hằng số nhỏ trong cùng một asset, hay tăng theo số instance?** Hằng số nhỏ → kéo thả, ô trống chắc chắn có người nhìn vào. Tăng theo instance → đăng ký bằng code, gom n ca hỏng-im-lặng thành **một** dòng đỏ lúc boot. → §3.6 |
 
 ---
@@ -133,9 +133,8 @@ bên thứ ba; cột "không lấy" là nơi ghi lý do để người sau khôn
 | Không có, hoặc phải **bẻ cong bài toán** cho vừa nó | **viết mới** — tái sử dụng không phải lý do để làm sai bài toán |
 
 **Không dùng bản Horcrux thì phải đề xuất cải thiện Horcrux** — kèm cái thiếu, cách sửa, và ước lượng
-công — để developer quyết: sửa Horcrux ngay (mọi dự án sau hưởng) hay viết bản dự án vì tiến độ. Lý do
-viết bản dự án không bao giờ là "Horcrux không có", chỉ là "chưa kịp tiến độ"; khi đó dòng "Mở rộng sau"
-(§2.5) ghi bản dự án là bản tạm, chờ chuyển vào Horcrux (NT3).
+công. Developer đồng ý thì đi bốn bước ở mục "Đặt ở đâu" dưới. Lý do có bản dự án không bao giờ là
+"Horcrux không có", chỉ là "chưa kịp tiến độ" — và khi đó nó là **bản tạm** của bốn bước đó (NT3).
 
 *Đã sai một lần:* viết vòng tween riêng và công thức scale riêng cho một hiệu ứng bay, trong khi
 Horcrux đã có runner tween và class squash-stretch — cả mục phải viết lại ở lượt review.
@@ -183,7 +182,9 @@ cần.
 
 ### Đặt ở đâu — dự án hay Horcrux (NT3)
 
-Với **mỗi chức năng mới**, trước khi viết, trả lời: *bê sang dự án khác có dùng nguyên được không?*
+**Săn chức năng cho Horcrux suốt task, không chỉ lúc sắp viết mới.** Với **mỗi chức năng** chạm tới —
+sắp viết, đang sửa, hay đọc ngang qua — hỏi: *bê sang dự án khác có dùng nguyên được không?* Có thì
+**đề xuất ngay trong lượt đó**, không đợi developer hỏi: phần mang đi được · phần nối dự án · ước lượng công.
 
 | Chức năng | Nơi đặt | Ai viết |
 |---|---|---|
@@ -193,8 +194,21 @@ Với **mỗi chức năng mới**, trước khi viết, trả lời: *bê sang 
 | Lõi chung + lớp nối dự án | **tách**: lõi vào Horcrux theo Plan; lớp nối agent viết trong dự án | cả hai |
 
 Phân loại là **đề xuất kèm giá**, developer quyết (NT5) — nhưng việc hỏi là bắt buộc: **im lặng viết vào
-dự án thứ vốn mang đi được là vi phạm**, vì sửa chỗ đặt sau là đập cả cây phụ thuộc. **Mọi dòng code
-vào Horcrux developer tự gõ, trong hay ngoài Plan:** framework đi theo mọi dự án sau nên developer phải
+dự án thứ vốn mang đi được là vi phạm**, vì sửa chỗ đặt sau là đập cả cây phụ thuộc.
+
+**Developer đồng ý thì đi bốn bước — tiến độ trước, Horcrux sau:**
+
+1. **Agent viết bản tạm trong dự án** để task không đứng chờ — gom một chỗ, chữ ký theo Plan ở bước 2,
+   để bước 4 chỉ còn đổi call site rồi xoá.
+2. **Agent viết Plan** cho phần Horcrux (§5.3), đặt trong **`Plans/` ở gốc Horcrux** — không ở dự án,
+   không cạnh code: plan đi theo framework, và một thư mục là đủ thấy mọi việc Horcrux đang nợ. Bản tạm
+   ghi ở "Mở rộng sau" (§2.5) kèm đường dẫn Plan, để nó không trôi thành bản vĩnh viễn.
+3. **Developer tự gõ** vào Horcrux theo Plan.
+4. **Agent chuyển dự án sang bản Horcrux và xoá bản tạm** trong cùng một lần — giữ song song là hai chỗ
+   sửa cho một tri thức (NT7). Developer gõ lệch Plan thì theo code thật (§5.3). Nghiệm thu: grep không
+   còn tên bản tạm, compile sạch.
+
+**Mọi dòng code vào Horcrux developer tự gõ, trong hay ngoài Plan:** framework đi theo mọi dự án sau nên developer phải
 hiểu và chịu trách nhiệm từng dòng chạy; agent viết Plan, đoạn mẫu, review, test. **Tài liệu trong
 Horcrux — tài liệu module, file này — agent viết** (§5): nghiệm thu tài liệu là đối chiếu với code, và
 developer chốt nội dung bằng veto. Áp cho cả việc **nâng** một chức năng đang có lên Horcrux khi có
@@ -850,7 +864,7 @@ tài liệu hay demo đi kèm thì **xuống thư mục con mang tên nó** (`.c
 |---|---|---|
 | **`.md`** | tài liệu **agent đọc** để hiểu và phát triển hệ — bản đặc, plain text, rẻ token; nguồn sinh `.html` | cập nhật **cùng lần làm** với mỗi thay đổi |
 | **`.html`** | tài liệu **developer và game designer đọc** — trực quan hóa 100% nội dung `.md`; agent không đọc bản này khi đã có `.md` | đồng bộ từ `.md` theo **mốc** — developer yêu cầu, hoặc chốt xong một cụm thay đổi |
-| **Plan** | để developer **tự gõ** — khi developer yêu cầu, và mọi code vào Horcrux (§2.4) | luôn là `.md`; theo task |
+| **Plan** | để developer **tự gõ** — khi developer yêu cầu, và mọi code vào Horcrux (§2.4) | luôn là `.md`; theo task. Plan cho Horcrux nằm trong `Plans/` ở gốc Horcrux |
 | **Manual** (khi tool có người dùng không phải developer) | người dùng đọc để **thao tác** — luật viết ở §5.4 | sống cùng tool |
 
 **Ai viết: agent, cả bốn loại.** Nghiệm thu tài liệu là **đối chiếu máy móc với code** (§2.8). Developer
