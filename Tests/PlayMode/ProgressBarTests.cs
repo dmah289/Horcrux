@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections;
 using System.Reflection;
 using System.Text.RegularExpressions;
@@ -10,11 +10,12 @@ using PrimeTween;
 using TMPro;
 using UnityEngine;
 using UnityEngine.TestTools;
+using UnityEngine.UI;
 using Object = UnityEngine.Object;
 
 namespace Horcrux.Tests
 {
-    /// <summary>Case table of docs/plans/Gameplay_Hud_Plan.md §2: fill width, label written once, time mode, cancel.</summary>
+    /// <summary>Case table of docs/plans/Gameplay_Hud_Plan.md §2: fill width or fill amount, label written once, time mode, cancel.</summary>
     public sealed class ProgressBarTests
     {
         private const float FullWidth = 300f;
@@ -179,6 +180,49 @@ namespace Horcrux.Tests
             Assert.That(widthAtCancel, Is.InRange(1f, FullWidth - 1f));
             Assert.That(_fill.rect.width, Is.EqualTo(widthAtCancel).Within(Tolerance));
         });
+
+        [Test]
+        public void Set_FillMode_WritesFillAmountAndKeepsWidth()
+        {
+            var image = UseFillMode();
+            var widthBefore = _fill.rect.width;
+
+            _bar.Set(1f, 4f, "x");
+
+            Assert.That(image.fillAmount, Is.EqualTo(0.25f).Within(Tolerance));
+            Assert.That(_fill.rect.width, Is.EqualTo(widthBefore).Within(Tolerance));
+        }
+
+        [UnityTest]
+        public IEnumerator PlayAsync_FillMode_DrainEndsAtZeroFillAmount() => UniTask.ToCoroutine(async () =>
+        {
+            var image = UseFillMode();
+            SetField("speed", 10f);
+
+            var play = _bar.PlayAsync(1f, 0f, 1f, "x", CancellationToken.None);
+            Assert.That(image.fillAmount, Is.EqualTo(1f).Within(Tolerance));
+            await play;
+
+            Assert.That(image.fillAmount, Is.EqualTo(0f).Within(Tolerance));
+        });
+
+        [Test]
+        public void Set_FillModeWithoutImage_LogsError()
+        {
+            SetField("fillMode", ProgressBar.FillMode.SetFill);
+            LogAssert.Expect(LogType.Error, new Regex(@"\[ProgressBar\]: Fill of .* has no Image for SetFill"));
+
+            _bar.Set(1f, 2f, "x");
+        }
+
+        private Image UseFillMode()
+        {
+            var image = _fill.gameObject.AddComponent<Image>();
+            image.type = Image.Type.Filled;
+            image.fillMethod = Image.FillMethod.Horizontal;
+            SetField("fillMode", ProgressBar.FillMode.SetFill);
+            return image;
+        }
 
         private void SetField(string name, object value) =>
             typeof(ProgressBar).GetField(name, BindingFlags.Instance | BindingFlags.NonPublic).SetValue(_bar, value);

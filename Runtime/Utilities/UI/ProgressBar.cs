@@ -3,22 +3,34 @@ using Cysharp.Threading.Tasks;
 using PrimeTween;
 using TMPro;
 using UnityEngine;
+using UnityEngine.UI;
 
 namespace Horcrux.Runtime.Utilities.UI
 {
     public class ProgressBar : MonoBehaviour
     {
+        public enum FillMode
+        {
+            /// <summary>Resizes the fill width to <c>fullWidth * curr / goal</c>.</summary>
+            SetWidth,
+            /// <summary>Writes <c>curr / goal</c> to <see cref="Image.fillAmount"/> of the Image on fill; the rect keeps its size.</summary>
+            SetFill,
+        }
+
         [Splitter("References")]
         [SerializeField] private RectTransform fill;
         [SerializeField] private TextMeshProUGUI label;
 
         [Splitter("Configs")]
         [SerializeField] private bool useUnscaledTime = true;
+        [Tooltip("SetFill: the Image on fill must be Image Type Filled; Full Width is unused.")]
+        [SerializeField] private FillMode fillMode;
         [SerializeField] private float fullWidth;
         [SerializeField] private Ease ease;
         [SerializeField] private float speed;
 
         private float _goal;
+        private Image _fillImage;
 
         #region API
 
@@ -68,8 +80,22 @@ namespace Horcrux.Runtime.Utilities.UI
 
         private void WriteFill(float curr)
         {
-            if (fill != null)
+            if (fill == null)
+                return;
+
+            if (fillMode == FillMode.SetWidth)
+            {
                 fill.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, fullWidth * curr / _goal);
+                return;
+            }
+
+            if (_fillImage == null && !fill.TryGetComponent(out _fillImage))
+            {
+                Debug.LogError($"[ProgressBar]: Fill of {gameObject.name} has no Image for SetFill", this);
+                return;
+            }
+
+            _fillImage.fillAmount = curr / _goal;
         }
 
         #endregion
