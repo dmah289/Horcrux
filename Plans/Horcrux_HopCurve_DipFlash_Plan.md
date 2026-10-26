@@ -1,0 +1,319 @@
+# Plan — `HopCurve`, `DipSpec`, `FlashSpec` và `SmoothStep` lên Horcrux
+
+Ngày 2026-10-26. Nguồn: bản tạm trong dự án category-jam, đợt feeling gameplay (dự án `docs/plans/Gameplay_Feel_Plan.md`,
+`Gameplay_Feel_Impl_Plan.md`):
+
+- `Assets/_CategoryJam/Gameplay/Entities/Tile/TileFlightCurve.cs` — hình dạng cú bay và cú nhảy lên hàng trước của tile.
+- `Assets/_CategoryJam/Gameplay/Entities/Box/BoxFeelTuning.cs` — `DipTuning`, `FlashTuning`, `BoxFeelCurve.DipScaleY`.
+- `Assets/_CategoryJam/Gameplay/Entities/Box/BoxAnimation.cs` — `InsertFlash` (private static).
+
+Cả ba đã có hai người dùng thật trong dự án (bay tới ô và nhảy lên hàng trước; lún khi nhận tile và khi nắp chạm) và đã chơi
+thử. Không cái nào gọi tên type của dự án ngoài hai class núm `TileFlightTuning`, `TileRiseTuning` — bản Horcrux nhận số thay
+cho class núm.
+
+**Phân công:**
+- Task 1 (Horcrux, code): developer gõ.
+- Task 2 (test EditMode Horcrux), Task 3 (tài liệu module), Task 4 (dự án đổi sang bản Horcrux và xoá bản tạm): agent làm.
+
+Horcrux là submodule: Task 1–3 commit **trong `Assets/Horcrux`**, Task 4 commit ở repo dự án kèm con trỏ submodule.
+
+---
+
+## Ngữ cảnh đã chốt
+
+| Mục | Chốt |
+|---|---|
+| Người dùng | dự án này: `Tile.StepFlight`, `Tile.StepRise`, `BoxAnimation.PlayReceive`, `BoxAnimation.PlayComplete` · dự án sau có vật nhảy thấp có bóng, vật nhận lún, sprite loé |
+| Mục tiêu | đưa **toán thuần** và **struct núm** lên Horcrux, dự án gọi thẳng; cảm giác chơi **không đổi một giá trị nào**: mọi biểu thức chép nguyên văn, kể cả thứ tự phép nhân (float) |
+| Chỗ đặt | `HopCurve` cạnh `SquashStretch` ở `Runtime/Utilities/PhysXHelper/` (toán thuần, không tween) · `Interpolator.SmoothStep` thêm vào class có sẵn · `DipSpec`, `FlashSpec` ở `Runtime/Utilities/Tweening/` namespace `Horcrux.Runtime.Utilities.Tweening` như `SquashStretchSpec`, `ArcFlightSpec` · `InsertFlash` là extension của `PrimeTween.Sequence` ở `Runtime/Utilities/ExtensionMethods/` |
+| Tên | đề xuất, **developer đổi tuỳ ý trước khi gõ**: `HopCurve` (cú nhảy thấp, không phải đạn đạo), hậu tố `Spec` theo `SquashStretchSpec` thay `Tuning` của dự án. Tên field trong hai struct **giữ nguyên** — xem quyết định trái trực giác |
+
+**Cố ý KHÔNG làm**
+
+| Không làm | Vì |
+|---|---|
+| Đưa `TileFlightTuning`, `TileRiseTuning` lên Horcrux | chứa bóng, lắc, tan thân — quyết định của tile nhựa 2.5D, không phải của cú nhảy; Horcrux nhận số |
+| Driver tween cho cú nhảy (một `Tween.Custom` lái mọi kênh) | driver ghi lên thân, bóng, màu của **dự án**; mỗi dự án một bộ kênh. Horcrux giữ hình dạng, dự án giữ vòng `Step` |
+| Driver tween cho lún (`Tween DipScale(Transform, …)`) | `Tween.Custom<T>` cần một class giữ state (scale nghỉ) để callback `static`; bọc lại là sinh class trung gian cho một dòng `ApplyScaleY` |
+| Gộp `HopCurve.Lift` vào `JumpArc` | `JumpArc` lo hai đầu lệch cao; `Lift` là ca hai đầu ngang nhau, đọc được trong một dòng. Test giữ hai bản khớp nhau |
+| `PunchSpec` cho khung nảy và bộ đếm nảy | hai núm còn mang tên riêng trong dự án (`FramePunch*` trong `BoxReceiveTuning`, `CounterPopTuning`); gộp là đổi key YAML — để Mở rộng sau |
+
+**Quyết định trái trực giác**
+
+| Chỗ | Vì |
+|---|---|
+| Field của `DipSpec`, `FlashSpec` PascalCase (`ScaleY`, `PeakAlpha`…), khác `SquashStretchSpec` camelCase | tên field là **key YAML** trên `SpriteBox3.prefab`; đổi kiểu struct thì Unity giữ giá trị vì khớp theo tên field, đổi tên field thì giá trị rơi về 0 im lặng. Casing PascalCase cũng đúng luật "public field của data class" |
+| `LeanRamp`, `LeanToward` nhận mốc và ngưỡng làm tham số **bắt buộc** | 0.3 · 0.75 · 0.05 là số cảm giác của tile nhựa, không phải của cơ chế; mặc định trong Horcrux là đóng băng nháp của một dự án thành chuẩn |
+| `SmoothStep` clamp đầu vào | bản tạm clamp; `LeanRamp` gọi với `(1 − t) / (1 − fallStart)` có thể vượt 1 ở biên |
+
+---
+
+## Đã khảo sát
+
+| Nguồn | Lấy gì | Không lấy, vì sao |
+|---|---|---|
+| Horcrux `PhysXHelper/Interpolator.cs` | chỗ đặt `SmoothStep` cạnh `SmootherStep`; `FeelingPlan.md` đã ghi "còn thiếu SmoothStep cubic" | — |
+| Horcrux `ExtensionMethods/Transform/JumpArc.cs` | test chéo: `Lift(t, peak)` = `JumpArc.EvaluateHeight(0, ComputeArcCoefficient(0, 0, peak), t)` | không thay `Lift` (bảng trên) |
+| Horcrux `PhysXHelper/SquashStretch.cs` | `BoxAnimation.ApplyScaleY` đã dùng `GetVolumePreservingScale`; `DipSpec` chỉ trả hệ số y | — |
+| Horcrux `Tweening/Easings/Easer.cs` | — | `DipSpec` dùng `PrimeTween.Easing.Evaluate` như bản tạm: cùng một hàm ease với tween đang chạy, khác bản thì lún lệch tween |
+| Horcrux `ExtensionMethods/Transform/SquashStretchSpec.cs`, `ArcFlightSpec.cs` | namespace và hậu tố `Spec` | camelCase (bảng trên) |
+| Horcrux `ExtensionMethods/` | chưa có extension nào cho `PrimeTween.Sequence`; dự án cũng không (grep `SequenceExtensions`: 0) | — |
+
+---
+
+## Task 1 — Horcrux (developer gõ)
+
+Thứ tự: 1.1 trước vì 1.2 gọi nó. Xong mỗi bước compile sạch; dự án chưa đổi vẫn chạy như cũ vì chỉ **thêm**.
+
+### 1.1 `Runtime/Utilities/PhysXHelper/Interpolator.cs` — thêm `SmoothStep`
+
+Chèn ngay trên `SmootherStep` (dòng hiện tại có `/// <summary>Perlin's quintic smoothstep`):
+
+```csharp
+        /// <summary>Cubic smoothstep: zero velocity at both ends.</summary>
+        /// <remarks>S(t) = 3t^2 - 2t^3 = t^2 (3 - 2t)</remarks>
+        /// <param name="t">Progress, clamped to [0,1].</param>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static float SmoothStep(float t)
+        {
+            t = Mathf.Clamp01(t);
+            return t * t * (3f - 2f * t);
+        }
+
+```
+
+### 1.2 `Runtime/Utilities/PhysXHelper/HopCurve.cs` — file mới
+
+```csharp
+using System.Runtime.CompilerServices;
+using UnityEngine;
+
+namespace Horcrux.Runtime.Utilities.PhysXHelper
+{
+    /// <summary>
+    /// Hình dạng một cú nhảy thấp lái bằng một t tuyến tính: gốc đi đường đất, thân nhấc theo parabol, nghiêng vào hướng đi,
+    /// scale và alpha đổi ở đoạn cuối. Mọi kênh đọc cùng t để cùng nhịp; caller giữ vòng Step và ghi lên object của mình.
+    /// </summary>
+    public static class HopCurve
+    {
+        /// <summary>Quãng đường đổi theo vị trí thì núm là tốc độ: thời lượng = quãng / tốc độ, kẹp hai đầu.</summary>
+        public static float DurationForSpeed(float distance, float speed, float minDuration, float maxDuration)
+            => Mathf.Clamp(distance / speed, minDuration, maxDuration);
+
+        /// <summary>Đỉnh cung tỉ lệ quãng đường, kẹp hai đầu; đơn vị world.</summary>
+        public static float PeakForDistance(float distance, float heightPerUnit, float minHeight, float maxHeight)
+            => Mathf.Clamp(distance * heightPerUnit, minHeight, maxHeight);
+
+        /// <summary>Độ cao world → local của gốc để thân nhấc trong không gian gốc; lossy không dương thì giữ nguyên.</summary>
+        public static float PeakToLocal(float peakWorld, float lossyScaleY) => peakWorld / (lossyScaleY > 0f ? lossyScaleY : 1f);
+
+        /// <summary>Parabol 0 → peak → 0, đỉnh ở t = 0.5; cùng JumpArc khi hai đầu ngang nhau (K = 4·peak).</summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static float Lift(float t, float peak) => peak * 4f * t * (1f - t);
+
+        /// <summary>Góc để mép trước thấp như thẻ bị búng: dx âm (sang trái) cho góc dương. |dx| dưới minDx thì 0.</summary>
+        public static float LeanToward(float dx, float degrees, float minDx) => Mathf.Abs(dx) < minDx ? 0f : -degrees * Mathf.Sign(dx);
+
+        /// <summary>0 ở hai đầu; SmoothStep lên 1 tới riseEnd, giữ 1 tới fallStart, SmoothStep về 0 ở t = 1: cất cánh và đáp phẳng.</summary>
+        public static float LeanRamp(float t, float riseEnd, float fallStart)
+        {
+            if (t <= 0f || t >= 1f) return 0f;
+            if (t < riseEnd) return Interpolator.SmoothStep(t / riseEnd);
+            if (t < fallStart) return 1f;
+            return Interpolator.SmoothStep((1f - t) / (1f - fallStart));
+        }
+
+        /// <summary>Giữ from tới holdEnd rồi InQuad về to ở t = 1.</summary>
+        public static float HoldThenEaseIn(float t, float holdEnd, float from, float to)
+        {
+            if (t <= holdEnd) return from;
+            var k = (t - holdEnd) / (1f - holdEnd);
+            return Mathf.Lerp(from, to, k * k);
+        }
+
+        /// <summary>1 tới fadeStart rồi InQuad về 0 ở t = 1.</summary>
+        public static float FadeOutTail(float t, float fadeStart)
+        {
+            if (t <= fadeStart) return 1f;
+            var k = (t - fadeStart) / (1f - fadeStart);
+            return 1f - k * k;
+        }
+
+        /// <summary>t của cả cú (có lấy đà) → k của cung nhảy: 0 suốt pha lấy đà, rồi 0 → 1 tuyến tính.</summary>
+        public static float AfterAnticipation(float t, float anticipationEnd)
+            => t <= anticipationEnd ? 0f : Mathf.Clamp01((t - anticipationEnd) / (1f - anticipationEnd));
+
+        /// <summary>Thân so với đường đất: hạ tới −sinkDepth ở anticipationEnd (lấy đà), rồi parabol từ −sinkDepth về 0 với đỉnh peak; 0 ở hai đầu.</summary>
+        public static float LiftWithAnticipation(float t, float peak, float sinkDepth, float anticipationEnd)
+        {
+            if (t <= 0f || t >= 1f) return 0f;
+            if (t <= anticipationEnd) return -sinkDepth * Interpolator.SmoothStep(t / anticipationEnd);
+            var k = AfterAnticipation(t, anticipationEnd);
+            return Mathf.Lerp(-sinkDepth, 0f, k) + Lift(k, peak);
+        }
+
+        /// <summary>OutQuad 0 → 1 xong ở k = end, giữ 1 sau đó: vật tới gần camera to và sáng nhanh lúc đầu.</summary>
+        public static float EaseOutUntil(float k, float end)
+        {
+            var x = Mathf.Clamp01(k / end);
+            return 1f - (1f - x) * (1f - x);
+        }
+    }
+}
+```
+
+### 1.3 `Runtime/Utilities/Tweening/DipSpec.cs` — file mới
+
+```csharp
+using System;
+using PrimeTween;
+using UnityEngine;
+
+namespace Horcrux.Runtime.Utilities.Tweening
+{
+    /// <summary>
+    /// Lún một trục: hệ số ScaleY xuống trong DownDuration (OutQuad) rồi về 1 trong UpDuration (OutBack, vượt 1 một nhịp).
+    /// Caller nhân hệ số lên scale nghỉ của vật và bù trục kia để giữ thể tích (SquashStretch).
+    /// </summary>
+    [Serializable]
+    public struct DipSpec
+    {
+        [Range(0.5f, 1f)] public float ScaleY;
+        [Min(0.01f)] public float DownDuration;
+        [Min(0.01f)] public float UpDuration;
+
+        public DipSpec(float scaleY, float downDuration, float upDuration)
+        {
+            ScaleY = scaleY;
+            DownDuration = downDuration;
+            UpDuration = upDuration;
+        }
+
+        public float Duration => DownDuration + UpDuration;
+
+        /// <summary>t ∈ [0, 1] trên cả Duration → hệ số y; vượt 1 ở pha về vì OutBack.</summary>
+        public float EvaluateScaleY(float t)
+        {
+            var downEnd = DownDuration / Duration;
+            return t < downEnd
+                ? Mathf.Lerp(1f, ScaleY, Easing.Evaluate(t / downEnd, Ease.OutQuad))
+                : Mathf.LerpUnclamped(ScaleY, 1f, Easing.Evaluate((t - downEnd) / (1f - downEnd), Ease.OutBack));
+        }
+    }
+}
+```
+
+### 1.4 `Runtime/Utilities/Tweening/FlashSpec.cs` — file mới
+
+```csharp
+using System;
+using UnityEngine;
+
+namespace Horcrux.Runtime.Utilities.Tweening
+{
+    /// <summary>Loé một sprite: alpha lên PeakAlpha trong RiseDuration (OutQuad) rồi về 0 trong FallDuration (InQuad).</summary>
+    [Serializable]
+    public struct FlashSpec
+    {
+        [Range(0f, 1f)] public float PeakAlpha;
+        [Min(0.01f)] public float RiseDuration;
+        [Min(0.01f)] public float FallDuration;
+
+        public FlashSpec(float peakAlpha, float riseDuration, float fallDuration)
+        {
+            PeakAlpha = peakAlpha;
+            RiseDuration = riseDuration;
+            FallDuration = fallDuration;
+        }
+    }
+}
+```
+
+### 1.5 `Runtime/Utilities/ExtensionMethods/SequenceExtensions.cs` — file mới
+
+```csharp
+using Horcrux.Runtime.Utilities.Tweening;
+using PrimeTween;
+using UnityEngine;
+
+namespace Horcrux.Runtime.Utilities.ExtensionMethods
+{
+    public static class SequenceExtensions
+    {
+        /// <summary>Chèn một cú loé vào sequence ở mốc at: alpha lên đỉnh rồi về 0. Sprite nghỉ ở alpha 0.</summary>
+        public static Sequence InsertFlash(this Sequence sequence, float at, SpriteRenderer target, in FlashSpec flash)
+        {
+            sequence.Insert(at, Tween.Alpha(target, flash.PeakAlpha, flash.RiseDuration, Ease.OutQuad));
+            return sequence.Insert(at + flash.RiseDuration, Tween.Alpha(target, 0f, flash.FallDuration, Ease.InQuad));
+        }
+    }
+}
+```
+
+**Editor setup:** tạo file trong Project window của Unity (để có `.meta`), không cần kéo thả gì.
+
+---
+
+## Task 2 — Test EditMode Horcrux (agent)
+
+`Tests/EditMode/HopCurveTests.cs`, `DipSpecTests.cs`, `InterpolatorSmoothStepTests` (gộp vào file nào có sẵn thì gộp). Chuyển
+các case thuần toán của dự án (`TileFlightCurveTests`, `BoxFeelCurveTests`), thêm case biên:
+
+| Hàm | Input | Kỳ vọng |
+|---|---|---|
+| `SmoothStep` | 0 · 0.5 · 1 · −1 · 2 | 0 · 0.5 · 1 · 0 · 1 |
+| `Lift` | t 0 và 1; t 0.5; t 0.2 so với 0.8; t ∈ {0, 0.25, 0.5, 0.9, 1} | 0; peak; bằng nhau; bằng `JumpArc.EvaluateHeight(0, ComputeArcCoefficient(0, 0, peak), t)` |
+| `LeanRamp(t, 0.3, 0.75)` | 0 · 1 · 0.3 · 0.5 · 0.75; dãy 0.05 bước tới 0.3 | 0 · 0 · 1 · 1 · 1; tăng đơn điệu |
+| `LeanToward(dx, 10, 0.05)` | −2 · 2 · ±0.049 · 0.05 | 10 · −10 · 0 · −10 |
+| `HoldThenEaseIn(t, 0.6, 1.1, 1.2)` | 0.3 · 0.6 · 1 | 1.1 · 1.1 · 1.2 |
+| `FadeOutTail(t, 0.85)` | 0.5 · 0.85 · 1 | 1 · 1 · 0 |
+| `AfterAnticipation(t, 0.14)` | 0.1 · 0.14 · 1 | 0 · 0 · 1 |
+| `LiftWithAnticipation(t, 1.1, 0.04, 0.14)` | 0 · 1 · 0.14 · 0.57 | 0 · 0 · −0.04 · 1.1 − 0.02 (±1e-3) |
+| `EaseOutUntil(k, 0.6)` | 0 · 0.3 · 0.6 · 1 | 0 · 0.75 · 1 · 1 |
+| `PeakToLocal` | (1.2, 0.6) · (1.2, 0) · (1.2, −1) | 2 · 1.2 · 1.2 |
+| `DurationForSpeed`, `PeakForDistance` | dưới kẹp, trong, trên kẹp | min · giá trị · max |
+| `DipSpec(0.86, 0.05, 0.22).EvaluateScaleY` | 0 · downEnd · 1 · giữa pha xuống · 70 % pha về | 1 · 0.86 · 1 · trong (0.86, 1) · > 1 |
+
+`InsertFlash` không test riêng: hai dòng gọi PrimeTween, Task 4 kiểm bằng trace.
+
+## Task 3 — Tài liệu module (agent)
+
+`Runtime/Utilities/PhysXHelper/HopCurve.md` (bảng kênh → hàm → hình dạng, công thức, mốc kiểm) và một mục trong tài liệu
+`Tweening` cho `DipSpec`, `FlashSpec`, `InsertFlash`. `FeelingPlan.md`: đánh dấu `SmoothStep` đã có, `Anticipation` có bản
+hình dạng ở `HopCurve.LiftWithAnticipation`.
+
+## Task 4 — Dự án dùng bản Horcrux, xoá bản tạm (agent)
+
+| File dự án | Đổi |
+|---|---|
+| `Entities/Tile/Tile.cs` | `TileFlightCurve.X` → `HopCurve.Y` theo bảng dưới; ba hằng cảm giác thành `private const` trong `Tile` (`LEAN_RISE_END = 0.3f`, `LEAN_FALL_START = 0.75f`, `BODY_SCALE_START = 0.6f`, `LEAN_MIN_DX = 0.05f`) |
+| `Entities/Tile/TileFlightCurve.cs` | xoá (Project window) |
+| `Entities/Box/BoxFeelTuning.cs` | xoá `DipTuning`, `FlashTuning`, `BoxFeelCurve`; đổi tên file thành `BoxCompleteTuning.cs` (Project window) vì chỉ còn class đó |
+| `Entities/Box/BoxReceiveTuning.cs`, `BoxCompleteTuning` | kiểu field `DipTuning` → `DipSpec`, `FlashTuning` → `FlashSpec`; tên field giữ nên YAML `SpriteBox3.prefab` không đổi |
+| `Entities/Box/BoxAnimation.cs` | `BoxFeelCurve.DipScaleY(t, dip)` → `dip.EvaluateScaleY(t)`; `InsertFlash(seq, at, r, f)` private → `seq.InsertFlash(at, r, f)`, xoá bản private |
+| `Tests/EditMode/TileFlightCurveTests.cs`, `BoxFeelCurveTests.cs` | case thuần toán sang Horcrux (Task 2); còn lại `LandPitch_CentersOnMiddleSlot` → đổi file thành `ShelfPromoteTuningTests.cs` |
+
+| Bản tạm | Bản Horcrux |
+|---|---|
+| `TileFlightCurve.Duration(d, flight)` | `HopCurve.DurationForSpeed(d, flight.Speed, flight.MinDuration, flight.MaxDuration)` |
+| `TileFlightCurve.Peak(d, mult, flight)` | `HopCurve.PeakForDistance(d, flight.HeightPerUnit, flight.MinHeight, flight.MaxHeight) * mult` |
+| `TileFlightCurve.PeakToLocal` · `Lift` | `HopCurve.PeakToLocal` · `HopCurve.Lift` |
+| `TileFlightCurve.LeanToward(dx, deg)` | `HopCurve.LeanToward(dx, deg, LEAN_MIN_DX)` |
+| `TileFlightCurve.LeanRamp(t)` | `HopCurve.LeanRamp(t, LEAN_RISE_END, LEAN_FALL_START)` |
+| `TileFlightCurve.BodyScale(t, a, b)` | `HopCurve.HoldThenEaseIn(t, BODY_SCALE_START, a, b)` |
+| `TileFlightCurve.BodyFade` · `RiseJump` · `RiseLift` · `RiseRamp` | `HopCurve.FadeOutTail` · `AfterAnticipation` · `LiftWithAnticipation` · `EaseOutUntil` |
+
+**Nghiệm thu:**
+- grep `TileFlightCurve`, `BoxFeelCurve`, `DipTuning`, `FlashTuning` trong `Assets/_CategoryJam` = 0; compile sạch; EditMode Horcrux và dự án PASS.
+- YAML `SpriteBox3.prefab` không đổi một dòng (`git diff` rỗng sau khi mở và lưu prefab).
+- **Cảm giác không đổi:** quay trace mỗi frame (scratchpad `trace.cs` của phiên 2026-10-26: chạm, bay box, bay cache, bấm lại khi
+  bay, từ chối khi bay, nhả không bay, lên hàng trước, đóng box; khoá 60 fps, so lần chạy cùng chữ ký level) trước và sau Task 4:
+  0 chênh trên mọi khung.
+
+---
+
+## Mở rộng sau
+
+- `PunchSpec` (scale vọt lên rồi OutBack về nghỉ, có trễ) cho `BoxReceiveTuning.FramePunch*` và `SpriteBox.counterPop`: cùng
+  hình dạng, hai bộ số; gộp là đổi key YAML của `SpriteBox3`.
+- `SlotSpringTuning` (lún vị trí y rồi OutBack về) của `CacheTileSlot` dự án: có người dùng thứ hai thì lên cùng chỗ với `DipSpec`.
