@@ -69,6 +69,15 @@ sinh ra để tiết kiệm. Skill thiếu công cụ thì mở rộng công c�
 |---|---|
 | Chỉnh, refactor, dò lỗi feeling — tween, trình diễn, hiệu ứng, nhịp, juice; đo GC hay batches trong lúc diễn | `Skills/feel-tune/SKILL.md` |
 
+**Tác vụ lặp lại thì đề xuất viết thành công cụ ngay lượt đó, developer quyết.** Dấu hiệu: lần thứ hai làm cùng một chuỗi thao tác
+(cùng khung script, cùng chuỗi lệnh, cùng phép đo), hoặc biết trước sẽ làm lại ở task sau hay dự án sau. Đề xuất một dòng kèm giá:
+*việc gì · đã lặp mấy lần hay vì sao sẽ lặp · công cụ trông thế nào (lệnh, chữ ký) · chỗ đặt · công viết · lượt đọc–viết tiết kiệm mỗi
+lần dùng*. Chỗ đặt mặc định là **Horcrux** — công cụ Editor, script `Tools~`, skill — để mọi dự án sau dùng lại; dự án chỉ giữ lớp nối
+gọi tên type của nó (§2.4). Developer đồng ý thì viết công cụ, tài liệu module, và thêm vào skill của loại việc đó (hoặc mở skill mới,
+thêm hàng vào bảng trên). Không đề xuất là trả lại khoản token đó ở mọi lần sau. *Đã sai một lần:* gần một nghìn lần eval qua nhiều
+phiên chép lại cùng một khung — vào Play, bấm vào level, gõ input, reflection, ghi file kết quả — mà không lần nào đề xuất gom thành
+công cụ.
+
 ## 2.1 Trước khi làm — phỏng vấn ngữ cảnh
 
 Agent **không** suy đoán ngữ cảnh rồi bắt tay làm: đoán **thừa** là hàm không caller nào gọi, đoán
