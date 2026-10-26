@@ -267,6 +267,13 @@ thay cho thứ cần biết**. Báo thẳng *"phần này chưa nghiệm thu đ�
 chơi thử**: *vào đâu* (level, cờ, dữ liệu cần bật) · *làm gì* (chuỗi thao tác **ngắn nhất**) · *nhìn cái
 gì* (hiện tượng cụ thể, không phải "xem có ổn không") · *khác trước ra sao* · *dấu hiệu hỏng*.
 
+**Developer chơi là cảm được thì agent không chơi qua MCP.** Vào Play, eval gõ kịch bản, quay log, chụp Game view
+để "xem thử" đốt token gấp nhiều lần vài giây developer bấm Play. Với thứ developer tự chơi và cảm được (bố cục, vị trí, hình
+ảnh, nhịp, một chỗ lệch nhìn là thấy), agent dừng ở phần tĩnh: đọc code và YAML, đo trên asset đã nạp bằng eval không vào Play,
+chỉ ra nguyên nhân, sửa, rồi giao kịch bản chơi thử như trên. Play qua MCP chỉ dành cho thứ developer **không cảm được**: trace
+chứng minh refactor giữ nguyên chuyển động (Sổ tay dưới), số đo hiệu năng, trạng thái nội bộ màn hình không hiện. *Developer
+chốt 2026-10-26.*
+
 **Đúng–sai xác định được — vét cạn, không đẩy về tay.** Điều kiện là **cả hai**: có đáp án xác định
 được, **và** ít nhất một dấu hiệu dưới. Đủ thì agent làm và chạy, kể cả khi chưa được yêu cầu — đây là
 bằng chứng (NT8), không phải mở rộng phạm vi.
