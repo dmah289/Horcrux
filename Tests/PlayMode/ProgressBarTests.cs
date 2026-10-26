@@ -249,6 +249,22 @@ namespace Horcrux.Tests
             Assert.That(_fill.rect.width, Is.EqualTo(150f).Within(Tolerance));
         }
 
+        [Test]
+        public void SetLabelActive_TogglesLabelAndKeepsTextAndFill()
+        {
+            _bar.Set(1f, 2f, "before");
+
+            _bar.SetLabelActive(false);
+
+            Assert.That(_label.gameObject.activeSelf, Is.False);
+            Assert.That(_label.text, Is.EqualTo("before"));
+            Assert.That(_fill.rect.width, Is.EqualTo(150f).Within(Tolerance));
+
+            _bar.SetLabelActive(true);
+
+            Assert.That(_label.gameObject.activeSelf, Is.True);
+        }
+
         private Image UseFillMode()
         {
             var image = _fill.gameObject.AddComponent<Image>();

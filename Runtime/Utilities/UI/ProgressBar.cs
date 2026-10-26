@@ -53,6 +53,13 @@ namespace Horcrux.Runtime.Utilities.UI
                 label.SetText(labelContent);
         }
 
+        /// <summary>Turns the label GameObject on or off; text and fill stay as is.</summary>
+        public void SetLabelActive(bool active)
+        {
+            if (label != null)
+                label.gameObject.SetActive(active);
+        }
+
         /// <param name="labelContent">Null keeps the current label text: fill only.</param>
         public void Set(float curr, float goal, string labelContent)
         {
