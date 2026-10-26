@@ -55,6 +55,7 @@ Horcrux là submodule: Task 1–3 commit **trong `Assets/Horcrux`**, Task 4 comm
 | `SinkSpec` dời vị trí, không bóp scale | luật vật cứng không biến dạng: khay nhựa và nắp lún xuống, không bẹp ra. Cần bẹp thì dùng `DipSpec` |
 | `CharmPop` lấy trễ bằng `startDelay` của chính tween | trễ là một phần của cú nảy, nằm trong `PopSpec` để một nguồn. Khung nảy hiện chèn ở `at + FramePunchDelay`; sau Task 4 chèn ở `at` với `startDelay`. Trong cả hai cách tween ở trạng thái "trước" cho tới mốc nảy nên không ghi scale; Task 2 kiểm bằng test, Task 4 kiểm bằng trace |
 | `CharmSinkLocalY` nhận `restLocalY`, không đọc `localPosition.y` lúc gọi | lún gọi lại khi đang lún thì đọc lúc gọi sẽ trôi mốc nghỉ xuống dần; luật "tween trên giá trị nghỉ đọc ở Awake" |
+| `InsertFlash` bật renderer lúc bắt đầu loé, tắt khi alpha về 0 | sprite loé nằm sẵn trên vật ở alpha 0, vẫn là một quad trong suốt vẽ mỗi frame. Dự án đã đo 2026-10-26: tắt `frame_flash` và vệt sáng nghỉ trên 2 box bớt 1 batch, 2 SetPass; trace đối chứng 0 chênh. Mốc tắt là `(at + Rise) + Fall`, cùng thứ tự phép cộng với lúc tween về 0 kết thúc |
 | `OffsetFromCenter` ở `Interpolator` | hàm một dòng, cùng họ ánh xạ chỉ số sang giá trị như `Remap`; developer chuyển sang class khác tuỳ ý |
 
 ---
@@ -262,11 +263,16 @@ namespace Horcrux.Runtime.Utilities.ExtensionMethods
 {
     public static class SequenceExtensions
     {
-        /// <summary>Chèn một cú loé vào sequence ở mốc at: alpha lên đỉnh rồi về 0. Sprite nghỉ ở alpha 0.</summary>
+        /// <summary>
+        /// Chèn một cú loé vào sequence ở mốc at: bật renderer, alpha lên đỉnh rồi về 0, tắt renderer.
+        /// Sprite nghỉ ở alpha 0 với renderer tắt: alpha 0 vẫn tốn một lượt vẽ trong suốt.
+        /// </summary>
         public static Sequence InsertFlash(this Sequence sequence, float at, SpriteRenderer target, in FlashSpec flash)
         {
+            sequence.InsertCallback(at, target, static renderer => renderer.enabled = true);
             sequence.Insert(at, Tween.Alpha(target, flash.PeakAlpha, flash.RiseDuration, Ease.OutQuad));
-            return sequence.Insert(at + flash.RiseDuration, Tween.Alpha(target, 0f, flash.FallDuration, Ease.InQuad));
+            sequence.Insert(at + flash.RiseDuration, Tween.Alpha(target, 0f, flash.FallDuration, Ease.InQuad));
+            return sequence.InsertCallback(at + flash.RiseDuration + flash.FallDuration, target, static renderer => renderer.enabled = false);
         }
     }
 }
@@ -396,7 +402,8 @@ PlayMode: `Tests/PlayMode/CharmAccentTests.cs`, cùng khung `CharmJumpTests` (th
 | `CharmPop` chèn vào `Sequence` ở mốc 0 | scale trước `Delay` | đúng nghỉ: chứng minh `startDelay` trong sequence không ghi scale sớm |
 | cả hai | GC mỗi lần gọi sau lượt khởi động | 0 B |
 
-`InsertFlash` không test riêng: hai dòng gọi PrimeTween, Task 4 kiểm bằng trace.
+`InsertFlash`, PlayMode trong `CharmAccentTests.cs`: renderer tắt trước `at`, bật trong suốt pha loé, tắt sau
+`at + Rise + Fall`; alpha theo thời gian Task 4 kiểm bằng trace.
 
 ## Task 3 — Tài liệu module (agent)
 
