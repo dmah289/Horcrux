@@ -1,22 +1,16 @@
 """So trace của Horcrux FeelTraceRecorder. Xem Editor/FeelTrace/FeelTrace.md.
 
-  feeltrace.py render <script.cs> <đường dẫn file ra, kiểu Windows> <file .cs đích>
   feeltrace.py sig <glob>...
   feeltrace.py diff <a.txt> <b.txt> [--tol 2e-4] [--limit 40]
+  feeltrace.py stat <trace.txt> <entity> [--cols 1.y,3] [--from F] [--to F] [--series N]
 """
 import argparse
 import glob
 import io
 import sys
 
-MARKER = '__TRACE_OUT__'
-
-
-def render(script, out_path, dest):
-    src = io.open(script, encoding='utf8').read()
-    if src.count(MARKER) != 1:
-        sys.exit('%s phải chứa %s đúng một lần' % (script, MARKER))
-    io.open(dest, 'w', encoding='utf8').write(src.replace(MARKER, out_path))
+# Dưới ngưỡng này hai số coi là bằng khi dò chỗ bắt đầu, dừng chuyển động: F5 ghi 5 chữ số thập phân.
+STILL = 1e-5
 
 
 def read_header(path):
@@ -100,13 +94,77 @@ def diff(a, b, tol, limit):
     return count
 
 
+def columns(tokens):
+    """Nhãn cột theo token: token một số là '<i>', vector là '<i>.x', '<i>.y', '<i>.z'."""
+    labels = []
+    for i, token in enumerate(tokens):
+        pieces = token.split(',')
+        if len(pieces) == 1:
+            labels.append(str(i))
+        else:
+            labels.extend('%d.%s' % (i, 'xyzw'[k]) for k in range(len(pieces)))
+    return labels
+
+
+def fmt(value):
+    return ('%.5f' % value).rstrip('0').rstrip('.') if isinstance(value, float) else value
+
+
+def describe(label, series):
+    """Một dòng cho một cột: đầu→cuối, cực trị, khung chuyển động, vọt lố hoặc biên độ, bước lớn nhất, tổng."""
+    frames = [f for f, _ in series]
+    values = [v for _, v in series]
+    if not all(isinstance(v, float) for v in values):
+        changes = [(f, v) for (f, v), (_, prev) in zip(series[1:], series) if v != prev]
+        head = ' '.join('F%d=%s' % c for c in changes[:6])
+        return '%s %s, đổi %d lần %s' % (label, values[0], len(changes), head)
+    first, last = values[0], values[-1]
+    lo = min(range(len(values)), key=values.__getitem__)
+    hi = max(range(len(values)), key=values.__getitem__)
+    moving = [frames[i] for i in range(1, len(values)) if abs(values[i] - values[i - 1]) > STILL]
+    if not moving:
+        return None
+    steps = [abs(values[i] - values[i - 1]) for i in range(1, len(values))]
+    big = max(range(len(steps)), key=steps.__getitem__)
+    travel = last - first
+    if abs(travel) > STILL:
+        beyond = max((v - last) * (1 if travel > 0 else -1) for v in values)
+        shape = 'vọt lố %.1f%%' % (100 * beyond / abs(travel)) if beyond > STILL else 'không vọt lố'
+    else:
+        peak = max(range(len(values)), key=lambda i: abs(values[i] - first))
+        shape = 'về chỗ cũ, lệch xa nhất %s ở F%d' % (fmt(values[peak] - first), frames[peak])
+    return '%s %s→%s min %s@F%d max %s@F%d chạy F%d..F%d %s bước lớn nhất %s@F%d tổng %s' % (
+        label, fmt(first), fmt(last), fmt(values[lo]), frames[lo], fmt(values[hi]), frames[hi],
+        moving[0] - 1, moving[-1], shape, fmt(steps[big]), frames[big + 1], fmt(sum(values)))
+
+
+def stat(path, entity, cols, start, end, series_step):
+    frames = load(path)
+    rows = [(f, frames[f][entity].split()) for f in sorted(frames)
+            if start <= f <= end and entity in frames[f]]
+    if not rows:
+        sys.exit('%s không có ở F%d..F%d' % (entity, start, end))
+    labels = columns(rows[0][1])
+    wanted = [i for i, label in enumerate(labels) if not cols or label in cols]
+    data = [(f, numbers(tokens)) for f, tokens in rows]
+    print('%s có ở F%d..F%d (%d frame), %d cột' % (entity, rows[0][0], rows[-1][0], len(rows), len(labels)))
+    still = []
+    for i in wanted:
+        line = describe(labels[i], [(f, values[i]) for f, values in data if len(values) == len(labels)])
+        if line:
+            print(' ', line)
+        else:
+            still.append('%s=%s' % (labels[i], fmt(data[0][1][i])))
+    if still:
+        print('  đứng yên:', ' '.join(still))
+    if series_step:
+        for f, values in data[::series_step]:
+            print('  F%d %s' % (f, ' '.join('%s=%s' % (labels[i], fmt(values[i])) for i in wanted)))
+
+
 def main():
     parser = argparse.ArgumentParser()
     sub = parser.add_subparsers(dest='command', required=True)
-    p = sub.add_parser('render')
-    p.add_argument('script')
-    p.add_argument('out_path')
-    p.add_argument('dest')
     p = sub.add_parser('sig')
     p.add_argument('patterns', nargs='+')
     p = sub.add_parser('diff')
@@ -114,9 +172,16 @@ def main():
     p.add_argument('b')
     p.add_argument('--tol', type=float, default=2e-4)
     p.add_argument('--limit', type=int, default=40)
+    p = sub.add_parser('stat')
+    p.add_argument('path')
+    p.add_argument('entity')
+    p.add_argument('--cols', default='')
+    p.add_argument('--from', dest='start', type=int, default=0)
+    p.add_argument('--to', dest='end', type=int, default=1 << 30)
+    p.add_argument('--series', type=int, default=0)
     args = parser.parse_args()
-    if args.command == 'render':
-        render(args.script, args.out_path, args.dest)
+    if args.command == 'stat':
+        stat(args.path, args.entity, [c for c in args.cols.split(',') if c], args.start, args.end, args.series)
     elif args.command == 'sig':
         for pattern in args.patterns:
             for path in sorted(glob.glob(pattern)):

@@ -28,6 +28,9 @@ namespace Horcrux.Editor.FeelTrace
         /// <summary>Lỗi console, lỗi của act, và kiểm phụ của kịch bản. Mỗi dòng kết thúc bằng '\n'; không vào TRACE nên không làm lệch diff.</summary>
         public StringBuilder Log { get; } = new();
 
+        /// <summary>Gán trước Start để mỗi frame ghi thêm entity "M0" (GC, batches); recorder Dispose nó khi quay xong.</summary>
+        public FeelTraceMetrics Metrics { get; set; }
+
         public FeelTraceRecorder(string outPath, int frameCount, int captureFramerate = 60)
         {
             _outPath = outPath;
@@ -36,7 +39,7 @@ namespace Horcrux.Editor.FeelTrace
             _writer = new FeelTraceWriter(_trace);
         }
 
-        public static string DoneFlagPath(string outPath) => outPath + ".done";
+        public static string DoneFlagPath(string outPath) => Probe.PlayProbe.DoneFlagPath(outPath);
 
         /// <summary>
         /// Chờ isReady đúng và ít nhất minIdleFrames frame, rồi mỗi frame: record ghi trạng thái, act gõ kịch bản với chỉ số frame.
@@ -67,6 +70,7 @@ namespace Horcrux.Editor.FeelTrace
                     _trace.Append('F');
                     FeelTraceWriter.AppendInt(_trace, frame);
                     record(_writer);
+                    Metrics?.Write(_writer);
                     _trace.Append('\n');
                     try
                     {
@@ -87,6 +91,7 @@ namespace Horcrux.Editor.FeelTrace
             {
                 Time.captureFramerate = 0;
                 Application.logMessageReceived -= OnLog;
+                Metrics?.Dispose();
                 WriteFile();
             }
         }

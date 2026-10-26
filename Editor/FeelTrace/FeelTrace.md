@@ -10,7 +10,7 @@ và cùng bố cục ban đầu cho ra file khớp 0 chênh; refactor giữ chuy
 | Mục | Chốt |
 |---|---|
 | Người dùng | agent, khi refactor tween, trình diễn mà phải giữ nguyên; developer đọc kết quả diff |
-| Ranh giới | Horcrux giữ lõi quay, định dạng file, công cụ so, runner. Dự án giữ **một file kịch bản**: ghi entity nào, gõ gì ở frame nào, vào level thế nào |
+| Ranh giới | Horcrux giữ lõi quay, định dạng file, công cụ so và tóm tắt; runner là `playrun.sh` của Horcrux Probe (`Editor/Probe/Probe.md`). Dự án giữ **một file kịch bản**: ghi entity nào, gõ gì ở frame nào; vào level qua đường tắt Editor của dự án |
 | Chỗ đặt | C# ở `Editor/FeelTrace/` (assembly `com.horcrux.editor`). Python, shell ở `Editor/FeelTrace/Tools~/`: thư mục đuôi `~` Unity không import, không sinh `.meta`, không vào build |
 | Chạy thế nào | Unity CLI vào Play, `script eval_file` chạy kịch bản; kịch bản gọi lõi đã compile sẵn. Đổi kịch bản không cần domain reload |
 
@@ -19,7 +19,7 @@ và cùng bố cục ban đầu cho ra file khớp 0 chênh; refactor giữ chuy
 | Không làm | Vì |
 |---|---|
 | Ghi tự động mọi `Transform` trong scene | file phình hàng trăm lần, chênh ở object không liên quan che chênh thật; chọn thứ nhìn thấy được là quyết định của người refactor |
-| Bước vào level dùng chung (chờ nút, seed, bấm) | mỗi game vào level một kiểu; chưa có người dùng thứ hai |
+| Bước vào level dùng chung (seed, bấm, chờ level) | mỗi game vào level một kiểu; Horcrux chỉ giữ phần chung `PlayProbe.WaitForActiveAsync`, phần còn lại là đường tắt của dự án |
 | Chạy từ menu Editor hay Test Runner | eval của Unity CLI đã chạy được trong Play, không domain reload khi đổi kịch bản |
 | Định dạng nhị phân, nén | file 641 frame cỡ 4 MB, so bằng Python trong vài giây |
 
@@ -32,28 +32,31 @@ và cùng bố cục ban đầu cho ra file khớp 0 chênh; refactor giữ chuy
 | Chữ ký là dòng `SIG` riêng, kịch bản ghi | kịch bản biết thứ gì quyết bố cục; công cụ không suy được mà không biết game |
 | Lỗi giữa chừng, kể cả thoát Play, vẫn ghi file và cờ `.done` | runner thấy lỗi trong `LOG` ngay, không chờ tới timeout |
 | Runner dừng ngay khi kịch bản lỗi compile, thoát Play trước khi báo timeout | lỗi compile thử lại không bao giờ qua; Play bỏ treo làm lần quay sau hỏng |
+| `stat` in một dòng mỗi cột đang đổi, gom cột đứng yên vào một dòng | agent đọc vài dòng thay vì hàng trăm frame; cần từng frame thì `--series` |
+| Số đo (`Metrics`) ghi thành entity `M0` trong `TRACE`, không thành phần riêng | `stat` đọc được ngay (tổng GC, đỉnh batches); số đổi theo lần chạy nên không bật cho lần quay để diff |
 
 ## Luồng dữ liệu
 
 ```
 kịch bản .cs của dự án (chứa __TRACE_OUT__ đúng một lần)
-   │  feeltrace.sh: feeltrace.py render thay __TRACE_OUT__ bằng đường dẫn file ra (kiểu Windows) → run.cs trong thư mục tạm
+   │  feeltrace.sh → playrun.sh <kịch bản> <runs>/<tên>.txt __TRACE_OUT__ feeltrace: thay dấu bằng đường dẫn file tạm → run.cs
    ▼
-Unity CLI: playmode stop → start → script eval_file run.cs   (thử lại tới 10 lần tới khi eval trả "feeltrace")
+Unity CLI: Run In Background, auto-tick → playmode stop → start → script eval_file run.cs   (thử lại tới 10 lần tới khi eval trả "feeltrace")
    │
    ▼  thân eval (kịch bản)
 Boot async: vào level (bấm menu, seed Random…) → dựng FeelTraceRecorder → recorder.Start(isReady, minIdleFrames, Record, Act)
    │
    ▼  FeelTraceRecorder.RunAsync, mỗi lượt ở PlayerLoopTiming.PostLateUpdate, Time.captureFramerate khoá
 chờ isReady() đúng VÀ đủ minIdleFrames lượt
-for frame in 0 .. frameCount-1:  "F<frame>" + Record(writer) + "\n"  →  Act(frame)  →  yield
-   │  finally: captureFramerate = 0, gỡ log hook, ghi file, ghi cờ <file>.done
+for frame in 0 .. frameCount-1:  "F<frame>" + Record(writer) [+ Metrics "M0"] + "\n"  →  Act(frame)  →  yield
+   │  finally: captureFramerate = 0, gỡ log hook, Dispose Metrics, ghi file, ghi cờ <file>.done
    ▼
-feeltrace.sh: thấy .done → playmode stop → mv vào <runs>/<tên>.txt → in chữ ký
+playrun.sh: thấy .done → playmode stop → chuyển vào <runs>/<tên>.txt → in đường dẫn và LOG;  feeltrace.sh: in chữ ký
    │
    ▼
 feeltrace.py sig   → chọn hai file cùng chữ ký
 feeltrace.py diff  → "mismatches: N", mã thoát 0 khi N = 0
+feeltrace.py stat  → một entity: mỗi cột đang đổi một dòng (đầu→cuối, cực trị, khung chạy, vọt lố, bước lớn nhất, tổng)
 ```
 
 ## Định dạng file
@@ -87,8 +90,10 @@ F1 …
 | `StringBuilder Notes` | một dòng, chỉ để người đọc |
 | `StringBuilder Signature` | một dòng: thứ quyết bố cục ban đầu. Ghi được tới lúc quay xong (thường ở frame 0 và ở các `Act` chọn entity) |
 | `StringBuilder Log` | kịch bản thêm dòng kết thúc bằng `'\n'` |
+| `FeelTraceMetrics Metrics` | gán trước `Start`: mỗi frame ghi thêm entity `M0` sau `Record`; recorder `Dispose` nó khi quay xong |
+| `new FeelTraceMetrics()` · `CollectRenderers()` | `M0` có 4 token: byte GC cấp phát, batches, set pass, số SpriteRenderer bật mà không vẽ gì (sprite null hay alpha 0). Số là của **frame trước**. `CollectRenderers` chụp danh sách renderer, cấp phát nên gọi lúc boot và sau khi object mới sinh |
 | `void Start(Func<bool> isReady, int minIdleFrames, Action<FeelTraceWriter> record, Action<int> act)` | xoá cờ `.done` cũ rồi chạy nền. `act` ném thì ghi `act frame <n>: …` vào `LOG` và quay tiếp; lỗi khác (kể cả `record` ném) hay thoát Play thì dừng, ghi `recorder: …`, vẫn ghi file |
-| `static string DoneFlagPath(string outPath)` | `outPath + ".done"` |
+| `static string DoneFlagPath(string outPath)` | `outPath + ".done"`, cùng hợp đồng với `PlayProbe` |
 | `FeelTraceWriter.Entity(string kind, int index)` · `EntityByOrder(string kind)` | mở entity; trả lại writer để nối chuỗi |
 | `FeelTraceWriter.Value(float)` · `Value(Vector3)` · `Value(int)` · `Value(bool)` · `Value(string)` | thêm một token |
 | `FeelTraceInput.Down` · `Up` · `Click` · `Tap(GameObject)` | pointer giả trái qua `ExecuteEvents` của `EventSystem.current`; `Tap` = Down, Up, Click cùng frame |
@@ -97,10 +102,10 @@ F1 …
 
 | Lệnh | Làm gì |
 |---|---|
-| `bash feeltrace.sh <kịch bản .cs> <thư mục runs> <tên run>` | quay một trace vào `<runs>/<tên>.txt`, in chữ ký. Chạy từ gốc project hoặc đặt `PROJECT_PATH`; `UNITY_CLI` đổi đường dẫn `unity.exe` (mặc định `C:/Users/<user>/AppData/Local/Unity/bin/unity.exe`). Mã thoát khác 0 khi kịch bản lỗi compile, không chạy, hay timeout (4 phút) |
-| `python -X utf8 -I feeltrace.py render <script.cs> <file ra kiểu Windows> <.cs đích>` | runner gọi; dừng nếu `__TRACE_OUT__` không xuất hiện đúng một lần |
+| `bash feeltrace.sh <kịch bản .cs> <thư mục runs> <tên run>` | quay một trace vào `<runs>/<tên>.txt` qua `playrun.sh`, in chữ ký. Biến môi trường và mã thoát theo `playrun.sh` (`Editor/Probe/Probe.md`); timeout 4 phút |
 | `python -X utf8 -I feeltrace.py sig <glob>…` | in `đường dẫn => chữ ký`, chỉ đọc phần đầu file |
 | `python -X utf8 -I feeltrace.py diff <a> <b> [--tol 2e-4] [--limit 40]` | in hai chữ ký, tối đa `limit` chỗ chênh, rồi `mismatches: N`; mã thoát 0 khi N = 0 |
+| `python -X utf8 -I feeltrace.py stat <file> <entity> [--cols 1.y,3] [--from F] [--to F] [--series N]` | tóm tắt một entity (`T3`, `B#0`, `M0`) trong khoảng frame. Cột đặt tên theo token: `3` là token 3, `1.y` là trục y của token vector 1. Mỗi cột đang đổi một dòng; cột đứng yên gom vào dòng `đứng yên`; `--series N` in thêm mỗi N frame |
 
 ## Hợp đồng kịch bản
 
@@ -162,8 +167,9 @@ return "feeltrace";
 | 2 | Không có lỗi compile trong project | Editor vào Safe Mode, pipeline không nạp |
 | 3 | Scene khởi động của game đang mở (scene kịch bản chờ nút vào level) | kịch bản chờ mãi, runner báo timeout |
 | 4 | Game view giữ **một** độ phân giải cho mọi lần quay sẽ so với nhau | layout co giãn theo màn thì vị trí lệch ở mọi frame |
-| 5 | Bật Run In Background (MCP `set_run_in_background`, chỉ ghi đè trong Editor, không vào build) và auto-tick khi Editor không focus (MCP `set_auto_tick`) | frame đứng khi Editor mất focus, runner báo timeout |
-| 6 | Không sửa save giữa hai lần quay | level hay bố cục khác, chữ ký không bao giờ trùng |
+| 5 | Không sửa save giữa hai lần quay | level hay bố cục khác, chữ ký không bao giờ trùng |
+
+Run In Background và auto-tick do runner tự bật và trả lại khi thoát.
 
 ## Quy trình cho agent
 
@@ -176,6 +182,18 @@ return "feeltrace";
 5. `diff before_k after_m` cùng chữ ký: `mismatches: 0` là giữ nguyên chuyển động. Chênh thì đọc frame và token đầu tiên lệch —
    lệch thật thì sửa lại code, không nới `--tol`.
 6. Báo cáo: tên file, chữ ký, số frame, số chênh. Phần cảm giác vẫn giao kịch bản chơi thử cho developer.
+
+**Đo một chuyển động** (đỉnh, thời lượng, vọt lố, GC trong lúc diễn) không cần hai lần quay: quay một lần rồi
+`stat <file> <entity> --from <frame gõ> --to <frame xong>`. Không đọc file trace thô vào ngữ cảnh.
+
+```
+C0 có ở F460..F520 (61 frame), 6 cột
+  0.y 0.17→0.17 min 0.10677@F474 max 0.17753@F478 chạy F470..F482 về chỗ cũ, lệch xa nhất -0.06323 ở F474 bước lớn nhất 0.03269@F475 tổng 10.19561
+  đứng yên: 0.x=-2.16 0.z=0 1.x=1 1.y=1 1.z=1
+```
+
+Entity `kind?` đánh số theo thứ tự trong frame: entity mới vào hay rời đi giữa khoảng đo thì `B#0` đổi sang vật khác — cột nhảy một
+bước lớn đúng frame đó là dấu hiệu.
 
 Một lần quay khoảng 30 giây; `runs/` của dự án để ngoài git.
 
@@ -219,10 +237,10 @@ Kịch bản dự án nên giữ cùng luật ở `Record`: reflection và tra c
 
 - `Tests/EditMode/FeelTraceWriterTests.cs`: định dạng token, culture `de-DE`, biên `float.MaxValue`/`NaN`/`int.MinValue`, 0 cấp phát
   kèm đối chứng.
-- Runner và `feeltrace.py`: kiểm bằng chạy thật — hai lần quay cùng chữ ký 0 chênh; `Act` ném vẫn đủ frame; thoát Play giữa chừng vẫn
-  có file; kịch bản lỗi compile dừng ngay.
+- Runner và `feeltrace.py`: kiểm bằng chạy thật — hai lần quay cùng chữ ký 0 chênh, kể cả giữa runner `playrun.sh` và bản trước nó;
+  `Act` ném vẫn đủ frame; thoát Play giữa chừng vẫn có file; kịch bản lỗi compile dừng ngay; `stat` trên trace 641 frame khớp số đọc
+  tay ở cột nhún ô cache.
 
 ## Mở rộng sau
 
-- Bước vào level dùng chung (chờ nút theo tên, seed, bấm, chờ điều kiện) khi dự án thứ hai viết kịch bản và vào level giống thế.
-- `feeltrace.py summary`: in khi một entity đổi token ở vị trí cho trước, nếu người dò cần.
+- Bước vào level dùng chung (seed, bấm, chờ điều kiện) khi dự án thứ hai vào level giống thế.
