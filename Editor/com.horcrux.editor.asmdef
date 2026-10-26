@@ -2,7 +2,9 @@
     "name": "com.horcrux.editor",
     "rootNamespace": "Horcrux.Editor",
     "references": [
-        "com.horcrux.runtime"
+        "com.horcrux.runtime",
+        "UniTask",
+        "UnityEngine.UI"
     ],
     "includePlatforms": [
         "Editor"
