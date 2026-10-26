@@ -25,6 +25,8 @@ namespace Horcrux.Runtime.Utilities.UI
         [SerializeField] private bool useUnscaledTime = true;
         [Tooltip("SetFill: the Image on fill must be Image Type Filled; Full Width is unused.")]
         [SerializeField] private FillMode fillMode;
+        [Tooltip("Fill written on Awake, as a fraction of the bar: 0 empty, 1 full.")]
+        [SerializeField, Range(0f, 1f)] private float initialFill;
         [SerializeField] private float fullWidth;
         [SerializeField] private Ease ease;
         [SerializeField] private float speed;
@@ -32,7 +34,24 @@ namespace Horcrux.Runtime.Utilities.UI
         private float _goal;
         private Image _fillImage;
 
+        #region Unity Callbacks
+
+        private void Awake()
+        {
+            _goal = 1f;
+            WriteFill(initialFill);
+        }
+
+        #endregion
+
         #region API
+
+        /// <summary>Label only; the fill stays as is.</summary>
+        public void SetLabel(string labelContent)
+        {
+            if (label != null)
+                label.SetText(labelContent);
+        }
 
         /// <param name="labelContent">Null keeps the current label text: fill only.</param>
         public void Set(float curr, float goal, string labelContent)

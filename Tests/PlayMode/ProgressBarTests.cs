@@ -15,7 +15,7 @@ using Object = UnityEngine.Object;
 
 namespace Horcrux.Tests
 {
-    /// <summary>Case table of docs/plans/Gameplay_Hud_Plan.md §2: fill width or fill amount, label written once, time mode, cancel.</summary>
+    /// <summary>Case table of docs/plans/Gameplay_Hud_Plan.md §2: fill width or fill amount, initial fill, label written once, time mode, cancel.</summary>
     public sealed class ProgressBarTests
     {
         private const float FullWidth = 300f;
@@ -215,6 +215,40 @@ namespace Horcrux.Tests
             _bar.Set(1f, 2f, "x");
         }
 
+        [TestCase(ProgressBar.FillMode.SetWidth)]
+        [TestCase(ProgressBar.FillMode.SetFill)]
+        public void Awake_WritesInitialFill(ProgressBar.FillMode mode)
+        {
+            var host = new GameObject("initial_fill", typeof(RectTransform));
+            host.SetActive(false);
+            host.transform.SetParent(_root.transform, false);
+            _fill.SetParent(host.transform, false);
+            var image = mode == ProgressBar.FillMode.SetFill ? UseFillMode() : null;
+            var bar = host.AddComponent<ProgressBar>();
+            SetField(bar, "fill", _fill);
+            SetField(bar, "fillMode", mode);
+            SetField(bar, "fullWidth", FullWidth);
+            SetField(bar, "initialFill", 0.4f);
+
+            host.SetActive(true);
+
+            if (image != null)
+                Assert.That(image.fillAmount, Is.EqualTo(0.4f).Within(Tolerance));
+            else
+                Assert.That(_fill.rect.width, Is.EqualTo(120f).Within(Tolerance));
+        }
+
+        [Test]
+        public void SetLabel_WritesLabelAndKeepsFill()
+        {
+            _bar.Set(1f, 2f, "before");
+
+            _bar.SetLabel("after");
+
+            Assert.That(_label.text, Is.EqualTo("after"));
+            Assert.That(_fill.rect.width, Is.EqualTo(150f).Within(Tolerance));
+        }
+
         private Image UseFillMode()
         {
             var image = _fill.gameObject.AddComponent<Image>();
@@ -224,7 +258,9 @@ namespace Horcrux.Tests
             return image;
         }
 
-        private void SetField(string name, object value) =>
-            typeof(ProgressBar).GetField(name, BindingFlags.Instance | BindingFlags.NonPublic).SetValue(_bar, value);
+        private void SetField(string name, object value) => SetField(_bar, name, value);
+
+        private static void SetField(ProgressBar bar, string name, object value) =>
+            typeof(ProgressBar).GetField(name, BindingFlags.Instance | BindingFlags.NonPublic).SetValue(bar, value);
     }
 }
