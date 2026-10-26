@@ -417,7 +417,7 @@ PlayMode: `Tests/PlayMode/CharmAccentTests.cs`, cùng khung `CharmJumpTests` (th
 
 ## Task 4 — Dự án dùng bản Horcrux, xoá bản tạm (agent)
 
-Trước khi sửa: quay mốc trace (`docs/tools/feel_trace/`, hoặc bản Horcrux nếu plan `Horcrux_FeelTrace_Plan.md` đã xong) ở hai
+Trước khi sửa: quay mốc trace (Horcrux `Editor/FeelTrace/FeelTrace.md`, kịch bản `docs/tools/feel_trace/trace.cs`) ở hai
 level, mỗi level hai lần cùng chữ ký.
 
 | File dự án | Đổi |
