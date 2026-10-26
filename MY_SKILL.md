@@ -521,7 +521,8 @@ với lý do "tap là tương tác" — nhịp được đem ra miễn trừ đ�
 - *Giảm cấp phát:* pool thay `Instantiate`/`Destroy` lặp lại · pre-alloc capacity · reuse buffer bằng
   `.Clear()` · `struct` cho data nhỏ ngắn hạn · `ref` / `in` / `Span<T>` thay copy · `static readonly`
   thay `new` lặp · tránh LINQ, boxing, string concat trong hot path · **không closure capture** — cache
-  delegate thành `static readonly` hoặc field.
+  delegate thành `static readonly` hoặc field · ghi số vào `StringBuilder` bằng `TryFormat` vào `stackalloc` rồi
+  `Append(ReadOnlySpan<char>)` — trên Mono của Unity cả `Append(int)` cũng cấp phát một chuỗi.
 - *Giảm tính toán:* dirty flag · event-driven rebuild · lookup dictionary dựng trước · tách phần tĩnh
   tính một lần khỏi phần động tính incremental · precompute hằng nặng ngoài vòng lặp · guard thoát
   sớm · `sqrMagnitude` khi chỉ so khoảng cách.
