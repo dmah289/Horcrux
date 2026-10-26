@@ -188,15 +188,16 @@ sắp viết, đang sửa, hay đọc ngang qua — hỏi: *bê sang dự án kh
 
 | Chức năng | Nơi đặt | Ai viết |
 |---|---|---|
-| Không gọi tên type nào của dự án; dự án sau cũng cần | Horcrux — `Foundations/` nếu là hệ, `Utilities/` nếu là helper thuần | code: **developer tự gõ**, theo **Plan** agent viết (§5.3) · tài liệu: agent |
-| Dựng trên nhiều hệ Horcrux, vẫn không mang domain dự án | Horcrux — `Composites/` | code: developer, theo Plan · tài liệu: agent |
+| Không gọi tên type nào của dự án; dự án sau cũng cần | Horcrux — `Foundations/` nếu là hệ, `Utilities/` nếu là helper thuần | code runtime: **developer tự gõ**, theo **Plan** agent viết (§5.3) · code Editor và tài liệu: agent |
+| Dựng trên nhiều hệ Horcrux, vẫn không mang domain dự án | Horcrux — `Composites/` | code runtime: developer, theo Plan · code Editor và tài liệu: agent |
 | Gọi tên domain của dự án | dự án | agent |
 | Lõi chung + lớp nối dự án | **tách**: lõi vào Horcrux theo Plan; lớp nối agent viết trong dự án | cả hai |
 
 Phân loại là **đề xuất kèm giá**, developer quyết (NT5) — nhưng việc hỏi là bắt buộc: **im lặng viết vào
 dự án thứ vốn mang đi được là vi phạm**, vì sửa chỗ đặt sau là đập cả cây phụ thuộc.
 
-**Developer đồng ý thì đi bốn bước — tiến độ trước, Horcrux sau:**
+**Developer đồng ý thì đi bốn bước — tiến độ trước, Horcrux sau** (code runtime; code Editor agent viết thẳng vào Horcrux, không bản
+tạm, không Plan):
 
 1. **Agent viết bản tạm trong dự án** để task không đứng chờ — gom một chỗ, chữ ký theo Plan ở bước 2,
    để bước 4 chỉ còn đổi call site rồi xoá.
@@ -208,8 +209,11 @@ dự án thứ vốn mang đi được là vi phạm**, vì sửa chỗ đặt s
    sửa cho một tri thức (NT7). Developer gõ lệch Plan thì theo code thật (§5.3). Nghiệm thu: grep không
    còn tên bản tạm, compile sạch.
 
-**Mọi dòng code vào Horcrux developer tự gõ, trong hay ngoài Plan:** framework đi theo mọi dự án sau nên developer phải
-hiểu và chịu trách nhiệm từng dòng chạy; agent viết Plan, đoạn mẫu, review, test. **Tài liệu trong
+**Mọi dòng code runtime vào Horcrux developer tự gõ, trong hay ngoài Plan:** framework đi theo mọi dự án sau và code runtime
+chạy trong build của mọi dự án đó, nên developer phải hiểu và chịu trách nhiệm từng dòng chạy; agent viết Plan, đoạn mẫu, review,
+test. **Code Editor agent viết thẳng vào Horcrux** — mọi code không vào build: assembly chỉ có ở Editor, khối `#if UNITY_EDITOR` và
+partial `*.Editor.cs`, script chạy ngoài Unity (`Tools~`), test: hỏng thì lộ trên máy developer, không tới tay người chơi; developer
+review và veto, và vẫn được hỏi trước khi chốt chỗ đặt (NT5). *Developer chốt 2026-10-26.* **Tài liệu trong
 Horcrux — tài liệu module, file này — agent viết** (§5): nghiệm thu tài liệu là đối chiếu với code, và
 developer chốt nội dung bằng veto. Áp cho cả việc **nâng** một chức năng đang có lên Horcrux khi có
 người dùng thứ hai (§3.2).
@@ -293,7 +297,7 @@ frame đầu tiên · đối tượng bị huỷ giữa chừng. Không dấu hi
 (`Time.captureFramerate`), kịch bản gõ qua đúng đường input thật, ghi mọi thuộc tính nhìn thấy của mọi entity; chứng minh trace
 **tất định** trước (hai lần quay mốc 0 chênh) rồi mới so trước–sau. Chứng minh "không đổi", không thay chơi thử. *Đã sai một lần:*
 seed `Random` ngay trước lúc bấm vẫn ra hai trạng thái đầu khác nhau vì thời gian nạp đổi số lần gọi `Random` — so theo **chữ ký
-trạng thái đầu** (entity nào ở đâu), chạy lại tới khi trùng.
+trạng thái đầu** (entity nào ở đâu), chạy lại tới khi trùng. Công cụ dùng chung: Horcrux `Editor/FeelTrace/FeelTrace.md`, dự án chỉ viết kịch bản.
 
 **Cheat — mở đường tới kịch bản, không mở nắp kỹ thuật.** Một lệnh chỉ chính đáng khi kịch bản **không
 tới được bằng đường người chơi trong thời gian hợp lý**: thời gian (hết tuần, hết cửa sổ) · khối lượng
@@ -481,7 +485,7 @@ hoặc trong asset không?* Có thì framework đang giữ từ vựng hộ dự
 số. Đặt ở **tầng thấp nhất mà cả hai người dùng đều với tới được**, không thấp hơn. Thời điểm: khi sắp
 viết bản thứ n của một cơ chế đã có ở các module anh em — bản mới là bản dùng chung đầu tiên; bản cũ
 chuyển sau bằng cách thêm bản dùng chung rồi xoá code cũ, không sửa base — việc rẻ, để sau được. Là đề
-xuất; developer gõ (§2.4).
+xuất; phần runtime developer gõ (§2.4).
 
 **Nâng bằng kế thừa thì cắt ở ranh *cơ chế / quyết định*: base giữ cơ chế, lớp con chỉ còn một quyết
 định.** Cơ chế là phần giống hệt ở mọi nơi dùng — tham chiếu đích, bộ đệm, nhịp ghi lần đầu, định dạng;
@@ -892,7 +896,7 @@ tài liệu hay demo đi kèm thì **xuống thư mục con mang tên nó** (`.c
 |---|---|---|
 | **`.md`** | tài liệu **agent đọc** để hiểu và phát triển hệ — bản đặc, plain text, rẻ token; nguồn sinh `.html` | cập nhật **cùng lần làm** với mỗi thay đổi |
 | **`.html`** | tài liệu **developer và game designer đọc** — trực quan hóa 100% nội dung `.md`; agent không đọc bản này khi đã có `.md` | đồng bộ từ `.md` theo **mốc** — developer yêu cầu, hoặc chốt xong một cụm thay đổi |
-| **Plan** | để developer **tự gõ** — khi developer yêu cầu, và mọi code vào Horcrux (§2.4) | luôn là `.md`; theo task. Plan cho Horcrux nằm trong `Plans/` ở gốc Horcrux |
+| **Plan** | để developer **tự gõ** — khi developer yêu cầu, và mọi code runtime vào Horcrux (§2.4) | luôn là `.md`; theo task. Plan cho Horcrux nằm trong `Plans/` ở gốc Horcrux |
 | **Manual** (khi tool có người dùng không phải developer) | người dùng đọc để **thao tác** — luật viết ở §5.4 | sống cùng tool |
 
 **Ai viết: agent, cả bốn loại.** Nghiệm thu tài liệu là **đối chiếu máy móc với code** (§2.8). Developer
