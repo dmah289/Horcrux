@@ -4,7 +4,7 @@ Dành cho **game trên Unity**. Tư tưởng, không phải tài liệu của m�
 dùng nguyên. Áp cho mọi thứ viết ra: runtime, editor, tooling, script tạm, tài liệu.
 
 **Ai đọc:** AI agent, trước khi làm bất cứ việc gì · developer, khi review output.
-**Đi kèm:** `DOCS_TEMPLATE.html` (§5.2). **Horcrux** là framework dùng chung đi theo mọi dự án; file
+**Đi kèm:** `DOCS_TEMPLATE.html` ở gốc Horcrux (§5.2) · skill theo loại việc nằm cạnh file này trong `Skills/` (§2). **Horcrux** là framework dùng chung đi theo mọi dự án; file
 này sống trong đó. Chỉ đọc được một mục thì đọc **§0**.
 
 ## Ba tầng ràng buộc
@@ -60,6 +60,14 @@ Nơi **duy nhất** định nghĩa NT5–NT10. Mỗi ô là *định nghĩa và 
 
 Trình tự một việc: **phỏng vấn** (§2.1) → **đối chiếu code với developer** (§2.2) → **khảo sát có sẵn,
 chốt phạm vi, chốt chỗ đặt** (§2.4) → làm → **nghiệm thu đúng loại** (§2.8) → **quét cuối chat** (§2.6).
+
+**Loại việc có skill riêng thì đọc skill đó trước khi làm.** Skill nằm cạnh file này trong `Skills/`, giữ công cụ dựng sẵn và quy
+trình rẻ token cho đúng loại việc; viết script đo mới cho thứ skill đã phủ là lặp tri thức (NT7) và trả lại khoản token mà công cụ
+sinh ra để tiết kiệm. Skill thiếu công cụ thì mở rộng công cụ trong Horcrux rồi cập nhật skill, không viết bản dùng một lần.
+
+| Việc | Skill |
+|---|---|
+| Chỉnh, refactor, dò lỗi feeling — tween, trình diễn, hiệu ứng, nhịp, juice; đo GC hay batches trong lúc diễn | `Skills/feel-tune/SKILL.md` |
 
 ## 2.1 Trước khi làm — phỏng vấn ngữ cảnh
 
