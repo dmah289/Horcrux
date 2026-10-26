@@ -637,6 +637,11 @@ khi sau nhiều lần đổi. Luật cho mọi trình diễn kiểu đó:
 | **Vật liệu cứng (nhựa, gỗ, kim loại) không biến dạng khi bay; trọng lượng của va chạm thể hiện qua vật nhận lún và bóng đổ, không qua squash của vật bay** | squash/stretch lên vật cứng biến nó thành thạch. Vật bay giữ tỉ lệ, chỉ nghiêng vào hướng bay (2.5D: không quá ±12°, quá là lộ cạnh dưới); cú "nặng" đi vào **vật nhận** (lún, nảy, loé, hạt) và vào **bóng** tách khỏi vật để đọc độ cao. *Đã sai một lần:* tile nhựa co `1.2×0.8` lúc chạm và `1.4×0.6` rồi OutElastic lúc đáp — cả thân nhựa dẹt như thạch, box nhận tile thì đứng im |
 | **Sprite 2.5D có cạnh dày: tách hai node, gốc giữ vị trí đất và scale của ô, thân nhận mọi hiệu ứng; bóng là con của gốc nên tự nằm trên đường đất** | gốc là của chủ (kệ, ô): vị trí và scale do ô quyết; mọi nhấn, nhấc, nghiêng, scale của hiệu ứng ghi lên **thân**, nên hiệu ứng không bao giờ ghi đè thứ ô đã đặt và reset thân là đủ về nghỉ. Bóng treo ở gốc thì khi thân nhấc lên bóng vẫn ở đất, khoảng cách thân–bóng là độ cao. *Đã sai một lần:* `frame` (thân nhựa) đặt làm **con** của node icon nên bóp icon là bóp cả thân |
 
+> **Nền tảng** — `SpriteMask` không bật Custom Range ghi stencil cho **mọi** tầng và **mọi** sorting group nằm dưới nó: mask phủ
+> rộng để che ngoài vùng chơi làm mọi sprite `VisibleInsideMask` của entity khác trong vùng đó hiện vô điều kiện, mask cục bộ của
+> entity mất tác dụng. Mask phủ rộng giới hạn dải về đúng tầng nó phục vụ. *Đã sai một lần:* mask che mép trên bàn chơi phủ cả hàng
+> hộp, vệt sáng quét nắp hộp hiện cả ngoài nắp; ảnh lúc nghỉ không lộ vì vệt sáng nghỉ ngoài màn hoặc sau hộp bên cạnh.
+
 ## 3.6 Editor-first
 
 Luật ở NT4; đây là nơi duy nhất dẫn giải. **Dấu hiệu code đang làm việc của Editor:** `GetComponent` /
