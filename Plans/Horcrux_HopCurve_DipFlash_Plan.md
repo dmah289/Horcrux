@@ -48,7 +48,7 @@ Horcrux là submodule: Task 1–3 commit **trong `Assets/Horcrux`**, Task 4 comm
 
 | Chỗ | Vì |
 |---|---|
-| Field của `DipSpec`, `FlashSpec`, `SinkSpec`, `PopSpec` PascalCase (`ScaleY`, `PeakAlpha`, `Depth`, `Scale`…), khác `SquashStretchSpec` camelCase | tên field là **key YAML** trên `SpriteBox3.prefab`, `CacheTileSlot.prefab`; đổi kiểu struct thì Unity giữ giá trị vì khớp theo tên field, đổi tên field thì giá trị rơi về 0 im lặng. Casing PascalCase cũng đúng luật "public field của data class" |
+| Field của `DipSpec`, `FlashSpec`, `SinkSpec`, `PopSpec` PascalCase (`ScaleY`, `PeakAlpha`, `Depth`, `Scale`…), khác `SquashStretchSpec` camelCase | tên field là **key YAML** trên `SpriteBox.prefab`, `CacheTileSlot.prefab`; đổi kiểu struct thì Unity giữ giá trị vì khớp theo tên field, đổi tên field thì giá trị rơi về 0 im lặng. Casing PascalCase cũng đúng luật "public field của data class" |
 | `LeanRamp`, `LeanToward` nhận mốc và ngưỡng làm tham số **bắt buộc** | 0.3 · 0.75 · 0.05 là số cảm giác của tile nhựa, không phải của cơ chế; mặc định trong Horcrux là đóng băng nháp của một dự án thành chuẩn |
 | `SmoothStep` clamp đầu vào | bản tạm clamp; `LeanRamp` gọi với `(1 − t) / (1 − fallStart)` có thể vượt 1 ở biên |
 | `SinkSpec.DownEase` là núm, không cố định | ô cache xuống InSine như khay bị đè, nắp xuống OutQuad như vật rơi chạm đáy. Bẫy: thiếu key `DownEase` trong YAML thì giá trị là 0, tức `Ease.Default`, PrimeTween đọc thành OutQuad. Task 4 ghi key thẳng vào prefab |
@@ -446,9 +446,9 @@ level, mỗi level hai lần cùng chữ ký.
 
 | Prefab | Trước | Sau |
 |---|---|---|
-| `SpriteBox3.prefab` `receive` | ba dòng `FramePunchScale: 1.1`, `FramePunchDelay: 0.03`, `FramePunchDuration: 0.18` | khối `FramePunch:` với `Scale: 1.1`, `Delay: 0.03`, `Duration: 0.18` |
-| `SpriteBox3.prefab` `complete` | ba dòng `LidSettleDepth: 0.05`, `LidSettleDownDuration: 0.04`, `LidSettleUpDuration: 0.16` | khối `LidSettle:` với `Depth: 0.05`, `DownDuration: 0.04`, `UpDuration: 0.16`, `DownEase: 6` (OutQuad) |
-| `SpriteBox3.prefab` `counterPop` | không đổi | không đổi: key `Scale`, `Delay`, `Duration` trùng `PopSpec` |
+| `SpriteBox.prefab` `receive` | ba dòng `FramePunchScale: 1.1`, `FramePunchDelay: 0.03`, `FramePunchDuration: 0.18` | khối `FramePunch:` với `Scale: 1.1`, `Delay: 0.03`, `Duration: 0.18` |
+| `SpriteBox.prefab` `complete` | ba dòng `LidSettleDepth: 0.05`, `LidSettleDownDuration: 0.04`, `LidSettleUpDuration: 0.16` | khối `LidSettle:` với `Depth: 0.05`, `DownDuration: 0.04`, `UpDuration: 0.16`, `DownEase: 6` (OutQuad) |
+| `SpriteBox.prefab` `counterPop` | không đổi | không đổi: key `Scale`, `Delay`, `Duration` trùng `PopSpec` |
 | `CacheTileSlot.prefab` `landSpring`, `shiftSpring` | `Depth`, `DownDuration`, `UpDuration` | thêm dòng `DownEase: 2` (InSine) vào mỗi khối |
 
 Trước khi sửa YAML: grep các key trên trong `*.prefab` và `*.unity` của `Assets/` để chắc không variant hay scene nào override.
@@ -458,7 +458,7 @@ Trước khi sửa YAML: grep các key trên trong `*.prefab` và `*.unity` củ
   `LidSettleDepth` trong `Assets/_CategoryJam` = 0; compile sạch; EditMode và PlayMode Horcrux, EditMode dự án PASS.
 - Eval trên object đã dựng: `CacheTileSlot.landSpring.DownEase == InSine`, `shiftSpring.DownEase == InSine`,
   `BoxAnimation.complete.LidSettle.DownEase == OutQuad`, `receive.FramePunch` = (1.1, 0.03, 0.18).
-- `git diff` của `SpriteBox3.prefab`, `CacheTileSlot.prefab` chỉ có các khối trong bảng YAML; mở và lưu prefab không sinh dòng khác.
+- `git diff` của `SpriteBox.prefab`, `CacheTileSlot.prefab` chỉ có các khối trong bảng YAML; mở và lưu prefab không sinh dòng khác.
 - **Cảm giác không đổi:** trace sau Task 4 khớp mốc **0 chênh** trên mọi khung ở cả hai level. Kịch bản đã phủ khung nảy và bộ đếm
   nảy (frame 0 → 8), nắp lún (frame 440), ô cache nhún khi nhận (frame 90 → 94) và khi dồn trái (frame 470), pitch không ghi vào
   trace nên `LandPitch` dựa vào test bằng nhau tuyệt đối ở Task 2.
