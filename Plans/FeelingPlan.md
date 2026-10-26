@@ -11,11 +11,11 @@ Tất cả phải tuân thủ: **zero-GC** (thuần tính toán `float`/`struct`
 - `HarmonicOscillator` (dao động điều hòa đơn giản, Sin/Cos).
 - `SquashStretch` — ✅ **đã triển khai** (`Horcrux.Runtime.Utilities.PhysXHelper.SquashStretch`): `GetVolumePreservingScale`, `GetSquashFromImpact`, `GetDirectionalStretch`, `GetSquashStretch` (nhận `t` **đã ease**, `startScale`, `endScale`; ease do caller áp).
 - `BezierCurveHelper` — ✅ **đã triển khai** (`PhysXHelper/BezierCurveHelper.cs`): `EvaluateQuadraticBezier`, `ComputeControlPoint` (cung trong mặt phẳng XY). Dùng bởi `CharmFlyArc` (`ArcFlightSpec`, chỉ bay) trong `TransformExtensions.CharmTween.cs`.
-- `AudioPitchHelper` — ✅ **đã triển khai** (`Horcrux.Runtime.Utilities.AudioHelper`): `SemitonesToRatio`, `GetRampedPitch`, `GetDetunedPitch`.
+- `AudioPitchHelper` — ❌ **không làm** (developer chốt 2026-10-26). File từng có (`146d44a`) và đã xoá ở commit `245adb7 clean` 2026-08-16; dòng ✅ cũ là chỗ sót. Sẽ không có `SemitonesToRatio`, `GetRampedPitch`, `GetDetunedPitch`. Pitch theo bậc là công thức của call site truyền vào `PlaySfx(sfx, pitchScale)` (`Implementations/Foundations/Audio/AudioSystem.md` §6); lệch pitch ngẫu nhiên khai trên từng entry bằng `PitchSemitoneRange` của `AudioCatalog`.
 - `DampedOscillator` — ✅ **đã triển khai** (envelope · displacement · velocity · settling-time, bản `decay` và bản `halfLife`).
 - `GeometryHelper` — ⚠️ **một phần**: hiện chỉ có `RandomPointInAnnulus`/`RandomPointIn3DAnnulus`. Phần khoảng cách/closest-point (cần cho `StaggerHelper`) **chưa có**.
 - `Easing` — ✅ **đã triển khai** dưới dạng `Easer` ở namespace riêng `Horcrux.Runtime.Tweening.Easing` (10 họ Quad…Bounce × In/Out/InOut + Linear; entry point `Easer.Evaluate(EaseType, t)`). Mọi tham chiếu `← Easing` phía dưới trỏ tới class này — **không** làm lại trong `PhysXHelper`. `Easer` **không** làm easing cho tween (đó là việc của PrimeTween).
-- `InterpolationHelper` — ✅ **đã triển khai** dưới dạng `Interpolator` (`Horcrux.Runtime.Utilities.PhysXHelper`). Đã có: `InverseLerpUnclamped(+Precomputed)`, `Remap(+Precomputed)`, `SmootherStep` (quintic 6t⁵−15t⁴+10t³), `ExpDecay`/`DecayFactor` (`1−e^(−k·dt)`), `ExpDecayHalfLife(+Precomputed)`. Còn thiếu (bổ sung sau nếu cần): `SmoothStep` cubic (3t²−2t³). Mọi tham chiếu `← InterpolationHelper` phía dưới trỏ tới class này.
+- `InterpolationHelper` — ✅ **đã triển khai** dưới dạng `Interpolator` (`Horcrux.Runtime.Utilities.PhysXHelper`). Đã có: `InverseLerpUnclamped(+Precomputed)`, `Remap(+Precomputed)`, `SmootherStep` (quintic 6t⁵−15t⁴+10t³), `ExpDecay`/`DecayFactor` (`1−e^(−k·dt)`), `ExpDecayHalfLife(+Precomputed)`. `SmoothStep` cubic (3t²−2t³) và `OffsetFromCenter` (lệch từ tâm một dãy) 📄 đã có plan: `Plans/Horcrux_HopCurve_DipFlash_Plan.md` Task 1.1. Mọi tham chiếu `← InterpolationHelper` phía dưới trỏ tới class này.
 
 ---
 
@@ -52,7 +52,7 @@ Tất cả phải tuân thủ: **zero-GC** (thuần tính toán `float`/`struct`
 
 ### ~~`InterpolationHelper`~~ — ✅ ĐÃ XONG (xem `Interpolator`)
 - `Remap(+Precomputed)`, `InverseLerpUnclamped(+Precomputed)`, `SmootherStep` (quintic), exp-decay lerp độc lập framerate `1 − e^(−k·dt)` (`ExpDecay`/`DecayFactor`/`ExpDecayHalfLife`).
-- Còn thiếu: `SmoothStep` cubic (`3t²−2t³`) — bổ sung sau nếu cần.
+- `SmoothStep` cubic (`3t²−2t³`): 📄 plan `Plans/Horcrux_HopCurve_DipFlash_Plan.md` Task 1.1.
 
 ---
 
@@ -89,6 +89,7 @@ Mục tiêu: tạo cảm giác "đã tay, đã mắt, đã tai" (satisfying feed
 
 #### `Overshoot` — vọt lố rồi ổn định
 - Animation chạy quá target một chút rồi bật về. Cảm giác "bén", có lực. **Dùng `Ease.OutBack` của PrimeTween**, không viết hàm riêng.
+- 📄 Hai hình dùng sẵn đã có plan (`Plans/Horcrux_HopCurve_DipFlash_Plan.md` Task 1.6–1.8): `CharmPop` (`PopSpec`, nảy trên scale nghỉ) và `CharmSinkLocalY` (`SinkSpec`, lún vị trí rồi bật về).
 
 #### `Pulse` / `Breathing` — nhịp thở
 - Scale/alpha dao động nhẹ liên tục. Làm UI/collectible "thở", hút mắt. Chạy bằng PrimeTween lặp vô hạn (`cycles: -1`, `CycleMode.Yoyo`); `HarmonicOscillator` chỉ khi cần dạng sóng PrimeTween không có.
@@ -108,6 +109,7 @@ Mục tiêu: tạo cảm giác "đã tay, đã mắt, đã tai" (satisfying feed
 
 #### `Anticipation` — lấy đà
 - Lùi nhẹ trước khi bung ra (co người trước khi nhảy). Tạo "trọng lượng".
+- 📄 Bản hình dạng cho cú nhảy thấp đã có plan: `HopCurve.LiftWithAnticipation` (`Plans/Horcrux_HopCurve_DipFlash_Plan.md` Task 1.2).
 
 ### C. Juice thời gian
 
@@ -121,11 +123,10 @@ Mục tiêu: tạo cảm giác "đã tay, đã mắt, đã tai" (satisfying feed
 
 ### D. Juice âm thanh (ASMR thực thụ)
 
-#### ~~`AudioPitchHelper`~~ — ✅ **ĐÃ XONG** (`Utilities/AudioHelper/AudioPitchHelper.cs`)
-- **Pitch ramp**: `GetRampedPitch(step, semitonesPerStep, maxSemitones)` — chuỗi hành động liên tiếp tăng dần pitch.
-- Random pitch nhẹ: `GetDetunedPitch(signedUnit, rangeSemitones)` chống lặp âm nhàm chán.
-- Đang được dùng bởi: `AudioPitchRampChannel` (`FeedbackSystem.md` Task 5), là **xương sống thính giác của combo**.
-
+#### ~~`AudioPitchHelper`~~ — ❌ **KHÔNG LÀM** (developer chốt 2026-10-26)
+- Sẽ không có `SemitonesToRatio`, `GetRampedPitch`, `GetDetunedPitch`. File đã xoá ở commit `245adb7 clean` 2026-08-16, không khôi phục.
+- **Pitch ramp**: công thức ở call site, một dòng `Mathf.Pow(2f, step * semitonesPerStep / 12f)` truyền vào `PlaySfx(sfx, pitchScale)` (`AudioSystem.md` §6). Mỗi bậc một clip thu sẵn vẫn là cách chính. Ví dụ đang chạy: category-jam `ShelfPromoteTuning.LandPitch`, pitch tuyến tính theo ô quanh 1.
+- **Random pitch nhẹ**: khai trên từng entry bằng `PitchSemitoneRange` của `AudioCatalog`, không cần helper.
 #### `AudioFeedback` — mapping cường độ va chạm → âm lượng/pitch.
 - Một phần đã có: `AudioCatalog` khai `VolumeRange`/`PitchSemitoneRange` per-entry → `Implementations/Foundations/Audio/AudioSystem.md`.
 
@@ -136,7 +137,7 @@ Mục tiêu: tạo cảm giác "đã tay, đã mắt, đã tai" (satisfying feed
 
 ## Nhóm 7 — Puzzle ASMR Feel
 
-ASMR đặc thù cho game puzzle: đến từ **tactile (chạm), order (trật tự), release (giải tỏa)**. Đặc biệt hợp hướng `falling_sand`. Nhiều class tái sử dụng `SpringDamper`, `Easing`, `DampedOscillator`, `AudioPitchHelper`.
+ASMR đặc thù cho game puzzle: đến từ **tactile (chạm), order (trật tự), release (giải tỏa)**. Đặc biệt hợp hướng `falling_sand`. Nhiều class tái sử dụng `SpringDamper`, `Easing`, `DampedOscillator`.
 
 ### E. Tactile — chạm & đặt
 
@@ -182,6 +183,7 @@ ASMR đặc thù cho game puzzle: đến từ **tactile (chạm), order (trật 
 
 #### `ProgressPop` — nảy khi tiến triển
 - Thanh progress/counter nảy nhẹ (overshoot) mỗi bước. Cảm giác "đang tiến". Dùng `Tween.PunchScale` hoặc `Ease.OutBack` của PrimeTween.
+- 📄 Bản bật lên đỉnh rồi về một nhịp OutBack đã có plan: `CharmPop` (`Plans/Horcrux_HopCurve_DipFlash_Plan.md` Task 1.8), người dùng đầu là bộ đếm box của category-jam.
 
 #### `SortSettle` — sắp xếp về đúng chỗ
 - Khi phân loại đúng, các phần tử trượt mượt về hàng ngay ngắn (stagger + ease). ASMR "gọn gàng". Ease/`startDelay` của PrimeTween, delay theo khoảng cách lấy từ `StaggerHelper`.
@@ -200,7 +202,7 @@ Ví dụ đặt piece hoàn thành hàng: piece hút "khục" vào ô → tick �
 
 ## Nhóm 8 — Camera / Haptic / VFX / Ambient Feel
 
-Các mảng bổ sung mở rộng cảm giác ra ngoài đối tượng: camera, xúc giác (mobile), VFX động, số liệu, môi trường nền. Nhiều class tái sử dụng `SpringDamper`, `HarmonicOscillator`, `Easing`, `AudioPitchHelper`.
+Các mảng bổ sung mở rộng cảm giác ra ngoài đối tượng: camera, xúc giác (mobile), VFX động, số liệu, môi trường nền. Nhiều class tái sử dụng `SpringDamper`, `HarmonicOscillator`, `Easing`.
 
 ### I. Camera Feel
 
@@ -297,7 +299,7 @@ Hiệu ứng đơn lẻ, là "viên gạch" cho các combo tầng trên.
 15. **`Shake`** ⭐ (trauma-based) — 📄 plan: `TraumaShake.cs` ở `FeedbackSystem.md` Task 1. Dùng `noise.cnoise`, **không** cần `RandomHelper`.
 16. **`ColorFlash`** ← PrimeTween `Tween.Color`.
 17. **`TimeScaleHelper`** ← PrimeTween — 📄 plan (phần hitstop): `FeedbackSystem.md` Task 2.
-18. `AudioPitchHelper` — ✅ **đã xong** (pitch ramp). Xương sống thính giác của combo.
+18. ~~`AudioPitchHelper`~~ — ❌ **không làm**: pitch ramp là công thức ở call site (`AudioSystem.md` §6).
 19. **`HapticHelper`** ⭐ — 📄 plan: `Foundations/Haptics/HapticSystem.md` (`IHapticService` + `IHapticBackend`).
 20. **`StaggerHelper` / `RippleDelay`** ⭐ ← `GeometryHelper` (delay theo khoảng cách).
 
@@ -308,7 +310,7 @@ Mỗi class ghép vài viên gạch tầng 2 thành một hành vi hoàn chỉnh
 23. **`CameraPunch` / `ZoomPunch`** ⭐ — 📄 plan: `CameraPunchChannel` ở `FeedbackSystem.md` Task 6. Dùng `DampedOscillator` (đã có) thay `SpringDamper`/`Overshoot` (chưa có).
 24. **`LookAhead`** ← `SpringDamper`.
 25. **`MagneticSnap`** ⭐ ← `SpringDamper` + `Easing`.
-26. **`GridSnapFeedback`** ← `SquashStretch` + `Shake` + `AudioPitchHelper`/`HapticHelper` (tick).
+26. **`GridSnapFeedback`** ← `SquashStretch` + `Shake` + `HapticHelper` (tick); pitch tick tính ở call site.
 27. **`DragResistance` / `ElasticDrag`** ← `SpringDamper`.
 28. **`RubberBandPull`** ← `SpringDamper` (tension).
 29. **`Recoil` / `Kickback`** ← `SpringDamper`.
@@ -337,7 +339,7 @@ Dàn dựng nhiều hiệu ứng thành "sequence" — làm cuối cùng vì c�
 
 ### Đường đi ngắn nhất tới "bản demo ASMR đã tay" cho falling_sand
 Nếu muốn thấy kết quả sớm nhất, làm theo lát cắt dọc này (mỗi bước đều chạy được):
-~~`Easing`~~ ✅ → ~~`SquashStretch`~~ ✅ → ~~`AudioPitchHelper`~~ ✅ → **`SpringDamper`** → `Shake` → `HapticHelper` → `StaggerHelper` → `MagneticSnap` → `GranularSettle` → `SatisfyingClear`.
+~~`Easing`~~ ✅ → ~~`SquashStretch`~~ ✅ → **`SpringDamper`** → `Shake` → `HapticHelper` → `StaggerHelper` → `MagneticSnap` → `GranularSettle` → `SatisfyingClear`.
 
 ### Lát cắt dọc thứ hai — đã có plan đầy đủ: "combo đa giác quan"
 Không cần `SpringDamper`, chạy được ngay và cho ra thứ **cảm được bằng 3 giác quan**. 5 plan, làm theo đúng thứ tự:

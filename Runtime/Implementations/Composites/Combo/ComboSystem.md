@@ -65,7 +65,7 @@ Hai "công thức" ASMR trong `Pendings.md` cũng thuộc combo:
 | **SquashStretch + Hitstop + pitch ramp** | Cue nhịp (`101`) có mặt ở `AudioPitchRampChannel` + `ComboMeter` (pop); cue lên-bậc (`102`) ở `HitstopChannel` |
 | **CameraShake + Haptic + pitch ramp** | Cue `101` có mặt thêm ở `CameraShakeChannel` + `HapticRampChannel` |
 
-**Nguyên liệu dùng chung** — vẫn ở `Pendings.md`, hệ này chỉ *tiêu thụ*: `Easer` ✅ · `SquashStretch` ✅ · `AudioPitchHelper` ✅ · `TraumaShake` (plan ở `FeedbackSystem.md`) · `Overshoot`/`ColorFlash`/`CountUpAnimator`/`StaggerHelper` (chưa làm).
+**Nguyên liệu dùng chung** — vẫn ở `Pendings.md`, hệ này chỉ *tiêu thụ*: `Easer` ✅ · `SquashStretch` ✅ · ~~`AudioPitchHelper`~~ không làm, pitch ramp là công thức ở call site (`AudioSystem.md` §6) · `TraumaShake` (plan ở `FeedbackSystem.md`) · `Overshoot`/`ColorFlash`/`CountUpAnimator`/`StaggerHelper` (chưa làm).
 
 ---
 
