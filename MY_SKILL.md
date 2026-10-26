@@ -282,6 +282,12 @@ Riêng nhánh **thiên kiến**, phần đắt giá là **liệt kê biên có h
 một phần tử · chạm giới hạn trên và dưới · trùng nhau · ngoài dải · thứ tự đảo · hai sự kiện cùng lúc ·
 frame đầu tiên · đối tượng bị huỷ giữa chừng. Không dấu hiệu nào thì đọc code là xong (NT1).
 
+**Sổ tay** — refactor phải giữ nguyên **chuyển động** (tween, trình diễn): quay trace mỗi frame ở cuối frame với frame rate khoá
+(`Time.captureFramerate`), kịch bản gõ qua đúng đường input thật, ghi mọi thuộc tính nhìn thấy của mọi entity; chứng minh trace
+**tất định** trước (hai lần quay mốc 0 chênh) rồi mới so trước–sau. Chứng minh "không đổi", không thay chơi thử. *Đã sai một lần:*
+seed `Random` ngay trước lúc bấm vẫn ra hai trạng thái đầu khác nhau vì thời gian nạp đổi số lần gọi `Random` — so theo **chữ ký
+trạng thái đầu** (entity nào ở đâu), chạy lại tới khi trùng.
+
 **Cheat — mở đường tới kịch bản, không mở nắp kỹ thuật.** Một lệnh chỉ chính đáng khi kịch bản **không
 tới được bằng đường người chơi trong thời gian hợp lý**: thời gian (hết tuần, hết cửa sổ) · khối lượng
 (đủ điểm cho mốc cuối) · trạng thái ban đầu (save mới, tutorial chưa xem). Thứ chơi là tới thì QA đi
@@ -590,7 +596,8 @@ trong vòng dispatch).
 |---|---|
 | **Mỗi loop chỉ ra được token của nó là đời của ai, và đời đó dài đúng bằng nhịp** | nhận token của pha ngắn hơn đời nó thì loop **chết im lặng**: hủy là hành vi hợp đồng, thư viện async không log. Loop không có chủ thì ở Editor tắt domain reload, mỗi lần Play là một loop nữa xếp lên loop cũ. **Thân** vòng lặp và con số cấu hình về nơi giữ bảo đảm; **token** ở lại host vì host là thứ có đời sống |
 | **Hàm mở một tiến trình theo thời gian sở hữu trạng thái cuối của nó ở mọi đường ra** | xong, bị hủy, thời lượng bằng 0 — cả ba đi qua **một** `try/finally` bọc toàn thân hàm, nên trạng thái cuối và callback xảy ra đúng một lần. Caller chỉ `await` và ghép bằng `WhenAll`, không `try/finally` |
-| **Tiến trình chạm object Unity thì `finally` và callback guard `!= null`** | Destroy giữa chừng là một đường ra thật, và chạm object đã huỷ ném ngay trong `finally`. Guard bằng `if (x != null)`, không `x?.Foo()` hay `x ?? y`: `?.` và `??` bỏ qua phép so sánh null đã overload của Unity (`GetComponent` trả object "giả null" lọt qua `??`). `onComplete` chỉ có **một** chủ: đã gán cho `finally` ngoài thì không truyền thêm vào lời gọi bên trong |
+| **Tiến trình chạm object Unity thì `finally` và callback guard `!= null`** | Destroy giữa chừng là một đường ra thật, và chạm object đã huỷ ném ngay trong `finally`. Guard bằng `if (x != null)`, không `x?.Foo()` hay `x ?? y`: `?.` và `??` bỏ qua phép so sánh null đã overload của Unity (`GetComponent` trả object "giả null" lọt qua `??`). `onComplete` chỉ có **một** chủ: đã gán cho `finally` ngoài thì không truyền thêm vào lời gọi bên trong. **Về pool giữa chừng** cũng là đường ra thật: bỏ liên kết **trước** khi dừng tween (dừng trả `await` ngay trong lời gọi), sau `await` kiểm liên kết còn là của mình mới ghi tiếp |
+| **Gộp hai tween vào một slot (cái mới dừng cái cũ) chỉ khi chúng ghi cùng thuộc tính** | cùng thuộc tính thì tween mới vốn đã thắng mỗi frame, dừng cái cũ không đổi hình · khác thuộc tính thì dừng là cắt ngang một chuyển động đang hiện. Soát cả guard đọc `isAlive` của slot: gộp đổi câu hỏi "đang nhấn không" thành "đang có gì chạy không" |
 | **`CancellationTokenSource` có đúng một chủ dọn: chỗ tạo ra nó** | nơi khác chỉ `?.Cancel()`. `Cancel` chạy tiếp đồng bộ phần còn lại ngay trong lời gọi, nên `finally` của chủ có thể đã `Dispose` trước khi bên huỷ tới dòng kế |
 | **Hàm mở một lượt sống bằng tài nguyên một lần dùng thì từ chối tái nhập ở cửa** | `Open()` chồng lên lượt đang mở là thay source mới trong khi người đang chờ còn giữ source cũ — họ treo **im lặng, vĩnh viễn**. Một dòng `if (isOpen) return;` rẻ hơn mọi kỷ luật |
 | **Hủy giữa chừng phân loại theo thứ mất đi** | dữ liệu (tiến độ, grant, save) nhất quán trên mọi đường — grant đứng trước anim. Trình diễn chỉ cần không để rác trên màn hình: snap đích, tắt, xong |
