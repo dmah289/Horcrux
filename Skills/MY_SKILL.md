@@ -824,6 +824,11 @@ Tiêu chí: **một tool là một đơn vị gói kín** · **thứ dùng chung
 > **Nền tảng** — IMGUI (`OnGUI`, `EditorWindow`, `PropertyDrawer`): một lần tương tác gây nhiều lần gọi
 > `OnGUI` cho **cùng một state**. `GUIStyle`, `GUIContent` có icon chỉ tồn tại sau khi `GUI.skin` và
 > `EditorGUIUtility` sẵn sàng, nên không khởi tạo được ở static initializer.
+>
+> Odin bật `EnableUIToolkitSupport` thì `PropertyDrawer` có `CreatePropertyGUI` của Unity (`[Min]` trên Unity 6) được vẽ bằng
+> phần tử UI Toolkit đè theo toạ độ IMGUI; editor nào có `IMGUIContainer` chèn phía trên (khối Init của InitArgs) thì phần tử
+> lệch lên đúng chiều cao khối đó. Tắt cờ trong `GeneralDrawerConfig` để Odin gọi `OnGUI`. *Đã sai một lần:* field `[Min]`
+> trong class lồng đè lên foldout, đổ lỗi cho drawer phân nhóm — bỏ thử drawer đó lỗi vẫn còn.
 
 **Sổ tay** — *áp cho IMGUI*; UI Toolkit có mô hình repaint khác nên bảng này không áp:
 
