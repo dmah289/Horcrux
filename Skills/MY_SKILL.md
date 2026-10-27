@@ -68,6 +68,7 @@ sinh ra để tiết kiệm. Skill thiếu công cụ thì mở rộng công c�
 | Việc | Skill |
 |---|---|
 | Chỉnh, refactor, dò lỗi feeling — tween, trình diễn, hiệu ứng, nhịp, juice; đo GC hay batches trong lúc diễn | `Skills/feel-tune/SKILL.md` |
+| Build size — vì sao build nặng, giảm size, so build trước–sau | `Skills/build-size/SKILL.md` |
 
 **Tác vụ lặp lại thì đề xuất viết thành công cụ ngay lượt đó, developer quyết.** Dấu hiệu: lần thứ hai làm cùng một chuỗi thao tác
 (cùng khung script, cùng chuỗi lệnh, cùng phép đo), hoặc biết trước sẽ làm lại ở task sau hay dự án sau. Đề xuất một dòng kèm giá:
