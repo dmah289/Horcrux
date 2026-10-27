@@ -3,7 +3,11 @@
 Ngày 2026-10-26, bổ sung cùng ngày. Nguồn: bản tạm trong dự án category-jam, đợt feeling gameplay (dự án
 `docs/plans/Gameplay_Feel_Plan.md`, `Gameplay_Feel_Impl_Plan.md`):
 
-- `Assets/_CategoryJam/Gameplay/Entities/Tile/TileFlightCurve.cs` — hình dạng cú bay và cú nhảy lên hàng trước của tile.
+Sửa 2026-10-27: chuyến bay tới ô của dự án đổi sang hai pha (commit dự án `d387a5b8`): lên tới đỉnh vượt `FallHeight` trên ô
+rồi rơi `FallDuration` giây cuối, cú rơi giống nhau ở mọi chuyến. `HopCurve`, bảng test Task 2 và bảng ánh xạ Task 4 đã khớp bản
+này; ba hàm của đường bay hai pha ở lại dự án (bảng "Cố ý KHÔNG làm").
+
+- `Assets/_CategoryJam/Gameplay/Entities/Tile/TileFlightCurve.cs` — hình dạng cú bay hai pha tới ô và cú nhảy lên hàng trước của tile.
 - `Assets/_CategoryJam/Gameplay/Entities/Box/BoxFeelTuning.cs` — `DipTuning`, `FlashTuning`, `BoxFeelCurve.DipScaleY`, ba núm `LidSettle*`.
 - `Assets/_CategoryJam/Gameplay/Entities/Box/BoxAnimation.cs` — `InsertFlash` (private static), nắp lún khi chạm, khung nảy.
 - `Assets/_CategoryJam/Gameplay/Entities/TileSlot/CacheTileSlot.cs` — `SlotSpringTuning`, `PlaySpring`.
@@ -39,6 +43,8 @@ Horcrux là submodule: Task 1–3 commit **trong `Assets/Horcrux`**, Task 4 comm
 | Driver tween cho cú nhảy (một `Tween.Custom` lái mọi kênh) | driver ghi lên thân, bóng, màu của **dự án**; mỗi dự án một bộ kênh. Horcrux giữ hình dạng, dự án giữ vòng `Step` |
 | Driver tween cho lún (`Tween DipScale(Transform, …)`) | `Tween.Custom<T>` cần một class giữ state (scale nghỉ) để callback `static`; bọc lại là sinh class trung gian cho một dòng `ApplyScaleY` |
 | Gộp `HopCurve.Lift` vào `JumpArc` | `JumpArc` lo hai đầu lệch cao; `Lift` là ca hai đầu ngang nhau, đọc được trong một dòng. Test giữ hai bản khớp nhau |
+| Đưa đường bay hai pha (`ApexT`, `FlightLift`, `MaxFlightLift`, `MIN_APEX_T`) lên | một người dùng (`Tile.StepFlight`), số `FallHeight`/`FallDuration` chưa chơi thử chốt; nâng khi có người dùng thứ hai (MY_SKILL §3.2). `TileFlightCurve.cs` còn lại đúng mấy hàm này và `Duration` |
+| `HopCurve.PeakForDistance` | sau đường bay hai pha không còn người dùng: cú bay tới ô vượt đích một số cố định, cú lên hàng trước dùng đỉnh cố định `TileRiseTuning.Peak` |
 | Field `UpEase` trong `SinkSpec` | cả ba người dùng về nghỉ bằng OutBack; thêm núm khi có người dùng thứ hai về khác |
 | `CharmPop` thay `Tween.PunchScale` của PrimeTween | khác hình: punch dao động quanh nghỉ, pop bật tức thì lên đỉnh rồi về một nhịp OutBack. Ai cần rung quanh nghỉ thì dùng thẳng PrimeTween |
 | Đưa nở ba nhịp `TileView.PlayPopIn` lên | foods_jam có bản giống hệt nhưng hình này bóp méo thân nhựa, đang chờ làm lại ở dự án; đưa lên là đóng băng thứ sắp đổi |
@@ -114,18 +120,15 @@ using UnityEngine;
 namespace Horcrux.Runtime.Utilities.PhysXHelper
 {
     /// <summary>
-    /// Hình dạng một cú nhảy thấp lái bằng một t tuyến tính: gốc đi đường đất, thân nhấc theo parabol, nghiêng vào hướng đi,
+    /// Hình dạng một cú nhảy thấp lái bằng một t tuyến tính: gốc đi đường đất, thân nhấc so với đường đất, nghiêng vào hướng đi,
     /// scale và alpha đổi ở đoạn cuối. Mọi kênh đọc cùng t để cùng nhịp; caller giữ vòng Step và ghi lên object của mình.
+    /// Đường nhấc là của caller (parabol Lift, LiftWithAnticipation, hay đường riêng); các kênh ở đây chỉ cần mốc t.
     /// </summary>
     public static class HopCurve
     {
         /// <summary>Quãng đường đổi theo vị trí thì núm là tốc độ: thời lượng = quãng / tốc độ, kẹp hai đầu.</summary>
         public static float DurationForSpeed(float distance, float speed, float minDuration, float maxDuration)
             => Mathf.Clamp(distance / speed, minDuration, maxDuration);
-
-        /// <summary>Đỉnh cung tỉ lệ quãng đường, kẹp hai đầu; đơn vị world.</summary>
-        public static float PeakForDistance(float distance, float heightPerUnit, float minHeight, float maxHeight)
-            => Mathf.Clamp(distance * heightPerUnit, minHeight, maxHeight);
 
         /// <summary>Độ cao world → local của gốc để thân nhấc trong không gian gốc; lossy không dương thì giữ nguyên.</summary>
         public static float PeakToLocal(float peakWorld, float lossyScaleY) => peakWorld / (lossyScaleY > 0f ? lossyScaleY : 1f);
@@ -162,16 +165,16 @@ namespace Horcrux.Runtime.Utilities.PhysXHelper
             return 1f - k * k;
         }
 
-        /// <summary>t của cả cú (có lấy đà) → k của cung nhảy: 0 suốt pha lấy đà, rồi 0 → 1 tuyến tính.</summary>
-        public static float AfterAnticipation(float t, float anticipationEnd)
-            => t <= anticipationEnd ? 0f : Mathf.Clamp01((t - anticipationEnd) / (1f - anticipationEnd));
+        /// <summary>Tiến độ của pha sau mốc start: 0 tới start, rồi 0 → 1 tuyến tính ở t = 1. Cung nhảy sau lấy đà, pha rơi sau đỉnh.</summary>
+        public static float ProgressAfter(float t, float start)
+            => t <= start ? 0f : Mathf.Clamp01((t - start) / (1f - start));
 
         /// <summary>Thân so với đường đất: hạ tới −sinkDepth ở anticipationEnd (lấy đà), rồi parabol từ −sinkDepth về 0 với đỉnh peak; 0 ở hai đầu.</summary>
         public static float LiftWithAnticipation(float t, float peak, float sinkDepth, float anticipationEnd)
         {
             if (t <= 0f || t >= 1f) return 0f;
             if (t <= anticipationEnd) return -sinkDepth * Interpolator.SmoothStep(t / anticipationEnd);
-            var k = AfterAnticipation(t, anticipationEnd);
+            var k = ProgressAfter(t, anticipationEnd);
             return Mathf.Lerp(-sinkDepth, 0f, k) + Lift(k, peak);
         }
 
@@ -370,7 +373,8 @@ namespace Horcrux.Runtime.Utilities.ExtensionMethods
 ## Task 2 — Test Horcrux (agent)
 
 EditMode: `Tests/EditMode/HopCurveTests.cs`, `DipSpecTests.cs`, `InterpolatorSmoothStepTests` và `OffsetFromCenter` (gộp vào file
-nào có sẵn thì gộp). Chuyển các case thuần toán của dự án (`TileFlightCurveTests`, `BoxFeelCurveTests`), thêm case biên:
+nào có sẵn thì gộp). Chuyển các case thuần toán của dự án (`TileFlightCurveTests`, `BoxFeelCurveTests`), thêm case biên. Case
+của `Duration`, `ApexT`, `FlightLift`, `MaxFlightLift` ở lại `TileFlightCurveTests` cùng các hàm đó:
 
 | Hàm | Input | Kỳ vọng |
 |---|---|---|
@@ -380,14 +384,16 @@ nào có sẵn thì gộp). Chuyển các case thuần toán của dự án (`Ti
 | `OffsetFromCenter(i, n, s)` so với `(i − (n − 1) * 0.5f) * s` | i ∈ 0…4, n ∈ 1…5, s ∈ {0.03, 0.7} | bằng nhau tuyệt đối, khoá thứ tự phép tính mà `LandPitch` dựa vào |
 | `Lift` | t 0 và 1; t 0.5; t 0.2 so với 0.8; t ∈ {0, 0.25, 0.5, 0.9, 1} | 0; peak; bằng nhau; bằng `JumpArc.EvaluateHeight(0, ComputeArcCoefficient(0, 0, peak), t)` |
 | `LeanRamp(t, 0.3, 0.75)` | 0 · 1 · 0.3 · 0.5 · 0.75; dãy 0.05 bước tới 0.3 | 0 · 0 · 1 · 1 · 1; tăng đơn điệu |
+| `LeanRamp(t, 0.3, fallStart)`, fallStart ∈ {0.66, 0.8} | fallStart · (1 + fallStart) / 2 · 1 | 1 · 0.5 · 0 |
 | `LeanToward(dx, 10, 0.05)` | −2 · 2 · ±0.049 · 0.05 | 10 · −10 · 0 · −10 |
 | `HoldThenEaseIn(t, 0.6, 1.1, 1.2)` | 0.3 · 0.6 · 1 | 1.1 · 1.1 · 1.2 |
+| `HoldThenEaseIn(t, 0.7, 1.1, 0.67)` so với `Lerp(1.1, 0.67, f²)`, f = `ProgressAfter(t, 0.7)` | t ∈ {0.5, 0.7, 0.78, 0.85, 0.93, 1} | bằng nhau tuyệt đối: khoá phép thay `BodyScale` ở Task 4 |
 | `FadeOutTail(t, 0.85)` | 0.5 · 0.85 · 1 | 1 · 1 · 0 |
-| `AfterAnticipation(t, 0.14)` | 0.1 · 0.14 · 1 | 0 · 0 · 1 |
+| `ProgressAfter(t, 0.14)` · `ProgressAfter(t, 0.7)` | 0.1 · 0.14 · 1 · 0.7 · 0.85 | 0 · 0 · 1 · 0 · 0.5 |
 | `LiftWithAnticipation(t, 1.1, 0.04, 0.14)` | 0 · 1 · 0.14 · 0.57 | 0 · 0 · −0.04 · 1.1 − 0.02 (±1e-3) |
 | `EaseOutUntil(k, 0.6)` | 0 · 0.3 · 0.6 · 1 | 0 · 0.75 · 1 · 1 |
 | `PeakToLocal` | (1.2, 0.6) · (1.2, 0) · (1.2, −1) | 2 · 1.2 · 1.2 |
-| `DurationForSpeed`, `PeakForDistance` | dưới kẹp, trong, trên kẹp | min · giá trị · max |
+| `DurationForSpeed` | dưới kẹp, trong, trên kẹp | min · giá trị · max |
 | `DipSpec(0.86, 0.05, 0.22).EvaluateScaleY` | 0 · downEnd · 1 · giữa pha xuống · 70 % pha về | 1 · 0.86 · 1 · trong (0.86, 1) · > 1 |
 | `SinkSpec(0.12, 0.06, 0.18, InSine).Duration` | — | 0.24 |
 | `new SinkSpec()` | `DownEase` | `Ease.Default`: test ghi lại cái bẫy YAML thiếu key |
@@ -418,29 +424,34 @@ PlayMode: `Tests/PlayMode/CharmAccentTests.cs`, cùng khung `CharmJumpTests` (th
 ## Task 4 — Dự án dùng bản Horcrux, xoá bản tạm (agent)
 
 Trước khi sửa: quay mốc trace (Horcrux `Editor/FeelTrace/FeelTrace.md`, kịch bản `docs/tools/feel_trace/trace.cs`) ở hai
-level, mỗi level hai lần cùng chữ ký.
+level, mỗi level hai lần cùng chữ ký. Mốc quay trên bản đường bay hai pha, sau khi developer chốt số `FallHeight`, `FallDuration`,
+`FallFadeStart` trên prefab Tile: mốc cũ trước `d387a5b8` không còn so được.
 
 | File dự án | Đổi |
 |---|---|
-| `Entities/Tile/Tile.cs` | `TileFlightCurve.X` → `HopCurve.Y` theo bảng dưới; ba hằng cảm giác thành `private const` trong `Tile` (`LEAN_RISE_END = 0.3f`, `LEAN_FALL_START = 0.75f`, `BODY_SCALE_START = 0.6f`, `LEAN_MIN_DX = 0.05f`) |
-| `Entities/Tile/TileFlightCurve.cs` | xoá (Project window) |
+| `Entities/Tile/Tile.cs` | `TileFlightCurve.X` → `HopCurve.Y` theo bảng dưới; ba hằng cảm giác thành `private const` trong `Tile` (`LEAN_RISE_END = 0.3f`, `LEAN_FALL_START = 0.75f` — chỉ cú lên hàng trước, `LEAN_MIN_DX = 0.05f`). `StepFlight` bỏ biến `fall` khỏi scale thân (dùng `HoldThenEaseIn` theo t), giữ cho tan thân |
+| `Entities/Tile/TileFlightCurve.cs` | **không xoá**: còn `MIN_APEX_T`, `Duration`, `ApexT`, `FlightLift`, `MaxFlightLift`; xoá mọi hàm khác và `LEAN_RISE_END`, `LEAN_FALL_START`, `LEAN_MIN_DX`; `Duration` gọi `HopCurve.DurationForSpeed` |
 | `Entities/Box/BoxFeelTuning.cs` | xoá `DipTuning`, `FlashTuning`, `BoxFeelCurve`; ba núm `LidSettleDepth`, `LidSettleDownDuration`, `LidSettleUpDuration` → `public SinkSpec LidSettle = new(0.05f, 0.04f, 0.16f, Ease.OutQuad);`; đổi tên file thành `BoxCompleteTuning.cs` (Project window) vì chỉ còn class đó |
 | `Entities/Box/BoxReceiveTuning.cs` | kiểu field `DipTuning` → `DipSpec`, `FlashTuning` → `FlashSpec`; ba núm `FramePunchScale`, `FramePunchDelay`, `FramePunchDuration` → `public PopSpec FramePunch = new(1.10f, 0.03f, 0.18f);` giữ tooltip; xoá `CounterPopTuning` |
 | `Entities/Box/BoxAnimation.cs` | `BoxFeelCurve.DipScaleY(t, dip)` → `dip.EvaluateScaleY(t)`; `InsertFlash(seq, at, r, f)` private → `seq.InsertFlash(at, r, f)`, xoá bản private; bỏ biến `lidSettledLocalPos` và hai dòng `Insert` nắp lún → `.Insert(touch, lidTransform.CharmSinkLocalY(lidClosedLocalPos.y, complete.LidSettle))`; khung nảy → `sequence.Insert(at, frame.transform.CharmPop(_frameRestScale, receive.FramePunch))` |
 | `Entities/Box/CategoryBox.cs` | `CounterPopTuning counterPop` → `PopSpec counterPop`, tên field giữ; `Tween.Scale(… startDelay: counterPop.Delay)` → `_counterText.transform.CharmPop(_counterOriginalScale, counterPop)` |
 | `Entities/TileSlot/CacheTileSlot.cs` | xoá `SlotSpringTuning`; `landSpring = new(0.12f, 0.06f, 0.18f, Ease.InSine)`, `shiftSpring = new(0.08f, 0.06f, 0.14f, Ease.InSine)` kiểu `SinkSpec`; `PlaySpring` → `transform.CharmSinkLocalY(_restLocalY, spring)`, vẫn không giữ handle như hiện tại |
 | `Entities/Shelf/ShelfPromoteTuning.cs` | `LandPitch` → `1f + Interpolator.OffsetFromCenter(slotIndex, capacity, PitchStep)` |
-| `Tests/EditMode/TileFlightCurveTests.cs`, `BoxFeelCurveTests.cs` | case thuần toán sang Horcrux (Task 2); còn lại `LandPitch_CentersOnMiddleSlot` → đổi file thành `ShelfPromoteTuningTests.cs` |
+| `Tests/EditMode/TileFlightCurveTests.cs`, `BoxFeelCurveTests.cs` | case thuần toán sang Horcrux (Task 2); `TileFlightCurveTests` giữ case của `Duration`, `ApexT`, `FlightLift`, `MaxFlightLift`; `LandPitch_CentersOnMiddleSlot` → file `ShelfPromoteTuningTests.cs` |
 
-| Bản tạm | Bản Horcrux |
+| Bản tạm (sau `d387a5b8`) | Bản Horcrux |
 |---|---|
-| `TileFlightCurve.Duration(d, flight)` | `HopCurve.DurationForSpeed(d, flight.Speed, flight.MinDuration, flight.MaxDuration)` |
-| `TileFlightCurve.Peak(d, mult, flight)` | `HopCurve.PeakForDistance(d, flight.HeightPerUnit, flight.MinHeight, flight.MaxHeight) * mult` |
-| `TileFlightCurve.PeakToLocal` · `Lift` | `HopCurve.PeakToLocal` · `HopCurve.Lift` |
+| `TileFlightCurve.Duration(d, flight)` | ở lại dự án, thân thành `Mathf.Max(HopCurve.DurationForSpeed(d, flight.Speed, flight.MinDuration, flight.MaxDuration), 2f * flight.FallDuration)` |
+| `TileFlightCurve.ApexT` · `FlightLift` · `MaxFlightLift` · `MIN_APEX_T` | ở lại dự án, không đổi |
+| `TileFlightCurve.PeakToLocal(1f, lossy)` (chuyến bay) · `PeakToLocal(rise.Peak, lossy)` (cú lên hàng trước) | `HopCurve.PeakToLocal` |
+| `TileFlightCurve.Lift` | `HopCurve.Lift` (chỉ còn qua `LiftWithAnticipation`) |
 | `TileFlightCurve.LeanToward(dx, deg)` | `HopCurve.LeanToward(dx, deg, LEAN_MIN_DX)` |
-| `TileFlightCurve.LeanRamp(t)` | `HopCurve.LeanRamp(t, LEAN_RISE_END, LEAN_FALL_START)` |
-| `TileFlightCurve.BodyScale(t, a, b)` | `HopCurve.HoldThenEaseIn(t, BODY_SCALE_START, a, b)` |
-| `TileFlightCurve.BodyFade` · `RiseJump` · `RiseLift` · `RiseRamp` | `HopCurve.FadeOutTail` · `AfterAnticipation` · `LiftWithAnticipation` · `EaseOutUntil` |
+| `TileFlightCurve.LeanRamp(t, apexT)` (chuyến bay) | `HopCurve.LeanRamp(t, LEAN_RISE_END, apexT)` |
+| `TileFlightCurve.LeanRamp(k)` (cú lên hàng trước) | `HopCurve.LeanRamp(k, LEAN_RISE_END, LEAN_FALL_START)` |
+| `TileFlightCurve.FallProgress(t, apexT)` · `RiseJump(t, sinkEnd)` | `HopCurve.ProgressAfter(t, apexT)` · `HopCurve.ProgressAfter(t, sinkEnd)` |
+| `TileFlightCurve.BodyScale(fall, a, b)` | `HopCurve.HoldThenEaseIn(t, apexT, a, b)`: cùng từng phép tính với `Lerp(a, b, fall²)` khi t ≤ 1 (test Task 2) |
+| `TileFlightCurve.BodyFade(fall, flight.FallFadeStart)` | `HopCurve.FadeOutTail(fall, flight.FallFadeStart)`, fall = `HopCurve.ProgressAfter(t, apexT)` |
+| `TileFlightCurve.RiseLift` · `RiseRamp` | `HopCurve.LiftWithAnticipation` · `EaseOutUntil` |
 
 **YAML** (agent sửa text rồi kiểm giá trị trên object đã dựng bằng eval, không tin YAML suông):
 
@@ -454,8 +465,9 @@ level, mỗi level hai lần cùng chữ ký.
 Trước khi sửa YAML: grep các key trên trong `*.prefab` và `*.unity` của `Assets/` để chắc không variant hay scene nào override.
 
 **Nghiệm thu:**
-- grep `TileFlightCurve`, `BoxFeelCurve`, `DipTuning`, `FlashTuning`, `SlotSpringTuning`, `CounterPopTuning`, `FramePunchScale`,
-  `LidSettleDepth` trong `Assets/_CategoryJam` = 0; compile sạch; EditMode và PlayMode Horcrux, EditMode dự án PASS.
+- grep `BoxFeelCurve`, `DipTuning`, `FlashTuning`, `SlotSpringTuning`, `CounterPopTuning`, `FramePunchScale`,
+  `LidSettleDepth` trong `Assets/_CategoryJam` = 0; grep `TileFlightCurve\.` chỉ còn `Duration`, `ApexT`, `FlightLift`,
+  `MaxFlightLift`; compile sạch; EditMode và PlayMode Horcrux, EditMode dự án PASS.
 - Eval trên object đã dựng: `CacheTileSlot.landSpring.DownEase == InSine`, `shiftSpring.DownEase == InSine`,
   `BoxAnimation.complete.LidSettle.DownEase == OutQuad`, `receive.FramePunch` = (1.1, 0.03, 0.18).
 - `git diff` của `CategoryBox.prefab`, `CacheTileSlot.prefab` chỉ có các khối trong bảng YAML; mở và lưu prefab không sinh dòng khác.
