@@ -176,7 +176,7 @@ Bảy hệ dưới đây đã được viết plan tự chứa, có code dán-đ
 | 1 Bootstrap | `Implementations/Foundations/Bootstrap/BootstrapSystem.md` | `BootStep` (Order + 2 nhịp + 2 hook app) + `BootstrapService` (sort ổn định, fail-open, token vòng đời, `BootProgress`) + `IBootstrapService` (`IsInitialized` + `UntilInitialized`) + `IOptionalService<T>` (§0.2) + demo nghiệm thu. 7 file | manifest SO · parallel-in-phase · nhóm bước theo scene |
 | 2 Persistence | **đã dựng xong:** `Abstractions/Foundations/Persistence/Persistence.md` | `PersistenceDataEntry<T>` (typed + on-change + nhớ payload kho đang giữ) + `BasePersistenceDataCollection` (scan field `[MarkedPersistence]`, load lúc `Initialize`, autosave, flush hai giai đoạn so payload) + hai host `SaveDriver` / `SaveBootstep`, chọn đúng một. Kho PlayerPrefs, payload JSON Newtonsoft. 7 file abstraction + 2 host | crypto decorator · cloud sync · migration version cho model · kho file trên đĩa · `Prefs<T>` và `ISerializer` — cả hai **cố ý không làm**, lý do ở `Persistence.md` |
 | 4a Ticker (+4b Time) | `Implementations/Foundations/Ticker/TickerSystem.md` | `ITicker` + **2 nhịp** (`ITickable`, `IPauseAware`) + 1 `Update` duy nhất, `IOptionalService<T>` (§0.2), `DeferredList<T>`. 6 file | **nhịp 1 Hz** (`ISecondTickable`), `Destroyed` event, `ITimeService`, chống tua giờ, `Countdown`, `TimeFormatter` |
-| §9 Haptics | `Implementations/Foundations/Haptics/HapticSystem.md` | `PlayCustom(HapticPattern)` + `IHapticBackend` (**2 member**) + backend Android có **biên độ**. 6 file | **bộ preset** (`EHapticPreset` + `Play(preset)`), rung liên tục (`Begin/End` + ref-count), waveform, impl vendor, `IHapticSettings` |
+| §9 Haptics | `Plans/HapticSystem_Plan.md` | `IHapticService<THaptic>` (`Play(id)`, id enum của dự án → `HapticPreset` chọn trong Inspector) + `IHapticSetting` + `IHapticBackend`; backend Nice Vibrations ở `Vendors/` (define `HORCRUX_NICE_VIBRATIONS`). 8 file | rung theo **biên độ**, rung liên tục (`Begin/End` + ref-count), throttle theo entry, `IsSupported` |
 | §8 Audio | `Implementations/Foundations/Audio/AudioSystem.md` | ✅ **Foundation, 8 file**, generic theo hai enum của dự án: `IAudioSetting` (2 cờ) + `IAudioService<TSfx,TMusic>` (4 member: SFX · SFX có `pitchScale` · Music tối thiểu). Catalog SO, voice gán ở Inspector, throttle theo entry | **SFX 3D** (`PlaySfxAt`), crossfade, pause/resume nhạc, `PlayDynamic`, mixer group, `volumeScale`, nhiều clip một tiếng |
 | §22 Feedback | `Implementations/Composites/Feedback/FeedbackSystem.md` | `FeedbackCue {Id, Step}` + dispatcher + 4 kênh (audio · haptic · hitstop · **shake**); **kèm** `TraumaShake`. Tham số cue serialize **trên chính kênh** — không asset trung gian. 12 file | zoom punch (thêm `IFeedbackCameraZoom` **riêng** theo ISP — không sửa interface cũ), `FeedbackCue.Intensity`, bảng cue dạng SO, kênh particle/text/ripple, slow-mo dài, kênh thêm lúc runtime |
 | §23 Combo | `Implementations/Composites/Combo/ComboSystem.md` | `ComboTracker` (C# thuần), 3 window policy, hệ số nhân Linear, bậc = `int[]` trên Inspector, bridge, `ComboMeter`, demo driver. 11 file | nhãn/hệ số/cue riêng theo bậc (thay `int[]` bằng SO + interface), đường nhân điểm khác, multi-track, lưu kỷ lục, telemetry, `ChainReaction` |
@@ -888,85 +888,46 @@ PlaySfx(id):
 
 ## 9. Haptics — `Foundation`
 
-> 📄 **Đã có plan:** `Implementations/Foundations/Haptics/HapticSystem.md` — thu hẹp còn `Play(preset)` + `PlayCustom(pattern)`, cộng `IHapticBackend` (seam nền tảng) + `NullHapticBackend` + `AndroidHapticBackend` có **điều khiển biên độ** (điều kiện bắt buộc để haptic ramp cảm nhận được).
-> **Ngoài plan:** `BeginContinuous`/`EndContinuous`/`StopAll` + ref-count + vòng pulse (contract dưới đây có, plan cắt đi vì combo không cần — thêm sau chỉ là thêm 2 method); `HapticPattern.Frequency`/`PauseSeconds`; impl vendor.
-> ⚠️ **Xung đột tên đã giải:** `HapticPattern` (struct dưới đây) = **một** cú rung. Thứ mà `Pendings.md` Nhóm 8-J gọi là `HapticPattern` (*chuỗi* rung tăng dần theo combo) đã đổi tên thành `HapticRampChannel`, thuộc §22.
+> 📄 **Plan:** `Plans/HapticSystem_Plan.md` — rung theo **preset** dựng sẵn của nền tảng. Developer chốt 2026-10-29: chỉ preset,
+> không biên độ, không rung liên tục. Tài liệu module `Implementations/Foundations/Haptics/HapticSystem.md` viết khi có code.
 
-**Bài toán.** Rung là phản hồi xúc giác quan trọng trên mobile, nhưng API là **vendor-specific** (Taptic iOS ≠ Android VibrationEffect ≠ lib bên thứ 3). Nếu call-site gọi trực tiếp API vendor thì đổi lib = sửa cả trăm chỗ. Và **quan trọng hơn**: nếu enum preset mang ngữ nghĩa game (`PickBox`, `OrderCompleted`) thì hệ này không port sang game khác được.
+**Bài toán.** Rung là phản hồi xúc giác quan trọng trên mobile, nhưng API là **vendor-specific** (Taptic iOS ≠ Android
+VibrationEffect ≠ lib bên thứ 3). Call site gọi thẳng API vendor thì đổi lib là sửa mọi chỗ gọi, và framework thì không được
+tham chiếu lib mà dự án chưa chắc cài.
 
 **Use case**
-- Rung nhẹ khi tap · "success" khi hoàn thành · "warning" khi sai · "selection" khi kéo qua từng ô.
-- Rung **liên tục** khi giữ hành động (kéo, mài, sạc) — bắt đầu/kết thúc theo cặp, có **đếm tham chiếu** vì nhiều nguồn cùng yêu cầu.
-- Setting vibration on/off lưu bền.
+- Rung nhẹ khi chạm · cú "thụp" khi chốt một việc (đóng hộp, hoàn thành) — mỗi khoảnh khắc gameplay một id.
+- Setting vibration on/off do game lưu, đẩy vào service qua bridge (giống §8).
 - Thiết bị không hỗ trợ → no-op im lặng, không throw.
 
-**Mô hình**
+**Mô hình** — khuôn §8 Audio cộng khuôn `Vendors/Firebase`
 
 | Thành phần | Vai trò |
 |---|---|
-| `EHapticPreset` | **Vocabulary trung tính**: `Selection · Light · Medium · Heavy · Rigid · Soft · Success · Warning · Failure` |
-| `IHapticService` | `Play(preset)` · `PlayCustom(pattern)` · `BeginContinuous/EndContinuous` |
-| `HapticPattern` (struct) | `amplitude · frequency · pulseSeconds · pauseSeconds` — cho rung tuỳ biến/liên tục |
-| `IHapticSettings` | on/off (giống §8, qua interface) |
-| Impl vendor | Map `EHapticPreset` → API cụ thể; **game** chọn lib |
-
-**Contract**
-
-```csharp
-public enum EHapticPreset
-{
-    Selection, Light, Medium, Heavy, Rigid, Soft, Success, Warning, Failure
-}
-
-public readonly struct HapticPattern
-{
-    public readonly float Amplitude;      // 0..1
-    public readonly float Frequency;      // 0..1 (thiết bị không đổi tần thì bỏ qua)
-    public readonly float PulseSeconds;
-    public readonly float PauseSeconds;
-}
-
-public interface IHapticService : IService<IHapticService>
-{
-    bool IsSupported { get; }
-    bool IsEnabled { get; set; }
-    void Play(EHapticPreset preset);
-    void PlayCustom(in HapticPattern pattern);
-
-    void BeginContinuous(in HapticPattern pattern);   // đếm tham chiếu
-    void EndContinuous();
-    void StopAll();
-}
-```
-
-**Rung liên tục** — ref-count theo §0.7, khác ở chỗ phải có vòng pulse:
-
-```
-BeginContinuous(p): if (++refCount == 1) { cts = new(); PulseLoop(p, cts.Token).Forget(); }
-EndContinuous():    if (--refCount <= 0) { refCount = 0; cts.Cancel(); vendor.Stop(); }
-
-PulseLoop(p, ct):   while (!ct.IsCancellationRequested)
-                    { vendor.PlayConstant(p); await Delay(p.Pulse + p.Pause, ct); }
-```
+| `HapticPreset` | từ vựng **trung tính** của Horcrux: `Selection · Success · Warning · Failure · LightImpact · MediumImpact · HeavyImpact · RigidImpact · SoftImpact`, số từ 1 |
+| `IHapticService<THaptic>` | `Play(id)` — `THaptic` là enum **của dự án** (`TapTile`, `BoxLidClosed`), như `IAudioService<TSfx,TMusic>` |
+| `IHapticSetting` | `IsOn`, không generic — bridge Setting không gọi tên enum của dự án |
+| `HapticService<THaptic>` | host: mảng `HapticEntry` (id → preset) kéo trong Inspector, bảng tra dựng ở `Awake` |
+| `IHapticBackend` | `Play(HapticPreset)` — cầu sang lib; bản Nice Vibrations ở `Vendors/NiceVibrations`, bật bằng define `HORCRUX_NICE_VIBRATIONS` |
 
 **Quyết định thiết kế**
 
 | Quyết định | Vì sao | Đánh đổi |
 |---|---|---|
-| Enum **ngữ nghĩa chung**, không tên hành động game | `Heavy` port được sang mọi game; `PickBox` thì không. Đây là điểm chết người nhất của hệ này | Game phải tự map ngữ cảnh → preset |
-| Wrapper mỏng quanh vendor | Đổi lib = sửa 1 file impl | 1 lớp gián tiếp |
-| Ref-count cho rung liên tục (§0.7) | Nhiều nguồn cùng yêu cầu rung một lúc | Rò refCount nếu quên `End` → `StopAll()` cứu |
-| `IsSupported` → no-op | Thiết bị không rung không được crash | Consumer nên kiểm nếu muốn thay bằng feedback khác |
-| `HapticPattern` là struct | Zero-GC, truyền `in` | — |
-| Không tự đọc save | Giống §8 — qua interface, không coupling §2 | — |
+| Hai tầng tên: id của dự án → `HapticPreset` của Horcrux | dự án gọi theo **khoảnh khắc**, Horcrux chỉ biết **kiểu rung**; enum preset không bao giờ mọc tên gameplay | dự án điền bảng id → preset trong Inspector |
+| `IHapticBackend` dù một implementation | runtime không được tham chiếu lib vendor (chiều phụ thuộc) | một lớp gián tiếp |
+| Không tự đọc save | giống §8 — game đẩy cờ vào `IHapticSetting` | mỗi game viết một bridge nhỏ |
 
 **Cạm bẫy**
-- **Enum game-specific** → hệ mất tính port. Nếu thấy mình muốn thêm `EHapticPreset.Grind`, dừng: đó là mapping của game.
-- Rung liên tục không có CTS → loop sống mãi sau khi rời scene.
-- Rung mỗi frame trong `Update` → nóng máy, hết pin, và cảm giác nhoè. Rung là **sự kiện**, không phải trạng thái.
-- Không tôn trọng setting ở **mọi** entry point → có chỗ rung dù đã tắt. Kiểm ở đầu `Play*` một lần, không rải rác.
+- Thêm tên gameplay vào `HapticPreset` → hệ mất tính port. Tên khoảnh khắc thuộc enum của dự án.
+- Rung mỗi frame trong `Update` → nóng máy, hết pin, cảm giác nhoè. Rung là **sự kiện**, không phải trạng thái.
+- Gọi rung ở chỗ khác với SFX của cùng khoảnh khắc → có lúc rung mà không có tiếng. Gọi cạnh nhau trong một hàm.
+- Android không chỉnh biên độ phát **mọi** preset ở mức tối đa trong đúng thời lượng của nó: preset dài là preset mạnh nhất trên máy đó.
 
-**Xong khi:** §0.6 + không có tên gameplay nào trong enum · thiết bị không hỗ trợ vẫn chạy · Begin/End lệch cặp vẫn tắt được rung.
+**Chưa làm** (đều thêm sau, không sửa cũ): rung theo biên độ (điều kiện của `HapticRamp` theo cường độ) · rung liên tục
+(`Begin/End` + ref-count) · throttle theo entry · `IsSupported`.
+
+**Xong khi:** §0.6 + không có tên gameplay nào trong `HapticPreset` · thiết bị không hỗ trợ vẫn chạy · Setting tắt thì mọi `Play` im.
 
 ---
 

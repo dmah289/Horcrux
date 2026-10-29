@@ -223,8 +223,8 @@ Các mảng bổ sung mở rộng cảm giác ra ngoài đối tượng: camera,
 
 #### `HapticHelper` ⭐ ưu tiên cao — rung theo ngữ cảnh
 - Wrap các pattern rung (light/medium/heavy/success/warning). Đồng bộ haptic + visual + audio = ASMR đa giác quan hoàn chỉnh trên điện thoại. Mảnh còn thiếu quan trọng nhất.
-- 📄 **Đã có plan:** `IHapticService.PlayCustom` + `IHapticBackend` (**rung một nhịp có biên độ điều khiển được**) → `Implementations/Foundations/Haptics/HapticSystem.md`. 4 file, backend 2 member.
-- ⏳ Cố ý cắt khỏi bản đầu, thêm lại đều **additive**: bộ **preset trung tính** (`EHapticPreset` + `Play(preset)`) — đường preset chết trong v1 vì caller duy nhất dùng ramp biên độ; **rung liên tục** (`Begin/End` + ref-count + vòng pulse).
+- 📄 **Đã có plan:** `IHapticService<THaptic>.Play(id)` theo **preset** dựng sẵn (id enum của dự án → `HapticPreset` chọn trong Inspector) + `IHapticBackend`, backend Nice Vibrations ở `Vendors/` → `Plans/HapticSystem_Plan.md`. Developer chốt 2026-10-29: chỉ preset.
+- ⏳ Cố ý cắt, thêm lại đều **additive**: rung theo **biên độ** (điều kiện của `HapticRamp` theo cường độ); **rung liên tục** (`Begin/End` + ref-count + vòng pulse); throttle theo entry.
 
 #### ~~`HapticPattern`~~ — ✅ **đã chuyển**, và **đổi tên** thành `HapticRamp`
 - Pitch ramp phiên bản xúc giác: combo rung tăng dần cường độ.
@@ -300,7 +300,7 @@ Hiệu ứng đơn lẻ, là "viên gạch" cho các combo tầng trên.
 16. **`ColorFlash`** ← PrimeTween `Tween.Color`.
 17. **`TimeScaleHelper`** ← PrimeTween — 📄 plan (phần hitstop): `FeedbackSystem.md` Task 2.
 18. ~~`AudioPitchHelper`~~ — ❌ **không làm**: pitch ramp là công thức ở call site (`AudioSystem.md` §6).
-19. **`HapticHelper`** ⭐ — 📄 plan: `Foundations/Haptics/HapticSystem.md` (`IHapticService` + `IHapticBackend`).
+19. **`HapticHelper`** ⭐ — 📄 plan: `Plans/HapticSystem_Plan.md` (`IHapticService<THaptic>` theo preset + `IHapticBackend`).
 20. **`StaggerHelper` / `RippleDelay`** ⭐ ← `GeometryHelper` (delay theo khoảng cách).
 
 ### Tầng 3 — Hành vi tổng hợp (← Tầng 0–2)
@@ -345,7 +345,7 @@ Nếu muốn thấy kết quả sớm nhất, làm theo lát cắt dọc này (m
 Không cần `SpringDamper`, chạy được ngay và cho ra thứ **cảm được bằng 3 giác quan**. 5 plan, làm theo đúng thứ tự:
 
 1. `Implementations/Foundations/Ticker/TickerSystem.md` — 1 nguồn tick + `IOptionalService` + `DeferredSet`
-2. `Implementations/Foundations/Haptics/HapticSystem.md` — rung có biên độ (điều kiện của haptic ramp)
+2. `Plans/HapticSystem_Plan.md` — rung theo preset. Haptic ramp theo **biên độ** chưa có nền (plan cố ý không làm biên độ); tới lúc làm thì ramp bằng nhiều id, mỗi bậc một preset, hoặc thêm rung theo biên độ vào backend
 3. `Implementations/Foundations/Audio/AudioSystem.md` — SFX + **pitch** (điều kiện của pitch ramp)
 4. `Implementations/Composites/Feedback/FeedbackSystem.md` — cue → 4 kênh; **kèm** hiện thực `TraumaShake` + `TimeScaleHelper`
 5. `Implementations/Composites/Combo/ComboSystem.md` — lõi combo + `ComboMeter` + demo nghiệm thu
