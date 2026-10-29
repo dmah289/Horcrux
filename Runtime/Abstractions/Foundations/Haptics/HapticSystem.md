@@ -1,7 +1,7 @@
 # Haptic System
 
 Rung theo **preset** dựng sẵn của Nice Vibrations v4, gọi theo id enum của dự án. Game gọi
-`_haptic.Play(GameHaptic.TapTile)`; preset của từng id chọn trong Inspector của host, SDK không biết khoảnh khắc nào rung kiểu gì.
+`_haptic.Play(GameHaptic.Tap)`; preset của từng id chọn trong Inspector của host, SDK không biết khoảnh khắc nào rung kiểu gì.
 
 - Chỉ preset (`LightImpact`, `SoftImpact`, …): không biên độ tự chỉnh, không rung liên tục, không clip `.haptic`.
 - Một cổng bật/tắt (`IsHapticEnabled`) do game đẩy vào từ Setting của nó.
@@ -34,7 +34,7 @@ Call site của dự án không chạm `HapticPatterns` — chỉ Inspector củ
 ## Luồng một lần rung
 
 ```
-_haptic.Play(GameHaptic.TapTile)
+_haptic.Play(GameHaptic.Tap)
    ├─ IsHapticEnabled = false ──────────────────> im (hợp lệ), không tra bảng
    ├─ id không có trong entries ────────────────> LogError, bỏ
    └─ HapticPatterns.PlayPreset(preset)
@@ -51,7 +51,7 @@ _haptic.Play(GameHaptic.TapTile)
 
 ```csharp
 // enum: gán số TƯỜNG MINH, bắt đầu từ 1 — mỗi id là một KHOẢNH KHẮC gameplay, không phải một kiểu rung
-public enum GameHaptic { TapTile = 1, BoxLidClosed = 2 }
+public enum GameHaptic { Tap = 1, Complete = 2 }
 
 [Service(typeof(IHapticService<GameHaptic>), typeof(IHapticSetting), FindFromScene = true)]
 public class GameHapticService : HapticService<GameHaptic> { }
@@ -59,8 +59,7 @@ public class GameHapticService : HapticService<GameHaptic> { }
 
 Số trong enum là wire format của scene: **không đánh số lại**, chỉ thêm số mới.
 
-Assembly của game **không** cần tham chiếu `Lofelt.NiceVibrations`: `PresetType` chỉ nằm trong field private của host
-(category-jam 2026-10-29: `CategoryJam.Gameplay.asmdef` compile sạch không có tham chiếu đó).
+Assembly của game **không** cần tham chiếu `Lofelt.NiceVibrations`: `PresetType` chỉ nằm trong field private của host.
 
 ### 2. Dựng host trong scene
 
@@ -96,7 +95,6 @@ public class HapticSettingBridge : MonoBehaviour<IMySaveData, IHapticSetting>
 ```
 
 Đặt component trên cùng GameObject với host. **Bắt buộc**: cổng mặc định `false`, thiếu bridge là im cả phiên mà không có log.
-Bản thật của category-jam: `Assets/_CategoryJam/Bridge/GameplayHapticToggle.cs` (đọc `IVibrationPersistentData` của Kelsey).
 
 ### 4. Rung
 
@@ -104,7 +102,7 @@ Nhận service qua InitArgs, không static:
 
 ```csharp
 // class đã có base riêng: IInitializable + gắn Initializer trên prefab
-public class Tile : PooledEntity, IInitializable<IAudioService<GameSfx, GameMusic>, IHapticService<GameHaptic>>
+public class Piece : BaseEntity, IInitializable<IAudioService<GameSfx, GameMusic>, IHapticService<GameHaptic>>
 {
     private IAudioService<GameSfx, GameMusic> _audio;
     private IHapticService<GameHaptic> _haptic;
@@ -117,9 +115,9 @@ public class Tile : PooledEntity, IInitializable<IAudioService<GameSfx, GameMusi
 
     public void PlayPressFeedback()
     {
-        _audio.PlaySfx(GameSfx.TapTile);
-        _haptic.Play(GameHaptic.TapTile);   // ngay cạnh SFX của cùng khoảnh khắc
-        _view.PlayPress(press);
+        _audio.PlaySfx(GameSfx.Tap);
+        _haptic.Play(GameHaptic.Tap);       // ngay cạnh SFX của cùng khoảnh khắc
+        PlayPressTween();
     }
 }
 ```
@@ -151,8 +149,6 @@ Thiếu bước 2: `Play` log `[HapticService]: Haptic X is not in the entries.`
 Máy Android không chỉnh biên độ phát **mọi** preset ở mức tối đa trong đúng thời lượng của nó: preset dài (`Soft`, `Heavy`) là
 preset mạnh nhất trên máy đó.
 
-category-jam (hướng chill): `TapTile` → `LightImpact`, `BoxLidClosed` → `SoftImpact` — cùng độ mạnh, phân biệt bằng độ dài.
-
 ## Hành vi cần biết
 
 | Tình huống | Kết quả |
@@ -169,8 +165,9 @@ category-jam (hướng chill): `TapTile` → `LightImpact`, `BoxLidClosed` → `
 ## Hai cổng rung trong một dự án
 
 `HapticController.hapticsEnabled` là trạng thái static của lib, `IsHapticEnabled` là cổng của host. Horcrux **không** ghi cổng
-của lib: ở category-jam `VibrationController` của Kelsey (nút UI) đang ghi nó — hai cửa ghi một trạng thái là hai nguồn sự thật.
-Hai bridge đọc **cùng một** save nên hai cổng luôn khớp. Gộp khi nút UI chuyển sang gọi `IHapticService`.
+của lib: dự án có thể còn code khác gọi Nice Vibrations và ghi nó (ví dụ lớp rung cũ cho nút UI) — hai cửa ghi một trạng thái là
+hai nguồn sự thật. Khi đó cho cả hai bridge đọc **cùng một** cờ trong save để hai cổng luôn khớp; gộp khi mọi chỗ rung đã chuyển
+sang `IHapticService`.
 
 ## Bẫy và quyết định thiết kế
 
@@ -180,7 +177,7 @@ Hai bridge đọc **cùng một** save nên hai cổng luôn khớp. Gộp khi n
 |---|---|
 | **Cổng mặc định `false`** | cố ý: không rung khi chưa biết Setting của người chơi — rung nhầm một cú lúc boot tệ hơn im. Giá: bridge Setting là bắt buộc, thiếu là im cả phiên **không log**. Đừng đổi sang `true` để "chạy được ngay" |
 | **`[Service]` không di truyền** | thiếu `[Service]` trên class con thì không ai resolve được `IHapticService<…>`; client báo thiếu đối số lúc spawn |
-| **Gọi rung ngay cạnh dòng SFX, không qua event** | tiếng và rung là hai phản hồi của một khoảnh khắc — suy từ một chỗ. Ở category-jam `TilePressed` bắn cả khi tương tác bị khoá, còn hàm phản hồi thì không: nghe event là có lúc rung mà không có tiếng |
+| **Gọi rung ngay cạnh dòng SFX, không qua event** | tiếng và rung là hai phản hồi của một khoảnh khắc — suy từ một chỗ. Event của khoảnh khắc thường bắn cả ở ca hàm phản hồi đã chặn (tương tác bị khoá, input của bot): nghe event là có lúc rung mà không có tiếng |
 | **Không gọi `HapticPatterns` thẳng từ gameplay** | bỏ qua cổng Setting và bảng tra; kiểu rung lại rải trong code, đổi phải compile |
 | **Id là khoảnh khắc, preset là kiểu rung** | đừng đặt id theo cường độ (`Heavy`): đổi cảm giác là đổi preset trong Inspector, không đổi tên id hay call site |
 | **Không có enum preset riêng của Horcrux** | entry lưu thẳng `PresetType`; bỏ được một enum chép lại và một `switch` dịch. Giá trị: không bắt được dòng "chưa gán" vì `Selection = 0` |
@@ -193,7 +190,7 @@ Hai bridge đọc **cùng một** save nên hai cổng luôn khớp. Gộp khi n
 
 Rung theo biên độ (`HapticPatterns.PlayEmphasis` / `PlayConstant` — điều kiện của haptic ramp theo cường độ) · rung liên tục
 (`Begin/End` + ref-count) · throttle theo entry (field mới trên `HapticEntry`) · `IsSupported` · preset đổi theo bậc (nhiều id,
-như Audio mục "một tiếng nhiều bậc") · nút UI gọi `IHapticService` thay `IVibrationService` của Kelsey.
+như Audio mục "một tiếng nhiều bậc").
 
 ## Chữ ký
 
@@ -219,20 +216,4 @@ Runtime/Abstractions/Foundations/Haptics/
 Tests/PlayMode/   HapticServiceTests · TestHapticService
 ```
 
-Test kiểm cổng và bảng tra qua log (6 case). Không phủ: lời phát thật (host gọi lib trực tiếp, không có chỗ đếm) — kiểm trên
-máy thật theo kịch bản dưới.
-
-## Kịch bản chơi thử (máy thật)
-
-Bản category-jam. Cần: một Android có chỉnh biên độ (đời mới), **một Android rẻ**, iOS nếu có. Setting › Vibration bật.
-
-| Làm | Nhìn / cảm | Dấu hiệu hỏng |
-|---|---|---|
-| Vào level 1, chạm một tile rồi nhả | một cú rất nhẹ, ngắn, **đúng lúc ngón chạm** — cùng tiếng tap và cú nhún; nhả tay tile bay, không thêm cú nào | rung lúc nhả · rung lệch tiếng rõ · cú đầu tiên trễ hơn các cú sau |
-| Làm đầy cache, chạm thêm một tile | chạm có cú nhẹ; nhả: tile lắc, tiếng đục, **không** rung thêm | có cú thứ hai lúc nhả |
-| Hoàn thành một box | lúc nắp chạm thân (cùng tiếng đóng hộp): một cú "thụp" mềm, dài hơn chạm, không gắt | không rung · rung lúc tile cuối vào, trước nắp |
-| Dùng Magnet đóng nhiều box liền | các cú tách nhau theo từng nắp, không thành một vệt rung dài khó chịu | rung dính thành một hồi dài |
-| Bật AutoPlay (nếu có cheat) | không rung khi bot chọn tile; nắp đóng vẫn rung | rung theo mỗi lần bot chọn |
-| Setting tắt Vibration | chạm và đóng nắp đều im; nút UI cũng im | còn rung ở một trong hai |
-| Tắt rung, kill app, mở lại | vẫn im | rung lại sau khi mở |
-| Trên Android rẻ: hoàn thành box | cú đóng nắp chấp nhận được | gắt hoặc dài ⇒ đổi `BoxLidClosed` sang `MediumImpact` trong Inspector |
+Test kiểm cổng và bảng tra qua log. Không phủ lời phát thật: host gọi lib trực tiếp, không có chỗ đếm.
