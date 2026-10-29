@@ -169,14 +169,14 @@ Mỗi hệ chỉ coi là xong khi đủ 5 điều: ① contract tách khỏi imp
 
 ## Hệ đã có plan chi tiết
 
-Bảy hệ dưới đây đã được viết plan tự chứa, có code dán-được. Năm plan đầu tiên cố ý **thu hẹp phạm vi chỉ đủ cho Combo**; plan Bootstrap và Persistence theo phạm vi v1 của mục 1 và mục 2 — phần còn lại của mục tương ứng trong tài liệu này **vẫn còn hiệu lực** và chưa được lên plan.
+Các hệ dưới đây đã được viết plan tự chứa, có code dán-được. Năm plan đầu tiên cố ý **thu hẹp phạm vi chỉ đủ cho Combo**; plan Bootstrap và Persistence theo phạm vi v1 của mục 1 và mục 2 — phần còn lại của mục tương ứng trong tài liệu này **vẫn còn hiệu lực** và chưa được lên plan.
 
 | Hệ | File plan | Trong plan | **Ngoài** plan (vẫn ở tài liệu này) |
 |---|---|---|---|
 | 1 Bootstrap | `Implementations/Foundations/Bootstrap/BootstrapSystem.md` | `BootStep` (Order + 2 nhịp + 2 hook app) + `BootstrapService` (sort ổn định, fail-open, token vòng đời, `BootProgress`) + `IBootstrapService` (`IsInitialized` + `UntilInitialized`) + `IOptionalService<T>` (§0.2) + demo nghiệm thu. 7 file | manifest SO · parallel-in-phase · nhóm bước theo scene |
 | 2 Persistence | **đã dựng xong:** `Abstractions/Foundations/Persistence/Persistence.md` | `PersistenceDataEntry<T>` (typed + on-change + nhớ payload kho đang giữ) + `BasePersistenceDataCollection` (scan field `[MarkedPersistence]`, load lúc `Initialize`, autosave, flush hai giai đoạn so payload) + hai host `SaveDriver` / `SaveBootstep`, chọn đúng một. Kho PlayerPrefs, payload JSON Newtonsoft. 7 file abstraction + 2 host | crypto decorator · cloud sync · migration version cho model · kho file trên đĩa · `Prefs<T>` và `ISerializer` — cả hai **cố ý không làm**, lý do ở `Persistence.md` |
 | 4a Ticker (+4b Time) | `Implementations/Foundations/Ticker/TickerSystem.md` | `ITicker` + **2 nhịp** (`ITickable`, `IPauseAware`) + 1 `Update` duy nhất, `IOptionalService<T>` (§0.2), `DeferredList<T>`. 6 file | **nhịp 1 Hz** (`ISecondTickable`), `Destroyed` event, `ITimeService`, chống tua giờ, `Countdown`, `TimeFormatter` |
-| §9 Haptics | `Plans/HapticSystem_Plan.md` | `IHapticService<THaptic>` (`Play(id)`, id enum của dự án → `HapticPatterns.PresetType` chọn trong Inspector) + `IHapticSetting`; runtime tham chiếu thẳng Nice Vibrations. 4 file | rung theo **biên độ**, rung liên tục (`Begin/End` + ref-count), throttle theo entry, `IsSupported` |
+| §9 Haptics | **đã dựng xong:** `Abstractions/Foundations/Haptics/HapticSystem.md` | ✅ **Foundation, 4 file:** `IHapticService<THaptic>` (`Play(id)`, id enum của dự án → `HapticPatterns.PresetType` chọn trong Inspector) + `IHapticSetting`; runtime tham chiếu thẳng Nice Vibrations. 4 file | rung theo **biên độ**, rung liên tục (`Begin/End` + ref-count), throttle theo entry, `IsSupported` |
 | §8 Audio | `Implementations/Foundations/Audio/AudioSystem.md` | ✅ **Foundation, 8 file**, generic theo hai enum của dự án: `IAudioSetting` (2 cờ) + `IAudioService<TSfx,TMusic>` (4 member: SFX · SFX có `pitchScale` · Music tối thiểu). Catalog SO, voice gán ở Inspector, throttle theo entry | **SFX 3D** (`PlaySfxAt`), crossfade, pause/resume nhạc, `PlayDynamic`, mixer group, `volumeScale`, nhiều clip một tiếng |
 | §22 Feedback | `Implementations/Composites/Feedback/FeedbackSystem.md` | `FeedbackCue {Id, Step}` + dispatcher + 4 kênh (audio · haptic · hitstop · **shake**); **kèm** `TraumaShake`. Tham số cue serialize **trên chính kênh** — không asset trung gian. 12 file | zoom punch (thêm `IFeedbackCameraZoom` **riêng** theo ISP — không sửa interface cũ), `FeedbackCue.Intensity`, bảng cue dạng SO, kênh particle/text/ripple, slow-mo dài, kênh thêm lúc runtime |
 | §23 Combo | `Implementations/Composites/Combo/ComboSystem.md` | `ComboTracker` (C# thuần), 3 window policy, hệ số nhân Linear, bậc = `int[]` trên Inspector, bridge, `ComboMeter`, demo driver. 11 file | nhãn/hệ số/cue riêng theo bậc (thay `int[]` bằng SO + interface), đường nhân điểm khác, multi-track, lưu kỷ lục, telemetry, `ChainReaction` |
@@ -888,9 +888,9 @@ PlaySfx(id):
 
 ## 9. Haptics — `Foundation`
 
-> 📄 **Plan:** `Plans/HapticSystem_Plan.md` — rung theo **preset** của Nice Vibrations. Developer chốt 2026-10-29: chỉ preset,
-> không biên độ, không rung liên tục; runtime tham chiếu thẳng Nice Vibrations, không backend. Tài liệu module
-> `Abstractions/Foundations/Haptics/HapticSystem.md`.
+> 📄 **Đã triển khai:** `Abstractions/Foundations/Haptics/HapticSystem.md` là tài liệu module, viết từ code — rung theo
+> **preset** của Nice Vibrations. Developer chốt 2026-10-29: chỉ preset, không biên độ, không rung liên tục; runtime tham chiếu
+> thẳng Nice Vibrations, không backend; cổng mặc định tắt.
 
 **Bài toán.** Rung là phản hồi xúc giác quan trọng trên mobile. Call site gọi thẳng `HapticPatterns.PlayPreset` thì kiểu rung
 của mỗi khoảnh khắc nằm rải trong code gameplay, đổi phải compile, và mỗi chỗ gọi tự lo cổng Setting.

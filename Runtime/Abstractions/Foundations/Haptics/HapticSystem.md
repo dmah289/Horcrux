@@ -220,4 +220,19 @@ Tests/PlayMode/   HapticServiceTests · TestHapticService
 ```
 
 Test kiểm cổng và bảng tra qua log (6 case). Không phủ: lời phát thật (host gọi lib trực tiếp, không có chỗ đếm) — kiểm trên
-máy thật theo kịch bản chơi thử trong `Plans/HapticSystem_Plan.md`.
+máy thật theo kịch bản dưới.
+
+## Kịch bản chơi thử (máy thật)
+
+Bản category-jam. Cần: một Android có chỉnh biên độ (đời mới), **một Android rẻ**, iOS nếu có. Setting › Vibration bật.
+
+| Làm | Nhìn / cảm | Dấu hiệu hỏng |
+|---|---|---|
+| Vào level 1, chạm một tile rồi nhả | một cú rất nhẹ, ngắn, **đúng lúc ngón chạm** — cùng tiếng tap và cú nhún; nhả tay tile bay, không thêm cú nào | rung lúc nhả · rung lệch tiếng rõ · cú đầu tiên trễ hơn các cú sau |
+| Làm đầy cache, chạm thêm một tile | chạm có cú nhẹ; nhả: tile lắc, tiếng đục, **không** rung thêm | có cú thứ hai lúc nhả |
+| Hoàn thành một box | lúc nắp chạm thân (cùng tiếng đóng hộp): một cú "thụp" mềm, dài hơn chạm, không gắt | không rung · rung lúc tile cuối vào, trước nắp |
+| Dùng Magnet đóng nhiều box liền | các cú tách nhau theo từng nắp, không thành một vệt rung dài khó chịu | rung dính thành một hồi dài |
+| Bật AutoPlay (nếu có cheat) | không rung khi bot chọn tile; nắp đóng vẫn rung | rung theo mỗi lần bot chọn |
+| Setting tắt Vibration | chạm và đóng nắp đều im; nút UI cũng im | còn rung ở một trong hai |
+| Tắt rung, kill app, mở lại | vẫn im | rung lại sau khi mở |
+| Trên Android rẻ: hoàn thành box | cú đóng nắp chấp nhận được | gắt hoặc dài ⇒ đổi `BoxLidClosed` sang `MediumImpact` trong Inspector |

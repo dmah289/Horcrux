@@ -17,7 +17,7 @@ namespace Horcrux.Tests
     /// <remarks>
     /// The host calls <see cref="HapticPatterns.PlayPreset"/> directly, so a test cannot count plays: these tests read the gate
     /// and the table through the log only. In the Editor <c>PlayPreset</c> neither vibrates nor throws; the actual vibration is
-    /// checked on a device (play-test script in <c>Plans/HapticSystem_Plan.md</c>).
+    /// checked on a device (play-test script in <c>HapticSystem.md</c>).
     /// </remarks>
     public class HapticServiceTests
     {
