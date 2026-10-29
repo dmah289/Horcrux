@@ -176,7 +176,7 @@ Bảy hệ dưới đây đã được viết plan tự chứa, có code dán-đ
 | 1 Bootstrap | `Implementations/Foundations/Bootstrap/BootstrapSystem.md` | `BootStep` (Order + 2 nhịp + 2 hook app) + `BootstrapService` (sort ổn định, fail-open, token vòng đời, `BootProgress`) + `IBootstrapService` (`IsInitialized` + `UntilInitialized`) + `IOptionalService<T>` (§0.2) + demo nghiệm thu. 7 file | manifest SO · parallel-in-phase · nhóm bước theo scene |
 | 2 Persistence | **đã dựng xong:** `Abstractions/Foundations/Persistence/Persistence.md` | `PersistenceDataEntry<T>` (typed + on-change + nhớ payload kho đang giữ) + `BasePersistenceDataCollection` (scan field `[MarkedPersistence]`, load lúc `Initialize`, autosave, flush hai giai đoạn so payload) + hai host `SaveDriver` / `SaveBootstep`, chọn đúng một. Kho PlayerPrefs, payload JSON Newtonsoft. 7 file abstraction + 2 host | crypto decorator · cloud sync · migration version cho model · kho file trên đĩa · `Prefs<T>` và `ISerializer` — cả hai **cố ý không làm**, lý do ở `Persistence.md` |
 | 4a Ticker (+4b Time) | `Implementations/Foundations/Ticker/TickerSystem.md` | `ITicker` + **2 nhịp** (`ITickable`, `IPauseAware`) + 1 `Update` duy nhất, `IOptionalService<T>` (§0.2), `DeferredList<T>`. 6 file | **nhịp 1 Hz** (`ISecondTickable`), `Destroyed` event, `ITimeService`, chống tua giờ, `Countdown`, `TimeFormatter` |
-| §9 Haptics | `Plans/HapticSystem_Plan.md` | `IHapticService<THaptic>` (`Play(id)`, id enum của dự án → `HapticPreset` chọn trong Inspector) + `IHapticSetting` + `IHapticBackend`; backend Nice Vibrations ở `Vendors/` (define `HORCRUX_NICE_VIBRATIONS`). 8 file | rung theo **biên độ**, rung liên tục (`Begin/End` + ref-count), throttle theo entry, `IsSupported` |
+| §9 Haptics | `Plans/HapticSystem_Plan.md` | `IHapticService<THaptic>` (`Play(id)`, id enum của dự án → `HapticPatterns.PresetType` chọn trong Inspector) + `IHapticSetting`; runtime tham chiếu thẳng Nice Vibrations. 4 file | rung theo **biên độ**, rung liên tục (`Begin/End` + ref-count), throttle theo entry, `IsSupported` |
 | §8 Audio | `Implementations/Foundations/Audio/AudioSystem.md` | ✅ **Foundation, 8 file**, generic theo hai enum của dự án: `IAudioSetting` (2 cờ) + `IAudioService<TSfx,TMusic>` (4 member: SFX · SFX có `pitchScale` · Music tối thiểu). Catalog SO, voice gán ở Inspector, throttle theo entry | **SFX 3D** (`PlaySfxAt`), crossfade, pause/resume nhạc, `PlayDynamic`, mixer group, `volumeScale`, nhiều clip một tiếng |
 | §22 Feedback | `Implementations/Composites/Feedback/FeedbackSystem.md` | `FeedbackCue {Id, Step}` + dispatcher + 4 kênh (audio · haptic · hitstop · **shake**); **kèm** `TraumaShake`. Tham số cue serialize **trên chính kênh** — không asset trung gian. 12 file | zoom punch (thêm `IFeedbackCameraZoom` **riêng** theo ISP — không sửa interface cũ), `FeedbackCue.Intensity`, bảng cue dạng SO, kênh particle/text/ripple, slow-mo dài, kênh thêm lúc runtime |
 | §23 Combo | `Implementations/Composites/Combo/ComboSystem.md` | `ComboTracker` (C# thuần), 3 window policy, hệ số nhân Linear, bậc = `int[]` trên Inspector, bridge, `ComboMeter`, demo driver. 11 file | nhãn/hệ số/cue riêng theo bậc (thay `int[]` bằng SO + interface), đường nhân điểm khác, multi-track, lưu kỷ lục, telemetry, `ChainReaction` |
@@ -888,38 +888,36 @@ PlaySfx(id):
 
 ## 9. Haptics — `Foundation`
 
-> 📄 **Plan:** `Plans/HapticSystem_Plan.md` — rung theo **preset** dựng sẵn của nền tảng. Developer chốt 2026-10-29: chỉ preset,
-> không biên độ, không rung liên tục. Tài liệu module `Implementations/Foundations/Haptics/HapticSystem.md` viết khi có code.
+> 📄 **Plan:** `Plans/HapticSystem_Plan.md` — rung theo **preset** của Nice Vibrations. Developer chốt 2026-10-29: chỉ preset,
+> không biên độ, không rung liên tục; runtime tham chiếu thẳng Nice Vibrations, không backend. Tài liệu module
+> `Abstractions/Foundations/Haptics/HapticSystem.md`.
 
-**Bài toán.** Rung là phản hồi xúc giác quan trọng trên mobile, nhưng API là **vendor-specific** (Taptic iOS ≠ Android
-VibrationEffect ≠ lib bên thứ 3). Call site gọi thẳng API vendor thì đổi lib là sửa mọi chỗ gọi, và framework thì không được
-tham chiếu lib mà dự án chưa chắc cài.
+**Bài toán.** Rung là phản hồi xúc giác quan trọng trên mobile. Call site gọi thẳng `HapticPatterns.PlayPreset` thì kiểu rung
+của mỗi khoảnh khắc nằm rải trong code gameplay, đổi phải compile, và mỗi chỗ gọi tự lo cổng Setting.
 
 **Use case**
 - Rung nhẹ khi chạm · cú "thụp" khi chốt một việc (đóng hộp, hoàn thành) — mỗi khoảnh khắc gameplay một id.
 - Setting vibration on/off do game lưu, đẩy vào service qua bridge (giống §8).
 - Thiết bị không hỗ trợ → no-op im lặng, không throw.
 
-**Mô hình** — khuôn §8 Audio cộng khuôn `Vendors/Firebase`
+**Mô hình** — khuôn §8 Audio
 
 | Thành phần | Vai trò |
 |---|---|
-| `HapticPreset` | từ vựng **trung tính** của Horcrux: `Selection · Success · Warning · Failure · LightImpact · MediumImpact · HeavyImpact · RigidImpact · SoftImpact`, số từ 1 |
 | `IHapticService<THaptic>` | `Play(id)` — `THaptic` là enum **của dự án** (`TapTile`, `BoxLidClosed`), như `IAudioService<TSfx,TMusic>` |
-| `IHapticSetting` | `IsOn`, không generic — bridge Setting không gọi tên enum của dự án |
-| `HapticService<THaptic>` | host: mảng `HapticEntry` (id → preset) kéo trong Inspector, bảng tra dựng ở `Awake` |
-| `IHapticBackend` | `Play(HapticPreset)` — cầu sang lib; bản Nice Vibrations ở `Vendors/NiceVibrations`, bật bằng define `HORCRUX_NICE_VIBRATIONS` |
+| `IHapticSetting` | `IsHapticEnabled`, không generic — bridge Setting không gọi tên enum của dự án |
+| `HapticService<THaptic>` | host: mảng `HapticEntry` (id → `HapticPatterns.PresetType`) kéo trong Inspector, bảng tra dựng ở `Awake`, phát bằng `HapticPatterns.PlayPreset` |
 
 **Quyết định thiết kế**
 
 | Quyết định | Vì sao | Đánh đổi |
 |---|---|---|
-| Hai tầng tên: id của dự án → `HapticPreset` của Horcrux | dự án gọi theo **khoảnh khắc**, Horcrux chỉ biết **kiểu rung**; enum preset không bao giờ mọc tên gameplay | dự án điền bảng id → preset trong Inspector |
-| `IHapticBackend` dù một implementation | runtime không được tham chiếu lib vendor (chiều phụ thuộc) | một lớp gián tiếp |
+| Id của dự án → preset của lib | dự án gọi theo **khoảnh khắc**, kiểu rung chọn trong Inspector | dự án điền bảng id → preset trong Inspector |
+| `com.horcrux.runtime` tham chiếu thẳng `Lofelt.NiceVibrations`, không backend | một lib, không kế hoạch đổi; lớp gián tiếp chỉ "phòng khi đổi lib" là dư | Nice Vibrations thành phụ thuộc bắt buộc của Horcrux, như PrimeTween |
 | Không tự đọc save | giống §8 — game đẩy cờ vào `IHapticSetting` | mỗi game viết một bridge nhỏ |
 
 **Cạm bẫy**
-- Thêm tên gameplay vào `HapticPreset` → hệ mất tính port. Tên khoảnh khắc thuộc enum của dự án.
+- Gọi `HapticPatterns.PlayPreset` thẳng từ gameplay → bỏ qua cổng Setting và bảng tra. Gameplay chỉ gọi `IHapticService`.
 - Rung mỗi frame trong `Update` → nóng máy, hết pin, cảm giác nhoè. Rung là **sự kiện**, không phải trạng thái.
 - Gọi rung ở chỗ khác với SFX của cùng khoảnh khắc → có lúc rung mà không có tiếng. Gọi cạnh nhau trong một hàm.
 - Android không chỉnh biên độ phát **mọi** preset ở mức tối đa trong đúng thời lượng của nó: preset dài là preset mạnh nhất trên máy đó.
@@ -927,7 +925,7 @@ tham chiếu lib mà dự án chưa chắc cài.
 **Chưa làm** (đều thêm sau, không sửa cũ): rung theo biên độ (điều kiện của `HapticRamp` theo cường độ) · rung liên tục
 (`Begin/End` + ref-count) · throttle theo entry · `IsSupported`.
 
-**Xong khi:** §0.6 + không có tên gameplay nào trong `HapticPreset` · thiết bị không hỗ trợ vẫn chạy · Setting tắt thì mọi `Play` im.
+**Xong khi:** §0.6 + interface không lộ kiểu nào của Nice Vibrations · thiết bị không hỗ trợ vẫn chạy · Setting tắt thì mọi `Play` im.
 
 ---
 
