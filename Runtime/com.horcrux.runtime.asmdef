@@ -1,6 +1,6 @@
 {
     "name": "com.horcrux.runtime",
-    "rootNamespace": "Horcrux.Runtime",
+    "rootNamespace": "",
     "references": [
         "InitArgs",
         "InitArgs.Services",
@@ -11,7 +11,8 @@
         "Unity.Mathematics",
         "UnityEngine.UI",
         "Unity.TextMeshPro",
-        "PrimeTween.Runtime"
+        "PrimeTween.Runtime",
+        "Lofelt.NiceVibrations"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
