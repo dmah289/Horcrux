@@ -225,7 +225,8 @@ tạm, không Plan):
 3. **Developer tự gõ** vào Horcrux theo Plan.
 4. **Agent chuyển dự án sang bản Horcrux và xoá bản tạm** trong cùng một lần — giữ song song là hai chỗ
    sửa cho một tri thức (NT7). Developer gõ lệch Plan thì theo code thật (§5.3). Nghiệm thu: grep không
-   còn tên bản tạm, compile sạch.
+   còn tên bản tạm, compile sạch. Bản tạm là component đã gắn trong asset thì `.meta` bản Horcrux nhận lại
+   GUID của bản tạm — script gõ mới mang GUID mới, mọi chỗ đã gắn thành Missing Script.
 
 **Mọi dòng code runtime vào Horcrux developer tự gõ, trong hay ngoài Plan:** framework đi theo mọi dự án sau và code runtime
 chạy trong build của mọi dự án đó, nên developer phải hiểu và chịu trách nhiệm từng dòng chạy; agent viết Plan, đoạn mẫu, review,
@@ -677,6 +678,11 @@ khi sau nhiều lần đổi. Luật cho mọi trình diễn kiểu đó:
 | **Vật bay giữa hai chủ thì một node mang toàn bộ cỡ nhìn thấy; quy về cách chủ mới lưu cỡ ở đúng một chỗ lúc đáp** | lúc bay gốc không có chủ, nên luật "gốc của chủ" ở hàng trên tạm nghỉ: rời cha **giữ cỡ thế giới**, không gán cỡ đích trước khi cất cánh; mỗi frame một hàm đường cong đặt cỡ cho node đó; hàm đáp là chỗ duy nhất chia lại cỡ giữa gốc và thân theo kiểu ô. Rời chủ co thân thì gộp scale thân vào node bay lúc cất cánh. Hai kênh to lên nối nhau (cú bật lúc nhả rồi đường cong bay) đọc thành nhịp rối. *Đã sai một lần:* gốc lấy cỡ ô đích ngay lúc cất cánh — tile vào cache co 28 % trong một frame, vào box thì to lên lúc đáp |
 | **Cú thu thập: đích cỡ theo lòng vật chứa, nhỏ hơn đỉnh chuyến bay** | vật "chui vào" chỉ khi đích nhỏ hơn đỉnh và cỡ đổi về 0 tốc độ lúc chạm (SmoothStep); đích lớn hơn mọi cỡ lúc bay thì pha cuối là phình ra, đọc thành vật to hơn hộp. Phần thân của vật bay phải lọt lòng khung vật chứa, kể cả khi icon trong hộp vì thế nhỏ đi. *Đã sai một lần:* đích icon đặt 1.2 cho to nhất có thể — thân nhựa rộng 1.98 trên khung 1.73 suốt pha rơi |
 | **Sprite art giữ tỉ lệ hoạ sĩ vẽ; cỡ và vị trí lấy từ ảnh đích, không từ khung bao của thứ cần che** | scale không đều trên sprite art là dãn hình vẽ: viền, chốt, bo góc méo theo. Có ảnh đích (demo) thì đo pixel trên đó, quy về px phần đặc của sprite gốc. Sprite đúng cỡ mà để lộ thứ vật thật che (khung cao hơn nắp, nhãn dưới viền) thì tắt thứ đó lúc bị che — khác luật "lớp trên đè" ở trên, vốn chỉ cho thứ bị che **hết**. *Đã sai một lần:* nắp hộp kéo 1.05×1.26 cho phủ kín đế lẫn khung — chốt méo, đế biến mất, trong khi demo cho nắp ngồi lên đế và lộ một dải đế dưới viền |
+
+> **Nền tảng** — autosize của TextMeshPro chỉ co chữ khi chữ tràn **chiều cao** khung. Khung cao đủ nhiều dòng thì một từ rộng
+> hơn bề ngang bị ngắt **giữa từ** sang dòng sau, không co. "Tối đa n dòng, tràn thì co" = khung cao đúng n dòng ở cỡ chuẩn, cộng
+> test quét dữ liệu thật chứng minh không từ nào rộng hơn bề ngang. Đo số dòng: `ForceMeshUpdate(true)` rồi đọc `textInfo`
+> (`true` để đo được cả khi object tắt). *Đã sai một lần:* plan giả định từ quá dài sẽ co chữ — đo ra bị ngắt đôi.
 
 > **Nền tảng** — `SpriteMask` không bật Custom Range ghi stencil cho **mọi** tầng và **mọi** sorting group nằm dưới nó: mask phủ
 > rộng để che ngoài vùng chơi làm mọi sprite `VisibleInsideMask` của entity khác trong vùng đó hiện vô điều kiện, mask cục bộ của
