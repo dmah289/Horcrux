@@ -1,6 +1,6 @@
 # Plan — `TextFitFrame` lên Horcrux
 
-Ngày 2026-10-31. Nguồn: bản tạm trong dự án `Assets/_CategoryJam/Gameplay/Entities/Box/TextFitFrame.cs`, đã có test EditMode
+Ngày 2026-10-31. Nguồn: bản tạm trong dự án `Assets/_CategoryJam/Scripts/Entities/Box/TextFitFrame.cs`, đã có test EditMode
 (`Assets/_CategoryJam/Tests/EditMode/TextFitFrameTests.cs`, 5 case) và test dữ liệu thật
 (`CategoryNameTagPrefabTests.cs`, ở lại dự án).
 
@@ -16,7 +16,7 @@ Horcrux là repo git riêng: Task 1, 2, 4 commit **trong `Assets/Horcrux`**, Tas
 
 | Mục | Chốt |
 |---|---|
-| Người dùng | `CategoryNameTag` của Category Jam, gắn trên object `name_tab` của `Assets/_CategoryJam/Gameplay/Addressables/Box/CategoryBox.prefab`; `TextFitFrame` cũng nằm trên `name_tab` · dự án sau có nhãn chữ nền khung Sliced mà số dòng đổi theo nội dung |
+| Người dùng | `CategoryNameTag` của Category Jam, gắn trên object `name_tab` của `Assets/_CategoryJam/Addressables/Box/CategoryBox.prefab`; `TextFitFrame` cũng nằm trên `name_tab` · dự án sau có nhãn chữ nền khung Sliced mà số dòng đổi theo nội dung |
 | Mục tiêu | khung `SpriteRenderer` Sliced cao theo số dòng chữ TMP, **đáy khung đứng yên**; số dòng tối đa là chiều cao khung chữ đã dựng trong prefab, tràn thì autosize của TMP co chữ |
 | Chỗ đặt | `Assets/Horcrux/Runtime/Utilities/UI/TextFitFrame/TextFitFrame.cs` + `TextFitFrame.md` cạnh nó (utility lẻ có tài liệu thì xuống thư mục con mang tên nó, §5). Namespace `Horcrux.Runtime.Utilities.UI`: cả 7 file hiện có trong `Utilities/UI/` dùng đúng namespace này |
 | Assembly | `com.horcrux.runtime` đã tham chiếu `Unity.TextMeshPro` và `UnityEngine.UI`; không phải sửa asmdef. `Splitter` ở `Horcrux.Runtime.Utilities`, cha của namespace đích, nên `using Horcrux.Runtime.Utilities;` trong code mẫu thừa nhưng vô hại; developer bỏ được |
@@ -187,14 +187,14 @@ Developer gõ file mới nên Unity gán GUID mới; prefab trỏ script bằng 
 
 **Files**
 - Modify: `Assets/Horcrux/Runtime/Utilities/UI/TextFitFrame/TextFitFrame.cs.meta` (chỉ dòng `guid:`)
-- Delete: `Assets/_CategoryJam/Gameplay/Entities/Box/TextFitFrame.cs` và `TextFitFrame.cs.meta`
-- Modify: `Assets/_CategoryJam/Gameplay/Entities/Box/CategoryNameTag.cs` (thêm `using Horcrux.Runtime.Utilities.UI;`)
+- Delete: `Assets/_CategoryJam/Scripts/Entities/Box/TextFitFrame.cs` và `TextFitFrame.cs.meta`
+- Modify: `Assets/_CategoryJam/Scripts/Entities/Box/CategoryNameTag.cs` (thêm `using Horcrux.Runtime.Utilities.UI;`)
 - Modify: `Assets/_CategoryJam/Tests/EditMode/CategoryNameTagPrefabTests.cs` (thêm cùng `using`)
 - Delete: `Assets/_CategoryJam/Tests/EditMode/TextFitFrameTests.cs` (+ `.meta`), sau khi Task 4 xong
 
 **Thứ tự**
 1. Đóng Unity Editor (sửa `.meta` khi Editor mở thì Unity ghi đè).
-2. Đọc `guid:` trong `Assets/_CategoryJam/Gameplay/Entities/Box/TextFitFrame.cs.meta` (hiện là `8809b76d80bd8f74f8c8ded05e441248`; đọc lại từ file, không chép từ Plan).
+2. Đọc `guid:` trong `Assets/_CategoryJam/Scripts/Entities/Box/TextFitFrame.cs.meta` (hiện là `8809b76d80bd8f74f8c8ded05e441248`; đọc lại từ file, không chép từ Plan).
 3. Ghi guid đó vào `guid:` của `.cs.meta` bản Horcrux; xoá bản tạm `.cs` và `.meta`.
 4. Thêm `using` ở `CategoryNameTag.cs` và `CategoryNameTagPrefabTests.cs`.
 5. Mở Editor, đợi compile.

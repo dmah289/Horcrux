@@ -1,6 +1,6 @@
 # Plan — `ViewportAnchor`, `ViewportCover` và `ViewportCamera` lên Horcrux
 
-Ngày 2026-10-22. Nguồn: bản tạm trong dự án ở `Assets/_CategoryJam/Gameplay/Utilities/` (`ViewportAnchor.cs`,
+Ngày 2026-10-22. Nguồn: bản tạm trong dự án ở `Assets/_CategoryJam/Scripts/Utilities/` (`ViewportAnchor.cs`,
 `ViewportAnchor.Editor.cs`, `ViewportCover.cs`, `GameplayViewport.cs`, `GameplayViewport.Editor.cs`), dựng ở
 `docs/plans/Gameplay_Layout_Plan.md` §1.1–§1.2 và đã chơi thử với `designWidthUnits = 10.5`. `ViewportCover` thêm ngày
 2026-10-23 (commit dự án `516dfbe0`) cho ảnh nền gameplay, đã kiểm trong Play ở 9:21, 9:19.5 và 3:4.
@@ -61,7 +61,7 @@ Horcrux là submodule: Task 1–2 commit **trong `Assets/Horcrux`**, Task 3 comm
 
 ### 1.1 Chuyển file
 
-Trong Project window của Unity, kéo 5 file (kèm `.meta` tự đi theo) từ `Assets/_CategoryJam/Gameplay/Utilities/` sang
+Trong Project window của Unity, kéo 5 file (kèm `.meta` tự đi theo) từ `Assets/_CategoryJam/Scripts/Utilities/` sang
 `Assets/Horcrux/Runtime/Utilities/Layout/` (tạo thư mục). Đổi tên trong Project window:
 `GameplayViewport.cs` → `ViewportCamera.cs`, `GameplayViewport.Editor.cs` → `ViewportCamera.Editor.cs`.
 
