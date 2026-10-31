@@ -33,7 +33,7 @@ và cùng bố cục ban đầu cho ra file khớp 0 chênh; refactor giữ chuy
 | Lỗi giữa chừng, kể cả thoát Play, vẫn ghi file và cờ `.done` | runner thấy lỗi trong `LOG` ngay, không chờ tới timeout |
 | Runner dừng ngay khi kịch bản lỗi compile, thoát Play trước khi báo timeout | lỗi compile thử lại không bao giờ qua; Play bỏ treo làm lần quay sau hỏng |
 | `stat` in một dòng mỗi cột đang đổi, gom cột đứng yên vào một dòng | agent đọc vài dòng thay vì hàng trăm frame; cần từng frame thì `--series` |
-| Số đo (`Metrics`) ghi thành entity `M0` trong `TRACE`, không thành phần riêng | `stat` đọc được ngay (tổng GC, đỉnh batches); số đổi theo lần chạy nên không bật cho lần quay để diff |
+| Số đo (`Metrics`) ghi thành entity `M0` trong `TRACE`, không thành phần riêng | `stat` đọc được ngay (tổng GC, đỉnh batches); số đổi theo lần chạy nên không bật cho lần quay để diff. `feeltrace.sh --gc` chèn dòng gán `Metrics` vào bản copy của kịch bản. Cột GC trong Editor có nền nhiễu ≈ 100 KB/frame (Editor + recorder): chỉ thấy được đỉnh cỡ MB, cấp phát nhỏ đo bằng test `Is.Not.AllocatingGCMemory` |
 
 ## Luồng dữ liệu
 
@@ -54,7 +54,8 @@ for frame in 0 .. frameCount-1:  "F<frame>" + Record(writer) [+ Metrics "M0"] + 
 playrun.sh: thấy .done → playmode stop → chuyển vào <runs>/<tên>.txt → in đường dẫn và LOG;  feeltrace.sh: in chữ ký
    │
    ▼
-feeltrace.py sig   → chọn hai file cùng chữ ký
+feeltrace.py sig   → in chữ ký từng file
+feeltrace.py pairs → nhóm file cùng chữ ký; chỉ so hai file trong một nhóm
 feeltrace.py diff  → "mismatches: N", mã thoát 0 khi N = 0
 feeltrace.py stat  → một entity: mỗi cột đang đổi một dòng (đầu→cuối, cực trị, khung chạy, vọt lố, bước lớn nhất, tổng)
 ```
@@ -104,6 +105,7 @@ F1 …
 |---|---|
 | `bash feeltrace.sh <kịch bản .cs> <thư mục runs> <tên run>` | quay một trace vào `<runs>/<tên>.txt` qua `playrun.sh`, in chữ ký. Biến môi trường và mã thoát theo `playrun.sh` (`Editor/Probe/Probe.md`); timeout 4 phút |
 | `python -X utf8 -I feeltrace.py sig <glob>…` | in `đường dẫn => chữ ký`, chỉ đọc phần đầu file |
+| `python -X utf8 -I feeltrace.py pairs <glob>…` | nhóm file theo chữ ký, in nhóm có từ hai file; mã thoát 0 khi có nhóm. Chia box ở boot ngẫu nhiên nên quay nhiều lần rồi chọn cặp (7 lần mới được một cặp ở category-jam 2026-11-01) |
 | `python -X utf8 -I feeltrace.py diff <a> <b> [--tol 2e-4] [--limit 40]` | in hai chữ ký, tối đa `limit` chỗ chênh, rồi `mismatches: N`; mã thoát 0 khi N = 0 |
 | `python -X utf8 -I feeltrace.py stat <file> <entity> [--cols 1.y,3] [--from F] [--to F] [--series N]` | tóm tắt một entity (`T3`, `B#0`, `M0`) trong khoảng frame. Cột đặt tên theo token: `3` là token 3, `1.y` là trục y của token vector 1. Mỗi cột đang đổi một dòng; cột đứng yên gom vào dòng `đứng yên`; `--series N` in thêm mỗi N frame |
 

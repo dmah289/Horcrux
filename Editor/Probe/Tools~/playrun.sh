@@ -1,13 +1,16 @@
 #!/usr/bin/env bash
 # Chạy một script C# trong Play qua Unity CLI rồi trả file kết quả. Mọi phép đo cần Play (trace, số đo, ảnh chụp) đi qua đây.
-# Editor phải đang mở project. Chạy từ gốc project hoặc đặt PROJECT_PATH; UNITY_CLI đổi đường dẫn unity.exe.
+# Editor phải đang mở project. Chạy từ gốc project hoặc đặt PROJECT_PATH; UNITY_CLI ép đường dẫn unity.exe (mặc định tìm `unity` trên PATH).
 # Dùng: bash playrun.sh <script .cs> <file ra> [marker] [token] [timeout giây]
 #   marker  chuỗi trong script được thay bằng đường dẫn file ra kiểu Windows, đúng một lần (mặc định __OUT__)
 #   token   chuỗi script trả về ở dòng cuối, để biết eval đã chạy tới cuối (mặc định playrun)
 # In đường dẫn và cỡ file, phần kết quả trước LOG (tối đa 4 KB, trace thì bỏ), rồi LOG đã bỏ stack trace và gộp dòng lặp.
 set -u
 [ $# -ge 2 ] || { echo "dùng: playrun.sh <script .cs> <file ra> [marker] [token] [timeout giây]"; exit 2; }
-U="${UNITY_CLI:-/c/Users/$USERNAME/AppData/Local/Unity/bin/unity.exe}"
+# unity.exe: UNITY_CLI, rồi `unity` trên PATH (bản MSIX ở WindowsApps), rồi đường cài cũ.
+if [ -n "${UNITY_CLI:-}" ]; then U="$UNITY_CLI"
+elif command -v unity >/dev/null 2>&1; then U="$(command -v unity)"
+else U="/c/Users/$USERNAME/AppData/Local/Unity/bin/unity.exe"; fi
 P="$(cygpath -w "${PROJECT_PATH:-$PWD}")"
 SCRIPT="$1"; DEST="$2"; MARKER="${3:-__OUT__}"; TOKEN="${4:-playrun}"; TIMEOUT="${5:-240}"
 WORK="$(mktemp -d)"

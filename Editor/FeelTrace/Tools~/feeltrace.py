@@ -1,6 +1,7 @@
 """So trace của Horcrux FeelTraceRecorder. Xem Editor/FeelTrace/FeelTrace.md.
 
   feeltrace.py sig <glob>...
+  feeltrace.py pairs <glob>...        # nhóm file cùng chữ ký; exit 0 khi có ít nhất một cặp so được
   feeltrace.py diff <a.txt> <b.txt> [--tol 2e-4] [--limit 40]
   feeltrace.py stat <trace.txt> <entity> [--cols 1.y,3] [--from F] [--to F] [--series N]
 """
@@ -162,10 +163,31 @@ def stat(path, entity, cols, start, end, series_step):
             print('  F%d %s' % (f, ' '.join('%s=%s' % (labels[i], fmt(values[i])) for i in wanted)))
 
 
+def pairs(patterns):
+    """Chia box ở boot là ngẫu nhiên: quay nhiều lần rồi chỉ so hai file cùng chữ ký. In từng nhóm, trả True khi có nhóm từ hai file."""
+    groups = {}
+    for pattern in patterns:
+        for path in sorted(glob.glob(pattern)):
+            groups.setdefault(read_header(path).get('SIG', ''), []).append(path)
+    found = False
+    for sig, paths in groups.items():
+        if len(paths) < 2:
+            continue
+        found = True
+        print(sig)
+        for path in paths:
+            print('  ', path)
+    if not found:
+        print('không có hai file nào cùng chữ ký; quay thêm')
+    return found
+
+
 def main():
     parser = argparse.ArgumentParser()
     sub = parser.add_subparsers(dest='command', required=True)
     p = sub.add_parser('sig')
+    p.add_argument('patterns', nargs='+')
+    p = sub.add_parser('pairs')
     p.add_argument('patterns', nargs='+')
     p = sub.add_parser('diff')
     p.add_argument('a')
@@ -182,6 +204,8 @@ def main():
     args = parser.parse_args()
     if args.command == 'stat':
         stat(args.path, args.entity, [c for c in args.cols.split(',') if c], args.start, args.end, args.series)
+    elif args.command == 'pairs':
+        sys.exit(0 if pairs(args.patterns) else 1)
     elif args.command == 'sig':
         for pattern in args.patterns:
             for path in sorted(glob.glob(pattern)):

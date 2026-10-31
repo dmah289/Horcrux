@@ -28,7 +28,8 @@ description: Dùng khi chỉnh, refactor hay dò lỗi feeling của game Unity 
 | Vị trí, cỡ, sorting, bounds trong prefab; override của prefab lồng nhau | `PrefabDump.DumpAsset(path, filter)` qua `script eval` | không |
 | Refactor có giữ nguyên chuyển động không | FeelTrace: quay mốc, sửa, quay lại, `feeltrace.py diff` | có |
 | Một chuyển động cao bao nhiêu, chạy bao lâu, vọt lố bao nhiêu | FeelTrace quay một lần, `feeltrace.py stat <entity> --from --to` | có |
-| GC, batches, renderer bật mà không vẽ trong lúc diễn | `recorder.Metrics = new FeelTraceMetrics()`, `stat <file> M0` | có |
+| GC, batches, renderer bật mà không vẽ trong lúc diễn | `feeltrace.sh --gc` (chèn `recorder.Metrics` vào bản copy), `stat <file> M0 --cols 0` | có |
+| Một hàm có cấp phát dưới vài chục KB không | test PlayMode `Is.Not.AllocatingGCMemory` (khung `CharmJumpTests`), **không** đọc từ M0: GC/frame trong Editor có nền nhiễu ≈ 100 KB (Editor + recorder), đo 2026-10-31 | có |
 | Trạng thái nội bộ sau một chuỗi thao tác | `playrun.sh` + `PlayProbe.Run` | có |
 | Mất hình, lệch lớp, nháy ở một frame cụ thể | `FrameSheet` trong probe hay `Act` của kịch bản, một PNG | có |
 | Cảm giác, nhịp, "đã tay" | developer chơi thử | — |
@@ -43,7 +44,8 @@ unity cmd --project-path <project> --result-only script eval --code 'return Horc
 bash "<horcrux>/Editor/Probe/Tools~/playrun.sh" <probe.cs> <file ra>
 
 # Quay trace, so, tóm tắt
-bash "<horcrux>/Editor/FeelTrace/Tools~/feeltrace.sh" <kịch bản.cs> <runs> <tên>
+bash "<horcrux>/Editor/FeelTrace/Tools~/feeltrace.sh" [--gc] <kịch bản.cs> <runs> <tên>   # unity.exe: UNITY_CLI, rồi `unity` trên PATH
+python -X utf8 -I "<horcrux>/Editor/FeelTrace/Tools~/feeltrace.py" pairs "<runs>/*.txt"   # quay tới khi có hai file cùng chữ ký
 python -X utf8 -I "<horcrux>/Editor/FeelTrace/Tools~/feeltrace.py" diff <a> <b>
 python -X utf8 -I "<horcrux>/Editor/FeelTrace/Tools~/feeltrace.py" stat <file> <entity> --cols 1.y,3 --from 0 --to 120
 ```
