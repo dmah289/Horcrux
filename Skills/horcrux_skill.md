@@ -35,6 +35,7 @@ Mỗi skill ở `Skills/<tên>/SKILL.md`. Mỗi luật chỉ định nghĩa ở 
 |---|---|
 | `feel-tune` | chỉnh, refactor, dò lỗi feeling — tween, trình diễn, nhịp, juice; đo GC, batches lúc diễn |
 | `build-size` | build nặng vì sao, giảm, so build trước–sau |
+| `compile-check` | kiểm sau mỗi task sửa code: dotnet build, Unity recompile, test EditMode bằng một lệnh |
 
 ## Bảng chỉ dẫn theo loại việc
 
@@ -48,6 +49,7 @@ Mỗi skill ở `Skills/<tên>/SKILL.md`. Mỗi luật chỉ định nghĩa ở 
 | Viết hoặc cập nhật `.md`, `.html`, Plan, Manual | `docs` | `math-physics` khi tài liệu có công thức |
 | Chỉnh feeling, đo GC, batches lúc trình diễn | `feel-tune` | `async-presentation` |
 | Build nặng, giảm size | `build-size` | |
+| Kết thúc một task sửa code C#, trước khi báo xong hay commit | `compile-check` | |
 | Orchestrator bơm ngữ cảnh cho subagent | đúng hàng của việc được giao (`workflow` › Subagent) | |
 
 ## Ba tầng ràng buộc
