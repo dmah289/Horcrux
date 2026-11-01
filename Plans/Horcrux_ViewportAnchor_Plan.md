@@ -2,7 +2,7 @@
 
 Ngày 2026-10-22. Nguồn: bản tạm trong dự án ở `Assets/_CategoryJam/Scripts/Utilities/` (`ViewportAnchor.cs`,
 `ViewportAnchor.Editor.cs`, `ViewportCover.cs`, `GameplayViewport.cs`, `GameplayViewport.Editor.cs`), dựng ở
-`docs/plans/Gameplay_Layout_Plan.md` §1.1–§1.2 và đã chơi thử với `designWidthUnits = 10.5`. `ViewportCover` thêm ngày
+`Assets/_CategoryJam/Scripts/Layout.md` §1–§2 và đã chơi thử với `designWidthUnits = 10.5`. `ViewportCover` thêm ngày
 2026-10-23 (commit dự án `516dfbe0`) cho ảnh nền gameplay, đã kiểm trong Play ở 9:21, 9:19.5 và 3:4.
 
 **Phân công:**

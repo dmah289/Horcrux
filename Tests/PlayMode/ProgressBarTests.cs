@@ -15,7 +15,7 @@ using Object = UnityEngine.Object;
 
 namespace Horcrux.Tests
 {
-    /// <summary>Case table of docs/plans/Gameplay_Hud_Plan.md §2: fill width or fill amount, initial fill, label written once, time mode, cancel.</summary>
+    /// <summary>Case table: fill width or fill amount, initial fill, label written once, time mode, cancel.</summary>
     public sealed class ProgressBarTests
     {
         private const float FullWidth = 300f;

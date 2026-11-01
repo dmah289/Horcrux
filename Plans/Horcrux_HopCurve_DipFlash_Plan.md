@@ -1,7 +1,7 @@
 # Plan — `HopCurve`, `DipSpec`, `FlashSpec`, `SinkSpec`, `PopSpec`, `LaunchSpec` và hai hàm `Interpolator` lên Horcrux
 
 Ngày 2026-10-26, đồng bộ lại với code 2026-10-31. Nguồn: bản tạm trong dự án category-jam, đợt feeling gameplay (dự án
-`docs/plans/Gameplay_Feel_Plan.md`, `Gameplay_Feel_Impl_Plan.md`) và các commit sau đợt 5 tới `9a8f3a92`:
+`Assets/_CategoryJam/Scripts/Feel.md`) và các commit sau đợt 5 tới `9a8f3a92`:
 
 - `Assets/_CategoryJam/Scripts/Entities/Tile/TileFlightCurve.cs` — hình dạng cú bay hai pha tới ô và cú nhảy lên hàng trước của tile.
 - `Assets/_CategoryJam/Scripts/Entities/Box/BoxFeelTuning.cs` — `DipTuning`, `FlashTuning`, `LaunchTuning`, `BoxFeelCurve.DipScaleY`, `BoxFeelCurve.LaunchScaleY`.

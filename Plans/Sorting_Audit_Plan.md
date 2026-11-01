@@ -1,6 +1,6 @@
 # Plan — `SortingAudit`: quét sorting layer và order của prefab, scene
 
-Ngày 2026-10-23. Nguồn: dự án Category Jam, mô hình ba bậc ở `docs/plans/Sorting_Plan.md` của dự án (layer chỉ ở gốc entity,
+Ngày 2026-10-23. Nguồn: dự án Category Jam, mô hình ba bậc ở `Assets/_CategoryJam/Scripts/Rendering.md` của dự án (layer chỉ ở gốc entity,
 con trong SortingGroup ở `Default` 0…99). Tool này là phép kiểm máy cho mô hình đó; không gọi tên type dự án.
 
 **Phân công:** Task 1 (code) developer gõ · Task 2 (tài liệu `SortingAudit.md`) agent viết sau khi code có.

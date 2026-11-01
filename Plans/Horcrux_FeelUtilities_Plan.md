@@ -1,6 +1,6 @@
 # Plan — `TadaCurve`, `AnimationRegistry`, `ParticleSystem.ExpireAlive`, `ProgressBar.Play` và ba sửa Horcrux theo kinh nghiệm dự án
 
-Ngày 2026-10-31. Nguồn: audit `docs/plans/Feeling_Perf_Audit.md` §4.2–4.4 của category-jam, developer chốt cùng ngày đưa **toàn bộ** lên
+Ngày 2026-10-31. Nguồn: audit hiệu năng đợt feeling của category-jam ngày 2026-10-31 (kết luận nay ở `Assets/_CategoryJam/Scripts/Feel.md` của dự án), developer chốt cùng ngày đưa **toàn bộ** lên
 Horcrux, kể cả thứ mới có một người dùng.
 
 - `Assets/_CategoryJam/Scripts/Entities/Tile/TileFinaleCurve.cs`, `TileFeelTuning.cs` (`TileFinaleTuning`) — nhịp tada của tile cuối.
