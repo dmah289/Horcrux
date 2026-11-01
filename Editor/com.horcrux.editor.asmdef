@@ -4,7 +4,10 @@
     "references": [
         "com.horcrux.runtime",
         "UniTask",
-        "UnityEngine.UI"
+        "UnityEngine.UI",
+        "Unity.Addressables",
+        "Unity.Addressables.Editor",
+        "Unity.ResourceManager"
     ],
     "includePlatforms": [
         "Editor"
