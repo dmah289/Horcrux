@@ -188,6 +188,7 @@ trong class con che **toàn bộ** overload của `UnityEngine.Object`; đổi t
 | **Một phép biến đổi chỉ áp ở MỘT tầng** | runner đã ease `t` thì thân nhận `t` đã ease; hai tầng cùng có tham số ease thì một tầng cố định `Linear` |
 | **Chọn cấu trúc theo bảo đảm người dùng dựa vào** | `Dictionary` đúng để tra cứu, sai khi kết quả là danh sách để vẽ — thứ tự duyệt không bảo đảm. Thứ tự từ cấu hình ngoài phải **toàn phần và tất định**: thiếu rơi về ưu tiên thấp nhất; hoà phá bằng định danh ổn định, không bằng thứ tự đăng ký |
 | **Mặc định là ca số đông, viết bằng tên** | ca số ít phải khai rõ; mặc định viết tường minh (`=> Mode.Normal`), không dựa phần tử đầu enum |
+| **Framework không chọn nguồn ngẫu nhiên** | hàm cần ngẫu nhiên nhận nguồn từ caller (`Func<int, int> nextIndex`: `count → [0, count)`), không gọi `UnityEngine.Random` hay `new System.Random` bên trong. Dự án truyền `UnityEngine.Random.Range` để giữ nước đi đã author; test truyền `System.Random(seed)` để tất định. Đổi nguồn là đổi kết quả theo seed (NT6) |
 | **Danh sách vừa là lệnh vừa để vẽ thì hỏi hai vai có chung khoá gộp không** | vai thực thi gộp theo khoá hệ nhận lệnh, vai hiển thị theo khoá người dùng nhìn. Kho cộng dồn nhiều chu kỳ gộp lúc đọc ra, không lúc ghi vào |
 
 **Guard — một câu hỏi duy nhất: cái sai đó lộ ra lúc nào?** Đích là build không có ca null hay ca sai nào;
