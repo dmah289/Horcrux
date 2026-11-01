@@ -32,7 +32,7 @@ await tr.CharmFlyArc(target, spec, ct);
 
 | Quyết định | Vì |
 |---|---|
-| `speed`, không `duration` | quãng bay đổi theo vị trí lúc gọi; tốc độ giữ cảm giác thống nhất (MY_SKILL §4.1) |
+| `speed`, không `duration` | quãng bay đổi theo vị trí lúc gọi; tốc độ giữ cảm giác thống nhất |
 | Xấp xỉ độ dài cung, không tích phân | tốc độ là núm chọn bằng mắt; sai số vài phần trăm không thấy |
 | Tốc độ là **trung bình** | `progressEase` bóp méo nhịp bên trong nhưng tổng thời gian = độ dài / tốc độ |
 | `from == target` cho `duration = 0` | PrimeTween chỉ cảnh báo; tắt bằng `PrimeTweenConfig.warnZeroDuration = false` ở boot của dự án |
