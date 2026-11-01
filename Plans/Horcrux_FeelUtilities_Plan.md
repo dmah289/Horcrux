@@ -49,7 +49,7 @@ thuộc `Horcrux_HopCurve_DipFlash_Plan.md`; làm trước hay sau đều compil
 | `ExpireAlive` nhận buffer từ caller | luật buffer đầu ra: không cấp phát theo số lần gọi; caller biết `maxParticles` của hệ mình |
 | `SetAlpha` bỏ guard `null` | thiếu ô Inspector nổ ở lần Play đầu bằng `NullReferenceException` trỏ đúng dòng; guard chỉ che và là một lời gọi native mỗi frame |
 | `ProgressBar.Play` trả `default` khi `goal <= 0` | cùng hành vi `PlayAsync` cũ (`CompletedTask`): `LogError` rồi không chạy; caller `Stop()` trên tween `default` là no-op |
-| `ComboTracker` bỏ CTS bằng `Tween.Delay` của PrimeTween thay vì bộ đếm phiên | handle dừng được ngay, 0 B, thời gian scaled như `ignoreTimeScale: false`; bộ đếm phiên để `UniTask.Delay` chạy hết cửa sổ cũ không có chủ |
+| `ComboTracker` bỏ CTS bằng `Tween.Delay` của PrimeTween thay vì bộ đếm phiên — **đã làm ở dự án** (commit `c4a6e542`), Task 9 không chạm | handle dừng được ngay, 0 B, thời gian scaled như `ignoreTimeScale: false`; bộ đếm phiên để `UniTask.Delay` chạy hết cửa sổ cũ không có chủ |
 
 ---
 
@@ -63,7 +63,7 @@ thuộc `Horcrux_HopCurve_DipFlash_Plan.md`; làm trước hay sau đều compil
 | Horcrux `Utilities/Common/DeferredSet.cs` | — | registry chỉ `Register/Unregister/Clear/quét`, không sửa trong lúc quét; `List` đủ |
 | Horcrux `TransformExtensions.Jump.cs` `SetJumpY` | khuôn `static readonly Action<Transform, Vector3>` cho callback không bắt biến | `CharmSquashStretch` chỉ cần một `float`, dùng `Tween.Custom(target, from, to, …)` thẳng |
 | Horcrux `Tests/PlayMode/CharmJumpTests.cs` | khung đo 0 B (`Is.Not.AllocatingGCMemory`) | — |
-| PrimeTween `Tween.Delay<T>(T target, float duration, Action<T> onComplete, bool useUnscaledTime = false)` | thay `UniTask.Delay` + CTS ở `ComboTracker` | — |
+| PrimeTween `Tween.Delay<T>(T target, float duration, Action<T> onComplete, bool useUnscaledTime = false)` | `ComboTracker` đã dùng (dự án, commit `c4a6e542`); `ComboPill` dùng `ProgressBar.Play` | — |
 | TMP `TMP_Text.SetText(string, float)`, `SetText(string, float, float)` | ghi vào `m_TextBackingArray`, không `string` | — |
 | Dự án `Tests/EditMode/TileFinaleCurveTests.cs` (19 case) | chuyển nguyên văn sang Horcrux | — |
 
@@ -386,10 +386,8 @@ So với mốc trace 2026-10-31 (kịch bản mở rộng, có bước tada).
 | `Director/IAnimate.cs` | **xoá**; 18 chỗ `IAnimate` → `IAnimating` (`Tile`, `Box`, `BoxesContainer`, `CacheTileSlots`, `ShoppingCart`, `PreviewBox`, `Shelf`, `AnimatingSystem`), thêm `using Horcrux.Runtime.Utilities.Common;` |
 | `Director/AnimatingSystem.cs` | field `List<IAnimate> _animates` → `private readonly AnimationRegistry _registry = new();`; `IsAnimating() => _registry.IsAnyAnimating`; `Register/UnRegister` gọi registry; `OnDisable`, `HandleLevelDisposed` → `_registry.Clear()`; `HandleTileCompleted` giữ |
 | `Hud/ComboPill.cs` | `CancellationTokenSource _drainCts` → `Tween _drain`; `OnComboChanged`: `_drain.Stop();` rồi `_drain = bar.Play(e.WindowSeconds, 0f, e.WindowSeconds, Label(e.Count));`; `OnDestroy` `_drain.Stop()`; xoá `CancelDrain`, `using System.Threading`, `Cysharp.Threading.Tasks`, thêm `using PrimeTween;` |
-| `Director/ComboTracker.cs` | `CancellationTokenSource _decayCancellationTokenSource` → `Tween _decay`; `AddPoint`: `_decay.Stop(); _decay = Tween.Delay(this, DecayDuration, static tracker => tracker.OnDecayElapsed());` · `Reset`, `Dispose`: `_decay.Stop()` · `OnDecayElapsed()`: `Count = 0; Publish(new ComboChanged(0, 0f))` · xoá `RunDecayAsync`, `CancelDecay`, `using System.Threading`, `Cysharp.Threading.Tasks` |
 | `Entities/Box/CategoryBox.cs` | xoá `s_counterTexts`; `UpdateCounter`: `_counterText.SetText("{0}/{1}", linked, total);` |
 | `Entities/Shelf/SingleShelfAmountBar.cs` | xoá `s_amountTexts`, `AmountText`; hai chỗ `_amountText.text = AmountText(count)` → `_amountText.SetText("{0}", count)` |
-| `Entities/Shelf/Shelf.cs` | `PlayLockAnimation`: `_lockedAmountText.text = remainingTurns.ToString()` → `_lockedAmountText.SetText("{0}", remainingTurns)` |
 | `Hud/ComboPill.cs` `_labels` | **giữ**: `ProgressBar` nhận chuỗi, cache có trần bằng combo cao nhất |
 | `Tests/EditMode/TileFinaleCurveTests.cs` | sang Horcrux (Task 7) rồi xoá |
 
@@ -398,9 +396,9 @@ So với mốc trace 2026-10-31 (kịch bản mở rộng, có bước tada).
   `_decayCancellationTokenSource` trong `Assets/_CategoryJam` = 0; compile sạch; EditMode, PlayMode Horcrux và EditMode dự án PASS.
 - Eval trên `Tile.prefab` đã nạp: `finale` = (2, 0.3, 1.25, 12, 0.08, 0.04, 1.14, 0.05, 0.07) — YAML hiện tại của prefab (mốc, khác mặc định C#),
   key giữ nên không đổi; `GoldenTile.prefab` cũng có khối `finale`; `git diff` hai prefab rỗng.
-- Nhãn: bộ đếm "3/5", số lớp "4", số lượt khoá "2" hiện y hệt (chụp một khung trước–sau).
+- Nhãn: bộ đếm "3/5", số lớp "4" hiện y hệt (chụp một khung trước–sau); số nguyên qua `SetText("{0}")` đã có test EditMode `TmpSetTextTests` của dự án (số lượt khoá làm trước, commit `ca9b8784`).
 - **Cảm giác không đổi:** trace sau Task 9 0 chênh với mốc ở mọi khung, kể cả bước tada và bước magnet (`IsAnyAnimating` quyết lúc mở tương tác).
-- Combo: chơi thử đóng hai box liên tiếp — thanh nạp lại, hết cửa sổ về 0; không có `CancellationTokenSource` nào trong `Hud/`, `Director/ComboTracker.cs`.
+- Combo: chơi thử đóng hai box liên tiếp — thanh nạp lại, hết cửa sổ về 0; không có `CancellationTokenSource` nào trong `Hud/` (`Director/ComboTracker.cs` đã xong ở commit `c4a6e542`).
 
 ---
 
