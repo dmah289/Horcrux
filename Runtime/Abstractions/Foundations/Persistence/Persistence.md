@@ -557,6 +557,8 @@ Test authoring `key` và `defaultValue` qua `SerializedObject` — cùng cửa m
 | Ghi nguyên tử (`.tmp` + rename) | ứng dụng không tự ghi file; nền tảng ghi cả kho một lượt |
 | Crypto · cloud sync · migration version | chưa có nhu cầu thật: không repo nào dùng crypto thật, backend chưa chuẩn chung, chưa model nào đổi schema |
 
+**Mở rộng sau:** crypto decorator quanh serializer — vỏ ScrewDom có `AESEncryption.cs` (AES-256 cho chuỗi) và module `AntiCheat` (kiểm nguồn cài) làm hình dạng tham khảo khi có nhu cầu thật.
+
 ### Bốn chỗ cố ý khác Remote Config
 
 Hai hệ dùng chung khuôn: abstract base trong SDK · `sealed partial` + `partial interface` phía dự án ·

@@ -163,7 +163,7 @@ Mỗi hệ chỉ coi là xong khi đủ 5 điều: ① contract tách khỏi imp
 | 20 | 💎 LiveOps Module Host 📄 | Composite | Bắt buộc | 4 | §2, 4b, §7, §12, §13, §14 |
 | 21 | 💎 Ads Pacing & Monetization Scenario | Composite | Thấp — **port dễ** | 4 | §13, 4b, RemoteConfig |
 | 22 | **Feedback Orchestrator** (cue → đa giác quan) 📄 | Composite | Cao | 3 | 4a, §8, §9 *(2 sau là optional)* |
-| 23 | **Combo** (streak · tier · multiplier) 📄 | Composite | Trung bình | 4 | 4a · §22 *(optional)* |
+| 23 | **Combo** (đếm chuỗi, cửa sổ hết hạn là hàm của count) 📄 | Utility | Thấp | 4 | — (`Tween.Delay` của PrimeTween; không cần 4a) |
 
 💎 = giá trị IP cao, đáng nhân rộng dù ít nơi dùng. 📄 = **đã có plan triển khai chi tiết**, xem bảng dưới.
 
@@ -179,7 +179,7 @@ Các hệ dưới đây đã được viết plan tự chứa, có code dán-đ�
 | §9 Haptics | **đã dựng xong:** `Abstractions/Foundations/Haptics/HapticSystem.md` | ✅ **Foundation, 4 file:** `IHapticService<THaptic>` (`Play(id)`, id enum của dự án → `HapticPatterns.PresetType` chọn trong Inspector) + `IHapticSetting`; runtime tham chiếu thẳng Nice Vibrations. 4 file | rung theo **biên độ**, rung liên tục (`Begin/End` + ref-count), throttle theo entry, `IsSupported` |
 | §8 Audio | `Implementations/Foundations/Audio/AudioSystem.md` | ✅ **Foundation, 8 file**, generic theo hai enum của dự án: `IAudioSetting` (2 cờ) + `IAudioService<TSfx,TMusic>` (4 member: SFX · SFX có `pitchScale` · Music tối thiểu). Catalog SO, voice gán ở Inspector, throttle theo entry | **SFX 3D** (`PlaySfxAt`), crossfade, pause/resume nhạc, `PlayDynamic`, mixer group, `volumeScale`, nhiều clip một tiếng |
 | §22 Feedback | `Implementations/Composites/Feedback/FeedbackSystem.md` | `FeedbackCue {Id, Step}` + dispatcher + 4 kênh (audio · haptic · hitstop · **shake**); **kèm** `TraumaShake`. Tham số cue serialize **trên chính kênh** — không asset trung gian. 12 file | zoom punch (thêm `IFeedbackCameraZoom` **riêng** theo ISP — không sửa interface cũ), `FeedbackCue.Intensity`, bảng cue dạng SO, kênh particle/text/ripple, slow-mo dài, kênh thêm lúc runtime |
-| §23 Combo | `Implementations/Composites/Combo/ComboSystem.md` | `ComboTracker` (C# thuần), 3 window policy, hệ số nhân Linear, bậc = `int[]` trên Inspector, bridge, `ComboMeter`, demo driver. 11 file | nhãn/hệ số/cue riêng theo bậc (thay `int[]` bằng SO + interface), đường nhân điểm khác, multi-track, lưu kỷ lục, telemetry, `ChainReaction` |
+| §23 Combo | `Plans/Horcrux_ComboTracker_Plan.md` | `ComboTracker` thuần nhận `Func<int, float> windowSeconds`, đồng hồ `Tween.Delay`, một event `Changed(count, window)`; meter là `ProgressBar` có sẵn; phản hồi nhiều kênh gọi cạnh nhau trong một hàm của dự án. 1 file | struct núm cửa sổ trên Inspector, `Multiplier(count)`, bậc, multi-track, kỷ lục, telemetry |
 | 4b Time | `Abstractions/Foundations/Time/TimeSystem.md` | `ITimeService.UtcNowUnix` không lùi (mốc lớn nhất từng thấy, field `protected internal` trong `BasePersistenceDataCollection`). 2 file + 1 field | **toàn bộ server time** (contract `IServerTimeProvider` + `offsetSeconds` + `IsServerTimeTrusted` + `ResyncAsync` + gate cấp thưởng — thiết kế ở §4b ngay dưới), `Countdown`, `TimeFormatter`, nhịp qua Ticker |
 | 14c Reward | `Abstractions/Foundations/Reward/RewardSystem.md` | `RewardData{TypeId, Amount}` + `IRewardHandler` (1 member) + `IRewardService.Register(typeId, handler)/Grant` sync. 2 file | `GrantAsync` + fly, claim popup, `IRewardIconProvider`, 14a Currency, 14b Lives |
 | 20 LiveOps | `Abstractions/Composites/LiveOps/LiveOpsHost.md` | `LiveOpsModuleState` 3 trạng thái · `WeeklySchedule.Resolve` thuần · `LiveOpsModuleBase` (một thân `Refresh` cho init + tick) · `LiveOpsHost` chờ save, tick 1 Hz, `LiveOpsSecondTick`. 8 file. Module đầu: Collection (`Assets/LiveOps/Collection/Collection_Plan.md`) | `IOptionalService`, tick thích ứng, `EActivationTiming`, `#define` per module, asset preload, lịch chu kỳ N ngày, cheat-time |
@@ -207,14 +207,14 @@ TẦNG 3  ┌─ 4b Time ── 14 Economy ── 15 Level Library ── 16 Tut
         ▼
 TẦNG 4  └─ 19 Adaptive Difficulty ── 20 LiveOps Host ── 21 Ads Pacing
         │  (tiêu thụ hầu hết tầng dưới qua interface → làm cuối)
-        └─ 23 Combo ◄── 4a (bắt buộc) + §22 (optional)
+        └─ 23 Combo — tracker thuần trên PrimeTween, không cần 4a hay §22
 ```
 
 **Lát cắt dọc "combo đa giác quan"** — 5 hệ đã có plan, chạy được độc lập với 21 hệ còn lại:
 
 ```
 4a Ticker ──┬─► §9 Haptics ─┐
-            └─► §8 Audio ───┴─► §22 Feedback ──► §23 Combo
+            └─► §8 Audio ───┴─► §22 Feedback      (§23 Combo tách riêng, xem `Plans/Horcrux_ComboTracker_Plan.md`)
 ```
 
 **Đọc bảng này trước khi bắt đầu bất kỳ hệ nào.** Làm ngược thứ tự = phải quay lại sửa nền.
@@ -354,7 +354,7 @@ ngoài (RCore). Hệ này **thiết kế mới**, lấy nguyên liệu tốt nh�
     chưa chuẩn chung. Hình dạng đã nghĩ sẵn: **`ICloudSyncable` tách riêng theo ISP** (không nhồi vào
     contract unit — unit cục bộ không bị buộc implement rồi `return null`) + snapshot dictionary trên
     registry; kèm rule merge (version/level/timestamp) chống "thiết bị mới data rỗng đè thiết bị cũ".
-- **Mở rộng sau:** crypto decorator · cloud sync + merge rule · migration version cho model.
+- **Mở rộng sau:** crypto decorator (AES cho chuỗi và kiểm nguồn cài đã có ở vỏ ScrewDom `_Kelsey/Core/Runtime/Utility/AESEncryption.cs`, `_Kelsey/Modules/AntiCheat`) · cloud sync + merge rule, kể cả khôi phục save từ server (vỏ ScrewDom `_Core/GameServer/PlayerDataParser.cs` chỉ có interface) · migration version cho model.
 
 **Nghiệm thu.**
 - Thêm một save-unit mới: không sửa dòng nào trong SDK và unit khác.
@@ -422,7 +422,7 @@ chung, mỗi màn tự chế một kiểu loading và double-tap mở hai màn c
 - **Cố ý KHÔNG làm ở v1:** `ITransition` (fade/slide) — chưa repo nào có nhiều hơn một kiểu transition
   thật; abstraction chưa có implementation thứ hai. Hình dạng đã nghĩ sẵn: interface 2
   method vào/ra — thêm sau additive.
-- **Mở rộng sau:** `ITransition` · preload theo manifest khai báo.
+- **Mở rộng sau:** `ITransition` · preload theo manifest khai báo · chính sách giữ hay thả bundle theo RAM trống (ba mức, đọc RAM native từng platform; hình dạng đã chạy ở vỏ ScrewDom `_Modules/AddressableManager/Script/MemoryUtils.cs`).
 
 **Nghiệm thu.**
 - Spam nút play trong transition: không load 2 lần (guard ngay đầu), không mở được gì.
@@ -1650,6 +1650,9 @@ public interface IDistributionStrategy<TElement>
 }
 ```
 
+Lõi tra của `IDifficultyTagProvider` đã có plan: `LevelTypeTable.TypeOf<TEntry, TType>(entries, level, fallback)` ở `Utilities/Progression/`
+(`Plans/Horcrux_ProgressDifficulty_Plan.md`), bảng do dự án giữ và enum là của dự án; provider của mục này là service bọc nó khi §15 được dựng.
+
 **Công thức loop**
 
 ```
@@ -2689,6 +2692,8 @@ Resync(): interval = TryGetIntervalByDayActive(day) ? s : MinInterstitialInterva
 
 **Xong khi:** §0.6 + không tham chiếu type gameplay nào · JSON sai không làm tụt config · lùi đồng hồ máy không giảm được Day Active · đổi kịch bản áp ngay lên mọi placement · cold start offline vẫn dùng đúng config phiên trước.
 
+**Mở rộng sau:** kịch bản theo nguồn cài và eCPM của user, phân khúc CDP, bộ đếm lifetime — vỏ ScrewDom có contract (`_Core/Diversity`, `_Core/CdpSegments`, `_Core/Data/IGameLifetimeStats.cs`), implementation theo từng dự án.
+
 ---
 
 # Phụ lục A — Utilities nền mà nhiều hệ ở trên cần
@@ -2736,7 +2741,7 @@ public class AddressableObjectReference<T> where T : UnityEngine.Object
 | Handle `Failed` → release rồi thử lại | Handle lỗi giữ mãi thì retry không bao giờ được |
 | Biến thể có key (`enum`/`int`) | Dựng bảng `key → asset` trong SO mà vẫn lazy-load |
 
-**Cạm bẫy:** `Asset` truy cập trước khi load xong → null. Không tự động load ngầm trong getter (sẽ thành async ẩn khó lần) — log error và để caller sửa.
+**Cạm bẫy:** `Asset` truy cập trước khi load xong → null. Không tự động load ngầm trong getter (sẽ thành async ẩn khó lần) — log error và để caller sửa. `SpriteAtlas.GetSprites` trả **clone** của từng sprite: dựng bảng tra theo tên một lần rồi `Destroy` các clone, nếu không mỗi lần nạp atlas rò n sprite.
 
 ## A.3 Typed prefs — `Prefs<T>`
 
@@ -2791,7 +2796,7 @@ Hai lỗi phụ, nhỏ hơn nhưng rất hay gặp:
 
 | Hạng mục | Vì sao không đưa vào Horcrux |
 |---|---|
-| **Editor tooling** (level painter, JSON→SO, quick-access, viewer) | Schema mỗi game khác hẳn nhau; tool chỉ hữu ích khi bám sát schema đó. SDK-hoá phần editor là nhận nợ maintain cho N schema. Tool sống ở từng dự án |
+| **Editor tooling bám schema level của một game** (level painter, JSON→SO, importer level) | Schema mỗi game khác hẳn nhau; tool chỉ hữu ích khi bám sát schema đó. SDK-hoá là nhận nợ maintain cho N schema. Tool **schema-agnostic** (quét asset, bố trí Addressables, dựng atlas, kiểm sorting, kiểm compile, đổi tên) thuộc Horcrux ở `Editor/<Tool>/`, agent viết thẳng, developer review |
 | **Impl vendor** (MAX/AdMob, Firebase, Adjust, IAP, NiceVibrations) | Đổi thường xuyên, license riêng, coupling cao. SDK chỉ giữ contract (§13, §12, §9) |
 | **Localization** | Đã có giải pháp trưởng thành sẵn; và bảng chữ là nội dung game. SDK chỉ dùng **key** (§16 `textKey`), không sở hữu bảng dịch |
 | **Gameplay mechanic** (board, match, physics của một game cụ thể) | Định nghĩa của game, không phải hạ tầng |
