@@ -5,34 +5,32 @@ description: Dùng khi chỉnh, refactor hay dò lỗi feeling của game Unity 
 
 # feel-tune — chỉnh feeling với công cụ dựng sẵn
 
-Đường dẫn tính từ gốc Horcrux (dự án hiện tại: `Assets/Horcrux/`). Chi tiết API ở `docs/Editor/Probe.md` và
-`docs/Editor/FeelTrace.md`; file này chỉ chọn công cụ và giữ ngân sách token.
+Skill công cụ. `<horcrux>` là gốc Horcrux trong dự án. API chi tiết: `docs/Editor/Probe.md`, `docs/Editor/FeelTrace.md`.
+Khi nào được vào Play và khi nào giao developer chơi thử: `workflow` › Nghiệm thu. Số tinh chỉnh là nháp: NT9.
 
 ## Luật
 
-1. **Developer cảm được thì agent không vào Play để xem.** Bố cục, vị trí, nhịp, hình ảnh: đọc code và asset, sửa, rồi giao kịch bản
-   chơi thử — vào đâu · làm gì (chuỗi ngắn nhất) · nhìn hiện tượng nào · khác trước ra sao · dấu hiệu hỏng.
-2. **Play qua công cụ chỉ cho thứ developer không cảm được:** chứng minh refactor giữ nguyên chuyển động · con số (đỉnh, thời lượng,
-   vọt lố, GC, batches) · trạng thái nội bộ màn hình không hiện · lỗi hình agent phải tự thấy trước khi giao.
-3. **Không viết script khung mới.** Vào Play, thử lại eval, bắt log lỗi, ghi file, khoá fps, chụp, ghép ảnh đã có. Thiếu thì mở rộng
-   công cụ trong Horcrux (code Editor agent viết thẳng) hoặc đường tắt Editor của dự án, rồi dùng.
-4. **Không đọc dữ liệu thô vào ngữ cảnh.** Trace đọc qua `stat`, `diff`, `sig`; kết quả probe là bản tóm tắt dưới 4 KB; ảnh là một
-   sheet đã cắt và thu nhỏ.
-5. **Số tinh chỉnh trong asset là nháp của developer.** Đổi công thức thì giữ hành vi thuật toán, chứng minh bằng trace, rồi hỏi số cũ
-   là nháp hay mốc — không tự ánh xạ.
+1. **Không viết script khung mới** (vào Play, thử lại eval, bắt log, ghi file, khoá fps, chụp, ghép ảnh). Thiếu thì mở
+   rộng công cụ trong Horcrux hoặc class đường tắt của dự án, rồi dùng.
+2. **Không đọc dữ liệu thô vào ngữ cảnh.** Trace đọc qua `stat`, `diff`, `sig`; kết quả probe tóm tắt dưới 4 KB; ảnh là
+   một sheet đã cắt và thu nhỏ.
+3. **Refactor phải giữ chuyển động thì chứng minh bằng trace**, không bằng mắt: quay mỗi frame ở cuối frame với frame rate
+   khoá (`Time.captureFramerate`), kịch bản gõ qua đúng đường input thật, ghi mọi thuộc tính nhìn thấy của mọi entity.
+   Chứng minh trace **tất định** trước — hai lần quay mốc 0 chênh, so theo chữ ký trạng thái đầu (thời gian nạp đổi số lần
+   gọi `Random`) — rồi mới so trước–sau. Trace chứng minh "không đổi", không thay chơi thử.
 
 ## Chọn công cụ theo câu hỏi
 
 | Câu hỏi | Công cụ | Vào Play |
 |---|---|---|
-| Vị trí, cỡ, sorting, bounds trong prefab; override của prefab lồng nhau | `PrefabDump.DumpAsset(path, filter)` qua `script eval` | không |
-| Refactor có giữ nguyên chuyển động không | FeelTrace: quay mốc, sửa, quay lại, `feeltrace.py diff` | có |
-| Một chuyển động cao bao nhiêu, chạy bao lâu, vọt lố bao nhiêu | FeelTrace quay một lần, `feeltrace.py stat <entity> --from --to` | có |
-| GC, batches, renderer bật mà không vẽ trong lúc diễn | `feeltrace.sh --gc` (chèn `recorder.Metrics` vào bản copy), `stat <file> M0 --cols 0` | có |
-| Một hàm có cấp phát dưới vài chục KB không | test PlayMode `Is.Not.AllocatingGCMemory` (khung `CharmJumpTests`), **không** đọc từ M0: GC/frame trong Editor có nền nhiễu ≈ 100 KB (Editor + recorder), đo 2026-10-31 | có |
-| Trạng thái nội bộ sau một chuỗi thao tác | `playrun.sh` + `PlayProbe.Run` | có |
-| Mất hình, lệch lớp, nháy ở một frame cụ thể | `FrameSheet` trong probe hay `Act` của kịch bản, một PNG | có |
-| Cảm giác, nhịp, "đã tay" | developer chơi thử | — |
+| vị trí, cỡ, sorting, bounds trong prefab; override của prefab lồng nhau | `PrefabDump.DumpAsset(path, filter)` qua `script eval` | không |
+| refactor có giữ nguyên chuyển động | FeelTrace: quay mốc, sửa, quay lại, `feeltrace.py diff` | có |
+| chuyển động cao bao nhiêu, bao lâu, vọt lố bao nhiêu | FeelTrace quay một lần, `stat <entity> --from --to` | có |
+| GC, batches, renderer bật mà không vẽ lúc diễn | `feeltrace.sh --gc`, `stat <file> M0 --cols 0` | có |
+| một hàm có cấp phát dưới vài chục KB | test PlayMode `Is.Not.AllocatingGCMemory`, **không** đọc từ M0 — GC mỗi frame trong Editor có nền nhiễu ≈ 100 KB | có |
+| trạng thái nội bộ sau một chuỗi thao tác | `playrun.sh` + `PlayProbe.Run` | có |
+| mất hình, lệch lớp, nháy ở một frame | `FrameSheet` trong probe hay `Act` của kịch bản, một PNG | có |
+| cảm giác, nhịp, "đã tay" | developer chơi thử | — |
 
 ## Lệnh
 
@@ -62,17 +60,15 @@ Horcrux.Editor.Probe.PlayProbe.Run(outPath, async (sb, ct) =>
 return "playrun";
 ```
 
-## Đường tắt của dự án
-
-Mỗi dự án giữ **một class Editor** đưa game tới trạng thái cần đo: vào level, chờ rảnh, chọn entity, gọi hàm private qua
-`PlayProbe.Call`. Tìm bằng tên `*Probe` trong thư mục Editor của dự án. Đường tắt cần lần thứ hai thì thêm vào class đó, không viết lại
-trong script; kịch bản FeelTrace của dự án dùng chung nó.
+**Đường tắt của dự án:** mỗi dự án giữ **một class Editor** `*Probe` đưa game tới trạng thái cần đo (vào level, chờ rảnh,
+chọn entity, gọi hàm private qua `PlayProbe.Call`). Đường tắt cần lần thứ hai thì thêm vào class đó; kịch bản FeelTrace
+của dự án dùng chung nó, dự án chỉ viết kịch bản.
 
 ## Quy trình
 
 1. Đọc code tween, trình diễn đang chạm; lỗi bố cục thì `PrefabDump` trước.
-2. Refactor phải giữ chuyển động: kịch bản đã phủ chưa, rồi quay mốc **trước** khi sửa (`FeelTrace.md`, mục quy trình).
-3. Sửa — PrimeTween cho tween, UniTask cho async; tween nhân hay cộng trên giá trị nghỉ, không ghi tuyệt đối.
+2. Refactor phải giữ chuyển động: kịch bản đã phủ chưa, rồi quay mốc **trước** khi sửa.
+3. Sửa theo `async-presentation` (PrimeTween, UniTask; tween nhân hay cộng trên giá trị nghỉ).
 4. Kiểm bằng con số: `diff` 0 chênh, hoặc `stat` cho số cần báo.
 5. Báo cáo: số đo kèm tên file; phần cảm giác giao kịch bản chơi thử.
 
@@ -80,5 +76,5 @@ trong script; kịch bản FeelTrace của dự án dùng chung nó.
 
 - Một lần đo là một lệnh Bash; không gọi MCP `start`, `stop`, `wait`, `game_view`, `screenshot` từng bước.
 - `stat --cols` chỉ lấy cột đang hỏi; `--series` chỉ khi cần từng frame.
-- Ảnh: `shrink` từ 2 trở lên, `crop` đúng vùng cần xem, nhiều khoảnh khắc ghép vào một sheet.
-- Lần chạy chạy nền khi lâu hơn một phút; không đọc file output khi chưa xong.
+- Ảnh: `shrink` từ 2 trở lên, `crop` đúng vùng, nhiều khoảnh khắc ghép một sheet.
+- Lần chạy lâu hơn một phút thì chạy nền; không đọc output khi chưa xong.
