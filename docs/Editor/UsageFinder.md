@@ -4,6 +4,8 @@ Trả lời câu hỏi **reverse lookup** ở mức asset: *"Asset / Material / 
 
 Gộp 2 tab cùng làm việc trên **một asset nguồn**, nhưng dùng **2 cơ chế khác nhau** (bắt buộc tách vì bản chất kỹ thuật khác nhau).
 
+Code: `Editor/UsageFinder/`.
+
 ## Mở cửa sổ
 
 - Menu: **Horcrux > Usage Finder**
@@ -31,7 +33,7 @@ Gộp 2 tab cùng làm việc trên **một asset nguồn**, nhưng dùng **2 c�
 | `↻ Rebuild Index` | Full rebuild index — dùng sau thay đổi ngoài Unity (git checkout, sửa file tay) mà postprocessor không bắt được |
 | "No other asset references this" | An toàn để sửa/xóa mà không ảnh hưởng asset khác |
 
-- Index build **lazy** ở query đầu tiên (progress bar), sau đó tự cập nhật incremental qua `AssetPostprocessor`. Xem `Common/AssetReferenceIndex.md`.
+- Index build **lazy** ở query đầu tiên (progress bar), sau đó tự cập nhật incremental qua `AssetPostprocessor`. Xem `docs/Editor/AssetReferenceIndex.md`.
 
 ## Tab 2 — Addressable Usages
 

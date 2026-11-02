@@ -129,7 +129,7 @@ không phải mở rộng phạm vi. Không dấu hiệu nào thì đọc code l
 frame với frame rate khoá (`Time.captureFramerate`), kịch bản gõ qua đúng đường input thật, ghi mọi thuộc
 tính nhìn thấy của mọi entity; chứng minh trace **tất định** trước (hai lần quay mốc 0 chênh — so theo chữ
 ký trạng thái đầu, vì thời gian nạp đổi số lần gọi `Random`) rồi mới so trước–sau. Chứng minh "không đổi",
-không thay chơi thử. Công cụ: `Editor/FeelTrace/FeelTrace.md`; dự án chỉ viết kịch bản.
+không thay chơi thử. Công cụ: `docs/Editor/FeelTrace.md`; dự án chỉ viết kịch bản.
 
 **Cheat — mở đường tới kịch bản, không mở nắp kỹ thuật.** Một lệnh chỉ chính đáng khi kịch bản **không tới
 được bằng đường người chơi trong thời gian hợp lý**: thời gian (hết tuần) · khối lượng (đủ điểm mốc cuối) ·

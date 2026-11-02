@@ -89,7 +89,7 @@ namespace Horcrux.Runtime.Abstractions
 
 State lưu qua **entry riêng** cho từng thứ (§2), **không** dùng chung một blob toàn cục. Dự án khai model dữ liệu thuần; collection lo scan field, load, autosave và flush.
 
-📄 Hệ đã dựng, tài liệu: `Abstractions/Foundations/Persistence/Persistence.md`. Mỗi thứ lưu được là một `PersistenceDataEntry<T>`, đặt làm field `[MarkedPersistence]` trên một `ScriptableObject` dẫn xuất `BasePersistenceDataCollection`. Kho là PlayerPrefs, payload là JSON Newtonsoft, và flush biết có gì đổi bằng cách **so chuỗi payload** với chuỗi kho đang giữ. Chưa có crypto — decorator thêm sau. **Hệ SDK lấy giá trị save bằng đường nào thì chưa chốt**, xem mục "Còn để mở" của `Persistence.md`.
+📄 Hệ đã dựng, tài liệu: `docs/Runtime/Persistence.md`. Mỗi thứ lưu được là một `PersistenceDataEntry<T>`, đặt làm field `[MarkedPersistence]` trên một `ScriptableObject` dẫn xuất `BasePersistenceDataCollection`. Kho là PlayerPrefs, payload là JSON Newtonsoft, và flush biết có gì đổi bằng cách **so chuỗi payload** với chuỗi kho đang giữ. Chưa có crypto — decorator thêm sau. **Hệ SDK lấy giá trị save bằng đường nào thì chưa chốt**, xem mục "Còn để mở" của `Persistence.md`.
 
 ## 0.4 Hiệu năng — luật áp cho mọi hệ dưới đây
 
@@ -174,15 +174,15 @@ Các hệ dưới đây đã được viết plan tự chứa, có code dán-đ�
 | Hệ | File plan | Trong plan | **Ngoài** plan (vẫn ở tài liệu này) |
 |---|---|---|---|
 | 1 Bootstrap | `Implementations/Foundations/Bootstrap/BootstrapSystem.md` | `BootStep` (Order + 2 nhịp + 2 hook app) + `BootstrapService` (sort ổn định, fail-open, token vòng đời, `BootProgress`) + `IBootstrapService` (`IsInitialized` + `UntilInitialized`) + `IOptionalService<T>` (§0.2) + demo nghiệm thu. 7 file | manifest SO · parallel-in-phase · nhóm bước theo scene |
-| 2 Persistence | **đã dựng xong:** `Abstractions/Foundations/Persistence/Persistence.md` | `PersistenceDataEntry<T>` (typed + on-change + nhớ payload kho đang giữ) + `BasePersistenceDataCollection` (scan field `[MarkedPersistence]`, load lúc `Initialize`, autosave, flush hai giai đoạn so payload) + hai host `SaveDriver` / `SaveBootstep`, chọn đúng một. Kho PlayerPrefs, payload JSON Newtonsoft. 7 file abstraction + 2 host | crypto decorator · cloud sync · migration version cho model · kho file trên đĩa · `Prefs<T>` và `ISerializer` — cả hai **cố ý không làm**, lý do ở `Persistence.md` |
+| 2 Persistence | **đã dựng xong:** `docs/Runtime/Persistence.md` | `PersistenceDataEntry<T>` (typed + on-change + nhớ payload kho đang giữ) + `BasePersistenceDataCollection` (scan field `[MarkedPersistence]`, load lúc `Initialize`, autosave, flush hai giai đoạn so payload) + hai host `SaveDriver` / `SaveBootstep`, chọn đúng một. Kho PlayerPrefs, payload JSON Newtonsoft. 7 file abstraction + 2 host | crypto decorator · cloud sync · migration version cho model · kho file trên đĩa · `Prefs<T>` và `ISerializer` — cả hai **cố ý không làm**, lý do ở `Persistence.md` |
 | 4a Ticker (+4b Time) | `Implementations/Foundations/Ticker/TickerSystem.md` | `ITicker` + **2 nhịp** (`ITickable`, `IPauseAware`) + 1 `Update` duy nhất, `IOptionalService<T>` (§0.2), `DeferredList<T>`. 6 file | **nhịp 1 Hz** (`ISecondTickable`), `Destroyed` event, `ITimeService`, chống tua giờ, `Countdown`, `TimeFormatter` |
-| §9 Haptics | **đã dựng xong:** `Abstractions/Foundations/Haptics/HapticSystem.md` | ✅ **Foundation, 4 file:** `IHapticService<THaptic>` (`Play(id)`, id enum của dự án → `HapticPatterns.PresetType` chọn trong Inspector) + `IHapticSetting`; runtime tham chiếu thẳng Nice Vibrations. 4 file | rung theo **biên độ**, rung liên tục (`Begin/End` + ref-count), throttle theo entry, `IsSupported` |
-| §8 Audio | `Implementations/Foundations/Audio/AudioSystem.md` | ✅ **Foundation, 8 file**, generic theo hai enum của dự án: `IAudioSetting` (2 cờ) + `IAudioService<TSfx,TMusic>` (4 member: SFX · SFX có `pitchScale` · Music tối thiểu). Catalog SO, voice gán ở Inspector, throttle theo entry | **SFX 3D** (`PlaySfxAt`), crossfade, pause/resume nhạc, `PlayDynamic`, mixer group, `volumeScale`, nhiều clip một tiếng |
+| §9 Haptics | **đã dựng xong:** `docs/Runtime/HapticSystem.md` | ✅ **Foundation, 4 file:** `IHapticService<THaptic>` (`Play(id)`, id enum của dự án → `HapticPatterns.PresetType` chọn trong Inspector) + `IHapticSetting`; runtime tham chiếu thẳng Nice Vibrations. 4 file | rung theo **biên độ**, rung liên tục (`Begin/End` + ref-count), throttle theo entry, `IsSupported` |
+| §8 Audio | `docs/Runtime/AudioSystem.md` | ✅ **Foundation, 8 file**, generic theo hai enum của dự án: `IAudioSetting` (2 cờ) + `IAudioService<TSfx,TMusic>` (4 member: SFX · SFX có `pitchScale` · Music tối thiểu). Catalog SO, voice gán ở Inspector, throttle theo entry | **SFX 3D** (`PlaySfxAt`), crossfade, pause/resume nhạc, `PlayDynamic`, mixer group, `volumeScale`, nhiều clip một tiếng |
 | §22 Feedback | `Implementations/Composites/Feedback/FeedbackSystem.md` | `FeedbackCue {Id, Step}` + dispatcher + 4 kênh (audio · haptic · hitstop · **shake**); **kèm** `TraumaShake`. Tham số cue serialize **trên chính kênh** — không asset trung gian. 12 file | zoom punch (thêm `IFeedbackCameraZoom` **riêng** theo ISP — không sửa interface cũ), `FeedbackCue.Intensity`, bảng cue dạng SO, kênh particle/text/ripple, slow-mo dài, kênh thêm lúc runtime |
 | §23 Combo | `Plans/Horcrux_ComboTracker_Plan.md` | `ComboTracker` thuần nhận `Func<int, float> windowSeconds`, đồng hồ `Tween.Delay`, một event `Changed(count, window)`; meter là `ProgressBar` có sẵn; phản hồi nhiều kênh gọi cạnh nhau trong một hàm của dự án. 1 file | struct núm cửa sổ trên Inspector, `Multiplier(count)`, bậc, multi-track, kỷ lục, telemetry |
-| 4b Time | `Abstractions/Foundations/Time/TimeSystem.md` | `ITimeService.UtcNowUnix` không lùi (mốc lớn nhất từng thấy, field `protected internal` trong `BasePersistenceDataCollection`). 2 file + 1 field | **toàn bộ server time** (contract `IServerTimeProvider` + `offsetSeconds` + `IsServerTimeTrusted` + `ResyncAsync` + gate cấp thưởng — thiết kế ở §4b ngay dưới), `Countdown`, `TimeFormatter`, nhịp qua Ticker |
-| 14c Reward | `Abstractions/Foundations/Reward/RewardSystem.md` | `RewardData{TypeId, Amount}` + `IRewardHandler` (1 member) + `IRewardService.Register(typeId, handler)/Grant` sync. 2 file | `GrantAsync` + fly, claim popup, `IRewardIconProvider`, 14a Currency, 14b Lives |
-| 20 LiveOps | `Abstractions/Composites/LiveOps/LiveOpsHost.md` | `LiveOpsModuleState` 3 trạng thái · `WeeklySchedule.Resolve` thuần · `LiveOpsModuleBase` (một thân `Refresh` cho init + tick) · `LiveOpsHost` chờ save, tick 1 Hz, `LiveOpsSecondTick`. 8 file. Module đầu: Collection (`Assets/LiveOps/Collection/Collection_Plan.md`) | `IOptionalService`, tick thích ứng, `EActivationTiming`, `#define` per module, asset preload, lịch chu kỳ N ngày, cheat-time |
+| 4b Time | `docs/Runtime/TimeSystem.md` | `ITimeService.UtcNowUnix` không lùi (mốc lớn nhất từng thấy, field `protected internal` trong `BasePersistenceDataCollection`). 2 file + 1 field | **toàn bộ server time** (contract `IServerTimeProvider` + `offsetSeconds` + `IsServerTimeTrusted` + `ResyncAsync` + gate cấp thưởng — thiết kế ở §4b ngay dưới), `Countdown`, `TimeFormatter`, nhịp qua Ticker |
+| 14c Reward | `docs/Runtime/RewardSystem.md` | `RewardData{TypeId, Amount}` + `IRewardHandler` (1 member) + `IRewardService.Register(typeId, handler)/Grant` sync. 2 file | `GrantAsync` + fly, claim popup, `IRewardIconProvider`, 14a Currency, 14b Lives |
+| 20 LiveOps | `docs/Runtime/LiveOpsHost.md` | `LiveOpsModuleState` 3 trạng thái · `WeeklySchedule.Resolve` thuần · `LiveOpsModuleBase` (một thân `Refresh` cho init + tick) · `LiveOpsHost` chờ save, tick 1 Hz, `LiveOpsSecondTick`. 8 file. Module đầu: Collection (`Assets/LiveOps/Collection/Collection_Plan.md`) | `IOptionalService`, tick thích ứng, `EActivationTiming`, `#define` per module, asset preload, lịch chu kỳ N ngày, cheat-time |
 
 > ⚠️ **2/7 file plan đã bị xoá trong commit `clean` của repo Horcrux** — `TickerSystem.md` và
 > `FeedbackSystem.md` (4 plan còn trên đĩa: Bootstrap, Haptics, Audio, Combo). Nội dung khôi phục được từ git
@@ -306,7 +306,7 @@ init đồng bộ chen trước chuỗi async · lạm dụng service-locator l�
 
 > Hình dạng chốt lại khác mục này: không có `ISaveUnit` / `SaveRegistry` / `Prefs<T>` / `ISerializer`, và
 > không có cờ dirty — flush so chuỗi payload. Hình dạng đang chạy và lý do từng quyết định nằm ở
-> `Abstractions/Foundations/Persistence/Persistence.md`. Giữ mục này vì phần **bằng chứng từ 4 repo** và
+> `docs/Runtime/Persistence.md`. Giữ mục này vì phần **bằng chứng từ 4 repo** và
 > phần **bài toán** vẫn đúng và không chép lại ở đâu khác.
 
 **Bài toán.** Lưu tiến độ người chơi phải **có kiểu**, **không mất khi app bị kill**, và **không biến
@@ -786,7 +786,7 @@ PushAsync<TPopup, TData>(data)
 
 ## 8. Audio (music / SFX) — `Composite`
 
-> 📄 **Đã triển khai (bản thu hẹp):** `Implementations/Foundations/Audio/AudioSystem.md` là tài liệu module, viết từ code. Ba điểm **lệch có chủ ý** so với contract dưới đây:
+> 📄 **Đã triển khai (bản thu hẹp):** `docs/Runtime/AudioSystem.md` là tài liệu module, viết từ code. Ba điểm **lệch có chủ ý** so với contract dưới đây:
 > 1. **`PlaySfx` có thêm overload `pitchScale`** (contract dưới không có) — cao độ do call site quyết, không jitter. Caller đầu tiên chưa có: combo Category Jam dùng 5 clip thu sẵn.
 > 2. **Không dùng Object Pooling của SDK** cho `AudioSource`: voice là mảng cố định kéo tay (không `Get/Return`, không prefab).
 > 3. Bản thu hẹp **không phụ thuộc hệ nào trong SDK** ⇒ phân loại lại thành `Foundation`, đặt ở `Foundations/Audio/`.
@@ -888,7 +888,7 @@ PlaySfx(id):
 
 ## 9. Haptics — `Foundation`
 
-> 📄 **Đã triển khai:** `Abstractions/Foundations/Haptics/HapticSystem.md` là tài liệu module, viết từ code — rung theo
+> 📄 **Đã triển khai:** `docs/Runtime/HapticSystem.md` là tài liệu module, viết từ code — rung theo
 > **preset** của Nice Vibrations. Developer chốt 2026-10-29: chỉ preset, không biên độ, không rung liên tục; runtime tham chiếu
 > thẳng Nice Vibrations, không backend; cổng mặc định tắt.
 

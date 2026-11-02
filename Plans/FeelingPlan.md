@@ -11,7 +11,7 @@ Tất cả phải tuân thủ: **zero-GC** (thuần tính toán `float`/`struct`
 - `HarmonicOscillator` (dao động điều hòa đơn giản, Sin/Cos).
 - `SquashStretch` — ✅ **đã triển khai** (`Horcrux.Runtime.Utilities.PhysXHelper.SquashStretch`): `GetVolumePreservingScale`, `GetSquashFromImpact`, `GetDirectionalStretch`, `GetSquashStretch` (nhận `t` **đã ease**, `startScale`, `endScale`; ease do caller áp).
 - `BezierCurveHelper` — ✅ **đã triển khai** (`PhysXHelper/BezierCurveHelper.cs`): `EvaluateQuadraticBezier`, `ComputeControlPoint` (cung trong mặt phẳng XY). Dùng bởi `CharmFlyArc` (`ArcFlightSpec`, chỉ bay) trong `TransformExtensions.CharmTween.cs`.
-- `AudioPitchHelper` — ❌ **không làm** (developer chốt 2026-10-26). File từng có (`146d44a`) và đã xoá ở commit `245adb7 clean` 2026-08-16; dòng ✅ cũ là chỗ sót. Sẽ không có `SemitonesToRatio`, `GetRampedPitch`, `GetDetunedPitch`. Pitch theo bậc là công thức của call site truyền vào `PlaySfx(sfx, pitchScale)` (`Implementations/Foundations/Audio/AudioSystem.md` §6); lệch pitch ngẫu nhiên khai trên từng entry bằng `PitchSemitoneRange` của `AudioCatalog`.
+- `AudioPitchHelper` — ❌ **không làm** (developer chốt 2026-10-26). File từng có (`146d44a`) và đã xoá ở commit `245adb7 clean` 2026-08-16; dòng ✅ cũ là chỗ sót. Sẽ không có `SemitonesToRatio`, `GetRampedPitch`, `GetDetunedPitch`. Pitch theo bậc là công thức của call site truyền vào `PlaySfx(sfx, pitchScale)` (`docs/Runtime/AudioSystem.md` §6); lệch pitch ngẫu nhiên khai trên từng entry bằng `PitchSemitoneRange` của `AudioCatalog`.
 - `DampedOscillator` — ✅ **đã triển khai** (envelope · displacement · velocity · settling-time, bản `decay` và bản `halfLife`).
 - `GeometryHelper` — ⚠️ **một phần**: hiện chỉ có `RandomPointInAnnulus`/`RandomPointIn3DAnnulus`. Phần khoảng cách/closest-point (cần cho `StaggerHelper`) **chưa có**.
 - `Easing` — ✅ **đã triển khai** dưới dạng `Easer` ở namespace riêng `Horcrux.Runtime.Tweening.Easing` (10 họ Quad…Bounce × In/Out/InOut + Linear; entry point `Easer.Evaluate(EaseType, t)`). Mọi tham chiếu `← Easing` phía dưới trỏ tới class này — **không** làm lại trong `PhysXHelper`. `Easer` **không** làm easing cho tween (đó là việc của PrimeTween).
@@ -128,7 +128,7 @@ Mục tiêu: tạo cảm giác "đã tay, đã mắt, đã tai" (satisfying feed
 - **Pitch ramp**: công thức ở call site, một dòng `Mathf.Pow(2f, step * semitonesPerStep / 12f)` truyền vào `PlaySfx(sfx, pitchScale)` (`AudioSystem.md` §6). Mỗi bậc một clip thu sẵn vẫn là cách chính. Ví dụ đang chạy: category-jam `ShelfPromoteTuning.LandPitch`, pitch tuyến tính theo ô quanh 1.
 - **Random pitch nhẹ**: khai trên từng entry bằng `PitchSemitoneRange` của `AudioCatalog`, không cần helper.
 #### `AudioFeedback` — mapping cường độ va chạm → âm lượng/pitch.
-- Một phần đã có: `AudioCatalog` khai `VolumeRange`/`PitchSemitoneRange` per-entry → `Implementations/Foundations/Audio/AudioSystem.md`.
+- Một phần đã có: `AudioCatalog` khai `VolumeRange`/`PitchSemitoneRange` per-entry → `docs/Runtime/AudioSystem.md`.
 
 ### ~~Combo "ASMR đã nhất"~~ — ✅ đã chuyển
 > Công thức **SquashStretch + Hitstop + pitch ramp** đã chuyển sang `Plans/Horcrux_ComboTracker_Plan.md` § *Nguyên liệu đã chuyển từ Pendings.md* — nơi nó được hiện thực bằng **một cue duy nhất** có mặt trong 3 bảng cue.
@@ -223,7 +223,7 @@ Các mảng bổ sung mở rộng cảm giác ra ngoài đối tượng: camera,
 
 #### `HapticHelper` ⭐ ưu tiên cao — rung theo ngữ cảnh
 - Wrap các pattern rung (light/medium/heavy/success/warning). Đồng bộ haptic + visual + audio = ASMR đa giác quan hoàn chỉnh trên điện thoại. Mảnh còn thiếu quan trọng nhất.
-- ✅ **Đã dựng:** `IHapticService<THaptic>.Play(id)` theo **preset** dựng sẵn (id enum của dự án → preset Nice Vibrations chọn trong Inspector), runtime gọi thẳng Nice Vibrations → `Runtime/Abstractions/Foundations/Haptics/HapticSystem.md`. Developer chốt 2026-10-29: chỉ preset, không backend.
+- ✅ **Đã dựng:** `IHapticService<THaptic>.Play(id)` theo **preset** dựng sẵn (id enum của dự án → preset Nice Vibrations chọn trong Inspector), runtime gọi thẳng Nice Vibrations → `docs/Runtime/HapticSystem.md`. Developer chốt 2026-10-29: chỉ preset, không backend.
 - ⏳ Cố ý cắt, thêm lại đều **additive**: rung theo **biên độ** (điều kiện của `HapticRamp` theo cường độ); **rung liên tục** (`Begin/End` + ref-count + vòng pulse); throttle theo entry.
 
 #### ~~`HapticPattern`~~ — ✅ **đã chuyển**, và **đổi tên** thành `HapticRamp`
@@ -346,6 +346,6 @@ Không cần `SpringDamper`, chạy được ngay và cho ra thứ **cảm đư�
 
 1. `Implementations/Foundations/Ticker/TickerSystem.md` — 1 nguồn tick + `IOptionalService` + `DeferredSet`
 2. `HapticSystem.md` — rung theo preset. Haptic ramp theo **biên độ** chưa có nền (hệ cố ý không làm biên độ); tới lúc làm thì ramp bằng nhiều id, mỗi bậc một preset, hoặc thêm rung theo biên độ (`HapticPatterns.PlayConstant`) vào `IHapticService`
-3. `Implementations/Foundations/Audio/AudioSystem.md` — SFX + **pitch** (điều kiện của pitch ramp)
+3. `docs/Runtime/AudioSystem.md` — SFX + **pitch** (điều kiện của pitch ramp)
 4. `Implementations/Composites/Feedback/FeedbackSystem.md` — cue → 4 kênh; **kèm** hiện thực `TraumaShake` + `TimeScaleHelper`
 5. `Plans/Horcrux_ComboTracker_Plan.md` — lõi combo + `ComboMeter` + demo nghiệm thu

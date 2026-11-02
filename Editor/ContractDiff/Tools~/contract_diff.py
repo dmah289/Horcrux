@@ -1,5 +1,5 @@
 """So lớp contract của dự án với repo nguồn: file nào thiếu, khác nội dung, khác GUID, chỉ có ở dự án.
-Xem Editor/ContractDiff/ContractDiff.md.
+Xem docs/Editor/ContractDiff.md.
 
   contract_diff.py --source <Assets gốc> --project <Assets dự án> --roots <a,b/c,...>
                    [--ext .cs,.asmdef] [-o report.md]

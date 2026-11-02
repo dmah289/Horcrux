@@ -75,7 +75,7 @@ Horcrux là submodule: Task 1–3 commit **trong `Assets/Horcrux`**, Task 4 comm
 | Horcrux `PhysXHelper/SquashStretch.cs` | `BoxAnimation.ApplyScaleY` đã dùng `GetVolumePreservingScale`; `DipSpec`, `LaunchSpec` chỉ trả hệ số y | — |
 | Horcrux `Tweening/Easings/Easer.cs` | — | `DipSpec`, `LaunchSpec` dùng `PrimeTween.Easing.Evaluate` như bản tạm: cùng một hàm ease với tween đang chạy, khác bản thì lún lệch tween |
 | Horcrux `ExtensionMethods/Transform/SquashStretchSpec.cs`, `ArcFlightSpec.cs` | namespace và hậu tố `Spec` | camelCase (bảng trên) |
-| Horcrux `ExtensionMethods/Transform/TransformExtensions.Jump.cs`, `Tweening/CharmJump.md` | hợp đồng trả `Sequence`, không `ct`; file partial riêng cho mỗi họ extension | — |
+| Horcrux `ExtensionMethods/Transform/TransformExtensions.Jump.cs`, `docs/Runtime/CharmJump.md` | hợp đồng trả `Sequence`, không `ct`; file partial riêng cho mỗi họ extension | — |
 | Horcrux `ExtensionMethods/` | chưa có extension nào cho `PrimeTween.Sequence`; dự án cũng không (grep `SequenceExtensions`: 0) | — |
 | PrimeTween `Internal/UnmanagedTweenData.cs` `calcTFromElapsedTimeTotal`; `Sequence.Insert(float, Sequence)` | trễ chèn (`waitDelay`) trả trạng thái "trước" cho tới mốc chạy; sequence lồng được chèn ở mốc | `startDelay` lặp mỗi cycle (bảng trên) |
 | foods_jam `CacheHole.PlaySpringAnimation` | người dùng thứ hai ngoài dự án của hình lún vị trí: `DOLocalMoveY` xuống InSine rồi về OutBack, hai bộ số | — |

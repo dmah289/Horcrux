@@ -5,8 +5,8 @@ description: Dùng khi chỉnh, refactor hay dò lỗi feeling của game Unity 
 
 # feel-tune — chỉnh feeling với công cụ dựng sẵn
 
-Đường dẫn tính từ gốc Horcrux (dự án hiện tại: `Assets/Horcrux/`). Chi tiết API ở `Editor/Probe/Probe.md` và
-`Editor/FeelTrace/FeelTrace.md`; file này chỉ chọn công cụ và giữ ngân sách token.
+Đường dẫn tính từ gốc Horcrux (dự án hiện tại: `Assets/Horcrux/`). Chi tiết API ở `docs/Editor/Probe.md` và
+`docs/Editor/FeelTrace.md`; file này chỉ chọn công cụ và giữ ngân sách token.
 
 ## Luật
 

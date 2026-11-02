@@ -3,9 +3,9 @@
 PrimeTween không có `DOJump`. `CharmJump` dựng lại đúng `DOJump(endValue, height, 1, duration)` của DOTween
 trên **PrimeTween**, và mỗi lần gọi cấp phát **0 B**.
 
-Code:
-- `Transform/TransformExtensions.Jump.cs`: `CharmJump`, `CharmLocalJump`.
-- `Transform/JumpArc.cs`: phần toán thuần.
+Code trong `Runtime/Utilities/ExtensionMethods/Transform/`:
+- `TransformExtensions.Jump.cs`: `CharmJump`, `CharmLocalJump`.
+- `JumpArc.cs`: phần toán thuần.
 
 Cả hai đều nằm trong namespace `Horcrux.Runtime.Utilities.ExtensionMethods`.
 

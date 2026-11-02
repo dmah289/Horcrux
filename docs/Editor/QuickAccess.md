@@ -1,5 +1,7 @@
 # Quick Access Window - Hướng dẫn sử dụng
 
+Code: `Editor/QuickAccess/`.
+
 ## Mở cửa sổ
 
 Menu: **manhnd_sdk > Window > Quick Access**

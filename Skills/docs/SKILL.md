@@ -8,16 +8,17 @@ description: Dùng khi viết hoặc cập nhật tài liệu: .md cho agent, .h
 Skill nền của Horcrux, đứng dưới `Skills/horcrux_skill.md`: `NT<n>`, ba tầng Luật · Nền tảng · Sổ tay và bảng
 chỉ dẫn định nghĩa ở đó. Con trỏ `` `skill` › Mục `` trỏ sang skill khác; `mục X` trỏ trong file này.
 
-Mỗi hệ thống và mỗi tool có tài liệu riêng, đặt cùng thư mục với nó. **Thay đổi hệ thì cập nhật tài liệu
-trong cùng lần làm** — riêng `.html` theo nhịp mốc. Utility lẻ trong thư mục phẳng mà có tài liệu hay demo
-thì **xuống thư mục con mang tên nó** (`.cs` · `.md` · `.html` cạnh nhau).
+Mỗi hệ thống và mỗi tool có tài liệu riêng, **không đặt cạnh code**: trong Horcrux nằm phẳng ở `docs/Editor/`
+(tool Editor) hoặc `docs/Runtime/` (hệ runtime), tên file theo tên hệ; Plan ở `Plans/`. Mỗi tài liệu mở đầu
+bằng dòng `Code:` trỏ thư mục code tính từ gốc Horcrux — chỗ đặt file không còn nói code ở đâu. **Thay đổi
+hệ thì cập nhật tài liệu trong cùng lần làm** — riêng `.html` theo nhịp mốc.
 
 | Loại | Vai trò | Vòng đời |
 |---|---|---|
 | **`.md`** | tài liệu **agent đọc** để hiểu và phát triển hệ — bản đặc, rẻ token; nguồn sinh `.html` | cập nhật **cùng lần làm** với mỗi thay đổi |
 | **`.html`** | tài liệu **developer và game designer đọc** — trực quan hoá 100% nội dung `.md`; agent không đọc bản này khi đã có `.md` | đồng bộ từ `.md` theo **mốc** — developer yêu cầu, hoặc chốt xong một cụm thay đổi |
 | **Plan** | để developer **tự gõ** — khi developer yêu cầu, và mọi code runtime vào Horcrux (`reuse-gate`) | luôn là `.md`; theo task. Plan cho Horcrux nằm trong `Plans/` ở gốc Horcrux |
-| **Manual** (khi tool có người dùng không phải developer) | người dùng đọc để **thao tác** | sống cùng tool |
+| **Manual** (khi tool có người dùng không phải developer) | người dùng đọc để **thao tác** | cạnh tài liệu của tool trong `docs/` |
 
 **Ai viết: agent, cả bốn loại.** Nghiệm thu tài liệu là **đối chiếu máy móc với code** (`workflow` › Nghiệm thu). Developer
 **chốt nội dung**: dòng nào lệch thiết kế thì developer phân xử, agent sửa. **Quy trình:** phỏng vấn (`workflow` › Phỏng vấn)

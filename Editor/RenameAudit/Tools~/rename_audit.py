@@ -1,5 +1,5 @@
 """Nghiệm thu một lần đổi tên định danh: tên cũ còn sót trên YAML, diff .cs chỉ đổi tên, cây gốc + luật = cây mới.
-Xem Editor/RenameAudit/RenameAudit.md.
+Xem docs/Editor/RenameAudit.md.
 
   rename_audit.py scan   <map.tsv> [--root Assets] [--ext .unity,.prefab,...] [--also-cs]
   rename_audit.py tokens <map.tsv> --base <git rev> [--repo .] [--paths <glob,...>]

@@ -1,4 +1,4 @@
-"""Đếm warning/error compiler không trùng trong log Unity. Xem Editor/ContractDiff/ContractDiff.md.
+"""Đếm warning/error compiler không trùng trong log Unity. Xem docs/Editor/ContractDiff.md.
 
   warn_count.py [--log <Editor.log>] [--own <root1,root2>] [-o out.txt]
 

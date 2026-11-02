@@ -1,4 +1,4 @@
-"""So trace của Horcrux FeelTraceRecorder. Xem Editor/FeelTrace/FeelTrace.md.
+"""So trace của Horcrux FeelTraceRecorder. Xem docs/Editor/FeelTrace.md.
 
   feeltrace.py sig <glob>...
   feeltrace.py pairs <glob>...        # nhóm file cùng chữ ký; exit 0 khi có ít nhất một cặp so được

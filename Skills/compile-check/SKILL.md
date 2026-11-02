@@ -5,7 +5,7 @@ description: Dùng sau mỗi task sửa code C# trong project Unity, trước kh
 
 # compile-check — một lệnh kiểm sau mỗi task
 
-Đường dẫn tính từ gốc Horcrux (dự án hiện tại: `Assets/Horcrux/`). Chi tiết ở `Editor/CompileCheck/CompileCheck.md`.
+Đường dẫn tính từ gốc Horcrux (dự án hiện tại: `Assets/Horcrux/`). Chi tiết ở `docs/Editor/CompileCheck.md`.
 
 ## Luật
 

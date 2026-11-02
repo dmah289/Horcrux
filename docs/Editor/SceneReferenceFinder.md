@@ -4,6 +4,8 @@ Trả lời câu hỏi **reverse lookup** ở mức instance: *"Nếu tôi xóa 
 
 Khác với **Usage Finder** (làm ở mức asset/GUID), tool này làm trên **instance đang sống** trong scene hoặc prefab stage — reference nội bộ là `instanceID`, không nằm trong dependency graph.
 
+Code: `Editor/SceneReferenceFinder/`.
+
 ## Mở cửa sổ
 
 - Menu: **Horcrux > Scene Reference Finder**

@@ -1,5 +1,5 @@
 """Mổ build Android: byte nằm ở đâu trong APK, bundle Addressables chứa gì, dex thuộc SDK nào.
-Xem Editor/BuildSize/BuildSize.md.
+Xem docs/Editor/BuildSize.md.
 
   apk_report.py <apk> [--layout [buildlayout.json]] [--editor-log [Editor.log]]
                       [--sections apk,aa,dex,layout,log] [--top N]

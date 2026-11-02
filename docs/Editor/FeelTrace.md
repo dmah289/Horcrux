@@ -10,7 +10,7 @@ và cùng bố cục ban đầu cho ra file khớp 0 chênh; refactor giữ chuy
 | Mục | Chốt |
 |---|---|
 | Người dùng | agent, khi refactor tween, trình diễn mà phải giữ nguyên; developer đọc kết quả diff |
-| Ranh giới | Horcrux giữ lõi quay, định dạng file, công cụ so và tóm tắt; runner là `playrun.sh` của Horcrux Probe (`Editor/Probe/Probe.md`). Dự án giữ **một file kịch bản**: ghi entity nào, gõ gì ở frame nào; vào level qua đường tắt Editor của dự án |
+| Ranh giới | Horcrux giữ lõi quay, định dạng file, công cụ so và tóm tắt; runner là `playrun.sh` của Horcrux Probe (`docs/Editor/Probe.md`). Dự án giữ **một file kịch bản**: ghi entity nào, gõ gì ở frame nào; vào level qua đường tắt Editor của dự án |
 | Chỗ đặt | C# ở `Editor/FeelTrace/` (assembly `com.horcrux.editor`). Python, shell ở `Editor/FeelTrace/Tools~/`: thư mục đuôi `~` Unity không import, không sinh `.meta`, không vào build |
 | Chạy thế nào | Unity CLI vào Play, `script eval_file` chạy kịch bản; kịch bản gọi lõi đã compile sẵn. Đổi kịch bản không cần domain reload |
 
@@ -103,7 +103,7 @@ F1 …
 
 | Lệnh | Làm gì |
 |---|---|
-| `bash feeltrace.sh <kịch bản .cs> <thư mục runs> <tên run>` | quay một trace vào `<runs>/<tên>.txt` qua `playrun.sh`, in chữ ký. Biến môi trường và mã thoát theo `playrun.sh` (`Editor/Probe/Probe.md`); timeout 4 phút |
+| `bash feeltrace.sh <kịch bản .cs> <thư mục runs> <tên run>` | quay một trace vào `<runs>/<tên>.txt` qua `playrun.sh`, in chữ ký. Biến môi trường và mã thoát theo `playrun.sh` (`docs/Editor/Probe.md`); timeout 4 phút |
 | `python -X utf8 -I feeltrace.py sig <glob>…` | in `đường dẫn => chữ ký`, chỉ đọc phần đầu file |
 | `python -X utf8 -I feeltrace.py pairs <glob>…` | nhóm file theo chữ ký, in nhóm có từ hai file; mã thoát 0 khi có nhóm. Chia box ở boot ngẫu nhiên nên quay nhiều lần rồi chọn cặp (7 lần mới được một cặp ở category-jam 2026-11-01) |
 | `python -X utf8 -I feeltrace.py diff <a> <b> [--tol 2e-4] [--limit 40]` | in hai chữ ký, tối đa `limit` chỗ chênh, rồi `mismatches: N`; mã thoát 0 khi N = 0 |

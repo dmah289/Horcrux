@@ -6,8 +6,8 @@ caller `await` được (chuyển ngầm sang `UniTask`) hoặc giữ handle đ�
 `await` mà token bị huỷ thì ném `OperationCanceledException`, caller tự bắt nếu cần. Nảy scale dùng thẳng `Tween.PunchScale`
 của PrimeTween, không còn `CharmPunchScale`.
 
-Code: `Transform/TransformExtensions.CharmTween.cs` · `TextMeshProExtensionMethods.CharmTween.cs` · `Transform/ArcFlightSpec.cs` ·
-`Transform/SquashStretchSpec.cs` · `PhysXHelper/BezierCurveHelper.cs` · `PhysXHelper/SquashStretch.cs`.
+Code trong `Runtime/Utilities/`: `ExtensionMethods/Transform/TransformExtensions.CharmTween.cs` · `ExtensionMethods/TextMeshProExtensionMethods.CharmTween.cs` · `ExtensionMethods/Transform/ArcFlightSpec.cs` ·
+`ExtensionMethods/Transform/SquashStretchSpec.cs` · `PhysXHelper/BezierCurveHelper.cs` · `PhysXHelper/SquashStretch.cs`.
 
 ---
 

@@ -5,7 +5,7 @@ description: Dùng khi developer hỏi vì sao build Android nặng, muốn gi�
 
 # build-size — tìm byte nằm ở đâu trước khi gỡ
 
-Đường dẫn tính từ gốc Horcrux (dự án hiện tại: `Assets/Horcrux/`). Chi tiết ở `Editor/BuildSize/BuildSize.md`.
+Đường dẫn tính từ gốc Horcrux (dự án hiện tại: `Assets/Horcrux/`). Chi tiết ở `docs/Editor/BuildSize.md`.
 
 ## Luật
 

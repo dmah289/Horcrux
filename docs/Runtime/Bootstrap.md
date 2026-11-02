@@ -6,6 +6,8 @@ của level trước bị huỷ sạch trước khi bước nào của level m�
 
 Danh sách bước và giá trị `Order` là **cấu hình trong Inspector**, không phải code.
 
+Code: `Runtime/Abstractions/Foundations/Bootstrap/` · `Runtime/Implementations/Foundations/Bootstrap/`.
+
 ---
 
 ## §1. Bề mặt API
