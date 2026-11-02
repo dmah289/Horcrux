@@ -22,7 +22,7 @@ Mọi thứ trong Plan chỉ **thêm**: không file Horcrux nào đang có bị 
 | Ranh giới | lõi không gọi tên type dự án, không đọc remote config, không biết Zego; dự án khai enum, DTO và đưa model đã ép kiểu vào host (tiền lệ `LiveOpsHost`: "module nhận model đã ép kiểu, host không biết RC") |
 | Chỗ đặt | `Runtime/Abstractions/Composites/UserSegmentation/` (composite: dựng trên Persistence, Bootstrap, EventBus) · entry save trong partial `BasePersistenceDataCollection.UserSegmentation.cs` đặt cùng thư mục hệ (khuôn `TimeService`, khác chỗ đặt vì entry mang type của hệ) · bước Adjust trong `Vendors/Adjust/` với asmdef tự tắt theo package (khuôn `Vendors/Firebase`) |
 | Phụ thuộc vendor | developer cho phép Horcrux tham chiếu thẳng `AdjustSdk.Scripts`; không bridge. Dự án thiếu `com.adjust.sdk` thì assembly vendor không biên dịch, hệ vẫn chạy: mọi user ở tập mặc định |
-| Tên | `AUserSegmentationHost`, `UserSegmentDecider`, `UserSegmentKeywordMatcher`, `UserSegmentConfigInheritance`, `UserSegmentState`, `UserSegmentChanged`, `AdjustCampaignBootStep`. Developer đổi tuỳ ý trước khi gõ; agent sync plan theo code thật |
+| Tên | `AUserSegmentationHost`, `UserSegmentDecider`, `UserSegmentKeywordMatcher`, `UserSegmentConfigInheritance`, `UserSegmentConfigTable`, `UserSegmentState`, `UserSegmentChanged`, `AdjustCampaignBootStep`. Developer đổi tuỳ ý trước khi gõ; agent sync plan theo code thật |
 
 **Cố ý KHÔNG làm**
 
@@ -41,7 +41,10 @@ Mọi thứ trong Plan chỉ **thêm**: không file Horcrux nào đang có bị 
 |---|---|
 | Attribution về là khoá camp ngay, kể cả `Campaign` rỗng | Adjust đã trả lời xong; organic thật cũng về dạng này. Cửa sổ phiên chỉ dành cho user Adjust chưa bao giờ trả lời |
 | `-1` nghĩa là kế thừa, không có cột `inherit` | kế thừa là thuộc tính của từng ô; CSV một cột một số |
-| `prevSegmentId` chỉ ghi lúc mua, không ghi lúc phân lại theo camp | nó chỉ phục vụ kế thừa của tập "đã mua" |
+| `PrevSegmentId` chỉ ghi lúc mua, không ghi lúc phân lại theo camp | nó chỉ phục vụ kế thừa của tập "đã mua" |
+| Hàng keyword trỏ vào tập "đã mua" bị coi là không khớp | tập "đã mua" không có đường ra; một hàng gõ nhầm trên console sẽ nhốt user vĩnh viễn. `Validate` báo hàng đó, Decider bỏ qua |
+| Thiếu hàng của tập **và** hàng mặc định thì ném exception, không trả hàng rỗng | hàng rỗng là kinh tế bằng 0 (inter từ level 1, booster miễn phí) chạy im lặng; asset là lưới đỡ nên bảng rỗng là lỗi authoring, phải nổ ở lần Play đầu |
+| Field public của `UserSegmentState` viết PascalCase | tên field là khoá JSON của save; casing theo quyền truy cập, chốt trước khi có save đầu tiên |
 | `resegmentMaxSessions < 1` kẹp về 1 | giá trị 0 sẽ khoá ngay lúc boot đầu, **trước** khi Adjust kịp về, mọi user thành mặc định vĩnh viễn |
 | Base không generic giữ toàn bộ cơ chế, lớp generic chỉ đổi kiểu và tra config | bước Adjust và tool Editor cần một kiểu kéo thả được; test Decider không cần generic |
 | Base gọi `OnStateApplied()` cả khi không có thay đổi lúc boot | cache `CurrSegment`/`CurrConfig` phải đúng ở mọi phiên, không chỉ phiên có đổi tập |
@@ -77,32 +80,37 @@ Id tập là `int`, `0` nghĩa là chưa quyết. Dự án đặt tên và số 
 
 | Sự kiện | Điều kiện | Kết quả |
 |---|---|---|
-| `OnBoot` | `currSegmentId == 0` | `curr = default`, thay đổi `Initial` |
-| `OnBoot` | `!isCampaignLocked && sessionCount >= max(1, resegmentMaxSessions)` | `isCampaignLocked = true`, giữ tập |
-| `OnBoot` | luôn, sau hai dòng trên | `sessionCount++` |
-| `OnCampaign(camp)` | `isCampaignLocked` | `lastCampaign = camp`, không đổi |
-| `OnCampaign(camp)` | `!isCampaignLocked && curr == purchased` | `lastCampaign = camp`, `isCampaignLocked = true`, không đổi |
-| `OnCampaign(camp)` | `!isCampaignLocked` | `lastCampaign = camp`, `isCampaignLocked = true`; đích = tập khớp, không khớp hay camp rỗng → `default`; đích khác `curr` thì `curr = đích`, thay đổi `CampaignResolved` kèm keyword và cờ nhiều keyword |
+| `OnBoot` | `CurrSegmentId == 0` | `curr = default`, thay đổi `Initial` |
+| `OnBoot` | `!IsCampaignLocked && SessionCount >= max(1, resegmentMaxSessions)` | `IsCampaignLocked = true`, giữ tập |
+| `OnBoot` | luôn, sau hai dòng trên | `SessionCount++` |
+| `OnCampaign(camp)` | `IsCampaignLocked` | `LastCampaign = camp`, không đổi |
+| `OnCampaign(camp)` | `!IsCampaignLocked && curr == purchased` | `LastCampaign = camp`, `IsCampaignLocked = true`, không đổi |
+| `OnCampaign(camp)` | tập khớp `== purchased` | coi như không khớp (hàng dữ liệu sai, `Validate` đã báo) rồi áp dòng dưới |
+| `OnCampaign(camp)` | `!IsCampaignLocked` | `LastCampaign = camp`, `IsCampaignLocked = true`; đích = tập khớp, không khớp hay camp rỗng → `default`; đích khác `curr` thì `curr = đích`, thay đổi `CampaignResolved` kèm keyword và cờ nhiều keyword |
 | `OnPurchase` | `!isRuleEnabled` | không đổi |
 | `OnPurchase` | `curr == purchased` | không đổi |
-| `OnPurchase` | còn lại | `prev = curr` (curr là 0 thì `prev = default`), `curr = purchased`, `isCampaignLocked = true`, thay đổi `Purchase` |
+| `OnPurchase` | còn lại | `prev = curr` (curr là 0 thì `prev = default`), `curr = purchased`, `IsCampaignLocked = true`, thay đổi `Purchase` |
 | đọc config | `curr != purchased` | hàng của `curr` |
 | đọc config | `curr == purchased` | `Resolve(hàng purchased, hàng prev)`; `prev == 0` thì hàng `default` |
 
 Khớp keyword: `campaign.IndexOf(keyword, OrdinalIgnoreCase) >= 0`; hàng đầu khớp thắng; cờ nhiều keyword bật khi còn
 hàng **khác tập** cũng khớp; keyword rỗng bỏ qua.
 
-Guard dữ liệu, chạy một lần lúc boot, chỉ `LogError`, không sửa dữ liệu: mỗi giá trị enum có đúng một hàng config ·
-enum không có giá trị `0` · hàng không phải purchased không chứa `-1` · keyword rỗng. Hàng thiếu khi tra thì dùng
-hàng `default` kèm `LogError`; config trả ra **không bao giờ `null`**.
+Mỗi thay đổi tập host `Debug.Log` **một dòng**: lý do, tập cũ → mới, keyword, cờ nhiều keyword — rồi mới publish event.
+
+Guard dữ liệu (`UserSegmentConfigTable.Validate`), chạy một lần lúc boot, chỉ `LogError` từng dòng, không sửa dữ liệu:
+mỗi giá trị enum có đúng một hàng config · hàng config không có id ngoài enum · enum không có giá trị `0` · hàng không
+phải purchased không chứa `-1` · keyword rỗng · hàng keyword trỏ vào purchased hay id ngoài enum. Hàng thiếu khi tra
+thì dùng hàng `default` kèm `LogError`; thiếu cả hàng `default` thì **ném** `InvalidOperationException`; config trả ra
+**không bao giờ `null`** và **không bao giờ là hàng rỗng**.
 
 ---
 
-## Task 1 — Contract, model, hai hàm thuần
+## Task 1 — Contract, model, ba class thuần
 
 **Files (tạo):** `Runtime/Abstractions/Composites/UserSegmentation/`
 `IUserSegmentKeywordRule.cs` · `IUserSegmentConfig.cs` · `UserSegmentState.cs` · `UserSegmentChanged.cs` ·
-`UserSegmentKeywordMatcher.cs` · `UserSegmentConfigInheritance.cs`
+`UserSegmentKeywordMatcher.cs` · `UserSegmentConfigInheritance.cs` · `UserSegmentConfigTable.cs`
 
 **Produces:** mọi kiểu Task 2–4 dùng. Namespace `Horcrux.Runtime.Abstractions.Composites.UserSegmentation`.
 
@@ -144,17 +152,17 @@ using System;
 
 namespace Horcrux.Runtime.Abstractions.Composites.UserSegmentation
 {
-    /// <summary>Save model. Field names are the wire format; 0 in <see cref="currSegmentId"/> means undecided.</summary>
+    /// <summary>Save model. Field names are the wire format; 0 in <see cref="CurrSegmentId"/> means undecided.</summary>
     [Serializable]
     public sealed class UserSegmentState
     {
-        public int currSegmentId;
+        public int CurrSegmentId;
         /// <summary>Segment the user was in right before the purchased segment; only written on purchase.</summary>
-        public int prevSegmentId;
+        public int PrevSegmentId;
         /// <summary>True once attribution answered, a purchase happened, or the resegment window closed.</summary>
-        public bool isCampaignLocked;
-        public int sessionCount;
-        public string lastCampaign;
+        public bool IsCampaignLocked;
+        public int SessionCount;
+        public string LastCampaign;
     }
 }
 ```
@@ -326,13 +334,118 @@ namespace Horcrux.Runtime.Abstractions.Composites.UserSegmentation
 }
 ```
 
+`UserSegmentConfigTable.cs`
+
+```csharp
+using System;
+using System.Collections.Generic;
+
+namespace Horcrux.Runtime.Abstractions.Composites.UserSegmentation
+{
+    /// <summary>Lookup and validation over the two project tables. Pure: the host logs, the Editor simulator displays, tests call directly.</summary>
+    public static class UserSegmentConfigTable
+    {
+        /// <summary>Row whose id equals <paramref name="id"/>; the last one when ids repeat (Validate reports that). Null when absent.</summary>
+        public static TConfig Find<TSegment, TConfig>(IReadOnlyList<TConfig> configs, int id)
+            where TSegment : unmanaged, Enum
+            where TConfig : class, IUserSegmentConfig<TSegment>
+        {
+            TConfig found = null;
+
+            for (int i = 0; configs != null && i < configs.Count; i++)
+            {
+                if (configs[i] != null && ToId(configs[i].Id) == id)
+                    found = configs[i];
+            }
+
+            return found;
+        }
+
+        /// <summary>Appends one line per invalid row to <paramref name="errors"/>. Never fixes the data. True when nothing was appended.</summary>
+        public static bool Validate<TSegment, TConfig>(IReadOnlyList<TConfig> configs,
+            IReadOnlyList<IUserSegmentKeywordRule<TSegment>> rules, int purchasedSegmentId, List<string> errors)
+            where TSegment : unmanaged, Enum
+            where TConfig : class, IUserSegmentConfig<TSegment>
+        {
+            int before = errors.Count;
+            Type segmentType = typeof(TSegment);
+            Array values = Enum.GetValues(segmentType);
+
+            for (int v = 0; v < values.Length; v++)
+            {
+                TSegment segment = (TSegment)values.GetValue(v);
+                int id = ToId(segment);
+
+                if (id == 0)
+                {
+                    errors.Add($"{segmentType.Name} must not define value 0: 0 means undecided");
+                    continue;
+                }
+
+                int rowCount = 0;
+                TConfig row = null;
+
+                for (int i = 0; configs != null && i < configs.Count; i++)
+                {
+                    if (configs[i] != null && ToId(configs[i].Id) == id)
+                    {
+                        rowCount++;
+                        row = configs[i];
+                    }
+                }
+
+                if (rowCount == 0)
+                    errors.Add($"no config row for segment {segment} ({id})");
+                else if (rowCount > 1)
+                    errors.Add($"{rowCount} config rows for segment {segment} ({id}); the last one wins");
+
+                if (row != null && id != purchasedSegmentId && UserSegmentConfigInheritance.HasInheritValue(row))
+                    errors.Add($"segment {segment} ({id}) has a -1 field; only the purchased row may inherit");
+            }
+
+            for (int i = 0; configs != null && i < configs.Count; i++)
+            {
+                if (configs[i] == null)
+                    errors.Add($"config row {i} is null");
+                else if (!Enum.IsDefined(segmentType, configs[i].Id))
+                    errors.Add($"config row {i} has id {ToId(configs[i].Id)}, not defined in {segmentType.Name}");
+            }
+
+            for (int i = 0; rules != null && i < rules.Count; i++)
+            {
+                if (rules[i] == null || string.IsNullOrEmpty(rules[i].Keyword))
+                {
+                    errors.Add($"keyword row {i} is empty and will be skipped");
+                    continue;
+                }
+
+                int ruleId = ToId(rules[i].SegmentId);
+
+                if (ruleId == purchasedSegmentId)
+                    errors.Add($"keyword row {i} '{rules[i].Keyword}' points at the purchased segment; a campaign never grants it, the row is ignored");
+                else if (!Enum.IsDefined(segmentType, rules[i].SegmentId))
+                    errors.Add($"keyword row {i} '{rules[i].Keyword}' points at segment id {ruleId}, not defined in {segmentType.Name}");
+            }
+
+            return errors.Count == before;
+        }
+
+        /// <summary>Boxing conversion; runs at boot and on each report, never per frame.</summary>
+        public static int ToId<TSegment>(TSegment segment) where TSegment : unmanaged, Enum => Convert.ToInt32(segment);
+    }
+}
+```
+
 | Quyết định | Vì sao |
 |---|---|
 | Reflection trên field `int` public, cache tĩnh theo `TConfig` | DTO của dự án là field public để RemoteConfig và CSV đọc được; cache dựng một lần mỗi kiểu, `Resolve` chỉ chạy khi đổi tập |
 | `Resolve` trả bản sao, không sửa `target` | `target` là object trong `RemoteConfig<List<T>>` của dự án, sửa tại chỗ là ghi vào dữ liệu của hệ khác |
 | `IsAmbiguous` chỉ bật khi hàng khác **tập** khớp | hai keyword của cùng một tập khớp là bình thường (`Blended` và `BLD`) |
+| Tra hàng và kiểm hợp lệ là class static thuần, không nằm trong host | host, Simulator Editor và test cùng gọi một bản; hai bản luật kiểm buộc khớp nhau thì phải suy từ một nguồn |
+| `Validate` ghi vào `List<string>` thay vì `Debug.LogError` | Simulator hiện danh sách, test so chuỗi; host là nơi duy nhất quyết log đi đâu |
+| `Find<TSegment, TConfig>` phải ghi rõ hai type argument khi gọi | `TSegment` không suy ra được từ tham số; giá là một lần gõ ở hai call site trong host |
 
-**Nghiệm thu:** compile sạch (`compile-check`). Commit: `feat(segmentation): contract, state, matcher, inheritance`.
+**Nghiệm thu:** compile sạch (`compile-check`). Commit: `feat(segmentation): contract, state, matcher, inheritance, config table`.
 
 ---
 
@@ -348,7 +461,7 @@ using System;
 
 namespace Horcrux.Runtime.Abstractions.Composites.UserSegmentation
 {
-    /// <summary>Every business rule, as pure functions mutating the given state. Segment ids are ints; 0 means undecided.</summary>
+    /// <summary>Every business rule, as static functions that mutate the given state and return the change. Segment ids are ints; 0 means undecided.</summary>
     public static class UserSegmentDecider
     {
         public readonly struct Change
@@ -378,18 +491,18 @@ namespace Horcrux.Runtime.Abstractions.Composites.UserSegmentation
         {
             Change change = Change.None;
 
-            if (state.currSegmentId == 0)
+            if (state.CurrSegmentId == 0)
             {
-                state.currSegmentId = defaultSegmentId;
+                state.CurrSegmentId = defaultSegmentId;
                 change = new Change(0, defaultSegmentId, UserSegmentChangeReason.Initial, null, false);
             }
 
             int maxSessions = Math.Max(1, resegmentMaxSessions);
 
-            if (!state.isCampaignLocked && state.sessionCount >= maxSessions)
-                state.isCampaignLocked = true;
+            if (!state.IsCampaignLocked && state.SessionCount >= maxSessions)
+                state.IsCampaignLocked = true;
 
-            state.sessionCount++;
+            state.SessionCount++;
             return change;
         }
 
@@ -397,23 +510,27 @@ namespace Horcrux.Runtime.Abstractions.Composites.UserSegmentation
         public static Change OnCampaign(UserSegmentState state, string campaign, int matchedSegmentId, string matchedKeyword,
             bool isAmbiguous, int defaultSegmentId, int purchasedSegmentId)
         {
-            state.lastCampaign = campaign;
+            state.LastCampaign = campaign;
 
-            if (state.isCampaignLocked)
+            if (state.IsCampaignLocked)
                 return Change.None;
 
-            state.isCampaignLocked = true;
+            state.IsCampaignLocked = true;
 
-            if (state.currSegmentId == purchasedSegmentId)
+            if (state.CurrSegmentId == purchasedSegmentId)
                 return Change.None;
+
+            // A keyword row pointing at the purchased segment is a data error (Validate reports it): a campaign never grants that segment.
+            if (matchedSegmentId == purchasedSegmentId)
+                matchedSegmentId = 0;
 
             int target = matchedSegmentId != 0 ? matchedSegmentId : defaultSegmentId;
 
-            if (target == state.currSegmentId)
+            if (target == state.CurrSegmentId)
                 return Change.None;
 
-            int prev = state.currSegmentId;
-            state.currSegmentId = target;
+            int prev = state.CurrSegmentId;
+            state.CurrSegmentId = target;
             return new Change(prev, target, UserSegmentChangeReason.CampaignResolved, matchedKeyword, isAmbiguous);
         }
 
@@ -423,13 +540,13 @@ namespace Horcrux.Runtime.Abstractions.Composites.UserSegmentation
             if (!isRuleEnabled)
                 return Change.None;
 
-            if (state.currSegmentId == purchasedSegmentId)
+            if (state.CurrSegmentId == purchasedSegmentId)
                 return Change.None;
 
-            int prev = state.currSegmentId != 0 ? state.currSegmentId : defaultSegmentId;
-            state.prevSegmentId = prev;
-            state.currSegmentId = purchasedSegmentId;
-            state.isCampaignLocked = true;
+            int prev = state.CurrSegmentId != 0 ? state.CurrSegmentId : defaultSegmentId;
+            state.PrevSegmentId = prev;
+            state.CurrSegmentId = purchasedSegmentId;
+            state.IsCampaignLocked = true;
             return new Change(prev, purchasedSegmentId, UserSegmentChangeReason.Purchase, null, false);
         }
     }
@@ -439,8 +556,9 @@ namespace Horcrux.Runtime.Abstractions.Composites.UserSegmentation
 | Quyết định | Vì sao |
 |---|---|
 | Decider nhận kết quả khớp đã tính, không nhận bảng keyword | giữ Decider không generic; khớp là việc của `UserSegmentKeywordMatcher`, host nối hai thứ |
-| `lastCampaign` ghi cả khi đã khoá | tracking cần camp thật của user; Zego không cache nó ở đâu |
-| Kiểm cửa sổ **trước** `sessionCount++` | phiên 1..N còn phân lại được, khoá ở đầu phiên N+1; với N = 3 khớp "hết 3 phiên" |
+| `LastCampaign` ghi cả khi đã khoá | tracking cần camp thật của user; Zego không cache nó ở đâu |
+| Kiểm cửa sổ **trước** `SessionCount++` | phiên 1..N còn phân lại được, khoá ở đầu phiên N+1; với N = 3 khớp "hết 3 phiên" |
+| Khớp vào purchased hạ về 0 ngay trong Decider, không chỉ ở `Validate` | `Validate` chỉ log; luật "campaign không bao giờ cấp purchased" phải đứng ở nơi quyết định, và test được không cần host |
 
 **Nghiệm thu:** compile sạch. Commit: `feat(segmentation): decider`.
 
@@ -500,7 +618,7 @@ namespace Horcrux.Runtime.Abstractions.Composites.UserSegmentation
     {
         #region Properties
 
-        private const string LogPrefix = "[UserSegmentation]: ";
+        protected const string LogPrefix = "[UserSegmentation]: ";
 
         [Splitter("References")]
         [SerializeField] private BasePersistenceDataCollection saveCollection;
@@ -508,13 +626,13 @@ namespace Horcrux.Runtime.Abstractions.Composites.UserSegmentation
         private PersistenceDataEntry<UserSegmentState> _entry;
         private UserSegmentState _state;
 
-        /// <summary>False until <see cref="InitializeAsync"/> ran with a valid collection.</summary>
+        /// <summary>False until <see cref="InitializeAsync"/> ran with a valid collection. While false, derived config is null: a missing setup must surface, not run at a default.</summary>
         public bool IsReady => _state != null;
-        public int CurrSegmentId => _state != null ? _state.currSegmentId : 0;
-        public int PrevSegmentId => _state != null ? _state.prevSegmentId : 0;
-        public bool IsCampaignLocked => _state != null && _state.isCampaignLocked;
-        public bool IsFirstSession => _state != null && _state.sessionCount == 1;
-        public string LastCampaign => _state?.lastCampaign;
+        public int CurrSegmentId => _state != null ? _state.CurrSegmentId : 0;
+        public int PrevSegmentId => _state != null ? _state.PrevSegmentId : 0;
+        public bool IsCampaignLocked => _state != null && _state.IsCampaignLocked;
+        public bool IsFirstSession => _state != null && _state.SessionCount == 1;
+        public string LastCampaign => _state?.LastCampaign;
 
         protected abstract int DefaultSegmentId { get; }
         protected abstract int PurchasedSegmentId { get; }
@@ -544,13 +662,13 @@ namespace Horcrux.Runtime.Abstractions.Composites.UserSegmentation
                 return;
             }
 
-            bool wasLocked = _state.isCampaignLocked;
+            bool wasLocked = _state.IsCampaignLocked;
             bool matched = TryMatchCampaign(campaign, out int segmentId, out string keyword, out bool isAmbiguous);
             UserSegmentDecider.Change change = UserSegmentDecider.OnCampaign(_state, campaign, matched ? segmentId : 0,
                 keyword, isAmbiguous, DefaultSegmentId, PurchasedSegmentId);
 
             if (wasLocked)
-                Debug.Log(LogPrefix + $"campaign '{campaign}' arrived after lock, segment stays {_state.currSegmentId}", this);
+                Debug.Log(LogPrefix + $"campaign '{campaign}' arrived after lock, segment stays {_state.CurrSegmentId}", this);
 
             Commit(change);
         }
@@ -577,7 +695,7 @@ namespace Horcrux.Runtime.Abstractions.Composites.UserSegmentation
         /// <summary>Project side: match the campaign against its keyword table. Return false when no row matched.</summary>
         protected abstract bool TryMatchCampaign(string campaign, out int segmentId, out string keyword, out bool isAmbiguous);
 
-        /// <summary>Project side: LogError every invalid row once at boot. Never fix the data.</summary>
+        /// <summary>Project side: LogError every invalid row once at boot (<see cref="UserSegmentConfigTable.Validate{TSegment,TConfig}"/>). Never fix the data.</summary>
         protected abstract void ValidateConfigs();
 
         /// <summary>Called after boot and after every change: rebuild derived caches (current segment, resolved config).</summary>
@@ -616,9 +734,15 @@ namespace Horcrux.Runtime.Abstractions.Composites.UserSegmentation
 
             OnStateApplied();
 
-            if (change.HasChange)
-                EventBus<UserSegmentChanged>.Publish(new UserSegmentChanged(change.PrevSegmentId, change.CurrSegmentId,
-                    change.Reason, change.MatchedKeyword, change.IsAmbiguous));
+            if (!change.HasChange)
+                return;
+
+            Debug.Log(LogPrefix + $"{change.Reason}: segment {change.PrevSegmentId} -> {change.CurrSegmentId}"
+                + (change.MatchedKeyword != null ? $" by keyword '{change.MatchedKeyword}'" : string.Empty)
+                + (change.IsAmbiguous ? ", another segment's keyword also matched" : string.Empty), this);
+
+            EventBus<UserSegmentChanged>.Publish(new UserSegmentChanged(change.PrevSegmentId, change.CurrSegmentId,
+                change.Reason, change.MatchedKeyword, change.IsAmbiguous));
         }
 
         #endregion
@@ -645,14 +769,12 @@ namespace Horcrux.Runtime.Abstractions.Composites.UserSegmentation
     {
         #region Properties
 
-        private const string LogPrefix = "[UserSegmentation]: ";
-
         private TSegment _currSegment;
         private TConfig _currConfig;
 
         public TSegment CurrSegment => _currSegment;
 
-        /// <summary>Resolved row of the current segment; for the purchased segment, -1 fields are taken from the previous segment's row. Never null.</summary>
+        /// <summary>Resolved row of the current segment; for the purchased segment, -1 fields are taken from the previous segment's row. Null only while <see cref="AUserSegmentationHost.IsReady"/> is false.</summary>
         public TConfig CurrConfig => _currConfig;
 
         protected abstract TSegment DefaultSegment { get; }
@@ -692,82 +814,33 @@ namespace Horcrux.Runtime.Abstractions.Composites.UserSegmentation
 
         protected sealed override void ValidateConfigs()
         {
-            IReadOnlyList<TConfig> configs = Configs;
-            IReadOnlyList<IUserSegmentKeywordRule<TSegment>> rules = KeywordRules;
-            Array values = Enum.GetValues(typeof(TSegment));
+            List<string> errors = new();
+            UserSegmentConfigTable.Validate(Configs, KeywordRules, PurchasedSegmentId, errors);
 
-            for (int v = 0; v < values.Length; v++)
-            {
-                TSegment segment = (TSegment)values.GetValue(v);
-                int id = ToId(segment);
-
-                if (id == 0)
-                {
-                    Debug.LogError(LogPrefix + $"{typeof(TSegment).Name} must not define value 0: 0 means undecided", this);
-                    continue;
-                }
-
-                int rowCount = 0;
-                TConfig row = null;
-
-                for (int i = 0; configs != null && i < configs.Count; i++)
-                {
-                    if (configs[i] != null && ToId(configs[i].Id) == id)
-                    {
-                        rowCount++;
-                        row = configs[i];
-                    }
-                }
-
-                if (rowCount == 0)
-                    Debug.LogError(LogPrefix + $"no config row for segment {segment} ({id})", this);
-                else if (rowCount > 1)
-                    Debug.LogError(LogPrefix + $"{rowCount} config rows for segment {segment} ({id}); the last one wins", this);
-
-                if (row != null && id != PurchasedSegmentId && UserSegmentConfigInheritance.HasInheritValue(row))
-                    Debug.LogError(LogPrefix + $"segment {segment} ({id}) has a -1 field; only the purchased row may inherit", this);
-            }
-
-            for (int i = 0; rules != null && i < rules.Count; i++)
-            {
-                if (rules[i] == null || string.IsNullOrEmpty(rules[i].Keyword))
-                    Debug.LogWarning(LogPrefix + $"keyword row {i} is empty and will be skipped", this);
-            }
+            for (int i = 0; i < errors.Count; i++)
+                Debug.LogError(LogPrefix + errors[i], this);
         }
 
         private TConfig FindConfigOrDefault(int id)
         {
-            TConfig row = FindConfig(id);
+            TConfig row = UserSegmentConfigTable.Find<TSegment, TConfig>(Configs, id);
 
             if (row != null)
                 return row;
 
             Debug.LogError(LogPrefix + $"missing config row for segment {id}, using the default segment's row", this);
-            row = FindConfig(DefaultSegmentId);
+            row = UserSegmentConfigTable.Find<TSegment, TConfig>(Configs, DefaultSegmentId);
 
             if (row != null)
                 return row;
 
-            Debug.LogError(LogPrefix + "missing config row for the default segment too; using an empty row", this);
-            return new TConfig();
+            // An empty row would be a zero economy (interstitial from level 1, free boosters) running silently: an authoring error must explode.
+            throw new InvalidOperationException(LogPrefix
+                + $"no config row for segment {id} nor for the default segment {DefaultSegmentId}; the config table on the remote config asset is empty or wrong");
         }
 
-        private TConfig FindConfig(int id)
-        {
-            IReadOnlyList<TConfig> configs = Configs;
-            TConfig found = null;
-
-            for (int i = 0; configs != null && i < configs.Count; i++)
-            {
-                if (configs[i] != null && ToId(configs[i].Id) == id)
-                    found = configs[i];
-            }
-
-            return found;
-        }
-
-        protected static int ToId(TSegment segment) => Convert.ToInt32(segment);
-        protected static TSegment FromId(int id) => (TSegment)Enum.ToObject(typeof(TSegment), id);
+        private static int ToId(TSegment segment) => UserSegmentConfigTable.ToId(segment);
+        private static TSegment FromId(int id) => (TSegment)Enum.ToObject(typeof(TSegment), id);
 
         #endregion
     }
@@ -776,10 +849,12 @@ namespace Horcrux.Runtime.Abstractions.Composites.UserSegmentation
 
 | Quyết định | Vì sao |
 |---|---|
-| `_entry.Value = _state` ở mọi `Commit`, kể cả không đổi | gán qua setter bắn `OnValueChanged`; `sessionCount` và `lastCampaign` đổi mà không đổi tập vẫn phải tới đĩa |
-| Hàng trùng `id`: hàng cuối thắng | tất định, và `ValidateConfigs` đã `LogError`; không chọn hàng đầu để khớp với cách `FindConfig` duyệt hết |
-| `FindConfigOrDefault` không đệ quy | hai bậc là đủ: hàng của tập, rồi hàng default, rồi hàng rỗng kèm lỗi |
+| `_entry.Value = _state` ở mọi `Commit`, kể cả không đổi | gán qua setter bắn `OnValueChanged`; Persistence so payload nên cùng reference vẫn ghi đĩa khi `SessionCount` hay `LastCampaign` đổi |
+| Hàng trùng `id`: hàng cuối thắng | tất định, và `Validate` đã báo; khớp với cách `UserSegmentConfigTable.Find` duyệt hết |
+| `FindConfigOrDefault` hai bậc rồi ném | hàng của tập, rồi hàng default; hết hai bậc là bảng rỗng — lỗi authoring, nổ ở lần Play đầu thay vì kinh tế bằng 0 |
 | `CurrConfig` là field cache, không tính trong getter | consumer có thể đọc nhiều lần trong một level; `Resolve` dùng reflection |
+| `saveCollection` trống: `LogError` rồi thoát, `CurrConfig` để null | consumer nổ ở lần chạm đầu — đúng ý: setup thiếu phải lộ, không chạy cả phiên ở tập mặc định như thể đã dựng đúng |
+| `LogPrefix` là `protected const` ở base | lớp generic và lớp con của dự án log cùng một tiền tố, không khai lại |
 
 **Nghiệm thu:** compile sạch. Commit: `feat(segmentation): persistence entry, host base and generic host`.
 
@@ -969,18 +1044,20 @@ Commit: `feat(segmentation): adjust campaign boot step`.
 
 ## Task 5 — Test EditMode (agent, sau khi Task 1–3 có code thật)
 
-`Tests/EditMode/UserSegmentKeywordMatcherTests.cs` · `UserSegmentConfigInheritanceTests.cs` · `UserSegmentDeciderTests.cs`.
-Test dùng enum và DTO giả khai trong file test. Chỉ danh sách case; code test viết theo chữ ký thật.
+`Tests/EditMode/UserSegmentKeywordMatcherTests.cs` · `UserSegmentConfigInheritanceTests.cs` · `UserSegmentConfigTableTests.cs` ·
+`UserSegmentDeciderTests.cs`. Test dùng enum và DTO giả khai trong file test. Chỉ danh sách case; code test viết theo chữ ký thật.
 
 | Đơn vị | Case |
 |---|---|
-| Matcher | camp `null` → false · rỗng → false · `iap_us` với keyword `IAP` → khớp (hoa thường) · `Blended_BLD` với hai hàng cùng tập → khớp, không ambiguous · `IAP_Ads` với hàng IAP trước Ads → IAP, ambiguous · `Ads_IAP` cùng bảng → vẫn IAP (thứ tự bảng, không thứ tự trong camp) · không khớp → false · hàng keyword rỗng bị bỏ · `CategoryJam_Android_US` với keyword `Ads` → false · với keyword `Ad` → true (chứng minh vì sao đổi) |
-| Inheritance | mọi field `-1` → lấy hết từ prev · không field nào `-1` → giống target · prev cùng `-1` → giữ `-1` · field không phải `int` chép nguyên · trả object khác tham chiếu, target không đổi · `HasInheritValue` đúng/sai |
-| Decider `OnBoot` | state rỗng → curr = default, `Initial`, sessionCount 1 · phiên 2, 3 chưa khoá · phiên 4 với max 3 → khoá, không có change · đã khoá từ trước → giữ · max 0 → kẹp 1: phiên 2 mới khoá, phiên 1 chưa |
-| Decider `OnCampaign` | chưa khoá, khớp IAP → curr IAP, `CampaignResolved`, khoá · chưa khoá, không khớp, curr đã default → không change nhưng khoá · camp rỗng → như không khớp · đã khoá → không change, `lastCampaign` vẫn ghi · curr purchased chưa khoá → khoá, không change · ambiguous truyền tới Change |
+| Matcher | camp `null` → false · rỗng → false · `rules == null` → false · hàng rule `null` bị bỏ · `iap_us` với keyword `IAP` → khớp (hoa thường) · `Blended_BLD` với hai hàng cùng tập → khớp, không ambiguous · `IAP_Ads` với hàng IAP trước Ads → IAP, ambiguous · `Ads_IAP` cùng bảng → vẫn IAP (thứ tự bảng, không thứ tự trong camp) · không khớp → false · hàng keyword rỗng bị bỏ · `CategoryJam_Android_US` với keyword `Ads` → false · với keyword `Ad` → true (chứng minh vì sao đổi) |
+| Inheritance | mọi field `-1` → lấy hết từ prev · không field nào `-1` → giống target · prev cùng `-1` → giữ `-1` · `prev == null` → bản sao của target nguyên `-1` · field không phải `int` chép nguyên · trả object khác tham chiếu, target không đổi · `HasInheritValue` đúng/sai |
+| ConfigTable `Find` | có hàng → trả hàng · trùng id → hàng cuối · không có → null · `configs == null` → null · hàng `null` trong list bị bỏ |
+| ConfigTable `Validate` | bảng đủ bốn hàng, rule hợp lệ → true, errors rỗng · thiếu hàng một tập → một dòng nêu tập · hai hàng cùng id → một dòng · hàng không purchased có `-1` → một dòng · hàng có id ngoài enum → một dòng · hàng `null` → một dòng · enum giả có giá trị 0 → một dòng · keyword rỗng → một dòng · rule trỏ purchased → một dòng · rule trỏ id ngoài enum → một dòng · `configs == null`, `rules == null` → không ném, mỗi tập một dòng thiếu |
+| Decider `OnBoot` | state rỗng → curr = default, `Initial`, `SessionCount` 1 · phiên 2, 3 chưa khoá · phiên 4 với max 3 → khoá, không có change · đã khoá từ trước → giữ · max 0 → kẹp 1: phiên 2 mới khoá, phiên 1 chưa |
+| Decider `OnCampaign` | chưa khoá, khớp IAP → curr IAP, `CampaignResolved`, khoá · chưa khoá, không khớp, curr đã default → không change nhưng khoá · camp rỗng → như không khớp · **khớp vào purchased → như không khớp, curr = default, vẫn khoá** · đã khoá → không change, `LastCampaign` vẫn ghi · curr purchased chưa khoá → khoá, không change · ambiguous truyền tới Change |
 | Decider `OnPurchase` | từ BLD → prev BLD, curr purchased, khoá, `Purchase` · cờ tắt → không change, state nguyên · mua lần hai → không change · curr 0 → prev = default · mua rồi camp về → không đổi |
 
-Chạy bằng `compile-check` (test EditMode một lệnh). Commit: `test(segmentation): matcher, inheritance, decider`.
+Chạy bằng `compile-check` (test EditMode một lệnh). Commit: `test(segmentation): matcher, inheritance, config table, decider`.
 
 ---
 
@@ -993,7 +1070,8 @@ camp → Decider → save → event → config; bảng luật; "Trước khi ch�
 
 ## Editor setup — mục "Trước khi chạy" của hệ
 
-Hệ chỉ chạy khi dự án đã dựng đủ; thiếu bước nào thì host `LogError` rồi thoát, bootstrap fail-open vào game ở tập mặc định.
+Hệ chỉ chạy khi dự án đã dựng đủ; thiếu bước nào thì host `LogError` rồi thoát, `IsReady` ở lại false và `CurrConfig` là null:
+consumer đầu tiên đọc config sẽ ném. Đó là chủ ý — setup thiếu phải lộ ngay lần Play đầu, không chạy cả phiên ở tập mặc định.
 
 1. Dự án có `GamePersistenceDataCollection : BasePersistenceDataCollection` và asset của nó. Trên asset, mục **User Segmentation**:
    `Key` = `user_segment_state`, `Default Value` để nguyên số 0 và chuỗi rỗng. Thiếu key: Persistence `LogError` lúc `Initialize`.
@@ -1010,4 +1088,4 @@ Hệ chỉ chạy khi dự án đã dựng đủ; thiếu bước nào thì host
 ## Cheat
 
 Chưa có: dự án chưa có SRDebugger. Khi có, một category gồm hàng đọc `CurrSegmentId`, `IsCampaignLocked`, `LastCampaign`,
-`sessionCount`, và hai lệnh `ReportPurchase()`, `ReportCampaign(camp)`.
+`SessionCount`, và hai lệnh `ReportPurchase()`, `ReportCampaign(camp)`.
