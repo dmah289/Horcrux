@@ -7,7 +7,7 @@ namespace Horcrux.Editor.Common
 {
     /// <summary>
     /// Static utility dùng chung — selection, ping, prefab-stage navigation.
-    /// Tách khỏi tool cụ thể để mọi Editor tool (NullRefScanner, UsageFinder, SceneReferenceFinder)
+    /// Tách khỏi tool cụ thể để mọi Editor tool (UsageFinder, SceneReferenceFinder)
     /// đều điều hướng nhất quán tới scene object lẫn prefab asset.
     /// </summary>
     public static class NavigationHelper
