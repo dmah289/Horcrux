@@ -131,7 +131,12 @@ mà dự án viết có nằm trong ranh giới biên dịch của dự án khô
 thái) thì framework khai là **type parameter** có ràng buộc, dự án chốt bằng class con; framework không
 dựng kiểu bọc thay — kiểu bọc chỉ nói "đây là một khoá", kiểu của dự án nói *khoá nào*, cho compiler và
 công cụ authoring biết tập hợp lệ. Bên trong framework hạ về dạng rẻ một lần ở cửa vào. Phép kiểm: *dự án
-có phải đổi kiểu bằng tay (cast, gõ số, gõ chuỗi) ở call site hoặc trong asset không?*
+có phải đổi kiểu bằng tay (cast, gõ số, gõ chuỗi) ở call site hoặc trong asset không?* **Tập giá trị do dữ
+liệu ngoài định nghĩa** (bảng remote, nội dung tải về — thêm phần tử không build) thì từ vựng thuộc về
+dữ liệu, không khai enum: code chỉ gọi tên các **vai** có nghĩa với nó (mặc định, đích đặc biệt) bằng id dự
+án trả về, và kiểm "id có hàng trong dữ liệu" thay cho "id có trong enum". Enum ở đây đóng tập lại và bắt
+build cho mỗi phần tử mới; giá phải nêu khi chọn: mất dropdown Inspector và tên compile-time, tên hiển thị
+dời vào một cột của dữ liệu.
 
 **Nâng một chức năng lên tái sử dụng khi người dùng thứ hai đang có thật** (NT7): hàm thuần → Utilities ·
 có state hay nhiều biến thể → interface rồi tách implementation · chỉ khác một giá trị → tham số. Đặt ở
@@ -216,7 +221,7 @@ chơi mới phải vào đúng nhóm A/B ngay phiên đầu. Mốc "đã xong" b
 
 | Hình dạng | Vì sao im lặng | Trả về chỗ nổ bằng |
 |---|---|---|
-| **Giá trị mặc định của kiểu là hợp lệ** — `float` 0, `bool` false, list rỗng, enum đầu | ô trống không phân biệt với ô cố ý | **authoring**: default trong khai báo field, kẹp dải `[Min]`/`[Range]` |
+| **Giá trị mặc định của kiểu là hợp lệ** — `float` 0, `bool` false, list rỗng, enum đầu | ô trống không phân biệt với ô cố ý | **authoring**: default trong khai báo field, kẹp dải `[Min]`/`[Range]`. **Dữ liệu ngoài parse vào DTO** (JSON remote, CSV): khoá thiếu được điền default im lặng — DTO đòi đủ khoá (`[JsonObject(ItemRequired = Required.Always)]`) để parse ném và hệ giữ bản cũ; không dùng hàng thưa "chỉ ghi ô khác mặc định" |
 | **Host bắt lỗi fail-open** — vòng dispatch, chain boot log rồi bỏ qua | thiếu wire thành một dòng log lúc boot rồi cả phiên thiếu hệ | hệ tự đứng không cần host, hoặc thiếu nó phải hỏng ở cửa người chơi chạm |
 | **Vòng lặp nhận sai token** | huỷ là hợp đồng, không log (`async-presentation`) | mỗi loop chỉ ra token là đời của ai |
 | **Chỗ nổ nằm trong `#if DEBUG`** | release không có dòng đó | đọc `#if` quanh guard của thư viện ngoài trước khi tin |
