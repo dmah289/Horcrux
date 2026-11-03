@@ -23,7 +23,11 @@ namespace Horcrux.Runtime.Abstractions.Persistence
         [ShowInInspector, ReadOnly] private T value;
         [ShowInInspector, ReadOnly] private string storedPayload;
         
-        public event Action<T> OnValueChanged;
+        /// <summary>
+        /// Raised with (oldValue, newValue) by the Value setter and by ReadPayload. In-place edits raise nothing,
+        /// and for a reference T both arguments may be the same object.
+        /// </summary>
+        public event Action<T, T> OnValueChanged;
 
 
         #region Properties
@@ -40,8 +44,9 @@ namespace Horcrux.Runtime.Abstractions.Persistence
             get => value;
             set
             {
+                T oldValue = this.value;
                 this.value = value;
-                RaiseChanged();
+                RaiseChanged(oldValue);
             }
         }
         
@@ -60,9 +65,10 @@ namespace Horcrux.Runtime.Abstractions.Persistence
         public void ReadPayload(string payload)
         {
             T loaded = JsonConvert.DeserializeObject<T>(payload);
+            T oldValue = value;
             value = loaded == null ? CloneDefault() : loaded;
             storedPayload = payload;
-            RaiseChanged();
+            RaiseChanged(oldValue);
         }
 
         public string WritePayload()
@@ -101,9 +107,9 @@ namespace Horcrux.Runtime.Abstractions.Persistence
             return JsonConvert.DeserializeObject<T>(JsonConvert.SerializeObject(defaultValue));
         }
         
-        private void RaiseChanged()
+        private void RaiseChanged(T oldValue)
         {
-            Action<T> handlers = OnValueChanged;
+            Action<T, T> handlers = OnValueChanged;
 
             if (handlers == null)
                 return;
@@ -113,8 +119,8 @@ namespace Horcrux.Runtime.Abstractions.Persistence
             {
                 try
                 {
-                    Action<T> action = (Action<T>)delegates[i];
-                    action(value);
+                    Action<T, T> action = (Action<T, T>)delegates[i];
+                    action(oldValue, value);
                 }
                 catch (Exception e)
                 {

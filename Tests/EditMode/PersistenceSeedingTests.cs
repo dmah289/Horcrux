@@ -245,6 +245,26 @@ namespace Horcrux.Tests
         }
         #endregion
 
+        #region Value changed event
+        [Test]
+        public void ValueSetter_RaisesOldAndNewValue()
+        {
+            PlayerPrefs.SetString(StorageKeyOf(ProbeKey), "42");
+            PlayerPrefs.Save();
+
+            collection.Initialize();
+
+            List<(int oldValue, int newValue)> raised = new();
+            collection.Probe.OnValueChanged += (oldValue, newValue) => raised.Add((oldValue, newValue));
+
+            collection.Probe.Value = 50;
+            collection.Probe.Value = 50;
+
+            CollectionAssert.AreEqual(new[] { (42, 50), (50, 50) }, raised,
+                "Every set raises once, carrying the value it replaced.");
+        }
+        #endregion
+
         #region Class Methods
         private static string StorageKeyOf(string entryKey)
             => "persistence_" + entryKey;
