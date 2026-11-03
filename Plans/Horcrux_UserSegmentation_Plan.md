@@ -70,7 +70,7 @@ Mọi thứ trong Plan chỉ **thêm**: không file Horcrux nào đang có bị 
 | `Implementations/Composites/SaveBootstep.cs` | thứ tự: collection `Initialize()` ở bước trước, host chỉ kiểm `IsInitialized` | — |
 | `Utilities/EventBus/EventBus.cs` | `EventBus<T>.Publish(in T)` với `T : struct, IEvent`, đồng bộ, cô lập lỗi từng listener | — |
 | `Vendors/Firebase/com.horcrux.firebase.asmdef` | `versionDefines` + `defineConstraints` để assembly tắt theo package | — |
-| `docs/Runtime/LiveOpsHost.md` | "host nhận model đã ép kiểu, không biết RC"; host trừu tượng ở `Abstractions/` | 1 Hz loop, lịch tuần — không liên quan |
+| `docs/Runtime/LiveOpsHost/LiveOpsHost.md` | "host nhận model đã ép kiểu, không biết RC"; host trừu tượng ở `Abstractions/` | 1 Hz loop, lịch tuần — không liên quan |
 | `Implementations/Foundations/RemoteConfigSystem/RemoteConfigCsvImporter.cs` | `TryDescribe` từ chối hàng có field không phải ô phẳng ("needs the JSON import") → bảng keyword có mảng không đi CSV | — |
 | `Library/PackageCache/com.adjust.sdk@…/Scripts/Adjust.cs` | `Adjust.GetAttribution(Action<AdjustAttribution>)`, assembly `AdjustSdk.Scripts`, namespace `AdjustSdk`; trong Editor return không callback | `GetAttributionWithTimeout`: timeout của SDK không huỷ được theo `ct` |
 | `com.zego.adjust` `ZegoAdjust` | ý tưởng ô camp giả trong Editor | toàn bộ còn lại: trói vào Zego |

@@ -60,7 +60,7 @@ Dữ liệu đổi ở một nơi, người chơi thấy ở nơi khác, có khi
   chỉ vá triệu chứng. Giai đoạn chia theo **loại** trình diễn, cố định trong code; ưu tiên chỉ xếp trong giai đoạn. Luồng
   dùng tài nguyên độc quyền chạy lần lượt, luồng chỉ chạm view mình chạy đồng thời. Mọi luồng **idempotent** (đọc save, làm
   phần còn nợ, trả tài nguyên trong `finally`, `try/catch` từng luồng). Tín hiệu vào/ra màn qua **một** bridge. Vòng điều
-  phối là class thuần. Cơ chế: `docs/Runtime/LiveOpsHomeFlow.md`.
+  phối là class thuần. Cơ chế: `docs/Runtime/LiveOpsHomeFlow/LiveOpsHomeFlow.md`.
 - **Nhiều module cùng mất gì đó ở một sự kiện → định nghĩa sự kiện ở một chỗ**; bắt đầu, huỷ chờ, ghi mất mát có một chủ
   gọi; cờ chờ trong save từng module, gỡ cờ **trước** khi kiểm còn gì để mất; luật vòng đời cờ ở lớp cha, không `virtual`.
 

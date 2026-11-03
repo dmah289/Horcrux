@@ -411,7 +411,7 @@ Runtime/Abstractions/Foundations/Persistence/
 Runtime/Implementations/Foundations/Persistence/SaveDriver.cs
 Runtime/Implementations/Composites/SaveBootstep.cs · SaveBootstepInitializer.cs
 Tests/EditMode/PersistenceSeedingTests.cs
-docs/Runtime/Persistence.md · Persistence.html
+docs/Runtime/Persistence/Persistence.md · Persistence.html
 ```
 
 ## Còn để mở

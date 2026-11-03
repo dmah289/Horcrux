@@ -2,7 +2,7 @@
 
 Bộ skill phát triển hệ thống game Unity, mang nguyên sang mọi dự án, không mang domain dự án nào; áp cho mọi thứ agent viết
 ra (runtime, Editor, tooling, script tạm, tài liệu). **Horcrux** là framework dùng chung đi theo mọi dự án; đường dẫn tính
-từ gốc Horcrux: skill `Skills/`, Plan `Plans/`, tài liệu hệ `docs/Editor/` và `docs/Runtime/`.
+từ gốc Horcrux: skill `Skills/`, Plan `Plans/`, tài liệu hệ `docs/Runtime/<Hệ>/` và `docs/Editor/`.
 
 ## Luật đọc
 

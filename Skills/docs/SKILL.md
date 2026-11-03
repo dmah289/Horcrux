@@ -7,14 +7,15 @@ description: Dùng khi viết hoặc cập nhật tài liệu: .md cho agent, .h
 
 Skill nền dưới `Skills/horcrux_skill.md` (NT, ba tầng, ký hiệu định nghĩa ở đó).
 
-Mỗi hệ và tool có tài liệu riêng, **không đặt cạnh code**: trong Horcrux nằm phẳng ở `docs/Editor/` hoặc `docs/Runtime/`,
-tên theo tên hệ, mở đầu bằng dòng `Code:` trỏ thư mục code tính từ gốc Horcrux; Plan ở `Plans/`. **Thay đổi hệ thì cập nhật
-tài liệu trong cùng lần làm** — riêng `.html` theo mốc.
+Mỗi hệ và tool có tài liệu riêng, **không đặt cạnh code**, tên theo tên hệ, `.md` mở đầu bằng dòng `Code:` trỏ thư mục
+code tính từ gốc Horcrux; Plan ở `Plans/`. **Hệ Runtime có đủ cặp** trong thư mục riêng `docs/Runtime/<Hệ>/`: `<Hệ>.md`
+cho agent đọc rẻ token, `<Hệ>.html` cho developer đọc trực quan. **Tool Editor chỉ `.md`**, nằm phẳng ở `docs/Editor/`.
+**Thay đổi hệ thì cập nhật tài liệu trong cùng lần làm** — riêng `.html` theo mốc.
 
 | Loại | Người đọc, vai trò | Vòng đời |
 |---|---|---|
 | **`.md`** | **agent** — bản đặc, rẻ token; nguồn sinh `.html` | cùng lần làm với mỗi thay đổi |
-| **`.html`** | **developer, designer** — trực quan hoá 100% `.md`; agent không đọc khi đã có `.md` | đồng bộ khi developer yêu cầu hoặc chốt một cụm thay đổi |
+| **`.html`** | **developer, designer** — trực quan hoá 100% `.md`; agent không đọc khi đã có `.md`. Bắt buộc với hệ Runtime, Editor chưa cần | đồng bộ khi developer yêu cầu hoặc chốt một cụm thay đổi |
 | **Plan** | developer **tự gõ** — khi được yêu cầu, và code runtime vào Horcrux đã duyệt | `.md` ở `Plans/`; hệ dựng xong có tài liệu module thì xoá Plan |
 | **Manual** | người dùng tool không phải developer, để **thao tác** | cạnh tài liệu của tool |
 | **Skill** | agent mọi dự án — luật chung cho game Unity | qua chưng cất (`workflow` › Chưng cất), theo ba tầng và ký hiệu của `horcrux_skill` |

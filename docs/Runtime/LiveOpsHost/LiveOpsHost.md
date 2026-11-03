@@ -413,7 +413,7 @@ save đã load. Agent kiểm chúng bằng biên dịch; hành vi kiểm ở hai
 `LiveOpsHost` lo nhịp tick và cửa sổ thời gian. Trình diễn lúc về Home (ceremony, bay thưởng, tutorial, mở màn con) do
 **`LiveOpsHomeFlowHost`** điều phối, một component riêng với một lý do thay đổi khác: module giữ luồng của mình
 (`ALiveOpsModule.HomeFlow`), `LiveOpsHomeFlowRunner` đọc `LiveOpsHost.Modules` mỗi lượt và giữ cơ chế (giai đoạn, chạy bù,
-huỷ, cô lập lỗi). Chi tiết ở `LiveOpsHomeFlow.md` trong cùng thư mục `docs/Runtime/`. `SetState` của `ALiveOpsModule` tự bắn `LiveOpsHomeFlowRequested` sau mỗi
+huỷ, cô lập lỗi). Chi tiết ở `LiveOpsHomeFlow.md` ở `docs/Runtime/LiveOpsHomeFlow/`. `SetState` của `ALiveOpsModule` tự bắn `LiveOpsHomeFlowRequested` sau mỗi
 chuyển trạng thái, nên module không phải tự nhớ xin một lượt chạy.
 
 ## §5 Để sau

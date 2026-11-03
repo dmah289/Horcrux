@@ -29,7 +29,7 @@ biên dịch tên field.
 > **Nền tảng** — remote config và persistence của Horcrux ép kiểu qua cùng serializer: giá trị có cấu trúc khai generic với
 > class dữ liệu thuần, không `string`; JSON hỏng thì hệ tự `LogError` và giữ cache, consumer không `try/catch`. Khớp
 > property không phân biệt hoa thường nhưng không đổi tên: đổi tên field thì key cũ rơi thành `null` im lặng, chỉ cửa kiểm
-> luật nghiệp vụ bắt được. Chi tiết: `docs/Runtime/RemoteConfigSystem.md`.
+> luật nghiệp vụ bắt được. Chi tiết: `docs/Runtime/RemoteConfigSystem/RemoteConfigSystem.md`.
 
 ## Có cần không (NT1)
 
