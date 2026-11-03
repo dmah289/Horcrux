@@ -134,7 +134,7 @@ instance method.
 
 | Luật | Nghĩa là |
 |---|---|
-| **Một sự thật = một chủ sở hữu** | một nơi giữ bản gốc; cache chỉ ra ai dựng lại, khi nào, bám bất biến **đã có** (dirty flag, version). Một cờ tiêu thụ ở **một** nơi |
+| **Một sự thật = một chủ sở hữu** | một nơi giữ bản gốc; cache chỉ ra ai dựng lại, khi nào, bám bất biến **đã có** (dirty flag, version). Một cờ tiêu thụ ở **một** nơi. Sự kiện đổi giá trị mang `(old, new)` — consumer tự giữ bản cũ là bản sao thứ hai |
 | **Hai bản buộc khớp thì suy từ MỘT nguồn** | đo–vẽ, vẽ–hit-test, điều kiện ẩn–hiện: một hàm · chuỗi định danh hai hệ: khai một lần phía phát, phía nhận trỏ symbol · định danh số chia sẻ với asset: `enum` tường minh từ `= 1`, số đã vào asset là wire format, chỉ thêm ở cuối · vật kề nhau ở world và canvas: neo cùng mép, cùng luật co giãn · phản hồi nhiều kênh một khoảnh khắc (tiếng, rung, hình): gọi cạnh nhau trong **một hàm** — kênh nghe event riêng sẽ bắn cả ca đã chặn |
 | **Một trạng thái = một cửa ghi, một chủ gọi** | mở, huỷ, chốt trong **một** class; nơi khác chỉ **phát sự thật** (sự kiện tên theo điều đã xảy ra, đồng bộ, một người nghe hành động; cần mốc mới thì thêm sự kiện). Hệ quả luôn xảy ra, rẻ, không ném → trong **setter**. Hai lời gọi luôn đi cùng nhau thì gộp vào trong cửa public |
 | **Một bảo đảm phủ MỌI đường vào** | mọi cửa ghi đi qua chỗ tạo bảo đảm; **đếm cửa trước, đọc thân sau** — grep mọi API ghi |
