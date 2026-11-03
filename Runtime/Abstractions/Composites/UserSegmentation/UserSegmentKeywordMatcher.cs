@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using UnityEngine;
 
 namespace Horcrux.Runtime.Abstractions.UserSegmentation
 {
@@ -37,7 +36,6 @@ namespace Horcrux.Runtime.Abstractions.UserSegmentation
                 if (rule.SegmentId != segmentId)
                 {
                     isAmbiguous = true;
-                    Debug.LogError($"[UserSegmentKeywordMatcher] Ambiguous segment ID: Campaign {campaign} matches the same segment ID {segmentId} and {rule.SegmentId}");
                     break;
                 }
             }

@@ -157,7 +157,9 @@ sau `Destroy`, dữ liệu ngoài) → **guard đầy đủ** · ca hợp lệ c
 nào bắt nó → guard.
 
 **Dữ liệu ngoài kiểm một lần ở cửa vào** bằng hàm thuần kiểm luật nghiệp vụ, sai thì từ chối cả cấu hình kèm `LogError`;
-sau cửa consumer tin hợp đồng. Hàm kiểm đặt ở framework thì kiểm gì: mục Module. View runtime không có nhánh vẽ lỗi — chỉ được **xoá vết cũ** của ô dùng lại. **Cấu hình
+sau cửa consumer tin hợp đồng. Hàm kiểm đặt ở framework thì kiểm gì: mục Module. **Hàm thuần không log:** trả cờ hay
+cộng dòng vào `List<string>` của caller; **host quyết log đi đâu, mức nào** — host, tool Editor và test gọi cùng một bản,
+log trong hàm thuần đỏ Console mỗi lần tool gọi, bắt test `LogAssert`, và một sự kiện log hai lần khi host cũng log. View runtime không có nhánh vẽ lỗi — chỉ được **xoá vết cũ** của ô dùng lại. **Cấu hình
 ngoài đổi gameplay đứng yên suốt phiên:** nhận ở **một** mốc boot có hạn giờ, bản về muộn để phiên sau (để người chơi mới
 vào đúng nhóm A/B ngay phiên đầu); mốc "đã xong" bắn ở mọi đường ra — lỗi, quá hạn, mất mạng.
 
