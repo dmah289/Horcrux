@@ -80,7 +80,8 @@ method đó thuộc contract**; đăng ký thêm kiểu cụ thể để với m
 Phân tầng quyết từ đầu (NT3): hệ **độc lập** · hệ **kết hợp** · **Utilities** static, không phụ thuộc hệ nào. **Sổ tay** —
 Horcrux bày tầng ra thư mục: `Abstractions/` giữ thứ dự án **gọi tên** (interface, base `A*`, model, event, hằng) ·
 `Implementations/` giữ thứ dự án chỉ **wire** (host, bootstep, `*Initializer`) · mỗi bên chia `Foundations/` (độc lập) và
-`Composites/` (kết hợp) · `Utilities/` ngoài cả hai. File đặt nhầm bên là một phụ thuộc giấu.
+`Composites/` (kết hợp) · `Utilities/` ngoài cả hai. File đặt nhầm bên là một phụ thuộc giấu. Namespace
+`Horcrux.Runtime.<Abstractions|Implementations>.<Hệ>`: tầng `Foundations`/`Composites` chỉ ở thư mục, không vào namespace.
 
 **Cơ chế mở rộng không ép dự án đẩy domain sang framework.** Phép kiểm: *nửa dự án viết có nằm trong ranh giới biên dịch
 của dự án không?*
@@ -96,6 +97,11 @@ của dự án không?*
 chuỗi ở call site hay trong asset không?* Tập giá trị **do dữ liệu ngoài định nghĩa** (bảng remote, nội dung tải về) thì từ
 vựng thuộc dữ liệu, không enum: code chỉ gọi tên các **vai** có nghĩa với nó, kiểm "id có hàng trong dữ liệu"; giá phải
 nêu: mất dropdown Inspector và tên compile-time.
+
+**Hàm kiểm dữ liệu của framework kiểm bất biến của chính dữ liệu, không kiểm kịch bản:** hình dạng (`null`, rỗng, id hợp
+lệ, trùng, tham chiếu nội bộ có đích) và **một vai bắt buộc** — vai rơi về mà mọi dự án đều phải có. Vai còn lại ("đã mua",
+"VIP") là kịch bản của từng dự án: dự án tự đảm bảo, kiểm ở nơi gọi tên vai (host, tool Editor), không thành tham số của hàm
+kiểm — nhận vai là đóng kịch bản của một dự án vào framework, dự án sau không có vai đó phải truyền số giả hay nhận lỗi giả.
 
 **Trừu tượng hoá cho tái sử dụng khi người dùng thứ hai đang có thật:** hàm thuần → Utilities · state hay nhiều biến thể →
 interface · chỉ khác một giá trị → tham số; đặt ở **tầng thấp nhất cả hai với tới**. Sắp viết bản thứ n của cơ chế đã có ở
@@ -151,7 +157,7 @@ sau `Destroy`, dữ liệu ngoài) → **guard đầy đủ** · ca hợp lệ c
 nào bắt nó → guard.
 
 **Dữ liệu ngoài kiểm một lần ở cửa vào** bằng hàm thuần kiểm luật nghiệp vụ, sai thì từ chối cả cấu hình kèm `LogError`;
-sau cửa consumer tin hợp đồng. View runtime không có nhánh vẽ lỗi — chỉ được **xoá vết cũ** của ô dùng lại. **Cấu hình
+sau cửa consumer tin hợp đồng. Hàm kiểm đặt ở framework thì kiểm gì: mục Module. View runtime không có nhánh vẽ lỗi — chỉ được **xoá vết cũ** của ô dùng lại. **Cấu hình
 ngoài đổi gameplay đứng yên suốt phiên:** nhận ở **một** mốc boot có hạn giờ, bản về muộn để phiên sau (để người chơi mới
 vào đúng nhóm A/B ngay phiên đầu); mốc "đã xong" bắn ở mọi đường ra — lỗi, quá hạn, mất mạng.
 
