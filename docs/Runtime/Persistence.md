@@ -1,200 +1,111 @@
 # Persistence System
 
-Mỗi thứ lưu được là một `PersistenceDataEntry<T>`: một khoá, một giá trị mặc định, giá trị đang chạy và
-**payload mà kho đang giữ**. Mọi entry là field của **một** `ScriptableObject` dẫn xuất
-`BasePersistenceDataCollection`; collection lo quét field, kiểm khoá, load lúc khởi động, autosave theo
-chu kỳ, và là **chỗ duy nhất** gọi `PlayerPrefs.SetString` / `PlayerPrefs.Save()`.
+Code: `Runtime/Abstractions/Foundations/Persistence/` · `Runtime/Implementations/Foundations/Persistence/` ·
+`Runtime/Implementations/Composites/SaveBootstep*.cs`
 
-SDK giữ máy móc, dự án khai entry **trong assembly của chính nó** — nên không model save nào bị biên
-dịch vào `com.horcrux.runtime`, và không cần `.asmref`.
+Mỗi thứ lưu được là một `PersistenceDataEntry<T>`: khoá · giá trị mặc định · giá trị đang chạy · **payload kho đang
+giữ**. Mọi entry là field của **một** `ScriptableObject` dẫn xuất `BasePersistenceDataCollection`. Collection quét
+field, load lúc boot, autosave, và là **chỗ duy nhất** gọi `PlayerPrefs.SetString` / `PlayerPrefs.Save()`.
 
-**Bảo đảm của hệ: mất tối đa MỘT chu kỳ autosave.** Swipe-kill trên Android và việc hệ thu hồi RAM đều
-**không** chạy `OnApplicationQuit`; tín hiệu tin được cuối cùng là lúc app vào background. Nên autosave
-chu kỳ là lưới đỡ chính, flush lúc vào background là chốt sổ, flush lúc quit là thêm được thì tốt. Đây
-là toàn bộ hợp đồng — hệ không hứa "không mất gì".
+**Bảo đảm: mất tối đa MỘT chu kỳ autosave.** Swipe-kill trên Android và hệ thu hồi RAM **không** chạy
+`OnApplicationQuit`; tín hiệu tin được cuối cùng là lúc vào background. Autosave là lưới chính, flush lúc vào
+background là chốt sổ, flush lúc quit là thêm được thì tốt. Hệ không hứa "không mất gì".
 
 ## Hai phía
 
-Phụ thuộc một chiều: dự án tham chiếu SDK, SDK không biết gì về dự án.
+Phụ thuộc một chiều: dự án → SDK. Model save của dự án không bị biên dịch vào `com.horcrux.runtime`, không cần `.asmref`.
 
 | SDK giữ | Dự án khai |
 |---|---|
-| `IPersistenceDataEntry` · `IPersistenceDataCollection` — interface thuần, **không** derive `IService<>` | `IGamePersistenceDataCollection : IPersistenceDataCollection, IService<chính mình>` — một property có kiểu cho mỗi entry |
-| `PersistenceDataEntry<T>` · `BasePersistenceDataCollection` · `MarkedPersistence` | `GamePersistenceDataCollection : BasePersistenceDataCollection` — một field `[MarkedPersistence]` cho mỗi entry, cùng model save là class dữ liệu thuần |
-| `SaveDriver` · `SaveBootstep` — hai host | `[Service]`, `[CreateAssetMenu]`, đường dẫn Resources, và **chọn host nào** — bốn thứ SDK không khai hộ được, vì chỉ dự án biết object nào sống suốt phiên |
+| `IPersistenceDataEntry` · `IPersistenceDataCollection` — interface thuần, **không** derive `IService<>` | `IMySaveCollection : IPersistenceDataCollection, IService<IMySaveCollection>` — một property cho mỗi entry |
+| `PersistenceDataEntry<T>` · `BasePersistenceDataCollection` (abstract) · `MarkedPersistence` | `MySaveCollection : BasePersistenceDataCollection` — một field `[MarkedPersistence]` cho mỗi entry, model save là class dữ liệu thuần |
+| hai host `SaveDriver` · `SaveBootstep` (+ `SaveBootstepInitializer`) | `[Service]` · `[CreateAssetMenu]` · đường dẫn Resources · **chọn đúng một host** |
 
-## Ba nhịp
+## Luồng dữ liệu
 
 ```
-authoring   ─► key · defaultValue điền trong Inspector của asset
+authoring ─► Inspector của asset: key · defaultValue
 
-boot        ─► Initialize()   một lần, do host gọi   (kịch bản 1 và 2)
-                 scan field ─► Setup ─► LoadAllEntries ─► seed nếu thiếu khoá
+boot      ─► host gọi Initialize() MỘT lần
+              ScanEntries ─► Setup từng entry ─► ResetDerivedState ─► LoadAllEntries ─► OnEntriesLoaded
+              ─► IsInitialized = true ─► có entry Seeded? LogWarning + FlushInternal(null)
 
-đọc/ghi     ─► entry.Value = x           ─► OnValueChanged           (không chạm đĩa)
-               entry.Value.field = x     ─► KHÔNG có event           (không chạm đĩa)
-               đọc: entry.Value, hoặc implicit operator T
+chơi      ─► entry.Value = x        ─► OnValueChanged(old, x)      không chạm đĩa
+              entry.Value.field = x  ─► KHÔNG event                 không chạm đĩa, flush kế vẫn thấy
+              đọc: entry.Value hoặc implicit operator T (entry null → default)
 
-flush       ─► autosave mỗi autosaveIntervalSeconds · cạnh vào background · quit · FlushNow
-                 ① MỌI entry: WritePayload() ─► khác StoredPayload thì PlayerPrefs.SetString
-                                                                            (vẫn ở RAM)
-                 ② PlayerPrefs.Save() MỘT lần ─► đĩa ─► rồi mới CacheStoredPayload()
+flush     ─► autosave mỗi autosaveIntervalSeconds · vào background · quit · FlushNow()
+              ① mọi entry: payload = WritePayload() ─► khác StoredPayload? SetString   (RAM của PlayerPrefs)
+              ② có entry vừa ghi ─► PlayerPrefs.Save() MỘT lần ─► rồi mới CacheStoredPayload
 ```
 
-Serialize thuộc nhịp **flush**, không thuộc nhịp đổi giá trị — và mỗi lượt flush serialize **mọi** entry,
-vì đó là cách duy nhất nhìn thấy một model bị sửa field tại chỗ. Reflection quét field có cache một lần
-mỗi phiên. Không có gì chạy theo frame.
+**Giá.** Serialize thuộc nhịp flush, không thuộc nhịp đổi giá trị; mỗi flush serialize **mọi** entry vì đó là cách
+duy nhất thấy model bị sửa tại chỗ — serialize **là** lần duyệt object, và sản phẩm của nó chính là chuỗi cần ghi. So
+tham chiếu rẻ hơn nhưng chỉ bắt được đường qua setter. Đo trên desktop CoreCLR với một model save cỡ vừa: 4–13 µs và
+2–16 KB rác cho một lượt serialize + so chuỗi; `Save()` cùng tick đắt hơn vài bậc. Nhịp 10 s và lúc vào background,
+không phải hot path. Reflection quét field cache một lần mỗi phiên. Không gì chạy theo frame.
 
-**Vì sao không rẻ hơn được.** Biết một object có khác lúc trước không thì phải duyệt hết object đó.
-Serialize **là** lần duyệt ấy, và sản phẩm của nó chính là chuỗi cần ghi — làm thêm một phép so rẻ hơn
-nghĩa là duyệt hai lần. So **tham chiếu** thì rẻ hơn thật, nhưng chỉ bắt được đường đi qua setter, đúng
-cái ca không cần bắt.
+## Load một entry — ba kết cục
 
-**Giá đo được** (desktop CoreCLR, model `CollectionProgressData` thật): 4–13 µs và 2–16 KB rác cho một
-lượt serialize + so chuỗi. `PlayerPrefs.Save()` ở cùng tick ghi cả file đồng bộ, đắt hơn vài bậc. Nhịp
-là 10 giây một lần và lúc vào background — không phải hot path.
-
-## Bảy kịch bản
-
-Bảy đường mà giá trị thật sự đi qua, theo thứ tự thời gian. Mọi thứ ngoài bảy cái này nằm ở "Ca biên".
-
-### 1. Cài lần đầu — không có gì trên đĩa
-
-1. Host gọi `Initialize()`. `ScanEntries` gom mọi field `[MarkedPersistence]`; `Setup` từng entry:
-   `value = CloneDefault()`, `storedPayload` về null, listener về null.
-2. `LoadAllEntries` hỏi `PlayerPrefs.HasKey("persistence_" + key)` → **không khoá nào có** → mỗi entry
-   đếm là `Seeded`, `storedPayload` ở lại null.
-3. `IsInitialized = true`; vì `seededCount > 0` nên một dòng `LogWarning` *"N/M entries had no stored
-   key"* rồi `FlushInternal(null)`: payload của mọi entry khác `null` → `SetString` → **một** `Save()`
-   → `CacheStoredPayload`.
-
-Mọi khoá có mặt trên đĩa với đúng `Default Value` **trước khi** người chơi chạm vào gì. Giá là một
-`PlayerPrefs.Save()` thêm ở boot, chỉ ở lần cài đầu và ở bản update có entry mới.
-
-### 2. Mở lại app — save đã có
-
-1. `Initialize()` chạy y hệt tới `LoadAllEntries`.
-2. Mỗi entry: `HasKey` đúng, payload không rỗng → `ReadPayload` → `JsonConvert.Deserialize` → gán
-   `value`, **`storedPayload` = đúng chuỗi vừa đọc**, phát `OnValueChanged`. Kết cục `Loaded`.
-3. `seededCount == 0` → `Initialize` thoát, **không** flush. Đĩa không bị chạm.
-
-Lượt `OnValueChanged` ở bước 2 chưa có người nghe: `Setup` vừa xoá sạch listener, và mọi subscribe của
-game đứng **sau** `Initialize()`.
-
-### 3. Người chơi ăn coin — đổi giá trị rồi autosave
-
-1. `…Service.Coin.Value = coin + 10` → setter gán `value` và phát `OnValueChanged` → view cập nhật
-   ngay. **Không** serialize, **không** chạm `PlayerPrefs`.
-2. Vòng `RunAutosaveAsync` chờ `UniTask.Delay(autosaveIntervalSeconds, DelayType.Realtime)` — hết nhịp
-   thì `FlushInternal(null)`. `Realtime` là chủ ý: ngồi ở popup pause với `timeScale = 0` vẫn được lưu.
-3. **Mọi** entry đi qua `WritePayload()`; chỉ entry có payload khác `StoredPayload` mới `SetString`.
-4. Có ít nhất một entry vừa ghi → `Save()` một lần → rồi mới `CacheStoredPayload()` từng entry vừa ghi.
-
-Chốt sổ sớm (mua IAP xong) thì `Coin.FlushNow()` — chỉ tiết kiệm phần serialize các entry khác, vì
-`Save()` luôn ghi cả kho.
-
-### 4. Mutate model tại chỗ — được lưu, nhưng không phát event
-
-```csharp
-PlayerProgress p = IGamePersistenceDataCollection.Service.Progress.Value;
-p.coins += 5;                       // không qua setter — nhưng flush kế vẫn ghi
+```
+HasKey("persistence_" + key)?
+ ├─ không ─────────────────────────────► Seeded   storedPayload = null → flush cuối Initialize ghi mặc định
+ └─ có ─► payload rỗng? ─ có ──────────► Seeded
+                        └ không ─► ReadPayload
+                                    ├─ ok ─────► Loaded   value = payload (chuỗi "null" → CloneDefault)
+                                    │                     storedPayload = payload · OnValueChanged(mặc định, value)
+                                    └─ ném ────► Failed   value = mặc định · CacheStoredPayload(WritePayload())
+                                                          LogError + LogException · đĩa KHÔNG bị chạm
 ```
 
-Flush serialize mọi entry rồi so chuỗi với `StoredPayload`, nên thay đổi kiểu này xuống đĩa như mọi
-thay đổi khác. Không có dòng nào phải nhớ gọi, và `FlushNow()` cũng ghi bình thường.
+`Failed` không seed vì ghi đè payload hỏng là xoá bản sao duy nhất của bằng chứng. Coi mặc định là "đã lưu" nên flush
+bỏ qua; người chơi đổi gì thì payload khác đi và lượt flush kế ghi đè — dữ liệu sống thắng bằng chứng chết.
 
-Cái **không** xảy ra là `OnValueChanged`: event chỉ bắn từ setter `Value` và từ `ReadPayload`. View nào
-sống bằng event phải được cập nhật bằng đường khác, hoặc ghi qua setter.
+## Kịch bản
 
-### 5. Vào background rồi swipe-kill
-
-1. Người chơi vuốt ra home. Unity bắn `OnApplicationPause(true)` **và** `OnApplicationFocus(false)` —
-   cả hai, trên cả Android lẫn iOS.
-2. Host gộp hai tín hiệu thành một cạnh: `SaveDriver` bằng cờ `inBackground` của nó, `SaveBootstep` bằng
-   cờ `isInBackground` của `BootstrapService`. Cái tới trước lật cờ, cái thứ hai là no-op.
-3. Cạnh vào background → `FlushAll()`. Đây là **chốt sổ**: mọi thứ từ lần autosave gần nhất tới giờ.
-4. Swipe-kill trong app switcher. `OnApplicationQuit` **không** chạy — nhưng bước 3 đã lưu rồi.
-
-Tiến trình chết **giữa lúc đang chơi** (hệ thu hồi RAM, crash native) thì không cạnh nào bắn, và thứ mất
-là phần thay đổi kể từ lần autosave gần nhất. Đó là toàn bộ khoảng hở mà bảo đảm của hệ thừa nhận.
-
-### 6. Bản update thêm một entry mới
-
-1. `PlayerPrefs` giữ nguyên các khoá cũ.
-2. `LoadAllEntries`: entry cũ `Loaded` (giữ tiến độ), entry mới `Seeded`.
-3. `LogWarning` *"1/M entries had no stored key"* → `FlushInternal(null)` chỉ ghi entry mới — entry cũ đã
-   nhận `storedPayload` ngay trong `ReadPayload`, nên payload của chúng khớp và flush bỏ qua.
-
-Dòng `LogWarning` này ở phiên thứ hai trở đi là **tín hiệu bất thường**: một khoá vừa biến mất khỏi đĩa,
-hoặc `Key` vừa bị đổi trong Inspector — xem bất biến "Khoá là wire format".
-
-### 7. Payload hỏng, hoặc ghi payload lỗi
-
-Hai chiều hỏng, xử lý khác nhau:
-
-| Chiều | Chuyện gì xảy ra |
-|---|---|
-| **Đọc hỏng** — `ReadPayload` ném (build cũ ghi hình dạng khác, chỉnh tay khi debug, persist đứt nửa chừng) | `LogError` nêu đúng khoá + `LogException`, kết cục `Failed`: entry giữ mặc định, và collection gọi `CacheStoredPayload(WritePayload())` — **coi mặc định là thứ kho đang giữ**, nên flush kế so thấy khớp và bỏ qua. Đĩa **không** bị chạm: ghi đè lên payload hỏng là xoá bản sao duy nhất của thứ duy nhất còn đọc ra được nguyên nhân. Người chơi đổi giá trị thì payload khác đi và lượt flush kế ghi đè — dữ liệu sống thắng bằng chứng chết. Entry khác trong cùng lượt không bị kéo theo |
-| **Ghi hỏng** — `WritePayload` ném (thường là `T` chạm kiểu `UnityEngine`, xem "Hợp đồng payload") | `LogError` nêu đúng khoá, `StoredPayload` **không đổi** nên lượt flush sau thử lại, các entry khác trong cùng lượt vẫn `SetString` và vẫn `Save()` bình thường |
-
-Entry ghi hỏng sẽ kêu lại mỗi chu kỳ autosave cho tới khi sửa kiểu — cố ý, vì im lặng ở đây nghĩa là
-một entry không bao giờ lưu mà không ai biết.
+| # | Kịch bản | Diễn biến | Kết quả |
+|---|---|---|---|
+| 1 | Cài lần đầu | mọi entry `Seeded` → `LogWarning` *"N/M entries had no stored key"* → flush | mọi khoá có trên đĩa với `Default Value` trước khi người chơi chạm gì. Giá: một `Save()` ở boot |
+| 2 | Mở lại app | mọi entry `Loaded` → `seededCount == 0` → không flush | đĩa không bị chạm. `OnValueChanged` của lượt load chưa có người nghe (Setup vừa xoá listener) |
+| 3 | Đổi giá trị rồi autosave | setter phát event → view cập nhật; `UniTask.Delay(…, DelayType.Realtime)` hết nhịp → flush | `Realtime`: ngồi ở popup pause `timeScale = 0` vẫn lưu. Chốt sổ sớm (mua IAP) thì `FlushNow()` |
+| 4 | Sửa model tại chỗ | `entry.Value.coins += 5` — không qua setter | **được lưu** ở flush kế (so payload thấy), **không** phát event. View sống bằng event thì ghi qua setter |
+| 5 | Vào background rồi swipe-kill | Unity bắn cả `OnApplicationPause(true)` lẫn `OnApplicationFocus(false)`; host gộp thành một cạnh → `FlushAll()` | quit không chạy nhưng đã chốt sổ. Chết **giữa lúc chơi** (thu hồi RAM, crash native) thì mất phần từ autosave gần nhất — toàn bộ khoảng hở hệ thừa nhận |
+| 6 | Update thêm entry | entry cũ `Loaded`, entry mới `Seeded` → `LogWarning "1/M"` → flush chỉ ghi entry mới | từ phiên thứ hai, dòng warning này là **bất thường**: khoá vừa mất khỏi đĩa hoặc `Key` vừa bị đổi |
+| 7a | Đọc hỏng | kết cục `Failed` (sơ đồ trên) | entry khác trong cùng lượt không bị kéo theo |
+| 7b | Ghi hỏng — `WritePayload` ném | `LogError` nêu khoá + `LogException`, `StoredPayload` không đổi; entry khác vẫn `SetString` và `Save()` | kêu lại **mỗi chu kỳ** tới khi sửa kiểu — im lặng là một entry không bao giờ lưu |
 
 ## Ca biên
 
 | Ca | Kết quả |
 |---|---|
-| `FlushAll()` **trước** `Initialize()` | `entries` còn rỗng → không ghi gì. Quên `Initialize()` **không** làm mặc định đè lên save thật; cái mất là dữ liệu chưa được load và game chạy trên default trong RAM |
-| `FlushNow()` trên entry chưa qua `Setup` (quên `[MarkedPersistence]`, hoặc gọi trước `Initialize()`) | `_owner` null → `LogError` *"No collection owns …"* rồi thoát. Đọc/ghi `Value` trên entry đó vẫn chạy im lặng trong RAM |
-| Quit hoặc vào background giữa lúc cold boot chưa xong, với `SaveBootstep` | `BootstrapService` chỉ fan-out `OnAppQuit` và `OnGoToBackground` khi `IsInitialized` của **`BootstrapService`** đã bật → **không flush**, và ca quit cũng không reset cờ. Chấp nhận có chủ đích: ca đó chưa có dữ liệu đáng mất. `SaveDriver` không có cổng này |
-| `ReadPayload` nhận đúng chuỗi `"null"` | `JsonConvert` trả null → rơi về `CloneDefault()`, kết cục `Loaded`, và `storedPayload` = `"null"` — đúng thứ kho đang giữ. Payload của mặc định khác `"null"`, nên **flush kế ghi mặc định xuống đĩa** và kho khớp lại với RAM |
-| Entry bị `ScanEntries` loại (khoá rỗng, khoá trùng, field sai kiểu) | mỗi ca một `LogError` nêu tên field. `Initialize()` **bỏ qua** số bị loại mà `ScanEntries` trả về — chỉ nút `ValidateKeys` đọc con số đó và tổng kết |
-| Sửa `PlayerPrefs` bằng tay lúc đang Play | không có đường reload giữa phiên: `LoadAllEntries` chỉ chạy trong `Initialize()`. Phải Play lại. Xem/sửa/xoá bằng tool `Assets/Horcrux/Editor/PlayerPrefsEditor` |
+| `FlushAll()` trước `Initialize()` | `entries` rỗng → không ghi gì; mặc định không đè save thật, nhưng game chạy trên default trong RAM |
+| `FlushNow()` trên entry chưa qua `Setup` (thiếu `[MarkedPersistence]`, hoặc trước `Initialize()`) | `LogError` *"No collection owns …"*. Đọc/ghi `Value` vẫn chạy im lặng trong RAM |
+| `Flush(entry)` với entry null / không thuộc collection | `LogError` rồi thoát |
+| Quit hoặc vào background khi `BootstrapService` chưa init xong (`SaveBootstep`) | service không fan-out → không flush, không reset cờ. Chấp nhận: chưa có dữ liệu đáng mất. `SaveDriver` không có cổng này |
+| Entry bị `ScanEntries` loại (khoá rỗng, khoá trùng — giữ field đầu, field sai kiểu) | mỗi ca một `LogError` nêu tên field; `Initialize()` bỏ qua con số loại, chỉ `ValidateKeys` tổng kết |
+| Sửa `PlayerPrefs` bằng tay lúc Play | không reload giữa phiên; Play lại. Xem/sửa bằng tool `Editor/PlayerPrefsEditor` |
+| Listener ném exception | mỗi delegate bọc `try/catch` riêng → `LogError` nêu khoá, listener khác vẫn chạy |
 
-## Ba giới hạn của PlayerPrefs
+## Hợp đồng payload
 
-`PlayerPrefs` là **một file** do nền tảng ghi hộ: Android `SharedPreferences` (XML trong
-`/data/data/<package>/shared_prefs/`), iOS `NSUserDefaults`, Editor Windows là registry
-`HKCU\Software\<Company>\<Product>`. Cả file được parse **một lần** rồi giữ trong RAM.
+`WritePayload` / `ReadPayload` / `CloneDefault` dùng `JsonConvert` **không settings**. Hai luật, hỏng hai kiểu:
 
-| Giới hạn | Nghĩa | Nhận ra khi |
+| Luật | Vi phạm thì | Kiểm |
 |---|---|---|
-| Cả kho là **một khối** | một lần hỏng là mất **mọi** khoá của game, kể cả của hệ không liên quan | ràng buộc thường trực |
-| Mỗi `Save()` ghi lại **toàn bộ** kho | càng nhiều dữ liệu thì mỗi chu kỳ càng đắt. Cũng là lý do `Flush(entry)` **không** rẻ hơn `FlushAll()` ở phần chạm đĩa | tổng payload vượt **vài chục KB** |
-| Cả kho nằm trong RAM suốt phiên | phí bộ nhớ thường trực cho thứ chỉ đọc một lần lúc boot | cùng ngưỡng |
+| **1 · `T` không chạm kiểu `UnityEngine`** — kể cả nằm sâu trong field, property, phần tử | flush **ném** | nút `ValidateKeys` (theo kiểu, bắt cả container rỗng) |
+| **2 · cùng dữ liệu → cùng chuỗi** | mọi flush thấy "đổi" → `Save()` cả kho mỗi chu kỳ, trên Android là `commit()` đồng bộ main thread, **không một dòng log** | developer tự đảm bảo; chưa có nút |
 
-Chạm một trong ba thì đổi sang kho file trên đĩa. Việc đó sửa **nội bộ** `BasePersistenceDataCollection`
-— entry chỉ nói bằng chuỗi payload, nên không đụng entry và không đụng code game.
+**Luật 1.** Newtonsoft đọc cả public field lẫn **property có getter**, nên chạm property tính toán của struct toán Unity:
 
-`PlayerPrefs` cũng là **không gian khoá phẳng, dùng chung** với Firebase, ads, analytics và cache của
-`RemoteConfig<T>` (ghi bằng key thô, không tiền tố). Tiền tố `"persistence_"` là thứ duy nhất chặn một
-khoá SDK trùng tên đè lên tiến độ người chơi.
-
-## Hợp đồng payload — dữ liệu thuần, và serialize ổn định
-
-Hai luật, hỏng theo hai kiểu khác hẳn nhau: luật thứ nhất làm flush **ném**, luật thứ hai làm flush
-**ghi cả kho mỗi chu kỳ mà không một dòng log**.
-
-### Luật 1 — `T` không chứa kiểu nào của `UnityEngine`
-
-`WritePayload` / `ReadPayload` / `CloneDefault` dùng `JsonConvert` **không settings**. Newtonsoft đọc cả
-public **field** lẫn public **property có getter** — nên nó chạm tới property tính toán của struct toán
-Unity, thứ mà serializer của Unity không bao giờ chạm. `Vector3.normalized` trả về `Vector3`, và
-`normalized.normalized` bằng chính nó; Newtonsoft phát hiện vòng lặp bằng `Equals` trên giá trị boxed
-nên với struct thì **bắt được** — `ReferenceLoopHandling` mặc định là `Error`, và nó ném.
-
-Đo thật (Newtonsoft của project + `UnityEngine.CoreModule`, CoreCLR 6.0.21):
-
-| `T` | `JsonConvert.SerializeObject` |
+| `T` | `JsonConvert.SerializeObject` (đo CoreCLR 6.0.21) |
 |---|---|
 | `Vector3`, `Vector2` | `JsonSerializationException: Self referencing loop detected for property 'normalized'` |
-| `Quaternion`, `Color` | cùng cái bẫy property tính toán (`normalized`, `linear`) — chưa đo được ngoài Unity vì chúng gọi native |
-| `Vector2Int` | **không ném**, nhưng payload mang rác: `{"x":3,"y":4,"magnitude":5.0,"sqrMagnitude":25}` |
+| `Quaternion`, `Color` | cùng bẫy (`normalized`, `linear`) — chưa đo ngoài Unity vì gọi native |
+| `Vector2Int` | không ném, payload mang rác: `{"x":3,"y":4,"magnitude":5.0,"sqrMagnitude":25}` |
 | `int`, `bool`, `string`, class/struct tự khai | sạch |
 
-Cấm cả struct toán (`Vector2/3/4`, `Vector2Int`, `Quaternion`, `Color`, `Rect`, `Bounds`,
-`Matrix4x4`…) lẫn `Object` của engine (`GameObject`, `Transform`, `AnimationCurve`…) — kể cả khi nó nằm
-sâu trong một field hoặc property của model. Cần lưu vị trí thì khai struct của mình:
+Cấm struct toán (`Vector2/3/4`, `Vector2Int`, `Quaternion`, `Color`, `Rect`, `Bounds`, `Matrix4x4`…) và `Object` engine
+(`GameObject`, `Transform`, `AnimationCurve`…). Cần vị trí thì khai struct riêng — hình dạng save là hợp đồng của dự án:
 
 ```csharp
 [Serializable]
@@ -204,106 +115,63 @@ public struct SavedPosition
 }
 ```
 
-Đắt hơn một dòng, nhưng đúng hai chuyện: payload không mang thứ suy diễn lại được, và **hình dạng save
-là hợp đồng của dự án**, không phải hình dạng một kiểu của engine.
+Lộ lúc nào: kiểu engine nằm trong `Default Value` → `CloneDefault()` ném ở `Initialize()`, đỏ mọi lần Play. Nằm trong
+container **rỗng lúc mặc định** (`List<Vector3>`) → chỉ ném ở flush đầu sau khi runtime nhồi dữ liệu (kịch bản 7b) — ca
+duy nhất lọt xuống build.
 
-**Lỗi này lộ ra ở đâu.** Struct nằm ngay trong `Default Value` thì `CloneDefault()` ném ở `Initialize()`
-— **mọi** lần Play, thấy đỏ ngay trong Editor. Nhưng struct nằm trong một container **rỗng lúc mặc
-định** (`List<Vector3>` chưa có phần tử) thì `Initialize()` qua sạch, và chỉ ném ở lần flush đầu sau khi
-runtime nhồi dữ liệu vào — nhánh "ghi hỏng" của kịch bản 7. Đó là ca duy nhất lọt được xuống build.
+**Luật 2 — kiểu dễ vỡ:**
 
-**Kiểm trước khi build:** nút `ValidateKeys` duyệt `T` theo **kiểu**, không theo giá trị, nên bắt được cả
-`List<Vector3>` rỗng — xem "Nút Editor".
-
-### Luật 2 — cùng dữ liệu phải ra cùng chuỗi
-
-Flush so `WritePayload()` với `StoredPayload` để biết có gì đổi. Một `T` serialize không ổn định làm
-**mọi** lượt flush thấy "đổi", nên `PlayerPrefs.Save()` ghi cả kho mỗi `autosaveIntervalSeconds` — trên
-Android là `SharedPreferences.commit()` đồng bộ trên main thread, suốt phiên chơi, **không một dòng log**.
-Đây là ca hỏng tốn nhất mà không có gì chỉ ra.
-
-| Kiểu dễ vỡ | Vì sao | Thay bằng |
+| Kiểu | Vì sao | Thay bằng |
 |---|---|---|
-| `HashSet<T>`, `Dictionary<K,V>` | không hứa thứ tự duyệt; thứ tự đổi là chuỗi đổi | `List<T>` đã sắp, sắp trước khi ghi |
-| `DateTime` | `Kind` khác nhau ra chuỗi khác nhau cho cùng một mốc | `long` ticks hoặc epoch seconds UTC |
-| Property trả giá trị mới mỗi lần đọc | Newtonsoft ghi cả property có getter | `[JsonIgnore]`, hoặc bỏ khỏi model save |
+| `HashSet<T>`, `Dictionary<K,V>` | không hứa thứ tự duyệt | `List<T>` sắp trước khi ghi |
+| `DateTime` | `Kind` khác → chuỗi khác cho cùng mốc | `long` ticks hoặc epoch seconds UTC |
+| property trả giá trị mới mỗi lần đọc | Newtonsoft ghi mọi property có getter | `[JsonIgnore]` hoặc bỏ khỏi model |
 
-Developer tự đảm bảo — hôm nay **không có nút nào kiểm** luật này; xem "Còn để mở".
+## Trước khi chạy
 
-## Cách dùng
+Hệ không tự setup: không tạo GameObject, không tra asset, không guard ô phải điền. Dựng từ 0 bằng sáu bước theo thứ tự.
 
-Hệ này **không tự setup hộ**: không tự tạo GameObject, không tự tra tìm asset, không guard cho ô người
-dựng phải điền. Bù lại, dựng lại từ 0 chỉ cần đúng sáu bước dưới, theo thứ tự. Tên dưới đây là tên thật
-của dự án này; dự án khác đổi tên tương ứng, hình dạng giữ nguyên.
-
-### 1. Interface của dự án (một lần cho cả dự án)
+**1 · Interface dự án** — assembly của dự án, không dưới `Horcrux.*`:
 
 ```csharp
-// IGamePersistenceDataCollection.cs — assembly Runtime.Game, KHÔNG nằm dưới Horcrux.*
-namespace Runtime.Game.PersistenceDataCollection
+public partial interface IMySaveCollection
+    : IPersistenceDataCollection, IService<IMySaveCollection>
 {
-    public partial interface IGamePersistenceDataCollection
-        : IPersistenceDataCollection, IService<IGamePersistenceDataCollection>
-    {
-        PersistenceDataEntry<int> Coin { get; }
-        PersistenceDataEntry<PlayerProgress> Progress { get; }
-    }
+    PersistenceDataEntry<int> Coin { get; }
+    PersistenceDataEntry<PlayerProgress> Progress { get; }
 }
 ```
 
-`IPersistenceDataCollection` **không** derive `IService<>` (xem bảng Bẫy) — chỉ interface của dự án
-derive `IService<chính mình>`.
-
-### 2. Collection của dự án (một lần cho cả dự án)
+**2 · Collection dự án:**
 
 ```csharp
-// GamePersistenceDataCollection.cs
-[Service(typeof(IGamePersistenceDataCollection), ResourcePath = RESOURCE_PATH)]
-[Service(typeof(BasePersistenceDataCollection),  ResourcePath = RESOURCE_PATH)]
+[Service(typeof(IMySaveCollection), ResourcePath = RESOURCE_PATH)]
+[Service(typeof(BasePersistenceDataCollection), ResourcePath = RESOURCE_PATH)]
 [CreateAssetMenu(fileName = "PersistenceDataCollection", menuName = "Configs/PersistenceDataCollection")]
-public sealed partial class GamePersistenceDataCollection
-    : BasePersistenceDataCollection, IGamePersistenceDataCollection
+public sealed partial class MySaveCollection : BasePersistenceDataCollection, IMySaveCollection
 {
     // Must match where the asset sits under a Resources folder, or the service never resolves.
     private const string RESOURCE_PATH = "Config/PersistenceDataCollection";
 }
 ```
 
-Hai dòng `[Service]`, hai người đọc khác nhau — cùng `ResourcePath` nên `Resources.Load` trả **một**
-instance cho cả hai:
+Hai dòng `[Service]` cùng `ResourcePath` nên `Resources.Load` trả **một** instance: dòng interface cho game code
+(`IMySaveCollection.Service`), dòng base cho `SaveDriver` và `TimeService`. `IPersistenceDataCollection` **không** đăng
+ký — không host nào nhận nó, đăng ký là bày một đường lấy collection không ai dùng. Rồi **Create → Configs →
+PersistenceDataCollection**, đặt asset dưới `Resources/` sao cho đường sau `Resources/` khớp `RESOURCE_PATH`. `partial`
+để chia entry theo nhóm ra nhiều file — mỗi nhóm một cặp class + interface, cùng namespace, **cùng assembly**.
 
-| Dòng | Ai đọc nó |
-|---|---|
-| `IGamePersistenceDataCollection` | game code, qua `IGamePersistenceDataCollection.Service` |
-| `BasePersistenceDataCollection` | `SaveDriver` — `MonoBehaviour<T>` tự nhận service vào `Init` (bước 4) · `TimeService`, để với tới `LastSeenUtcSeconds` |
-
-**`IPersistenceDataCollection` không đăng ký làm service.** Cả hai host đều nhận
-`BasePersistenceDataCollection`, nên một dòng `[Service]` cho interface là đăng ký một kiểu **không ai
-nhận** — người đọc sau thấy nó rồi tưởng còn một đường lấy collection nữa, và phải mở cả hai host ra mới
-biết là không. Kiểu không có người nhận thì không đăng ký.
-
-`partial` để chia entry theo nhóm ra nhiều file (`GamePersistenceDataCollection.Economy.cs`,
-`.Progress.cs`…) — mỗi nhóm một cặp file class + interface, cùng namespace, **cùng assembly**.
-
-Rồi `Create` → menu vừa khai → đặt asset vào
-`Assets/_TheGame/Runtime/Game/Resources/Config/PersistenceDataCollection.asset`. Đường dẫn **sau**
-`Resources/` phải khớp `RESOURCE_PATH`, sai là `Service` ném exception ở lần chạm đầu tiên.
-
-### 3. Thêm một entry — hai chỗ, luôn đi cùng nhau
+**3 · Thêm entry — hai chỗ luôn đi cùng nhau:**
 
 ```csharp
-// interface: hợp đồng mà call site đọc
-public partial interface IGamePersistenceDataCollection
+public partial interface IMySaveCollection
 {
     PersistenceDataEntry<int> Coin { get; }
 }
-```
 
-```csharp
-// class: chỗ Unity serialize và Inspector vẽ
-public partial class GamePersistenceDataCollection
+public partial class MySaveCollection
 {
-    [Splitter("Economy")]                     // tùy chọn — kẻ tiêu đề nhóm trong Inspector
+    [Splitter("Economy")]
     [MarkedPersistence]
     [SerializeField] private PersistenceDataEntry<int> coin;
 
@@ -311,333 +179,250 @@ public partial class GamePersistenceDataCollection
 }
 ```
 
-Field để `private`: `public` là cho mọi caller gán được cả tham chiếu entry, việc chỉ authoring được
-làm — và scan chỉ quét `NonPublic`, thêm `Public` là mở cửa im lặng cho hình dạng convention cấm.
+Field `private`: scan chỉ quét `NonPublic`, và `public` cho mọi caller gán đè tham chiếu entry. Điền `Key` (chuỗi tự
+đặt, không suy từ tên field) và `Default Value` trong Inspector. Feature cần nhiều entry riêng thì tách **interface**
+(`IEconomySave`, không derive `IService<>`; tra riêng thì thêm `[Service(typeof(IEconomySave), ResourcePath = …)]`),
+không tách asset.
 
-Rồi điền trong Inspector: `Key` (chuỗi tự đặt, **không** suy từ tên field) và `Default Value`.
+**4 · Đúng MỘT host, cấp asset cho nó** — chọn ở mục "Hai host", kéo tay vào scene:
 
-Một feature cần đọc nhiều entry riêng thì tách **interface**, không tách asset: khai
-`IEconomySave { PersistenceDataEntry<int> Coin { get; } }` rồi cho `IGamePersistenceDataCollection`
-derive thêm nó. ⚠️ `IEconomySave` **không** derive `IService<>`; muốn tra riêng thì thêm một dòng
-`[Service(typeof(IEconomySave), ResourcePath = RESOURCE_PATH)]` và đọc qua `IService<IEconomySave>.Service`.
-
-### 4. Chọn đúng MỘT host và cấp asset cho nó
-
-Xem bảng "Hai host" dưới để chọn. Kéo tay component host vào scene, rồi cấp
-`BasePersistenceDataCollection` cho nó bằng **một** trong hai đường:
-
-| Đường | Làm gì | Dùng được cho |
+| Đường cấp | Làm gì | Dùng cho |
 |---|---|---|
-| **Service** | không làm gì thêm — collection đã khai `[Service(typeof(BasePersistenceDataCollection), …)]` ở bước 2, InitArgs tự đưa vào `Init` | chỉ `SaveDriver`, vì nó là `MonoBehaviour<T>`. **Đây là đường dự án này đang chạy** |
-| **Initializer** | Inspector của host → mục **Init** → **Add Initializer** (hoặc chuột phải header component → **Generate Initializer**) → kéo asset vào ô argument | cả hai host. **Bắt buộc với `SaveBootstep`**: nó kế thừa `ABootStep` nên là MonoBehaviour thường, InitArgs chỉ tự inject `IInitializable<T>` cho thứ bản thân là service |
+| Service | không làm gì — dòng `[Service(typeof(BasePersistenceDataCollection))]` ở bước 2 đủ | chỉ `SaveDriver` (`MonoBehaviour<T>`) |
+| Initializer | Inspector host → mục **Init** → kéo asset vào ô **Save Collection** (`SaveBootstepInitializer` có sẵn) | cả hai; **bắt buộc** với `SaveBootstep` vì nó không phải service |
 
-Host là chỗ gọi `Initialize()` và chỗ giữ token cho vòng autosave. SDK **không** tự gọi.
-
-### 5. Đọc và ghi
+**5 · Đọc và ghi:**
 
 ```csharp
-int coin = IGamePersistenceDataCollection.Service.Coin;               // implicit operator T
-int same = IGamePersistenceDataCollection.Service.Coin.Value;         // tường minh
-
-IGamePersistenceDataCollection.Service.Coin.Value = coin + 10;        // set → OnValueChanged
-
-IGamePersistenceDataCollection.Service.Coin.FlushNow();               // chốt sổ sớm một entry
-IGamePersistenceDataCollection.Service.FlushAll();                    // chốt sổ sớm cả kho
+int coin = IMySaveCollection.Service.Coin;                 // implicit operator T
+IMySaveCollection.Service.Coin.Value = coin + 10;          // OnValueChanged(coin, coin + 10)
+IMySaveCollection.Service.Coin.OnValueChanged += (oldValue, newValue) => { };
+IMySaveCollection.Service.Coin.FlushNow();                 // chốt sổ sớm một entry
+IMySaveCollection.Service.FlushAll();                      // chốt sổ sớm cả kho
 ```
 
-Mutate model tại chỗ vẫn xuống đĩa ở lượt flush kế, nhưng **không** phát `OnValueChanged` — kịch bản 4.
+Subscribe **sau** `Initialize()` — `Setup()` xoá listener.
 
-Subscribe `OnValueChanged` **sau** khi `Initialize()` đã chạy — `Setup()` gán listener về null, nên đăng
-ký trước đó là mất im lặng (bảng Bẫy).
-
-### 6. Hai hook tùy chọn cho state của subclass
+**6 · Hook cho state của subclass (tùy chọn):**
 
 ```csharp
-protected override void ResetDerivedState() { /* chạy TRƯỚC LoadAllEntries — xoá cache phiên trước */ }
-protected override void OnEntriesLoaded()  { /* chạy SAU LoadAllEntries — dựng lookup, parse tiếp… */ }
+protected override void ResetDerivedState() { /* TRƯỚC LoadAllEntries — xoá cache phiên trước */ }
+protected override void OnEntriesLoaded()  { /* SAU LoadAllEntries — dựng lookup */ }
 ```
 
-Cần cả hai: chỉ có hook "sau" thì một lượt load không chạm entry nào (lần chạy đầu, chưa có save) vẫn để
-cache của phiên trước sống.
+Cần cả hai: chỉ có hook "sau" thì lượt load không chạm entry nào vẫn để cache phiên trước sống.
 
-### Thiếu bước nào thì hỏng ở đâu
+**Thiếu bước nào thì hỏng ở đâu:**
 
-| Bỏ qua | Hỏng ở đâu |
+| Bỏ qua | Hỏng |
 |---|---|
-| Khai collection trong Horcrux thay vì assembly dự án | kéo type của dự án vào SDK — submodule không commit được một mình |
-| `[MarkedPersistence]` trên field entry | entry **không tồn tại** với hệ: đọc/ghi vẫn chạy trong RAM, không bao giờ xuống đĩa. Im lặng, trừ khi ai đó gọi `FlushNow()` trên nó — lúc đó `_owner` null và có `LogError` |
-| Khai field entry ở class base thay vì class dẫn xuất | reflection quét `GetType()` với `NonPublic` + `Instance` — **không thấy** private field của base. Muốn khai ở base thì phải `protected` (xem `lastSeenUtcSeconds`) |
-| `Key` để rỗng | `ScanEntries` loại entry đó kèm `LogError`; nó không lưu gì |
-| `Default Value` để rỗng | người chơi mới bắt đầu bằng giá trị mặc định của kiểu (`0`, `false`, list rỗng) — mà ô trống **không phân biệt được** với ô cố ý điền số đó, nên không có gì báo. Mặc định đó **xuống đĩa ngay phiên đầu** (kịch bản 1), nên điền sai là điền sai vào save thật |
-| Không cấp asset cho host — thiếu cả dòng `[Service(typeof(BasePersistenceDataCollection))]` lẫn Initializer | `saveCollection` là null → `NullReferenceException` ở `Initialize()`. Ở `SaveDriver` thì đỏ console và `Start()` dừng; ở `SaveBootstep` thì `BootstrapService` **fail-open** — đỏ một dòng rồi cả phiên chạy tiếp **không có** persistence |
-| Đặt host trên object không sống suốt phiên | `destroyCancellationToken` chết theo scene unload → autosave **chết im lặng**, UniTask coi hủy là bình thường nên không log gì, chỉ còn flush lúc pause/quit. `SaveDriver.OnAwake` tự `DontDestroyOnLoad(gameObject)` nên nó đã tự chặn; `SaveBootstep` dựa vào `BootstrapService` cũng `DontDestroyOnLoad` |
-| Wire **hai** host, hoặc gọi `Initialize()` thêm một lần ở chỗ khác | tiến độ chưa flush về mặc định, listener đã đăng ký bị xoá — **không một dòng log**. Sáu đường sinh ra nó: xem "Hai host" |
-| Không bấm `ValidateKeys` trước khi Play | bốn lỗi authoring chỉ báo lúc `Initialize()` chạy, hoặc muộn hơn nữa — xem "Nút Editor" |
+| Khai collection trong Horcrux | kéo type dự án vào SDK — submodule không commit được một mình |
+| `[MarkedPersistence]` | entry không tồn tại với hệ: chạy trong RAM, không bao giờ xuống đĩa; chỉ `FlushNow()` mới kêu |
+| Field entry `private` ở class base | `GetFields(NonPublic)` không thấy private của base; khai ở base thì `protected` |
+| `Key` rỗng | `ScanEntries` loại kèm `LogError` |
+| `Default Value` rỗng | người chơi mới nhận default của kiểu; không phân biệt được với cố ý, và xuống đĩa ngay phiên đầu |
+| Không cấp asset cho host | `NullReferenceException` ở `Initialize()`. `SaveDriver`: `Start()` dừng. `SaveBootstep`: `BootstrapService` fail-open, cả phiên chạy **không** persistence |
+| Host trên object không sống suốt phiên | token chết theo scene → autosave **chết im lặng**. `SaveDriver` tự `DontDestroyOnLoad`; `SaveBootstep` dựa `BootstrapService` |
+| Hai host, hoặc gọi `Initialize()` thêm | mất tiến độ chưa flush, im lặng — mục "Hai host" |
+| Không bấm `ValidateKeys` trước Play | lỗi authoring chỉ lộ lúc `Initialize()` hoặc muộn hơn |
 
-## Hai host — **đúng một** trong cả dự án
+## Hai host — đúng một trong cả dự án
 
 | | `SaveDriver` | `SaveBootstep` |
 |---|---|---|
-| Dùng khi | dự án **không** có Bootstrap | dự án có `BootstrapService` |
-| Là gì | `MonoBehaviour<BasePersistenceDataCollection>` kéo tay vào scene, tự `DontDestroyOnLoad` ở `OnAwake` | `ABootStep, IInitializable<BasePersistenceDataCollection>`, chạy trong pha boot |
-| Nhận collection | service (tự động) **hoặc** Initializer | **chỉ** Initializer — xem bước 4 |
-| Gọi `Initialize()` | `Start()` | `InitializeAsync()` |
-| Chạy autosave | `RunAutosaveAsync(destroyCancellationToken)` | `RunAutosaveAsync(destroyCancellationToken)` — **không** phải token của pha, `BootstrapService` refresh token đó mỗi lần load level |
-| Flush | cạnh vào background (`OnApplicationFocus` / `OnApplicationPause`, một lần cho mỗi lần vào) + `OnApplicationQuit` | `OnGoToBackground(true)` + `OnAppQuit`, cả hai chỉ chạy **sau khi** `BootstrapService` init xong |
-| Thứ tự với hệ khác | **không có thứ tự** — Unity không hứa thứ tự magic method giữa các MonoBehaviour, nên flush có thể chạy trước một hệ khác kịp ghi dữ liệu trong pause hook của nó | **có thứ tự** — `BootstrapService` fan-out pause/quit **ngược** thứ tự step, nên step khởi tạo sớm được flush muộn |
+| Dùng khi | không có Bootstrap | có `BootstrapService` |
+| Là gì | `MonoBehaviour<BasePersistenceDataCollection>`, `DontDestroyOnLoad` ở `OnAwake` | `ABootStep, IInitializable<BasePersistenceDataCollection>` |
+| Nhận collection | service hoặc Initializer | chỉ Initializer |
+| `Initialize()` + autosave | `Start()` · `destroyCancellationToken` | `InitializeAsync()` · `destroyCancellationToken` — **không** token của pha, service huỷ nó mỗi lần load level |
+| Flush | cạnh vào background (cờ `inBackground` gộp focus + pause) · `OnApplicationQuit` | `OnGoToBackground(true)` · `OnAppQuit`, chỉ sau khi `BootstrapService` init xong |
+| Thứ tự với hệ khác | không có — Unity không hứa thứ tự magic method | có — fan-out vào background và quit **ngược** thứ tự step |
+| Lúc quit | `FlushAll()` + `IsInitialized = false` | như trái |
 
-Cả hai gánh **đủ** trách nhiệm, nên chọn một là xong. Nhưng đây **không** phải lời khuyên về gọn gàng:
-`Initialize()` **không có guard**, nên host thứ hai là **mất dữ liệu**.
+**`Initialize()` không có guard, nên lần gọi thứ hai là mất dữ liệu im lặng:**
 
-### `Initialize()` lần thứ hai làm gì
-
-Nó chạy lại từ đầu. `ScanEntries` dựng lại danh sách, rồi `Setup()` từng entry:
-
-| Bước của `Setup` | Mất gì |
+| `Setup()` làm | Mất |
 |---|---|
-| `value = CloneDefault()` | mọi thay đổi của người chơi kể từ lần flush cuối — **về mặc định** |
-| `storedPayload = null` | mốc so sánh biến mất cùng lúc với giá trị; `LoadAllEntries` ngay sau đó nạp lại cả hai từ đĩa, nên không còn dấu vết nào của thay đổi chưa flush để mà ghi |
-| `OnValueChanged = null` | mọi listener đã đăng ký sau lần `Initialize` đầu — **xoá sạch**, view không còn nhận đổi giá trị |
+| `value = CloneDefault()` | mọi thay đổi từ lần flush cuối |
+| `storedPayload = null` | mốc so sánh; `LoadAllEntries` nạp lại cả hai từ đĩa — không còn dấu vết để ghi |
+| `OnValueChanged = null` | mọi listener; view ngừng nhận thay đổi |
 
-Không một dòng log. Không cách nào phát hiện lúc chạy. Và `LoadAllEntries` sau đó đọc lại từ
-`PlayerPrefs`, nên trên đĩa vẫn là dữ liệu cũ — nhìn vào save không thấy gì bất thường, chỉ tiến độ
-trong RAM biến mất.
+Đĩa vẫn giữ bản cũ nên soi save không thấy gì lạ. **Sáu đường sinh ra lần thứ hai** — kiểm trong Editor: hai
+`SaveDriver` · hai `SaveBootstep` · một của mỗi loại (tổng mọi scene, prefab phải đúng một) · cùng `SaveBootstep` hai
+lần trong list `steps` · game code gọi `.Initialize()` trên kiểu save · host là prefab spawn lúc chạy. **Cố ý không có
+cờ chặn:** `if (isInitialized) return;` che luôn ca cần biết — hai vòng autosave, hai đường flush, wire sai không ai
+sửa. Chặn bằng cấu trúc: một object kéo tay, đếm được.
 
-Đây là lý do luật này là **tuyệt đối**, không phải sở thích.
+**Chia việc:** vòng autosave và `autosaveIntervalSeconds` ở collection — cả hai host cần đúng một nhịp, bảo đảm "một
+chu kỳ" là của collection. **Token ở host** — `ScriptableObject` không có mốc kết thúc, tự mở
+`CancellationTokenSource` thì không ai đóng, và mỗi lần Play (tắt domain reload) xếp thêm một loop. Host nhận
+`BasePersistenceDataCollection`, không nhận interface: `TimeService` cần `LastSeenUtcSeconds` chỉ base khai.
 
-### Sáu đường sinh ra lần gọi thứ hai
+## Inspector và nút Editor
 
-| Đường | Kiểm bằng |
+| Field | Serialize | Nghĩa |
+|---|---|---|
+| `key` | có | khoá logic; khoá thật `"persistence_" + key` |
+| `defaultValue` | có | giá trị người chơi mới; **sao chép** vào `value` lúc `Setup` |
+| `value` | không | giá trị đang chạy, `[ShowInInspector, ReadOnly]` |
+| `storedPayload` | không | thứ flush coi như kho đã có; khác payload hiện tại = còn thay đổi chưa xuống đĩa |
+| `payloadToImport` | không | ô JSON cho `ImportPayload`, chỉ Editor |
+| `autosaveIntervalSeconds` (collection) | có | mặc định 10 s, `[Min(5f)]` |
+
+`value`, `storedPayload` không serialize: tiến độ người chơi vào asset là vào git.
+
+| Nút | Ở | Làm gì |
+|---|---|---|
+| `ImportPayload` | mỗi entry | parse `payloadToImport`, gán qua **setter** (có event, flush kế ghi). Chỉ Play Mode; rỗng hoặc parse lỗi thì báo, không đổi |
+| `ValidateKeys` | collection | khoá trùng · khoá rỗng · field mark chưa gán hoặc sai kiểu · `T` chạm `UnityEngine`. Sạch: một dòng kèm số entry; bẩn: một dòng đỏ mỗi nhóm kèm tỉ lệ |
+
+`ValidateKeys` dùng danh sách scratch, không đụng `entries`; in đường tới kiểu engine đầu tiên
+(`Entry 'route' stores SavedRoute.lastCheckpoint → Vector3`), bỏ qua `[JsonIgnore]`, `[NonSerialized]` và nội tạng kiểu
+`System.*` như Newtonsoft. Không thấy được field khai `object`, `dynamic`, interface — đừng khai model save bằng chúng.
+Cả hai nút trong `#if UNITY_EDITOR`. Không có nút xoá save theo tiền tố: `PlayerPrefs` không liệt kê được khoá, khoá mồ
+côi của build cũ sẽ sống sót.
+
+## Event `OnValueChanged`
+
+`event Action<T, T>` — `(oldValue, newValue)`. Bắn từ setter `Value` (gồm `ImportPayload`) và `ReadPayload`; sửa tại
+chỗ không bắn.
+
+| Ca | Đối số |
 |---|---|
-| Hai `SaveDriver` | tìm component `SaveDriver` trong **mọi** scene và prefab — phải đúng một, hoặc không có |
-| Hai `SaveBootstep` | tìm component `SaveBootstep` — phải đúng một, hoặc không có |
-| Một `SaveDriver` **và** một `SaveBootstep` | hai lần tìm ở trên, tổng lại phải đúng **một** |
-| Cùng một `SaveBootstep` nằm **hai lần** trong list `steps` của `BootstrapService` | mở `BootstrapService` trong Inspector, đếm |
-| Game code gọi `IPersistenceDataCollection.Initialize()` | grep `.Initialize()` trên kiểu save — chỉ hai host được gọi |
-| Prefab mang host, instantiate nhiều lần lúc chạy | host phải là object **kéo tay vào scene**, không bao giờ là prefab spawn |
-
-Không có cờ nào chặn hộ, và **cố ý** không thêm: một cờ `if (isInitialized) return;` che được lần gọi
-thừa nhưng che luôn ca thật cần biết — hai host là hai vòng autosave chồng nhau, hai đường flush ở
-pause/quit, và một hình dạng wire sai mà không ai sửa. Chặn ở **cấu trúc**: một object, kéo tay, đếm
-được trong Editor.
-
-### Chia việc giữa host và collection
-
-**Thân vòng lặp và `autosaveIntervalSeconds` ở collection**: cả hai host cần đúng một nhịp đó, bảo đảm
-"mất tối đa một chu kỳ" là bảo đảm của collection, và con số nằm cạnh dữ liệu nó chi phối thì đọc một
-chỗ ra hết. **Token ở lại host**, vì host là thứ có đời sống — một `ScriptableObject` không có mốc kết
-thúc tin được, nên không được tự mở `CancellationTokenSource`: không ai đóng, và ở Editor tắt domain
-reload thì mỗi lần Play là một loop nữa xếp lên loop cũ.
-
-`RunAutosaveAsync` khai trên `IPersistenceDataCollection` và thân nằm ở base — hợp đồng ở interface để
-entry và collection nói chuyện với nhau. Nhưng **hai host nhận `BasePersistenceDataCollection`**, không
-nhận interface: `TimeService` phải với tới `lastSeenUtcSeconds`, entry mà chỉ base khai, nên dự án dùng
-bộ này đằng nào cũng có một collection kế thừa base.
-
-## Inspector
-
-Mỗi `PersistenceDataEntry<T>` vẽ ra:
-
-| Field | Ghi vào `.asset` | Nghĩa |
-|---|---|---|
-| `key` | có | khoá logic. Khoá thật trên đĩa là `"persistence_" + key` |
-| `defaultValue` | có | giá trị của người chơi mới. Được **sao chép** vào `value` lúc `Setup`, không dùng thẳng |
-| `value` | **không** | giá trị đang chạy. `[ShowInInspector, ReadOnly]` — xem được, sửa tay không được |
-| `storedPayload` | **không** | chuỗi mà kho đang giữ, theo chỗ entry biết. Khác payload hiện tại nghĩa là còn thay đổi chưa xuống đĩa |
-| `payloadToImport` | **không** | ô dán JSON cho nút `ImportPayload`, chỉ tồn tại trong Editor |
-
-Trên chính asset collection: `autosaveIntervalSeconds` — mặc định 10s, chặn dưới `[Min(5f)]`.
-
-`value` và `storedPayload` cố ý **không** serialize: tiến độ người chơi mà ghi vào asset là nó vào git.
-Đây là chỗ Persistence cố ý làm ngược `RemoteConfig<T>` (bảng cuối mục Bẫy).
-
-## Nút Editor
-
-| Nút | Ở đâu | Làm gì |
-|---|---|---|
-| `ImportPayload` | mỗi entry | đọc `payloadToImport` như JSON rồi gán qua **setter**, nên có `OnValueChanged` và lượt flush kế thấy payload đổi. Chỉ chạy trong Play Mode; payload rỗng hoặc parse fail thì báo và không đổi gì |
-| `ValidateKeys` | collection | khoá trùng · khoá rỗng · field mark mà chưa gán hoặc sai kiểu · kiểu payload chạm `UnityEngine`. Sạch thì log một dòng kèm số entry; không sạch thì một dòng đỏ cho mỗi nhóm, kèm tỉ lệ |
-
-`ValidateKeys` khai ở `BasePersistenceDataCollection` nhưng đọc field qua reflection, nên chạy đúng trên
-mọi class dẫn xuất; nó dùng danh sách scratch riêng, không đụng `entries` đang chạy. Phần kiểm payload
-duyệt `T` cùng mọi field và property public lồng bên trong rồi in đường đi tới kiểu engine đầu tiên gặp
-được — `Entry 'route' stores SavedRoute.lastCheckpoint → Vector3`. Nó bỏ qua `[JsonIgnore]` và
-`[NonSerialized]`, và không đào vào kiểu dưới namespace `System`, đúng như Newtonsoft. Thứ nó **không**
-thấy được: field khai `object`, `dynamic`, hay một interface mà chỉ giá trị runtime mới là kiểu engine —
-kiểu tĩnh không nói ra được điều đó, nên đừng khai save model bằng `object`.
-
-Cả hai nút nằm trong `#if UNITY_EDITOR`.
-
-Cố ý **không** có nút xoá save theo tiền tố: `PlayerPrefs` không có API liệt kê khoá, nên chỉ xoá được
-khoá đang khai — khoá mồ côi của bản build cũ sống sót, mà một nút xoá "gần đúng" thì tệ hơn không có.
+| `Value = x` | `(giá trị bị thay, x)` |
+| `Value = x` khi đã là `x` | vẫn bắn, `old == new` — setter không so; listener tracking tự lọc |
+| `ReadPayload` lúc load | `(bản clone mặc định, giá trị đọc)` — chưa ai nghe |
+| `T` là class, sửa tại chỗ rồi gán lại cùng tham chiếu | hai đối số là **một object**; cần bản cũ thì gán object mới |
 
 ## Kiểm thử
 
-`Assets/Horcrux/Tests/EditMode/PersistenceSeedingTests.cs` — mười một case: ba kết cục của
-`EntryLoadResult`, cộng mọi đường mà phép so payload phải đi qua.
-
-Fixture là một `ProbeCollection` khai năm entry, mỗi entry một hình dạng payload mà test cần
-(`int` · `string` · model có `List<int>` · `List<Vector3>`), cộng `lastSeenUtcSeconds` kế thừa từ base.
-**Mỗi case chỉ khẳng định trên khoá của riêng nó**, nên các entry còn lại không đụng vào ca nào — nhưng
-`SetUp` phải điền `Key` cho **tất cả**, kể cả entry kế thừa, xem bảng Bẫy.
+`Tests/EditMode/PersistenceSeedingTests.cs` — 12 case. Fixture `ProbeCollection` khai năm entry (`int` ×2 · `string` ·
+model có `List<int>` · `List<Vector3>`) cộng `lastSeenUtcSeconds` kế thừa; `SetUp` điền `Key` cho **tất cả** qua
+`SerializedObject` — cùng cửa Inspector. Mỗi case chỉ khẳng định trên khoá của nó.
 
 | Case | Khẳng định |
 |---|---|
-| Chưa có khoá | khoá xuất hiện trên đĩa mang đúng mặc định, `StoredPayload` khớp chuỗi vừa ghi |
-| Khoá có nhưng payload rỗng | y như chưa có khoá |
-| Khoá đọc được | giá trị lưu **thắng** mặc định, đĩa **không** bị chạm, `StoredPayload` = chuỗi đã đọc |
-| Payload hỏng | rơi về mặc định, đúng một `LogError` nêu khoá; `FlushAll()` sau đó **vẫn** không chạm chuỗi hỏng |
-| Payload hỏng rồi người chơi đổi giá trị | lượt flush kế ghi đè chuỗi hỏng bằng giá trị mới |
-| Kho giữ đúng chuỗi `"null"` | `Value` về mặc định, và flush ghi mặc định xuống đĩa |
-| Sửa field tại chỗ, không gọi gì thêm | flush ghi payload mới — thay đổi không đi qua setter nào vẫn xuống đĩa |
-| Không đổi gì | flush **không** `SetString`: một chuỗi lạ ghi tay vào khoá đó vẫn còn nguyên sau flush |
-| Gán lại đúng giá trị cũ | như trên — gán không phải là đổi |
-| `FlushNow()` một entry | chỉ khoá của entry đó bị ghi; `StoredPayload` của entry kia vẫn là chuỗi cũ |
-| `WritePayload` ném, flush hai lần | mỗi lượt một `LogError` nêu khoá, `StoredPayload` **không** đổi |
+| Chưa có khoá · khoá có payload rỗng | khoá lên đĩa mang mặc định, `StoredPayload` khớp |
+| Khoá đọc được | giá trị lưu thắng mặc định, đĩa không bị chạm |
+| Payload hỏng | về mặc định, một `LogError` nêu khoá; `FlushAll()` vẫn không chạm chuỗi hỏng |
+| Payload hỏng rồi người chơi đổi | flush kế ghi đè bằng giá trị mới |
+| Kho giữ `"null"` | `Value` về mặc định, flush ghi mặc định |
+| Sửa field tại chỗ | flush ghi payload mới |
+| Không đổi gì · gán lại đúng giá trị cũ | flush không `SetString`: chuỗi lạ ghi tay vẫn nguyên |
+| `FlushNow()` một entry | chỉ khoá đó bị ghi |
+| `WritePayload` ném, flush hai lần | mỗi lượt một `LogError`, `StoredPayload` không đổi |
+| Gán `Value` hai lần, lần hai trùng | mỗi lần một event mang `(old, new)` |
 
-Biên đã phủ: rỗng · một phần tử · payload hỏng · payload `"null"` · hai entry cùng một lượt · flush lặp lại.
-
-Test authoring `key` và `defaultValue` qua `SerializedObject` — cùng cửa mà Inspector đi, nên nó kiểm cả
-đường serialize của Unity, không chỉ logic C#.
+Biên đã phủ: rỗng · một phần tử · payload hỏng · `"null"` · hai entry một lượt · flush lặp.
 
 ## Bất biến
 
-| Bất biến | Vì sao, và nó nằm ở đâu |
+| Bất biến | Ở đâu, vì sao |
 |---|---|
-| **`StoredPayload` chỉ cập nhật sau khi storage nhận** | `FlushInternal` hai giai đoạn: ghi hết payload → `PlayerPrefs.Save()` một lần → **rồi mới** `CacheStoredPayload()`. Cập nhật trước là nói dối rằng đã lưu, và thay đổi đó không bao giờ được thử lại: `SetString` chỉ đụng bản RAM của `PlayerPrefs`, `Save()` mới là thứ chạm đĩa |
-| **Chuỗi ghi xuống kho và chuỗi nhớ lại là MỘT** | `FlushInternal` serialize một lần vào biến `payload`, đưa **chính** biến đó cho `SetString` rồi cho `CacheStoredPayload`. Gọi `WritePayload()` lần thứ hai ở giai đoạn nào cũng là hai phép tính buộc khớp nhau suy từ hai nguồn — với một `T` serialize không ổn định thì kho và `StoredPayload` lệch nhau im lặng, và entry đó ghi lại mỗi chu kỳ mãi mãi |
-| **`CacheStoredPayload` không gọi được từ game code** | explicit interface implementation trên `PersistenceDataEntry<T>` — chỉ collection với tay tới, và chỉ sau `Save()`. Game code gọi được là có cửa nói dối "đã lưu" |
-| **Luật "ghi khi nào" nằm cạnh lệnh ghi** | phép so payload ở `FlushInternal`, không ở entry. `FlushInternal` là cửa ghi duy nhất, nên đọc một chỗ ra hết cả điều kiện lẫn hành động |
-| **`SetString` / `Save()` chỉ xuất hiện ở một chỗ runtime** | `FlushInternal`. Cửa ghi thứ hai là một đường đi ra ngoài phép so payload và ngoài bảo đảm của hệ |
-| **Khoá có mặt từ phiên đầu, và chỉ ghi khi chưa có** | `LoadAllEntries` seed đúng entry mà storage **không** giữ gì đọc được. Entry đã có khoá thì không bao giờ bị seed, nên `Initialize` không ghi mặc định đè lên save thật được. Payload **hỏng** cũng không bị seed — kịch bản 7 |
-| **Một `PlayerPrefs.Save()` cho cả lượt** | trên Android nó là `SharedPreferences.commit()`: ghi **cả kho**, **đồng bộ trên main thread**. Vì vậy chu kỳ autosave có `[Min(5f)]`, và vì vậy giai đoạn hai chỉ chạy khi có entry vừa ghi |
-| **Đúng một save host trong cả dự án** | `Initialize()` không có guard, nên lần gọi thứ hai `Setup()` lại mọi entry — im lặng. Chặn bằng cấu trúc, không bằng cờ: xem "Hai host" |
-| **Khoá là wire format** | khoá thật trên đĩa là `"persistence_" + Key`, và định dạng payload là JSON. Đổi `Key`, đổi `KeyPrefix`, hay đổi hình dạng model sau khi ship = mọi save đã có thành mồ côi, người chơi mất tiến độ, **không có gì báo**. Không đổi theo bất kỳ lần refactor tên nào |
-| **Không có đường không-làm-gì âm thầm** | khoá trùng, khoá rỗng, field mark mà chưa gán hoặc sai kiểu, đọc payload hỏng, ghi payload hỏng, `Flush` một entry không thuộc collection, `FlushNow` trên entry chưa có chủ — mỗi ca một `LogError` nêu đúng khoá hoặc tên field |
+| `StoredPayload` chỉ cập nhật **sau** `Save()` | `FlushInternal` hai giai đoạn. Cập nhật trước là nói dối "đã lưu" và thay đổi không bao giờ được thử lại |
+| Chuỗi ghi xuống và chuỗi nhớ lại là **một** biến | gọi `WritePayload()` lần hai là hai nguồn buộc khớp; `T` không ổn định thì lệch im lặng, ghi mãi |
+| `CacheStoredPayload` không gọi được từ game code | explicit interface implementation |
+| Điều kiện ghi nằm cạnh lệnh ghi | phép so payload ở `FlushInternal`, cửa ghi duy nhất |
+| `SetString` / `Save()` chỉ ở `FlushInternal` | cửa thứ hai là đường ngoài phép so và ngoài bảo đảm |
+| Chỉ seed khi kho không có gì đọc được | `Initialize` không ghi mặc định đè save thật; payload hỏng không seed |
+| Một `Save()` mỗi lượt, chỉ khi có entry vừa ghi | Android `commit()` ghi cả kho đồng bộ main thread; vì vậy `[Min(5f)]` |
+| Đúng một host | `Initialize()` không guard |
+| **Khoá là wire format** | đổi `Key`, `KeyPrefix`, hay hình dạng model sau khi ship = save mồ côi, không gì báo |
+| Không đường không-làm-gì âm thầm | khoá trùng/rỗng, field sai, đọc/ghi hỏng, `Flush` entry lạ, `FlushNow` không chủ — mỗi ca một `LogError` nêu khoá hoặc field |
 
-## Bẫy và quyết định thiết kế
+## Bẫy và quyết định
 
-Đọc mục này trước khi "sửa cho gọn" — mỗi dòng là một chỗ đã sai hoặc chắc chắn sẽ sai.
+Đọc trước khi "sửa cho gọn".
 
 | Chỗ | Sự thật |
 |---|---|
-| **Một entry khai ở base là nghĩa vụ điền `Key` cho MỌI collection dẫn xuất** | `ScanEntries` quét cả field kế thừa, nên `lastSeenUtcSeconds` có mặt trên mọi lớp con — kể cả một `ProbeCollection` dựng tạm trong test. Chưa điền `Key` là một `LogError` mỗi lần `Initialize()`, và trong EditMode thì Unity fail luôn test phát log đó dù assertion vẫn đúng. *Đã sai một lần:* thêm field vào base xong, bốn ca `PersistenceSeedingTests` đỏ hết ở dòng log chứ không ở khẳng định nào. Đây là bất biến "không có đường không-làm-gì âm thầm" chạy đúng, không phải lỗi — cái phải sửa là chỗ dựng collection, không phải cái guard |
-| **Payload không ổn định thì `Save()` chạy mỗi chu kỳ, không một dòng log** | flush biết "có gì đổi" bằng cách so chuỗi, nên một `T` ra chuỗi khác nhau cho cùng dữ liệu là ghi cả kho mỗi `autosaveIntervalSeconds` suốt phiên chơi. Không exception, không log, chỉ tốn. Ba kiểu dễ vỡ ở "Hợp đồng payload" luật 2 |
-| **`storedPayload` không phải "chuỗi vừa ghi"** | ở nhánh đọc hỏng, nó mang payload của **mặc định** — thứ chưa bao giờ xuống đĩa. Tên nói đúng vai nó có: *thứ flush coi như kho đã có*. Đổi thành `lastWrittenPayload` là đặt một cái tên nói sai ở đúng ca khó nhất |
-| **Sửa field tại chỗ thì lưu được, nhưng view không biết** | kịch bản 4. Flush thấy thay đổi, `OnValueChanged` thì không bắn — event chỉ đi ra từ setter `Value` và từ `ReadPayload`. Đổi giá trị mà có view đang nghe thì ghi qua setter |
-| **Listener đăng ký trước `Initialize()` bị xoá im lặng** | `Setup()` gán `OnValueChanged = null`, vì `ScriptableObject` sống qua các lần Play khi tắt domain reload: listener của phiên trước trỏ vào GameObject đã huỷ → `MissingReferenceException` ở lần đổi giá trị đầu tiên. Không detector nào phân biệt được listener phiên trước (phải xoá) với listener vừa đăng ký (bị xoá oan) — cả hai chỉ là `OnValueChanged != null`. Chặn duy nhất bằng **cấu trúc**: gọi `Initialize()` trong pha boot, mọi subscribe đứng sau nó |
-| **Bốn thứ sống qua các lần Play** | `value` và `storedPayload` — cả hai được `Setup()` reset. Thứ ba là **cache mà subclass dựng từ entry** (lookup, `HashSet`, cờ "đã parse"): entry không với tới được, nên có cặp hook `ResetDerivedState()` / `OnEntriesLoaded()`. *Đã sai một lần, ở Remote Config cùng khuôn nhưng thiếu hook "trước":* một cờ chỉ được bật, không ai tắt, mang trạng thái phiên trước sang phiên sau; một hệ khác phải viết workaround. Một cờ không reset được đã mất tư cách làm điều kiện chờ. Thứ tư là **`isInitialized`**: `Setup()` không với tới, nên host tự đặt `IsInitialized = false` ở `OnApplicationQuit` / `OnAppQuit` — lý do duy nhất setter tồn tại trên hợp đồng. Chỉ cần ở Editor khi tắt Domain Reload (trên device process chết là cờ chết), và nó **fail-open**: quit không bắn thì cờ ở lại `true`. Hôm nay **chưa code nào đọc** cờ này |
-| **Quên `Initialize()` có giá bất đối xứng** | Remote Config quên gọi thì rơi về giá trị author — **hồi được**, lần fetch sau đúng. Save quên gọi thì mọi thứ người chơi làm nằm trong RAM rồi mất — **không hồi được**. Vì vậy host gọi nó trong pha boot. Chiều ngược lại, gọi **hai** lần, cũng không hồi được: xem "Hai host" |
-| **Reset dirty trước khi ghi** | *đã sai một lần, `PlayerSaveLoadService.Save()` của color-loop:* `if (force \|\| _isDirty) { _isDirty = false; }` rồi thân serialize + ghi nằm **ngoài** `if` → lần nào gọi cũng ghi, và một lần ghi lỗi là mất im lặng vì cờ đã tắt |
-| **Serialize theo nhịp đổi giá trị** | *đã sai một lần, `GameDataManager` của color-loop:* mỗi thay đổi bất kỳ field → `LateUpdate` frame đó `JsonUtility.ToJson` cả god-blob 25+ field + `PlayerPrefs.Save()` ngay trong frame. `JsonConvert` phải dồn về flush, và chỉ `SetString` entry có payload đổi |
-| **Đường no-op im lặng** | *đã sai một lần, khung save "sạch" của color-loop:* `AssignService()` không có caller → autosave loop chạy đều mà không lưu gì, **không một dòng log**. Mọi đường không-làm-gì-được phải kêu lên |
-| **Deserialize không try/catch** | *đã sai một lần, `PlayerSaveLoadService.Load()` của color-loop:* không bọc `Deserialize` → exception **mỗi lần boot**, save thành brick vĩnh viễn. Payload trong `PlayerPrefs` hỏng được thật: build cũ ghi hình dạng khác, chỉnh tay khi debug, persist đứt nửa chừng |
-| **`defaultValue` phải sao chép, không trả thẳng** | nó là object sống trong asset; gán `value = defaultValue` là để game mutate thẳng vào asset. `CloneDefault()` round-trip qua serializer một lần mỗi entry lúc `Initialize` — bản sao đúng cho mọi `T`, kể cả struct chứa `List` |
-| **`[SerializeField]` bọc trong `#if UNITY_EDITOR`** | Editor ghi field đó vào asset mà build strip nó đi → đọc asset lệch byte → **crash native** (`Read N bytes but expected M bytes`), không stack trace C#. Muốn hiện trong Inspector mà không serialize thì `[NonSerialized, ShowInInspector]` |
-| **`[ReadOnly]` trên `value` là cố ý** | sửa tay bỏ qua setter, nên **không** `OnValueChanged`: flush vẫn ghi giá trị mới xuống đĩa trong khi mọi view đang nghe event vẫn hiện số cũ — màn hình và save lệch nhau, không một dòng log. Cửa sửa tay đúng là nút `ImportPayload`, vì nó đi qua setter |
-| **`IPersistenceDataCollection` không được derive `IService<>`** | interface dự án derive cả nó lẫn `IService<chính mình>` sẽ thừa hưởng **hai** thành viên static `Service` → mọi lần đọc `.Service` là **CS0229 ambiguity**, lỗi biên dịch. Bản thân `IPersistenceDataCollection` vẫn **đăng ký được** làm service bằng một dòng `[Service]` trên class dự án — đó là hai chuyện khác nhau. Hôm nay **không** đăng ký, vì không host nào nhận interface (bước 2) |
-| **`[Service]` không di truyền** | `ServiceAttribute` khai `Inherited = false`. Khai ở `BasePersistenceDataCollection` là khai vào chỗ không ai đọc: service không đăng ký, `Service.Get<>()` ném ở lần chạm đầu. Nên cả ba dòng `[Service]` và `[CreateAssetMenu]` đều thuộc dự án — cũng là lý do base để `abstract`: một collection không có entry nào thì không có việc gì làm |
-| **`partial` không băng qua được ranh giới assembly** | mọi phần của một `partial` type phải **cùng assembly**. Nếu nửa dự án đi vào SDK bằng `.asmref` thì type nó gọi tên (`PersistenceDataEntry<PlayerProgress>`) phải tra được từ SDK → `PlayerProgress` và cả chuỗi phụ thuộc bị kéo vào; chiều ngược là circular reference. Vì vậy khuôn là **kế thừa**: subclass là type của dự án, chỉ gọi tên xuống SDK |
-| **`implicit operator T` bất đối xứng khi so sánh** | `entry == null` là so **THAM CHIẾU** và an toàn — `PersistenceDataEntry<T>` không khai `operator ==`, literal `null` không có kiểu, nên tập candidate operator rỗng. Nhưng so với toán hạng **có kiểu `T`** thì `T.op_Equality` vào tập và entry **bị convert**: với `PersistenceDataEntry<string>` mà `Value` là null, `entry == null` ra `false` còn `entry == s` (`s` là `string` null) ra `true`. Hai dòng trông như nhau, trả lời ngược nhau |
-| **Magic method của Unity trên subclass che bản của base** | subclass đặt trùng tên `OnDestroy` / `OnDisable` là dọn dẹp của base im lặng không chạy. Hôm nay collection **không dùng magic method nào**; nếu thêm thì khai `protected virtual` để compiler nhắc |
-| **`Flush(entry)` không rẻ hơn `FlushAll()` ở phần chạm đĩa** | `Save()` ghi cả kho. `Flush(entry)` chỉ tiết kiệm phần serialize, và nó tồn tại để **chốt sổ sớm** một giá trị quan trọng (mua IAP xong), không phải để tối ưu |
+| Entry khai ở base = nghĩa vụ điền `Key` ở **mọi** collection con | `lastSeenUtcSeconds` có mặt ở mọi lớp con, kể cả fixture test. *Đã sai một lần:* thêm field vào base, bốn case test đỏ ở dòng `LogError`, không ở khẳng định — sửa chỗ dựng collection, không sửa guard |
+| Listener đăng ký trước `Initialize()` bị xoá | `ScriptableObject` sống qua các lần Play khi tắt domain reload: listener phiên trước trỏ object đã huỷ → `MissingReferenceException`. Không phân biệt được listener cũ với mới, nên chặn bằng cấu trúc: `Initialize()` ở pha boot, subscribe sau |
+| Bốn thứ sống qua các lần Play | `value`, `storedPayload` (Setup reset) · cache của subclass (cặp hook) · `isInitialized` — host đặt `false` lúc quit; `TimeService.UtcNowUnix` đọc cờ này để trả giờ máy khi save chưa load. Fail-open: quit không bắn thì cờ ở lại `true` |
+| `[ReadOnly]` trên `value` | sửa tay bỏ qua setter: flush ghi số mới, view vẫn số cũ. Cửa sửa tay là `ImportPayload` |
+| `storedPayload` không phải "chuỗi vừa ghi" | ở nhánh `Failed` nó là payload mặc định chưa từng xuống đĩa; `lastWrittenPayload` là tên sai đúng ca khó nhất |
+| `defaultValue` phải sao chép | gán thẳng là để game mutate vào asset. `CloneDefault()` round-trip serializer, đúng mọi `T` |
+| Quên `Initialize()` | Remote Config quên thì về giá trị author, hồi được; save quên thì mọi thứ trong RAM rồi mất |
+| `[SerializeField]` trong `#if UNITY_EDITOR` | Editor ghi field build strip → lệch byte → **crash native** không stack trace. Muốn hiện không serialize: `[NonSerialized, ShowInInspector]` |
+| `IPersistenceDataCollection` không derive `IService<>` | interface dự án derive cả hai thừa hưởng hai `static Service` → **CS0229** |
+| `[Service]` không di truyền | `Inherited = false`: khai ở base là không ai đọc. Vì vậy `[Service]`, `[CreateAssetMenu]` thuộc dự án, base `abstract` |
+| `partial` không qua ranh assembly | nửa dự án vào SDK bằng `.asmref` kéo cả model theo; chiều ngược là circular. Khuôn là **kế thừa** |
+| `implicit operator T` khi so sánh | `entry == null` so tham chiếu. So với toán hạng kiểu `T` thì entry bị convert: `PersistenceDataEntry<string>` có `Value` null → `entry == null` là `false`, `entry == s` (`s` null) là `true` |
+| Magic method ở subclass che bản base | collection hôm nay không dùng magic method; thêm thì `protected virtual` |
+| `Flush(entry)` không rẻ hơn `FlushAll()` ở phần đĩa | `Save()` ghi cả kho; nó để chốt sổ sớm, không để tối ưu |
+| *Đã sai một lần:* reset cờ dirty trước khi ghi | ghi luôn chạy, và một lần ghi lỗi mất im lặng vì cờ đã tắt |
+| *Đã sai một lần:* serialize theo nhịp đổi giá trị | mỗi thay đổi → `ToJson` cả blob + `Save()` trong frame |
+| *Đã sai một lần:* đường no-op im lặng | hàm gán service không caller → autosave chạy đều mà không lưu, không log |
+| *Đã sai một lần:* deserialize không `try/catch` | exception mỗi boot, save brick vĩnh viễn |
 
-### Cố ý không làm
+**Ba giới hạn của PlayerPrefs** — một file nền tảng ghi hộ (Android `SharedPreferences`, iOS `NSUserDefaults`, Editor
+Windows registry `HKCU\Software\<Company>\<Product>`), parse một lần rồi giữ RAM: cả kho **một khối** (hỏng một lần mất
+mọi khoá) · mỗi `Save()` ghi **toàn bộ** · cả kho nằm RAM suốt phiên. Tổng payload vượt vài chục KB thì đổi sang kho
+file — chỉ sửa nội bộ `FlushInternal` và `LoadEntry`. Không gian khoá phẳng chung với Firebase, ads, cache
+`RemoteConfig<T>`; tiền tố `"persistence_"` là thứ duy nhất chặn khoá SDK đè tiến độ.
+
+**Cố ý không làm:**
 
 | Không làm | Vì sao |
 |---|---|
-| **Cờ dirty song song với phép so payload** | hai cơ chế cùng trả lời "có gì cần lưu" là hai bất biến phải giữ khớp nhau đời đời. So payload đã phủ mọi ca, nên cờ chỉ còn là một thứ nữa phải nhớ gọi — và cái quên được thì sẽ bị quên |
-| **`HasUnstoredChanges` cho Inspector** | tính nó ra là serialize mỗi lần vẽ lại (`OnGUI` chạy nhiều lần cho cùng một state). Ô `storedPayload` read-only đã đủ để soi khi debug |
-| **Đặt phép so payload bên trong entry** | `FlushInternal` là cửa ghi duy nhất; tách điều kiện ra khỏi lệnh ghi là bắt người đọc mở hai file để biết khi nào có gì xuống đĩa |
-| **Để entry tự lo nhánh đọc hỏng** | quyết định "không ghi đè bản hỏng" đã nằm ở khối `catch` của `LoadEntry` kèm lý do. Entry không cần biết vì sao mặc định của nó lại được coi là đã lưu |
-| `Prefs<T>` riêng cho giá trị lẻ | giá trị lẻ và model chỉ khác **một bước** (biến thành chuỗi). Bộ máy thứ hai đặt giá trị lẻ ra ngoài phép so payload và ngoài `PlayerPrefs.Save()` — ngoài chính bảo đảm của hệ |
-| `ISerializer` · `IPersistenceStore` | mỗi cái đúng một implementation. Ranh giới "entry chỉ nói bằng chuỗi payload" đã đủ để đổi kho sau, tốn 0 dòng |
-| `Register()` lúc runtime | đăng ký lúc chạy là gốc của bốn chỗ hở: không liệt kê được, không kiểm trùng được, quên gọi thì im lặng, và không có mốc để load |
-| Kiểm hợp lệ trong `OnValidate` | lúc đang thêm entry thì khoá **luôn** rỗng — cảnh báo hiện toàn thời gian vào đúng lúc chưa sửa được. Nên là nút bấm |
-| Ghi nguyên tử (`.tmp` + rename) | ứng dụng không tự ghi file; nền tảng ghi cả kho một lượt |
-| Crypto · cloud sync · migration version | chưa có nhu cầu thật: không repo nào dùng crypto thật, backend chưa chuẩn chung, chưa model nào đổi schema |
+| Cờ dirty song song phép so payload | hai cơ chế trả lời một câu hỏi phải khớp đời đời; cờ là thứ phải nhớ gọi |
+| `HasUnstoredChanges` cho Inspector | serialize mỗi lần vẽ lại; ô `storedPayload` đủ để soi |
+| Phép so payload trong entry · entry tự lo nhánh đọc hỏng | tách điều kiện khỏi lệnh ghi bắt đọc hai file |
+| `Prefs<T>` cho giá trị lẻ | bộ máy thứ hai nằm ngoài phép so và ngoài `Save()` |
+| `ISerializer` · `IPersistenceStore` | mỗi cái một implementation; "entry chỉ nói bằng chuỗi" đủ để đổi kho |
+| `Register()` lúc runtime | không liệt kê, không kiểm trùng, quên gọi thì im lặng, không mốc load |
+| Kiểm trong `OnValidate` | lúc thêm entry khoá luôn rỗng — cảnh báo thường trực |
+| Ghi nguyên tử, crypto, cloud sync, migration | nền tảng ghi cả kho một lượt; chưa có nhu cầu thật |
 
-**Mở rộng sau:** crypto decorator quanh serializer — vỏ ScrewDom có `AESEncryption.cs` (AES-256 cho chuỗi) và module `AntiCheat` (kiểm nguồn cài) làm hình dạng tham khảo khi có nhu cầu thật.
-
-### Bốn chỗ cố ý khác Remote Config
-
-Hai hệ dùng chung khuôn: abstract base trong SDK · `sealed partial` + `partial interface` phía dự án ·
-attribute + reflection quét field · `[Service]` dưới interface của dự án · `RESOURCE_PATH` ·
-`[Splitter]` · magic method `protected virtual` · base không mang `[CreateAssetMenu]`. Sửa khuôn ở một
-bên thì sửa cả bên kia. Danh sách khác biệt là **đóng** — thêm chỗ thứ năm phải ghi lý do vào đây.
+**Bốn chỗ cố ý khác Remote Config** (cùng khuôn: abstract base · `sealed partial` + `partial interface` · attribute +
+reflection · `[Service]` dưới interface dự án · `RESOURCE_PATH`; sửa khuôn một bên thì sửa cả hai; thêm chỗ thứ năm phải
+ghi lý do ở đây):
 
 | Chỗ khác | Lý do |
 |---|---|
-| Cặp hook `ResetDerivedState()` / `OnEntriesLoaded()` | Remote Config chỉ có hook "sau", và chính chỗ hở đó sinh ra cờ mang trạng thái phiên trước |
-| `value` + `storedPayload` **không** serialize, chỉ `defaultValue` serialize | Remote Config serialize giá trị fetch để developer thấy trong asset; Save lưu tiến độ người chơi, thứ không được vào git |
-| `[ReadOnly]` trên `value` | `fetched` của Remote Config sửa tay thì vô hại; `value` của Save sửa tay là màn hình và save lệch nhau |
-| Persistence **so payload**, Remote Config dùng cờ `fetched` | hai câu hỏi khác nhau. Remote Config hỏi *"đã fetch về chưa"* — một sự kiện do chính nó gây ra, nên một cờ là đủ. Persistence hỏi *"người chơi có đổi gì không"* — thay đổi đến từ code ngoài, qua một tham chiếu model mà entry không quan sát được, nên chỉ so nội dung mới thấy |
+| Cặp hook `ResetDerivedState` / `OnEntriesLoaded` | Remote Config chỉ có hook "sau" và đã sinh cờ mang trạng thái phiên trước |
+| `value`, `storedPayload` không serialize | tiến độ người chơi không vào git |
+| `[ReadOnly]` trên `value` | sửa tay làm màn hình và save lệch |
+| So payload thay vì cờ `fetched` | Remote Config hỏi "đã fetch chưa" — sự kiện của chính nó; Persistence hỏi "người chơi đổi gì" — qua tham chiếu entry không quan sát được |
 
 ## Chữ ký
 
-**`Horcrux.Runtime.Abstractions.Persistence`**
+Namespace `Horcrux.Runtime.Abstractions.Persistence`:
 
 | Type | Thành viên |
 |---|---|
 | `IPersistenceDataEntry` | `string Key { get; }` · `string StoredPayload { get; }` · `void Setup(IPersistenceDataCollection)` · `void ReadPayload(string)` · `string WritePayload()` · `void CacheStoredPayload(string)` |
 | `IPersistenceDataCollection` | `IReadOnlyList<IPersistenceDataEntry> Entries { get; }` · `bool IsInitialized { get; set; }` · `void Initialize()` · `void FlushAll()` · `void Flush(IPersistenceDataEntry)` · `UniTask RunAutosaveAsync(CancellationToken)` |
-| `PersistenceDataEntry<T> : IPersistenceDataEntry` | `[Serializable]` · `T Value { get; set; }` · `string StoredPayload { get; }` · `event Action<T> OnValueChanged` · `void FlushNow()` · `implicit operator T` (null → `default`) · nút `ImportPayload`. `CacheStoredPayload` là explicit interface implementation — xem Bất biến |
-| `MarkedPersistence : Attribute` | `[AttributeUsage(AttributeTargets.Field)]` — đánh dấu field để scan nhận |
-| `BasePersistenceDataCollection : ScriptableObject, IPersistenceDataCollection` | `abstract` · thân `RunAutosaveAsync` (impl của interface) · `protected virtual void ResetDerivedState()` · `protected virtual void OnEntriesLoaded()` · nút `ValidateKeys` |
-| `BasePersistenceDataCollection` — phần `partial` `.TimeService.cs` | `protected internal PersistenceDataEntry<long> lastSeenUtcSeconds` · `PersistenceDataEntry<long> LastSeenUtcSeconds { get; }` — entry **duy nhất** base tự khai, dành cho `TimeService` (xem `TimeSystem.md`; service đó chưa có code). `protected internal` chứ không `private`: `TimeService` cùng assembly mà không kế thừa, còn scan `GetFields(NonPublic \| Instance)` trên type con vẫn thấy field kế thừa không-private. `Key` và `Default Value` điền ở **asset con** như mọi entry khác |
+| `PersistenceDataEntry<T>` | `[Serializable]` · `T Value { get; set; }` · `event Action<T, T> OnValueChanged` · `void FlushNow()` · `implicit operator T` · `Setup` / `ReadPayload` / `WritePayload` public cho collection · `CacheStoredPayload` explicit |
+| `MarkedPersistence` | `[AttributeUsage(AttributeTargets.Field)]` |
+| `BasePersistenceDataCollection` | `abstract`, `ScriptableObject` · `protected virtual void ResetDerivedState()` · `protected virtual void OnEntriesLoaded()` · nút `ValidateKeys` · `.TimeService.cs`: `protected internal PersistenceDataEntry<long> lastSeenUtcSeconds` + `LastSeenUtcSeconds` — entry duy nhất base tự khai, cho `TimeService` (`TimeSystem.md`); `protected internal` để `TimeService` cùng assembly với tới mà scan type con vẫn thấy |
 
-`Setup`, `ReadPayload` và `WritePayload` là `public` trên `PersistenceDataEntry<T>` — collection gọi
-chúng, và không ca nào trong game code có lý do chạm tới.
-
-**`Horcrux.Runtime.Implementations.Persistence`**
-
-| Type | Vai trò |
-|---|---|
-| `SaveDriver : MonoBehaviour<BasePersistenceDataCollection>` | `OnAwake` `DontDestroyOnLoad` · `Start` init + autosave · flush ở cạnh vào background và `OnApplicationQuit` |
-| `SaveBootstep : ABootStep, IInitializable<BasePersistenceDataCollection>` | `InitializeAsync` init + autosave · flush ở `OnGoToBackground(true)` và `OnAppQuit` |
-
-**`Horcrux.Runtime.Abstractions`** — `IService<out T>`: `static T Service` · `static bool TryGet(out T)`.
+Namespace `Horcrux.Runtime.Implementations.Persistence`: `SaveDriver` · `SaveBootstep` · `SaveBootstepInitializer`
+(internal) — mục "Hai host".
 
 ## Cấu trúc file
 
 ```
 Runtime/Abstractions/Foundations/Persistence/
-├── IPersistenceDataEntry.cs · IPersistenceDataCollection.cs    interface THUẦN, xem mục Bẫy
-├── PersistenceDataEntry.cs · .Editor.cs                        giá trị, payload đã lưu, event, JSON · nút Import
-├── BasePersistenceDataCollection.cs                            scan, load, autosave, flush hai giai đoạn
-├── BasePersistenceDataCollection.Editor.cs                     nút ValidateKeys + kiểm kiểu payload
-├── BasePersistenceDataCollection.TimeService.cs                field lastSeenUtcSeconds
-└── Persistence.md                                              tài liệu này
-
-Runtime/Implementations/Foundations/Persistence/SaveDriver.cs   host cho dự án không có Bootstrap
-Runtime/Implementations/Composites/SaveBootstep.cs              host trong pha boot — namespace vẫn
-                                                                Implementations.Persistence
-Tests/EditMode/PersistenceSeedingTests.cs                       kết cục load + mọi đường của phép so payload
+├── IPersistenceDataEntry.cs · IPersistenceDataCollection.cs   interface thuần
+├── PersistenceDataEntry.cs · .Editor.cs                       giá trị, payload kho giữ, event, JSON · ImportPayload
+├── BasePersistenceDataCollection.cs                           scan, load, autosave, flush hai giai đoạn
+├── BasePersistenceDataCollection.Editor.cs                    ValidateKeys + kiểm kiểu payload
+└── BasePersistenceDataCollection.TimeService.cs               lastSeenUtcSeconds
+Runtime/Implementations/Foundations/Persistence/SaveDriver.cs
+Runtime/Implementations/Composites/SaveBootstep.cs · SaveBootstepInitializer.cs
+Tests/EditMode/PersistenceSeedingTests.cs
+docs/Runtime/Persistence.md · Persistence.html
 ```
-
-Phía dự án trong repo này:
-`Assets/_TheGame/Runtime/Game/Scripts/Data/Config/PersistenceDataCollection/` (interface + class, cộng
-file `partial` theo feature và model save) và
-`Assets/_TheGame/Runtime/Game/Resources/Config/PersistenceDataCollection.asset`.
 
 ## Còn để mở
 
-- **Hệ SDK lấy giá trị save bằng cách nào — chưa chốt.** Hai đường: module **nhận
-  `PersistenceDataEntry<T>`** qua Init (module compile-depend vào Persistence, bê sang dự án không có
-  Persistence là không biên dịch), hoặc module phơi **field thường** (`IsEnabled`, `IsSfxOn`) và dự án
-  đọc save rồi set vào lúc bootstrap, glue một chiều qua `OnValueChanged` (module không phụ thuộc
-  Persistence). `HapticSystem.md` và `AudioSystem.md` đang đi đường thứ hai và nói rõ *"SDK cố tình
-  không sở hữu hệ save"*. Chốt đường nào thì **sửa dòng này**, không thêm dòng thứ hai nói ngược lại.
-- **Hệ sẽ dùng tiếp:** Audio (volume), Haptics, Economy (coin, lives), Rating, LiveOps. Dự án khai entry
-  trên collection của mình rồi nối vào. **Một ngoại lệ duy nhất:** `lastSeenUtcSeconds` — Time cần mốc
-  chống lùi giờ ở **mọi** dự án, nên base khai sẵn để không phải nhại lại mỗi nơi; ngoại lệ này đánh đổi
-  lấy đúng một thứ là tính bê-sang-dự-án-khác.
-- **Rẻ, thêm không sửa cũ:** nút xoá từng entry · kho file trên đĩa khi chạm một trong ba giới hạn —
-  sửa **nội bộ** `FlushInternal` và `LoadEntry`, `StoredPayload` và entry không đổi · migration version
-  khi có model đổi schema · cloud sync khi backend chuẩn chung.
-- **`ValidateKeys` kiểm luật serialize ổn định:** serialize `CloneDefault()` hai lần rồi so chuỗi cho
-  từng entry. Bắt được `HashSet`/`Dictionary` **có phần tử** trong `Default Value`; **không** bắt được
-  container rỗng lúc mặc định — cùng chỗ mù với nhánh "ghi hỏng" của kịch bản 7.
-- **Hai chỗ Remote Config nên học lại từ Persistence:** `IRemoteConfigCollection.RemoteConfigs` nên là
-  `IReadOnlyList<>` thay `IEnumerable<>`; cache `PlayerPrefs` của `RemoteConfig<T>` nên có tiền tố riêng
-  (cache bỏ được, chỉ tốn một lượt fetch nguội).
+- **Hệ SDK lấy giá trị save bằng đường nào — chưa chốt.** Module nhận `PersistenceDataEntry<T>` qua Init (compile-depend
+  vào Persistence), hoặc module phơi field thường và dự án glue một chiều qua `OnValueChanged` (`HapticSystem.md`,
+  `AudioSystem.md` đang đi đường này). Chốt thì **sửa dòng này**.
+- **Hệ sẽ dùng:** Audio, Haptics, Economy, Rating, LiveOps — dự án khai entry rồi nối. Ngoại lệ duy nhất base tự khai:
+  `lastSeenUtcSeconds`, vì Time cần mốc chống lùi giờ ở mọi dự án.
+- **Rẻ, thêm không sửa cũ:** nút xoá từng entry · kho file khi chạm giới hạn PlayerPrefs · migration version · cloud sync
+  · crypto decorator quanh serializer.
+- **`ValidateKeys` kiểm luật 2:** serialize `CloneDefault()` hai lần rồi so. Bắt `HashSet`/`Dictionary` có phần tử
+  trong `Default Value`; không bắt container rỗng.
+- **Remote Config nên học lại:** `RemoteConfigs` thành `IReadOnlyList<>`; cache `PlayerPrefs` có tiền tố riêng.

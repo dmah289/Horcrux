@@ -1,0 +1,800 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Persistence System</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#0d1117;--bg2:#161b22;--bg3:#1c2333;--bg4:#242d3a;--tx:#e6edf3;--tx2:#8b949e;--tx3:#484f58;--ac:#58a6ff;--ac2:#bc8cff;--gr:#3fb950;--or:#d29922;--rd:#f85149;--bd:#30363d;--r:10px;--mono:'JetBrains Mono','Fira Code',Consolas,monospace;--sans:'Inter','Segoe UI',system-ui,sans-serif}
+html{scroll-behavior:smooth;background:var(--bg);color:var(--tx);font:16px/1.65 var(--sans)}
+body{background:var(--bg);overflow-x:hidden}
+a{color:var(--ac);text-decoration:none}a:hover{text-decoration:underline}
+#header{max-width:960px;margin:0 auto;padding:3.5rem 1rem 1.5rem;border-bottom:1px solid var(--bd)}
+#header h1{font-size:clamp(2rem,5vw,2.8rem);font-weight:800;letter-spacing:-.03em;color:var(--ac)}
+#header .sub{color:var(--tx2);margin-top:.4rem}
+.badge{display:inline-block;margin:.8rem .4rem 0 0;padding:.25em .8em;border:1px solid var(--bd);border-radius:99px;font-family:var(--mono);font-size:.75rem;color:var(--tx2)}
+#toc{max-width:960px;margin:2rem auto 0;padding:0 1rem}
+#toc h2{font-size:1.15rem;border:none;margin-bottom:.6rem}
+#toc ol{columns:3;column-gap:2rem;padding-left:1.4em}
+#toc li{font-size:.9rem;margin-bottom:.25rem;break-inside:avoid}
+@media(max-width:760px){#toc ol{columns:2}}
+@media(max-width:480px){#toc ol{columns:1}}
+main{max-width:960px;margin:0 auto;padding:0 1rem 5rem}
+section{padding-top:3.2rem}
+h2{font-size:1.65rem;font-weight:700;letter-spacing:-.02em;margin-bottom:1.1rem;padding-bottom:.45rem;border-bottom:1px solid var(--bd)}
+h3{font-size:1.15rem;font-weight:600;margin:2rem 0 .8rem;color:var(--ac)}
+p,ul,ol{margin-bottom:.9rem}ul,ol{padding-left:1.3em}li{margin-bottom:.25rem}
+strong{color:var(--tx);font-weight:600}
+em{color:var(--ac2);font-style:normal}
+code{font-family:var(--mono);font-size:.86em;background:var(--bg3);padding:.1em .35em;border-radius:4px;overflow-wrap:anywhere}
+pre{background:var(--bg3);border:1px solid var(--bd);border-radius:var(--r);padding:1rem 1.1rem;margin:1rem 0;overflow-x:auto}
+pre code{background:none;padding:0;font-size:.83rem;line-height:1.6;overflow-wrap:normal}
+.tw{overflow-x:auto;margin:1rem 0}
+table{width:100%;border-collapse:collapse;font-size:.88rem}
+th{text-align:left;padding:.55rem .7rem;border-bottom:2px solid var(--bd);color:var(--ac);font-weight:600;vertical-align:bottom}
+td{padding:.5rem .7rem;border-bottom:1px solid var(--bd);vertical-align:top}
+tr:last-child td{border-bottom:none}
+.note{border-left:3px solid var(--ac);background:var(--bg2);padding:.85rem 1.1rem;border-radius:0 var(--r) var(--r) 0;margin:1.2rem 0;font-size:.92rem;color:var(--tx2)}
+.note strong{color:var(--ac)}
+.note.good{border-left-color:var(--gr)}.note.good strong{color:var(--gr)}
+.note.bad{border-left-color:var(--rd)}.note.bad strong{color:var(--rd)}
+.hero{border:1px solid var(--gr);background:var(--bg2);border-radius:var(--r);padding:1.1rem 1.3rem;margin:1.5rem 0}
+.hero .big{font-size:1.25rem;font-weight:700;color:var(--gr)}
+.fig{background:var(--bg2);border:1px solid var(--bd);border-radius:var(--r);padding:1rem;margin:1.3rem 0;overflow-x:auto}
+.fig svg{display:block;width:100%;min-width:680px;height:auto}
+.fig .cap{font-family:var(--mono);font-size:.75rem;color:var(--ac2);text-transform:uppercase;letter-spacing:.07em;margin-bottom:.7rem}
+.arch{font-family:var(--mono);font-size:.8rem;line-height:1.7;white-space:pre;overflow-x:auto;padding:1rem;background:var(--bg3);border-radius:var(--r);color:var(--tx2);margin:1rem 0}
+.steps{counter-reset:s;list-style:none;padding:0}
+.steps>li{counter-increment:s;position:relative;padding:0 0 1.2rem 2.6rem;border-left:2px solid var(--bd);margin-left:.9rem}
+.steps>li:last-child{border-left-color:transparent}
+.steps>li::before{content:counter(s);position:absolute;left:-.95rem;top:0;width:1.8rem;height:1.8rem;border-radius:50%;background:var(--ac);color:var(--bg);font-weight:700;font-size:.85rem;display:flex;align-items:center;justify-content:center}
+.steps>li>strong:first-child{display:block;margin-bottom:.4rem;color:var(--ac)}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:.9rem;margin:1.2rem 0}
+.cell{background:var(--bg3);border-radius:var(--r);padding:1rem;text-align:center}
+.cell .v{font-size:1.35rem;font-weight:800;color:var(--ac);font-family:var(--mono)}
+.cell .l{font-size:.8rem;color:var(--tx2);margin-top:.2rem}
+.tag{display:inline-block;font-family:var(--mono);font-size:.72rem;padding:.05em .5em;border-radius:4px;border:1px solid currentColor}
+.t-ok{color:var(--gr)}.t-warn{color:var(--or)}.t-bad{color:var(--rd)}.t-info{color:var(--ac)}
+/* SVG */
+.sv-box{fill:var(--bg3);stroke:var(--bd);stroke-width:1.5}
+.sv-sdk{fill:var(--bg3);stroke:var(--ac);stroke-width:1.5}
+.sv-prj{fill:var(--bg3);stroke:var(--ac2);stroke-width:1.5}
+.sv-ok{fill:var(--bg3);stroke:var(--gr);stroke-width:1.5}
+.sv-warn{fill:var(--bg3);stroke:var(--or);stroke-width:1.5}
+.sv-bad{fill:var(--bg3);stroke:var(--rd);stroke-width:1.5}
+.sv-disk{fill:var(--bg4);stroke:var(--gr);stroke-width:2}
+.sv-t{fill:var(--tx);font:13px var(--sans)}
+.sv-tb{fill:var(--tx);font:600 13px var(--sans)}
+.sv-m{fill:var(--tx2);font:11.5px var(--mono)}
+.sv-s{fill:var(--tx2);font:11.5px var(--sans)}
+.sv-ac{fill:var(--ac)}.sv-ac2{fill:var(--ac2)}.sv-gr{fill:var(--gr)}.sv-or{fill:var(--or)}.sv-rd{fill:var(--rd)}
+.sv-ln{stroke:var(--tx2);stroke-width:1.5;fill:none}
+.sv-lnac{stroke:var(--ac);stroke-width:1.8;fill:none}
+.sv-lngr{stroke:var(--gr);stroke-width:1.8;fill:none}
+.sv-lnrd{stroke:var(--rd);stroke-width:1.8;fill:none;stroke-dasharray:5 4}
+.sv-lnor{stroke:var(--or);stroke-width:1.8;fill:none}
+.sv-axis{stroke:var(--tx3);stroke-width:1.5}
+.sv-loss{fill:var(--rd);opacity:.18}
+footer{text-align:center;padding:2.5rem 1rem;color:var(--tx3);font-size:.82rem;border-top:1px solid var(--bd)}
+@media print{
+  :root{--bg:#fff;--bg2:#f6f8fa;--bg3:#f0f2f5;--bg4:#e6e9ee;--tx:#111;--tx2:#444;--tx3:#888;--bd:#ccc;--ac:#0b5cc2;--ac2:#7a3fc4;--gr:#1a7f37;--or:#9a6700;--rd:#c62828}
+  #toc{display:none}section{padding-top:1.5rem;break-inside:auto}.fig,table,pre{break-inside:avoid}
+}
+</style>
+</head>
+<body>
+<header id="header">
+  <h1>Persistence System</h1>
+  <p class="sub">Lưu tiến độ người chơi vào PlayerPrefs: mỗi giá trị là một entry, một collection lo load, autosave và ghi đĩa.</p>
+  <span class="badge">Horcrux.Runtime.Abstractions.Persistence</span>
+  <span class="badge">Horcrux.Runtime.Implementations.Persistence</span>
+  <span class="badge">Code: Runtime/Abstractions/Foundations/Persistence/ · Runtime/Implementations/Foundations/Persistence/ · Runtime/Implementations/Composites/SaveBootstep*.cs</span>
+</header>
+
+<nav id="toc"><h2>Mục lục</h2><ol>
+  <li><a href="#tong-quan">Tổng quan và bảo đảm</a></li>
+  <li><a href="#hai-phia">Hai phía SDK – dự án</a></li>
+  <li><a href="#luong">Luồng dữ liệu</a></li>
+  <li><a href="#load">Load một entry</a></li>
+  <li><a href="#kich-ban">Bảy kịch bản</a></li>
+  <li><a href="#ca-bien">Ca biên</a></li>
+  <li><a href="#payload">Hợp đồng payload</a></li>
+  <li><a href="#truoc-khi-chay">Trước khi chạy</a></li>
+  <li><a href="#host">Hai host</a></li>
+  <li><a href="#inspector">Inspector và nút Editor</a></li>
+  <li><a href="#event">Event OnValueChanged</a></li>
+  <li><a href="#test">Kiểm thử</a></li>
+  <li><a href="#bat-bien">Bất biến</a></li>
+  <li><a href="#bay">Bẫy và quyết định</a></li>
+  <li><a href="#chu-ky">Chữ ký</a></li>
+  <li><a href="#file">Cấu trúc file</a></li>
+  <li><a href="#mo">Còn để mở</a></li>
+</ol></nav>
+
+<main>
+
+<!-- ============ TỔNG QUAN ============ -->
+<section id="tong-quan">
+  <h2>Tổng quan và bảo đảm</h2>
+  <p>Mỗi thứ lưu được là một <code>PersistenceDataEntry&lt;T&gt;</code>, gồm bốn phần: <strong>khoá</strong> · <strong>giá trị mặc định</strong> · <strong>giá trị đang chạy</strong> · <strong>payload kho đang giữ</strong>. Mọi entry là field của <strong>một</strong> <code>ScriptableObject</code> dẫn xuất <code>BasePersistenceDataCollection</code>. Collection quét field, load lúc boot, autosave, và là <strong>chỗ duy nhất</strong> gọi <code>PlayerPrefs.SetString</code> / <code>PlayerPrefs.Save()</code>.</p>
+
+  <div class="fig"><div class="cap">Một entry gồm bốn phần</div>
+  <svg viewBox="0 0 860 150" role="img" aria-label="Cấu trúc một entry">
+    <rect x="10" y="20" width="840" height="115" rx="10" class="sv-sdk"/>
+    <text x="28" y="44" class="sv-tb">PersistenceDataEntry&lt;T&gt;</text>
+    <rect x="28" y="60" width="190" height="60" rx="8" class="sv-box"/>
+    <text x="42" y="84" class="sv-tb">key</text><text x="42" y="104" class="sv-s">Inspector · serialize</text>
+    <rect x="232" y="60" width="190" height="60" rx="8" class="sv-box"/>
+    <text x="246" y="84" class="sv-tb">defaultValue</text><text x="246" y="104" class="sv-s">Inspector · serialize</text>
+    <rect x="436" y="60" width="190" height="60" rx="8" class="sv-ok"/>
+    <text x="450" y="84" class="sv-tb">value</text><text x="450" y="104" class="sv-s">runtime · KHÔNG serialize</text>
+    <rect x="640" y="60" width="196" height="60" rx="8" class="sv-ok"/>
+    <text x="654" y="84" class="sv-tb">storedPayload</text><text x="654" y="104" class="sv-s">runtime · KHÔNG serialize</text>
+  </svg></div>
+
+  <div class="hero"><div class="big">Bảo đảm: mất tối đa MỘT chu kỳ autosave.</div>
+  <p style="margin:.5rem 0 0">Swipe-kill trên Android và hệ thu hồi RAM <strong>không</strong> chạy <code>OnApplicationQuit</code>; tín hiệu tin được cuối cùng là lúc vào background. Autosave là lưới chính, flush lúc vào background là chốt sổ, flush lúc quit là thêm được thì tốt. Hệ không hứa "không mất gì".</p></div>
+
+  <div class="fig"><div class="cap">Ba lưới đỡ trên trục thời gian — vùng đỏ là thứ có thể mất</div>
+  <svg viewBox="0 0 860 190" role="img" aria-label="Trục thời gian autosave, background, kill">
+    <line x1="30" y1="110" x2="840" y2="110" class="sv-axis"/>
+    <text x="30" y="140" class="sv-m">boot</text>
+    <g class="sv-gr">
+      <circle cx="150" cy="110" r="6"/><circle cx="270" cy="110" r="6"/><circle cx="390" cy="110" r="6"/>
+      <circle cx="610" cy="110" r="6"/><circle cx="730" cy="110" r="6"/>
+    </g>
+    <text x="150" y="140" class="sv-m" text-anchor="middle">10 s</text>
+    <text x="270" y="140" class="sv-m" text-anchor="middle">20 s</text>
+    <text x="390" y="140" class="sv-m" text-anchor="middle">30 s</text>
+    <text x="210" y="40" class="sv-t" text-anchor="middle">autosave</text>
+    <path d="M210 48 L150 100 M210 48 L270 100" class="sv-lngr"/>
+    <rect x="455" y="96" width="14" height="28" rx="3" class="sv-or"/>
+    <text x="462" y="40" class="sv-t" text-anchor="middle">vào background</text>
+    <text x="462" y="58" class="sv-s" text-anchor="middle">FlushAll — chốt sổ</text>
+    <path d="M462 64 L462 92" class="sv-lnor"/>
+    <text x="520" y="140" class="sv-s" text-anchor="middle">swipe-kill: quit KHÔNG chạy,</text>
+    <text x="520" y="156" class="sv-s" text-anchor="middle">nhưng đã chốt sổ → không mất</text>
+    <rect x="730" y="92" width="80" height="36" class="sv-loss"/>
+    <line x1="810" y1="88" x2="810" y2="132" class="sv-lnrd"/>
+    <text x="850" y="40" class="sv-t sv-rd" text-anchor="end">chết giữa lúc chơi</text>
+    <text x="850" y="58" class="sv-s" text-anchor="end">(thu hồi RAM, crash)</text>
+    <text x="770" y="175" class="sv-s sv-rd" text-anchor="middle">≤ 1 chu kỳ bị mất</text>
+  </svg></div>
+</section>
+
+<!-- ============ HAI PHÍA ============ -->
+<section id="hai-phia">
+  <h2>Hai phía SDK – dự án</h2>
+  <p>Phụ thuộc một chiều: <strong>dự án → SDK</strong>. Model save của dự án không bị biên dịch vào <code>com.horcrux.runtime</code>, không cần <code>.asmref</code>.</p>
+
+  <div class="fig"><div class="cap">Ai khai gì</div>
+  <svg viewBox="0 0 860 300" role="img" aria-label="SDK và dự án">
+    <rect x="10" y="10" width="400" height="280" rx="10" class="sv-sdk"/>
+    <text x="28" y="38" class="sv-tb sv-ac">SDK — Horcrux</text>
+    <rect x="28" y="54" width="364" height="58" rx="8" class="sv-box"/>
+    <text x="42" y="78" class="sv-m">IPersistenceDataEntry</text>
+    <text x="42" y="98" class="sv-m">IPersistenceDataCollection  (không IService&lt;&gt;)</text>
+    <rect x="28" y="124" width="364" height="78" rx="8" class="sv-box"/>
+    <text x="42" y="148" class="sv-m">PersistenceDataEntry&lt;T&gt;</text>
+    <text x="42" y="168" class="sv-m">BasePersistenceDataCollection (abstract)</text>
+    <text x="42" y="188" class="sv-m">[MarkedPersistence]</text>
+    <rect x="28" y="214" width="364" height="58" rx="8" class="sv-box"/>
+    <text x="42" y="238" class="sv-m">SaveDriver · SaveBootstep</text>
+    <text x="42" y="258" class="sv-m">SaveBootstepInitializer</text>
+    <rect x="450" y="10" width="400" height="280" rx="10" class="sv-prj"/>
+    <text x="468" y="38" class="sv-tb sv-ac2">Dự án</text>
+    <rect x="468" y="54" width="364" height="58" rx="8" class="sv-box"/>
+    <text x="482" y="78" class="sv-m">IMySaveCollection</text>
+    <text x="482" y="98" class="sv-s">: IPersistenceDataCollection, IService&lt;…&gt;</text>
+    <rect x="468" y="124" width="364" height="78" rx="8" class="sv-box"/>
+    <text x="482" y="148" class="sv-m">MySaveCollection</text>
+    <text x="482" y="168" class="sv-s">: BasePersistenceDataCollection</text>
+    <text x="482" y="188" class="sv-s">field [MarkedPersistence] + model thuần</text>
+    <rect x="468" y="214" width="364" height="58" rx="8" class="sv-box"/>
+    <text x="482" y="238" class="sv-s">[Service] · [CreateAssetMenu] · Resources path</text>
+    <text x="482" y="258" class="sv-s">chọn ĐÚNG MỘT host, kéo vào scene</text>
+    <path d="M460 150 L420 150" class="sv-lnac"/>
+    <path d="M420 150 l10 -6 v12 z" class="sv-ac"/>
+    <text x="440" y="140" class="sv-s" text-anchor="middle">dùng</text>
+  </svg></div>
+
+  <div class="tw"><table>
+    <thead><tr><th>SDK giữ</th><th>Dự án khai</th></tr></thead>
+    <tbody>
+      <tr><td><code>IPersistenceDataEntry</code> · <code>IPersistenceDataCollection</code> — interface thuần, <strong>không</strong> derive <code>IService&lt;&gt;</code></td><td><code>IMySaveCollection : IPersistenceDataCollection, IService&lt;IMySaveCollection&gt;</code> — một property cho mỗi entry</td></tr>
+      <tr><td><code>PersistenceDataEntry&lt;T&gt;</code> · <code>BasePersistenceDataCollection</code> (abstract) · <code>MarkedPersistence</code></td><td><code>MySaveCollection : BasePersistenceDataCollection</code> — một field <code>[MarkedPersistence]</code> cho mỗi entry, model save là class dữ liệu thuần</td></tr>
+      <tr><td>hai host <code>SaveDriver</code> · <code>SaveBootstep</code> (+ <code>SaveBootstepInitializer</code>)</td><td><code>[Service]</code> · <code>[CreateAssetMenu]</code> · đường dẫn Resources · <strong>chọn đúng một host</strong></td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<!-- ============ LUỒNG ============ -->
+<section id="luong">
+  <h2>Luồng dữ liệu</h2>
+
+  <div class="fig"><div class="cap">Bốn nhịp — authoring · boot · chơi · flush</div>
+  <svg viewBox="0 0 860 330" role="img" aria-label="Bốn nhịp của hệ">
+    <rect x="10" y="10" width="200" height="72" rx="8" class="sv-prj"/>
+    <text x="24" y="36" class="sv-tb">authoring</text>
+    <text x="24" y="58" class="sv-s">Inspector của asset:</text>
+    <text x="24" y="74" class="sv-m">key · defaultValue</text>
+
+    <rect x="240" y="10" width="610" height="72" rx="8" class="sv-sdk"/>
+    <text x="254" y="36" class="sv-tb">boot — host gọi Initialize() MỘT lần</text>
+    <text x="254" y="58" class="sv-m">ScanEntries → Setup → ResetDerivedState → LoadAllEntries</text>
+    <text x="254" y="74" class="sv-m">→ OnEntriesLoaded → IsInitialized = true → có Seeded? warn + flush</text>
+    <path d="M210 46 L238 46" class="sv-ln"/>
+
+    <rect x="10" y="112" width="400" height="104" rx="8" class="sv-ok"/>
+    <text x="24" y="138" class="sv-tb">chơi — không chạm đĩa</text>
+    <text x="24" y="162" class="sv-m">Value = x → OnValueChanged(old, x)</text>
+    <text x="24" y="182" class="sv-m">Value.field = x → KHÔNG event</text>
+    <text x="24" y="202" class="sv-s">đọc: Value hoặc implicit T (entry null → default)</text>
+    <path d="M545 82 L545 100 L210 100 L210 110" class="sv-ln"/>
+
+    <rect x="440" y="112" width="410" height="104" rx="8" class="sv-warn"/>
+    <text x="454" y="138" class="sv-tb">flush — bốn cửa kích hoạt</text>
+    <text x="454" y="162" class="sv-s">autosave mỗi autosaveIntervalSeconds (Realtime)</text>
+    <text x="454" y="182" class="sv-s">cạnh vào background · quit</text>
+    <text x="454" y="202" class="sv-s">FlushNow() / Flush(entry) / FlushAll()</text>
+    <path d="M410 164 L438 164" class="sv-ln"/>
+
+    <rect x="10" y="246" width="840" height="74" rx="8" class="sv-box"/>
+    <text x="24" y="270" class="sv-tb">FlushInternal — hai giai đoạn</text>
+    <text x="24" y="292" class="sv-m">① mọi entry: payload = WritePayload() → khác StoredPayload? SetString (RAM của PlayerPrefs)</text>
+    <text x="24" y="310" class="sv-m">② có entry vừa ghi → PlayerPrefs.Save() MỘT lần → rồi mới CacheStoredPayload</text>
+    <path d="M645 216 L645 244" class="sv-ln"/>
+  </svg></div>
+
+  <h3>Flush hai giai đoạn</h3>
+  <div class="fig"><div class="cap">Một lượt FlushInternal</div>
+  <svg viewBox="0 0 860 262" role="img" aria-label="Hai giai đoạn flush">
+    <rect x="10" y="20" width="150" height="56" rx="8" class="sv-box"/>
+    <text x="85" y="44" class="sv-tb" text-anchor="middle">mỗi entry</text>
+    <text x="85" y="64" class="sv-m" text-anchor="middle">WritePayload()</text>
+    <path d="M160 48 L196 48" class="sv-ln"/>
+    <polygon points="270,14 344,48 270,82 196,48" class="sv-box"/>
+    <text x="270" y="44" class="sv-t" text-anchor="middle">== Stored</text>
+    <text x="270" y="60" class="sv-t" text-anchor="middle">Payload?</text>
+    <path d="M270 82 L270 140" class="sv-ln"/>
+    <text x="280" y="116" class="sv-s">bằng</text>
+    <rect x="200" y="142" width="140" height="40" rx="8" class="sv-box"/>
+    <text x="270" y="167" class="sv-t" text-anchor="middle">bỏ qua</text>
+    <path d="M344 48 L380 48" class="sv-ln"/>
+    <text x="350" y="40" class="sv-s">khác</text>
+    <rect x="382" y="20" width="160" height="56" rx="8" class="sv-warn"/>
+    <text x="462" y="44" class="sv-tb" text-anchor="middle">SetString</text>
+    <text x="462" y="64" class="sv-s" text-anchor="middle">vẫn ở RAM · nhớ payload</text>
+    <path d="M542 48 L578 48" class="sv-ln"/>
+    <rect x="580" y="20" width="130" height="56" rx="8" class="sv-disk"/>
+    <text x="645" y="44" class="sv-tb" text-anchor="middle">Save()</text>
+    <text x="645" y="64" class="sv-s" text-anchor="middle">MỘT lần → đĩa</text>
+    <path d="M710 48 L736 48" class="sv-ln"/>
+    <rect x="738" y="20" width="112" height="56" rx="8" class="sv-ok"/>
+    <text x="794" y="44" class="sv-tb" text-anchor="middle">Cache</text>
+    <text x="794" y="64" class="sv-s" text-anchor="middle">StoredPayload</text>
+    <rect x="382" y="142" width="300" height="56" rx="8" class="sv-bad"/>
+    <text x="396" y="166" class="sv-tb sv-rd">WritePayload ném</text>
+    <text x="396" y="186" class="sv-s">LogError + LogException · Stored giữ nguyên → thử lại</text>
+    <path d="M120 76 L120 214 L532 214 L532 200" class="sv-lnrd"/>
+    <text x="126" y="230" class="sv-s sv-rd">ném</text>
+    <text x="10" y="252" class="sv-s">Giai đoạn ② chỉ chạy khi có ít nhất một entry vừa SetString.</text>
+  </svg></div>
+
+  <div class="grid">
+    <div class="cell"><div class="v">4–13 µs</div><div class="l">một lượt serialize + so chuỗi, model cỡ vừa (desktop CoreCLR)</div></div>
+    <div class="cell"><div class="v">2–16 KB</div><div class="l">rác mỗi lượt</div></div>
+    <div class="cell"><div class="v">10 s</div><div class="l">nhịp autosave mặc định — không phải hot path</div></div>
+    <div class="cell"><div class="v">0</div><div class="l">việc chạy theo frame</div></div>
+  </div>
+  <p><strong>Vì sao mỗi flush serialize mọi entry.</strong> Đó là cách duy nhất thấy model bị sửa tại chỗ: serialize <strong>là</strong> lần duyệt object, và sản phẩm của nó chính là chuỗi cần ghi. So tham chiếu rẻ hơn nhưng chỉ bắt được đường qua setter. <code>Save()</code> cùng tick đắt hơn vài bậc. Reflection quét field cache một lần mỗi phiên.</p>
+</section>
+
+<!-- ============ LOAD ============ -->
+<section id="load">
+  <h2>Load một entry — ba kết cục</h2>
+  <div class="fig"><div class="cap">LoadEntry</div>
+  <svg viewBox="0 0 860 330" role="img" aria-label="Cây quyết định load">
+    <rect x="10" y="20" width="230" height="46" rx="8" class="sv-box"/>
+    <text x="125" y="48" class="sv-m" text-anchor="middle">HasKey("persistence_"+key)?</text>
+    <path d="M240 43 L560 43" class="sv-ln"/><text x="260" y="36" class="sv-s">không</text>
+    <rect x="562" y="20" width="288" height="46" rx="8" class="sv-warn"/>
+    <text x="576" y="40" class="sv-tb sv-or">Seeded</text>
+    <text x="576" y="58" class="sv-s">stored = null → flush cuối Initialize ghi mặc định</text>
+    <path d="M125 66 L125 100" class="sv-ln"/><text x="133" y="88" class="sv-s">có</text>
+    <rect x="35" y="102" width="180" height="40" rx="8" class="sv-box"/>
+    <text x="125" y="127" class="sv-t" text-anchor="middle">payload rỗng?</text>
+    <path d="M215 122 L400 122 L400 66" class="sv-ln"/><text x="300" y="114" class="sv-s">có → Seeded</text>
+    <path d="M125 142 L125 176" class="sv-ln"/><text x="133" y="164" class="sv-s">không</text>
+    <rect x="35" y="178" width="180" height="40" rx="8" class="sv-box"/>
+    <text x="125" y="203" class="sv-m" text-anchor="middle">ReadPayload</text>
+    <path d="M215 198 L560 198" class="sv-lngr"/><text x="260" y="190" class="sv-s">ok</text>
+    <rect x="562" y="164" width="288" height="68" rx="8" class="sv-ok"/>
+    <text x="576" y="184" class="sv-tb sv-gr">Loaded</text>
+    <text x="576" y="202" class="sv-s">value = payload ("null" → CloneDefault)</text>
+    <text x="576" y="220" class="sv-s">stored = payload · OnValueChanged(mặc định, value)</text>
+    <path d="M125 218 L125 280 L560 280" class="sv-lnrd"/><text x="260" y="272" class="sv-s">ném</text>
+    <rect x="562" y="248" width="288" height="72" rx="8" class="sv-bad"/>
+    <text x="576" y="268" class="sv-tb sv-rd">Failed</text>
+    <text x="576" y="286" class="sv-s">value = mặc định · Cache(WritePayload())</text>
+    <text x="576" y="304" class="sv-s">LogError + LogException · đĩa KHÔNG bị chạm</text>
+  </svg></div>
+  <div class="note"><strong>Vì sao Failed không seed:</strong> ghi đè payload hỏng là xoá bản sao duy nhất của bằng chứng. Coi mặc định là "đã lưu" nên flush bỏ qua; người chơi đổi gì thì payload khác đi và lượt flush kế ghi đè — dữ liệu sống thắng bằng chứng chết.</div>
+</section>
+
+<!-- ============ KỊCH BẢN ============ -->
+<section id="kich-ban">
+  <h2>Bảy kịch bản</h2>
+  <div class="tw"><table>
+    <thead><tr><th>#</th><th>Kịch bản</th><th>Diễn biến</th><th>Kết quả</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>Cài lần đầu</td><td>mọi entry <span class="tag t-warn">Seeded</span> → <code>LogWarning</code> <em>"N/M entries had no stored key"</em> → flush</td><td>mọi khoá có trên đĩa với <code>Default Value</code> trước khi người chơi chạm gì. Giá: một <code>Save()</code> ở boot</td></tr>
+      <tr><td>2</td><td>Mở lại app</td><td>mọi entry <span class="tag t-ok">Loaded</span> → <code>seededCount == 0</code> → không flush</td><td>đĩa không bị chạm. <code>OnValueChanged</code> của lượt load chưa có người nghe (Setup vừa xoá listener)</td></tr>
+      <tr><td>3</td><td>Đổi giá trị rồi autosave</td><td>setter phát event → view cập nhật; <code>UniTask.Delay(…, DelayType.Realtime)</code> hết nhịp → flush</td><td><code>Realtime</code>: ngồi ở popup pause <code>timeScale = 0</code> vẫn lưu. Chốt sổ sớm (mua IAP) thì <code>FlushNow()</code></td></tr>
+      <tr><td>4</td><td>Sửa model tại chỗ</td><td><code>entry.Value.coins += 5</code> — không qua setter</td><td><strong>được lưu</strong> ở flush kế (so payload thấy), <strong>không</strong> phát event. View sống bằng event thì ghi qua setter</td></tr>
+      <tr><td>5</td><td>Vào background rồi swipe-kill</td><td>Unity bắn cả <code>OnApplicationPause(true)</code> lẫn <code>OnApplicationFocus(false)</code>; host gộp thành một cạnh → <code>FlushAll()</code></td><td>quit không chạy nhưng đã chốt sổ. Chết <strong>giữa lúc chơi</strong> (thu hồi RAM, crash native) thì mất phần từ autosave gần nhất — toàn bộ khoảng hở hệ thừa nhận</td></tr>
+      <tr><td>6</td><td>Update thêm entry</td><td>entry cũ <span class="tag t-ok">Loaded</span>, entry mới <span class="tag t-warn">Seeded</span> → <code>LogWarning "1/M"</code> → flush chỉ ghi entry mới</td><td>từ phiên thứ hai, dòng warning này là <strong>bất thường</strong>: khoá vừa mất khỏi đĩa hoặc <code>Key</code> vừa bị đổi</td></tr>
+      <tr><td>7a</td><td>Đọc hỏng</td><td>kết cục <span class="tag t-bad">Failed</span> (sơ đồ load)</td><td>entry khác trong cùng lượt không bị kéo theo</td></tr>
+      <tr><td>7b</td><td>Ghi hỏng — <code>WritePayload</code> ném</td><td><code>LogError</code> nêu khoá + <code>LogException</code>, <code>StoredPayload</code> không đổi; entry khác vẫn <code>SetString</code> và <code>Save()</code></td><td>kêu lại <strong>mỗi chu kỳ</strong> tới khi sửa kiểu — im lặng là một entry không bao giờ lưu</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<!-- ============ CA BIÊN ============ -->
+<section id="ca-bien">
+  <h2>Ca biên</h2>
+  <div class="tw"><table>
+    <thead><tr><th>Ca</th><th>Kết quả</th></tr></thead>
+    <tbody>
+      <tr><td><code>FlushAll()</code> trước <code>Initialize()</code></td><td><code>entries</code> rỗng → không ghi gì; mặc định không đè save thật, nhưng game chạy trên default trong RAM</td></tr>
+      <tr><td><code>FlushNow()</code> trên entry chưa qua <code>Setup</code> (thiếu <code>[MarkedPersistence]</code>, hoặc trước <code>Initialize()</code>)</td><td><code>LogError</code> <em>"No collection owns …"</em>. Đọc/ghi <code>Value</code> vẫn chạy im lặng trong RAM</td></tr>
+      <tr><td><code>Flush(entry)</code> với entry null / không thuộc collection</td><td><code>LogError</code> rồi thoát</td></tr>
+      <tr><td>Quit hoặc vào background khi <code>BootstrapService</code> chưa init xong (<code>SaveBootstep</code>)</td><td>service không fan-out → không flush, không reset cờ. Chấp nhận: chưa có dữ liệu đáng mất. <code>SaveDriver</code> không có cổng này</td></tr>
+      <tr><td>Entry bị <code>ScanEntries</code> loại (khoá rỗng, khoá trùng — giữ field đầu, field sai kiểu)</td><td>mỗi ca một <code>LogError</code> nêu tên field; <code>Initialize()</code> bỏ qua con số loại, chỉ <code>ValidateKeys</code> tổng kết</td></tr>
+      <tr><td>Sửa <code>PlayerPrefs</code> bằng tay lúc Play</td><td>không reload giữa phiên; Play lại. Xem/sửa bằng tool <code>Editor/PlayerPrefsEditor</code></td></tr>
+      <tr><td>Listener ném exception</td><td>mỗi delegate bọc <code>try/catch</code> riêng → <code>LogError</code> nêu khoá, listener khác vẫn chạy</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<!-- ============ PAYLOAD ============ -->
+<section id="payload">
+  <h2>Hợp đồng payload</h2>
+  <p><code>WritePayload</code> / <code>ReadPayload</code> / <code>CloneDefault</code> dùng <code>JsonConvert</code> <strong>không settings</strong>. Hai luật, hỏng hai kiểu:</p>
+  <div class="tw"><table>
+    <thead><tr><th>Luật</th><th>Vi phạm thì</th><th>Kiểm</th></tr></thead>
+    <tbody>
+      <tr><td><strong>1 · <code>T</code> không chạm kiểu <code>UnityEngine</code></strong> — kể cả nằm sâu trong field, property, phần tử</td><td><span class="tag t-bad">ném</span> flush ném</td><td>nút <code>ValidateKeys</code> (theo kiểu, bắt cả container rỗng)</td></tr>
+      <tr><td><strong>2 · cùng dữ liệu → cùng chuỗi</strong></td><td><span class="tag t-warn">im lặng</span> mọi flush thấy "đổi" → <code>Save()</code> cả kho mỗi chu kỳ, trên Android là <code>commit()</code> đồng bộ main thread, <strong>không một dòng log</strong></td><td>developer tự đảm bảo; chưa có nút</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>Luật 1 — kiểu engine</h3>
+  <p>Newtonsoft đọc cả public field lẫn <strong>property có getter</strong>, nên chạm property tính toán của struct toán Unity:</p>
+  <div class="tw"><table>
+    <thead><tr><th><code>T</code></th><th><code>JsonConvert.SerializeObject</code> (đo CoreCLR 6.0.21)</th></tr></thead>
+    <tbody>
+      <tr><td><code>Vector3</code>, <code>Vector2</code></td><td><span class="tag t-bad">ném</span> <code>JsonSerializationException: Self referencing loop detected for property 'normalized'</code></td></tr>
+      <tr><td><code>Quaternion</code>, <code>Color</code></td><td>cùng bẫy (<code>normalized</code>, <code>linear</code>) — chưa đo ngoài Unity vì gọi native</td></tr>
+      <tr><td><code>Vector2Int</code></td><td><span class="tag t-warn">rác</span> không ném, payload mang rác: <code>{"x":3,"y":4,"magnitude":5.0,"sqrMagnitude":25}</code></td></tr>
+      <tr><td><code>int</code>, <code>bool</code>, <code>string</code>, class/struct tự khai</td><td><span class="tag t-ok">sạch</span></td></tr>
+    </tbody>
+  </table></div>
+  <p>Cấm struct toán (<code>Vector2/3/4</code>, <code>Vector2Int</code>, <code>Quaternion</code>, <code>Color</code>, <code>Rect</code>, <code>Bounds</code>, <code>Matrix4x4</code>…) và <code>Object</code> engine (<code>GameObject</code>, <code>Transform</code>, <code>AnimationCurve</code>…). Cần vị trí thì khai struct riêng — hình dạng save là hợp đồng của dự án:</p>
+<pre><code>[Serializable]
+public struct SavedPosition
+{
+    public float x, y, z;
+}</code></pre>
+
+  <div class="fig"><div class="cap">Lỗi kiểu engine lộ ra lúc nào</div>
+  <svg viewBox="0 0 860 150" role="img" aria-label="Thời điểm lộ lỗi kiểu engine">
+    <rect x="10" y="14" width="410" height="122" rx="8" class="sv-ok"/>
+    <text x="24" y="40" class="sv-tb">Kiểu engine nằm trong Default Value</text>
+    <text x="24" y="64" class="sv-s">CloneDefault() ném ở Initialize()</text>
+    <text x="24" y="86" class="sv-s">→ đỏ MỌI lần Play, thấy ngay trong Editor</text>
+    <text x="24" y="118" class="sv-tb sv-gr">không lọt xuống build</text>
+    <rect x="440" y="14" width="410" height="122" rx="8" class="sv-bad"/>
+    <text x="454" y="40" class="sv-tb">Trong container RỖNG lúc mặc định</text>
+    <text x="454" y="64" class="sv-m">List&lt;Vector3&gt; chưa có phần tử</text>
+    <text x="454" y="86" class="sv-s">Initialize() qua sạch → ném ở flush đầu (7b)</text>
+    <text x="454" y="118" class="sv-tb sv-rd">ca duy nhất lọt xuống build</text>
+  </svg></div>
+
+  <h3>Luật 2 — kiểu dễ vỡ</h3>
+  <div class="tw"><table>
+    <thead><tr><th>Kiểu</th><th>Vì sao</th><th>Thay bằng</th></tr></thead>
+    <tbody>
+      <tr><td><code>HashSet&lt;T&gt;</code>, <code>Dictionary&lt;K,V&gt;</code></td><td>không hứa thứ tự duyệt</td><td><code>List&lt;T&gt;</code> sắp trước khi ghi</td></tr>
+      <tr><td><code>DateTime</code></td><td><code>Kind</code> khác → chuỗi khác cho cùng mốc</td><td><code>long</code> ticks hoặc epoch seconds UTC</td></tr>
+      <tr><td>property trả giá trị mới mỗi lần đọc</td><td>Newtonsoft ghi mọi property có getter</td><td><code>[JsonIgnore]</code> hoặc bỏ khỏi model</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<!-- ============ TRƯỚC KHI CHẠY ============ -->
+<section id="truoc-khi-chay">
+  <h2>Trước khi chạy</h2>
+  <p>Hệ không tự setup: không tạo GameObject, không tra asset, không guard ô phải điền. Dựng từ 0 bằng sáu bước theo thứ tự.</p>
+  <ol class="steps">
+    <li><strong>Interface dự án</strong>
+      <p>Đặt trong assembly của dự án, không dưới <code>Horcrux.*</code>.</p>
+<pre><code>public partial interface IMySaveCollection
+    : IPersistenceDataCollection, IService&lt;IMySaveCollection&gt;
+{
+    PersistenceDataEntry&lt;int&gt; Coin { get; }
+    PersistenceDataEntry&lt;PlayerProgress&gt; Progress { get; }
+}</code></pre></li>
+    <li><strong>Collection dự án</strong>
+<pre><code>[Service(typeof(IMySaveCollection), ResourcePath = RESOURCE_PATH)]
+[Service(typeof(BasePersistenceDataCollection), ResourcePath = RESOURCE_PATH)]
+[CreateAssetMenu(fileName = "PersistenceDataCollection", menuName = "Configs/PersistenceDataCollection")]
+public sealed partial class MySaveCollection : BasePersistenceDataCollection, IMySaveCollection
+{
+    // Must match where the asset sits under a Resources folder, or the service never resolves.
+    private const string RESOURCE_PATH = "Config/PersistenceDataCollection";
+}</code></pre>
+      <div class="tw"><table>
+        <thead><tr><th>Dòng <code>[Service]</code></th><th>Ai đọc</th></tr></thead>
+        <tbody>
+          <tr><td><code>IMySaveCollection</code></td><td>game code, qua <code>IMySaveCollection.Service</code></td></tr>
+          <tr><td><code>BasePersistenceDataCollection</code></td><td><code>SaveDriver</code> và <code>TimeService</code></td></tr>
+          <tr><td><code>IPersistenceDataCollection</code> — <strong>không đăng ký</strong></td><td>không host nào nhận; đăng ký là bày một đường lấy collection không ai dùng</td></tr>
+        </tbody>
+      </table></div>
+      <p>Cùng <code>ResourcePath</code> nên <code>Resources.Load</code> trả <strong>một</strong> instance. Rồi <strong>Create → Configs → PersistenceDataCollection</strong>, đặt asset dưới <code>Resources/</code> sao cho đường sau <code>Resources/</code> khớp <code>RESOURCE_PATH</code>. <code>partial</code> để chia entry theo nhóm ra nhiều file — mỗi nhóm một cặp class + interface, cùng namespace, <strong>cùng assembly</strong>.</p></li>
+    <li><strong>Thêm entry — hai chỗ luôn đi cùng nhau</strong>
+<pre><code>public partial interface IMySaveCollection
+{
+    PersistenceDataEntry&lt;int&gt; Coin { get; }
+}
+
+public partial class MySaveCollection
+{
+    [Splitter("Economy")]
+    [MarkedPersistence]
+    [SerializeField] private PersistenceDataEntry&lt;int&gt; coin;
+
+    public PersistenceDataEntry&lt;int&gt; Coin =&gt; coin;
+}</code></pre>
+      <p>Field <code>private</code>: scan chỉ quét <code>NonPublic</code>, và <code>public</code> cho mọi caller gán đè tham chiếu entry. Điền <code>Key</code> (chuỗi tự đặt, không suy từ tên field) và <code>Default Value</code> trong Inspector. Feature cần nhiều entry riêng thì tách <strong>interface</strong> (<code>IEconomySave</code>, không derive <code>IService&lt;&gt;</code>; tra riêng thì thêm <code>[Service(typeof(IEconomySave), ResourcePath = …)]</code>), không tách asset.</p></li>
+    <li><strong>Đúng MỘT host, cấp asset cho nó</strong>
+      <p>Chọn ở mục <a href="#host">Hai host</a>, kéo tay vào scene.</p>
+      <div class="tw"><table>
+        <thead><tr><th>Đường cấp</th><th>Làm gì</th><th>Dùng cho</th></tr></thead>
+        <tbody>
+          <tr><td>Service</td><td>không làm gì — dòng <code>[Service(typeof(BasePersistenceDataCollection))]</code> ở bước 2 đủ</td><td>chỉ <code>SaveDriver</code> (<code>MonoBehaviour&lt;T&gt;</code>)</td></tr>
+          <tr><td>Initializer</td><td>Inspector host → mục <strong>Init</strong> → kéo asset vào ô <strong>Save Collection</strong> (<code>SaveBootstepInitializer</code> có sẵn)</td><td>cả hai; <strong>bắt buộc</strong> với <code>SaveBootstep</code> vì nó không phải service</td></tr>
+        </tbody>
+      </table></div></li>
+    <li><strong>Đọc và ghi</strong>
+<pre><code>int coin = IMySaveCollection.Service.Coin;                 // implicit operator T
+IMySaveCollection.Service.Coin.Value = coin + 10;          // OnValueChanged(coin, coin + 10)
+IMySaveCollection.Service.Coin.OnValueChanged += (oldValue, newValue) =&gt; { };
+IMySaveCollection.Service.Coin.FlushNow();                 // chốt sổ sớm một entry
+IMySaveCollection.Service.FlushAll();                      // chốt sổ sớm cả kho</code></pre>
+      <div class="note bad"><strong>Subscribe sau <code>Initialize()</code></strong> — <code>Setup()</code> xoá listener.</div></li>
+    <li><strong>Hook cho state của subclass (tùy chọn)</strong>
+<pre><code>protected override void ResetDerivedState() { /* TRƯỚC LoadAllEntries — xoá cache phiên trước */ }
+protected override void OnEntriesLoaded()  { /* SAU LoadAllEntries — dựng lookup */ }</code></pre>
+      <p>Cần cả hai: chỉ có hook "sau" thì lượt load không chạm entry nào vẫn để cache phiên trước sống.</p></li>
+  </ol>
+
+  <h3>Thiếu bước nào thì hỏng ở đâu</h3>
+  <div class="tw"><table>
+    <thead><tr><th>Bỏ qua</th><th>Hỏng</th></tr></thead>
+    <tbody>
+      <tr><td>Khai collection trong Horcrux</td><td>kéo type dự án vào SDK — submodule không commit được một mình</td></tr>
+      <tr><td><code>[MarkedPersistence]</code></td><td>entry không tồn tại với hệ: chạy trong RAM, không bao giờ xuống đĩa; chỉ <code>FlushNow()</code> mới kêu</td></tr>
+      <tr><td>Field entry <code>private</code> ở class base</td><td><code>GetFields(NonPublic)</code> không thấy private của base; khai ở base thì <code>protected</code></td></tr>
+      <tr><td><code>Key</code> rỗng</td><td><code>ScanEntries</code> loại kèm <code>LogError</code></td></tr>
+      <tr><td><code>Default Value</code> rỗng</td><td>người chơi mới nhận default của kiểu; không phân biệt được với cố ý, và xuống đĩa ngay phiên đầu</td></tr>
+      <tr><td>Không cấp asset cho host</td><td><code>NullReferenceException</code> ở <code>Initialize()</code>. <code>SaveDriver</code>: <code>Start()</code> dừng. <code>SaveBootstep</code>: <code>BootstrapService</code> fail-open, cả phiên chạy <strong>không</strong> persistence</td></tr>
+      <tr><td>Host trên object không sống suốt phiên</td><td>token chết theo scene → autosave <strong>chết im lặng</strong>. <code>SaveDriver</code> tự <code>DontDestroyOnLoad</code>; <code>SaveBootstep</code> dựa <code>BootstrapService</code></td></tr>
+      <tr><td>Hai host, hoặc gọi <code>Initialize()</code> thêm</td><td>mất tiến độ chưa flush, im lặng — mục <a href="#host">Hai host</a></td></tr>
+      <tr><td>Không bấm <code>ValidateKeys</code> trước Play</td><td>lỗi authoring chỉ lộ lúc <code>Initialize()</code> hoặc muộn hơn</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<!-- ============ HOST ============ -->
+<section id="host">
+  <h2>Hai host — đúng một trong cả dự án</h2>
+  <div class="fig"><div class="cap">Chọn host</div>
+  <svg viewBox="0 0 860 170" role="img" aria-label="Chọn host">
+    <polygon points="200,20 330,70 200,120 70,70" class="sv-box"/>
+    <text x="200" y="66" class="sv-t" text-anchor="middle">Dự án có</text>
+    <text x="200" y="84" class="sv-t" text-anchor="middle">BootstrapService?</text>
+    <path d="M330 70 L470 40" class="sv-ln"/><text x="380" y="44" class="sv-s">có</text>
+    <path d="M330 70 L470 120" class="sv-ln"/><text x="380" y="118" class="sv-s">không</text>
+    <rect x="472" y="10" width="378" height="60" rx="8" class="sv-sdk"/>
+    <text x="486" y="34" class="sv-tb">SaveBootstep</text>
+    <text x="486" y="54" class="sv-s">bước trong list steps · cấp asset bằng Initializer</text>
+    <rect x="472" y="92" width="378" height="60" rx="8" class="sv-prj"/>
+    <text x="486" y="116" class="sv-tb">SaveDriver</text>
+    <text x="486" y="136" class="sv-s">kéo vào scene · service tự inject hoặc Initializer</text>
+  </svg></div>
+
+  <div class="tw"><table>
+    <thead><tr><th></th><th><code>SaveDriver</code></th><th><code>SaveBootstep</code></th></tr></thead>
+    <tbody>
+      <tr><td>Dùng khi</td><td>không có Bootstrap</td><td>có <code>BootstrapService</code></td></tr>
+      <tr><td>Là gì</td><td><code>MonoBehaviour&lt;BasePersistenceDataCollection&gt;</code>, <code>DontDestroyOnLoad</code> ở <code>OnAwake</code></td><td><code>ABootStep, IInitializable&lt;BasePersistenceDataCollection&gt;</code></td></tr>
+      <tr><td>Nhận collection</td><td>service hoặc Initializer</td><td>chỉ Initializer</td></tr>
+      <tr><td><code>Initialize()</code> + autosave</td><td><code>Start()</code> · <code>destroyCancellationToken</code></td><td><code>InitializeAsync()</code> · <code>destroyCancellationToken</code> — <strong>không</strong> token của pha, service huỷ nó mỗi lần load level</td></tr>
+      <tr><td>Flush</td><td>cạnh vào background (cờ <code>inBackground</code> gộp focus + pause) · <code>OnApplicationQuit</code></td><td><code>OnGoToBackground(true)</code> · <code>OnAppQuit</code>, chỉ sau khi <code>BootstrapService</code> init xong</td></tr>
+      <tr><td>Thứ tự với hệ khác</td><td>không có — Unity không hứa thứ tự magic method</td><td>có — fan-out vào background và quit <strong>ngược</strong> thứ tự step</td></tr>
+      <tr><td>Lúc quit</td><td><code>FlushAll()</code> + <code>IsInitialized = false</code></td><td>như trái</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3><code>Initialize()</code> lần hai — mất dữ liệu im lặng</h3>
+  <div class="fig"><div class="cap">Không có guard: Setup() chạy lại trên mọi entry</div>
+  <svg viewBox="0 0 860 200" role="img" aria-label="Initialize lần hai">
+    <rect x="10" y="20" width="200" height="160" rx="8" class="sv-ok"/>
+    <text x="24" y="46" class="sv-tb">RAM trước</text>
+    <text x="24" y="72" class="sv-m">value = 150</text>
+    <text x="24" y="94" class="sv-m">stored = "120"</text>
+    <text x="24" y="116" class="sv-m">listeners = 3</text>
+    <text x="24" y="150" class="sv-s">+30 coin chưa flush</text>
+    <path d="M210 100 L270 100" class="sv-lnrd"/><path d="M270 100 l-10 -6 v12 z" class="sv-rd"/>
+    <text x="240" y="90" class="sv-s" text-anchor="middle">Init #2</text>
+    <rect x="276" y="20" width="574" height="160" rx="8" class="sv-bad"/>
+    <text x="290" y="46" class="sv-tb">RAM sau</text>
+    <text x="290" y="72" class="sv-m">value = CloneDefault() → Load lại "120"</text>
+    <text x="620" y="72" class="sv-s sv-rd">mất +30</text>
+    <text x="290" y="94" class="sv-m">stored = null → Load lại "120"</text>
+    <text x="620" y="94" class="sv-s sv-rd">mất mốc so</text>
+    <text x="290" y="116" class="sv-m">OnValueChanged = null</text>
+    <text x="620" y="116" class="sv-s sv-rd">view ngừng nghe</text>
+    <text x="290" y="150" class="sv-s">Đĩa vẫn "120" → soi save không thấy gì lạ. Không một dòng log.</text>
+  </svg></div>
+  <div class="tw"><table>
+    <thead><tr><th><code>Setup()</code> làm</th><th>Mất</th></tr></thead>
+    <tbody>
+      <tr><td><code>value = CloneDefault()</code></td><td>mọi thay đổi từ lần flush cuối</td></tr>
+      <tr><td><code>storedPayload = null</code></td><td>mốc so sánh; <code>LoadAllEntries</code> nạp lại cả hai từ đĩa — không còn dấu vết để ghi</td></tr>
+      <tr><td><code>OnValueChanged = null</code></td><td>mọi listener; view ngừng nhận thay đổi</td></tr>
+    </tbody>
+  </table></div>
+
+  <p><strong>Sáu đường sinh ra lần thứ hai</strong> — kiểm trong Editor:</p>
+  <div class="tw"><table>
+    <thead><tr><th>Đường</th><th>Kiểm bằng</th></tr></thead>
+    <tbody>
+      <tr><td>Hai <code>SaveDriver</code> · hai <code>SaveBootstep</code> · một của mỗi loại</td><td>tìm component trong <strong>mọi</strong> scene và prefab — tổng phải đúng một</td></tr>
+      <tr><td>Cùng <code>SaveBootstep</code> hai lần trong list <code>steps</code></td><td>mở <code>BootstrapService</code> trong Inspector, đếm</td></tr>
+      <tr><td>Game code gọi <code>.Initialize()</code> trên kiểu save</td><td>grep — chỉ host được gọi</td></tr>
+      <tr><td>Host là prefab spawn lúc chạy</td><td>host phải là object kéo tay vào scene</td></tr>
+    </tbody>
+  </table></div>
+  <div class="note"><strong>Cố ý không có cờ chặn:</strong> <code>if (isInitialized) return;</code> che luôn ca cần biết — hai vòng autosave, hai đường flush, wire sai không ai sửa. Chặn bằng cấu trúc: một object kéo tay, đếm được.</div>
+
+  <h3>Chia việc host – collection</h3>
+  <div class="tw"><table>
+    <thead><tr><th>Ở đâu</th><th>Cái gì</th><th>Vì sao</th></tr></thead>
+    <tbody>
+      <tr><td>collection</td><td>vòng autosave · <code>autosaveIntervalSeconds</code></td><td>cả hai host cần đúng một nhịp; bảo đảm "một chu kỳ" là của collection</td></tr>
+      <tr><td>host</td><td>token</td><td><code>ScriptableObject</code> không có mốc kết thúc: tự mở <code>CancellationTokenSource</code> thì không ai đóng, và mỗi lần Play (tắt domain reload) xếp thêm một loop</td></tr>
+      <tr><td>host nhận</td><td><code>BasePersistenceDataCollection</code>, không interface</td><td><code>TimeService</code> cần <code>LastSeenUtcSeconds</code> chỉ base khai</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<!-- ============ INSPECTOR ============ -->
+<section id="inspector">
+  <h2>Inspector và nút Editor</h2>
+  <div class="tw"><table>
+    <thead><tr><th>Field</th><th>Serialize</th><th>Nghĩa</th></tr></thead>
+    <tbody>
+      <tr><td><code>key</code></td><td><span class="tag t-info">có</span></td><td>khoá logic; khoá thật <code>"persistence_" + key</code></td></tr>
+      <tr><td><code>defaultValue</code></td><td><span class="tag t-info">có</span></td><td>giá trị người chơi mới; <strong>sao chép</strong> vào <code>value</code> lúc <code>Setup</code></td></tr>
+      <tr><td><code>value</code></td><td><span class="tag t-ok">không</span></td><td>giá trị đang chạy, <code>[ShowInInspector, ReadOnly]</code></td></tr>
+      <tr><td><code>storedPayload</code></td><td><span class="tag t-ok">không</span></td><td>thứ flush coi như kho đã có; khác payload hiện tại = còn thay đổi chưa xuống đĩa</td></tr>
+      <tr><td><code>payloadToImport</code></td><td><span class="tag t-ok">không</span></td><td>ô JSON cho <code>ImportPayload</code>, chỉ Editor</td></tr>
+      <tr><td><code>autosaveIntervalSeconds</code> (collection)</td><td><span class="tag t-info">có</span></td><td>mặc định 10 s, <code>[Min(5f)]</code></td></tr>
+    </tbody>
+  </table></div>
+  <p><code>value</code>, <code>storedPayload</code> không serialize: tiến độ người chơi vào asset là vào git.</p>
+  <div class="tw"><table>
+    <thead><tr><th>Nút</th><th>Ở</th><th>Làm gì</th></tr></thead>
+    <tbody>
+      <tr><td><code>ImportPayload</code></td><td>mỗi entry</td><td>parse <code>payloadToImport</code>, gán qua <strong>setter</strong> (có event, flush kế ghi). Chỉ Play Mode; rỗng hoặc parse lỗi thì báo, không đổi</td></tr>
+      <tr><td><code>ValidateKeys</code></td><td>collection</td><td>khoá trùng · khoá rỗng · field mark chưa gán hoặc sai kiểu · <code>T</code> chạm <code>UnityEngine</code>. Sạch: một dòng kèm số entry; bẩn: một dòng đỏ mỗi nhóm kèm tỉ lệ</td></tr>
+    </tbody>
+  </table></div>
+  <p><code>ValidateKeys</code> dùng danh sách scratch, không đụng <code>entries</code>; in đường tới kiểu engine đầu tiên (<code>Entry 'route' stores SavedRoute.lastCheckpoint → Vector3</code>), bỏ qua <code>[JsonIgnore]</code>, <code>[NonSerialized]</code> và nội tạng kiểu <code>System.*</code> như Newtonsoft. Không thấy được field khai <code>object</code>, <code>dynamic</code>, interface — đừng khai model save bằng chúng. Cả hai nút trong <code>#if UNITY_EDITOR</code>.</p>
+  <div class="note"><strong>Không có nút xoá save theo tiền tố:</strong> <code>PlayerPrefs</code> không liệt kê được khoá, khoá mồ côi của build cũ sẽ sống sót.</div>
+</section>
+
+<!-- ============ EVENT ============ -->
+<section id="event">
+  <h2>Event <code>OnValueChanged</code></h2>
+  <p><code>event Action&lt;T, T&gt;</code> — <code>(oldValue, newValue)</code>. Bắn từ setter <code>Value</code> (gồm <code>ImportPayload</code>) và <code>ReadPayload</code>; sửa tại chỗ không bắn.</p>
+  <div class="fig"><div class="cap">Ba đường vào value — hai đường bắn event</div>
+  <svg viewBox="0 0 860 200" role="img" aria-label="Đường bắn event">
+    <rect x="10" y="14" width="230" height="44" rx="8" class="sv-box"/>
+    <text x="24" y="41" class="sv-m">Value = x · ImportPayload</text>
+    <rect x="10" y="78" width="230" height="44" rx="8" class="sv-box"/>
+    <text x="24" y="105" class="sv-m">ReadPayload (lúc load)</text>
+    <rect x="10" y="142" width="230" height="44" rx="8" class="sv-box"/>
+    <text x="24" y="169" class="sv-m">Value.field = x</text>
+    <rect x="320" y="60" width="160" height="80" rx="8" class="sv-ok"/>
+    <text x="400" y="96" class="sv-tb" text-anchor="middle">value</text>
+    <text x="400" y="116" class="sv-s" text-anchor="middle">old giữ lại trước khi gán</text>
+    <path d="M240 36 L318 80" class="sv-lnac"/>
+    <path d="M240 100 L318 100" class="sv-lnac"/>
+    <path d="M240 164 L318 124" class="sv-ln"/>
+    <path d="M480 100 L560 100" class="sv-lnac"/><path d="M560 100 l-10 -6 v12 z" class="sv-ac"/>
+    <rect x="562" y="60" width="288" height="80" rx="8" class="sv-sdk"/>
+    <text x="576" y="90" class="sv-m">OnValueChanged(old, new)</text>
+    <text x="576" y="112" class="sv-s">mỗi listener bọc try/catch riêng</text>
+    <text x="250" y="190" class="sv-s">sửa tại chỗ: KHÔNG event — flush vẫn ghi</text>
+  </svg></div>
+  <div class="tw"><table>
+    <thead><tr><th>Ca</th><th>Đối số</th></tr></thead>
+    <tbody>
+      <tr><td><code>Value = x</code></td><td><code>(giá trị bị thay, x)</code></td></tr>
+      <tr><td><code>Value = x</code> khi đã là <code>x</code></td><td>vẫn bắn, <code>old == new</code> — setter không so; listener tracking tự lọc</td></tr>
+      <tr><td><code>ReadPayload</code> lúc load</td><td><code>(bản clone mặc định, giá trị đọc)</code> — chưa ai nghe</td></tr>
+      <tr><td><code>T</code> là class, sửa tại chỗ rồi gán lại cùng tham chiếu</td><td>hai đối số là <strong>một object</strong>; cần bản cũ thì gán object mới</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<!-- ============ TEST ============ -->
+<section id="test">
+  <h2>Kiểm thử</h2>
+  <p><code>Tests/EditMode/PersistenceSeedingTests.cs</code> — 12 case. Fixture <code>ProbeCollection</code> khai năm entry (<code>int</code> ×2 · <code>string</code> · model có <code>List&lt;int&gt;</code> · <code>List&lt;Vector3&gt;</code>) cộng <code>lastSeenUtcSeconds</code> kế thừa; <code>SetUp</code> điền <code>Key</code> cho <strong>tất cả</strong> qua <code>SerializedObject</code> — cùng cửa Inspector. Mỗi case chỉ khẳng định trên khoá của nó.</p>
+  <div class="tw"><table>
+    <thead><tr><th>Case</th><th>Khẳng định</th></tr></thead>
+    <tbody>
+      <tr><td>Chưa có khoá · khoá có payload rỗng</td><td>khoá lên đĩa mang mặc định, <code>StoredPayload</code> khớp</td></tr>
+      <tr><td>Khoá đọc được</td><td>giá trị lưu thắng mặc định, đĩa không bị chạm</td></tr>
+      <tr><td>Payload hỏng</td><td>về mặc định, một <code>LogError</code> nêu khoá; <code>FlushAll()</code> vẫn không chạm chuỗi hỏng</td></tr>
+      <tr><td>Payload hỏng rồi người chơi đổi</td><td>flush kế ghi đè bằng giá trị mới</td></tr>
+      <tr><td>Kho giữ <code>"null"</code></td><td><code>Value</code> về mặc định, flush ghi mặc định</td></tr>
+      <tr><td>Sửa field tại chỗ</td><td>flush ghi payload mới</td></tr>
+      <tr><td>Không đổi gì · gán lại đúng giá trị cũ</td><td>flush không <code>SetString</code>: chuỗi lạ ghi tay vẫn nguyên</td></tr>
+      <tr><td><code>FlushNow()</code> một entry</td><td>chỉ khoá đó bị ghi</td></tr>
+      <tr><td><code>WritePayload</code> ném, flush hai lần</td><td>mỗi lượt một <code>LogError</code>, <code>StoredPayload</code> không đổi</td></tr>
+      <tr><td>Gán <code>Value</code> hai lần, lần hai trùng</td><td>mỗi lần một event mang <code>(old, new)</code></td></tr>
+    </tbody>
+  </table></div>
+  <p>Biên đã phủ: rỗng · một phần tử · payload hỏng · <code>"null"</code> · hai entry một lượt · flush lặp.</p>
+</section>
+
+<!-- ============ BẤT BIẾN ============ -->
+<section id="bat-bien">
+  <h2>Bất biến</h2>
+  <div class="tw"><table>
+    <thead><tr><th>Bất biến</th><th>Ở đâu, vì sao</th></tr></thead>
+    <tbody>
+      <tr><td><code>StoredPayload</code> chỉ cập nhật <strong>sau</strong> <code>Save()</code></td><td><code>FlushInternal</code> hai giai đoạn. Cập nhật trước là nói dối "đã lưu" và thay đổi không bao giờ được thử lại</td></tr>
+      <tr><td>Chuỗi ghi xuống và chuỗi nhớ lại là <strong>một</strong> biến</td><td>gọi <code>WritePayload()</code> lần hai là hai nguồn buộc khớp; <code>T</code> không ổn định thì lệch im lặng, ghi mãi</td></tr>
+      <tr><td><code>CacheStoredPayload</code> không gọi được từ game code</td><td>explicit interface implementation</td></tr>
+      <tr><td>Điều kiện ghi nằm cạnh lệnh ghi</td><td>phép so payload ở <code>FlushInternal</code>, cửa ghi duy nhất</td></tr>
+      <tr><td><code>SetString</code> / <code>Save()</code> chỉ ở <code>FlushInternal</code></td><td>cửa thứ hai là đường ngoài phép so và ngoài bảo đảm</td></tr>
+      <tr><td>Chỉ seed khi kho không có gì đọc được</td><td><code>Initialize</code> không ghi mặc định đè save thật; payload hỏng không seed</td></tr>
+      <tr><td>Một <code>Save()</code> mỗi lượt, chỉ khi có entry vừa ghi</td><td>Android <code>commit()</code> ghi cả kho đồng bộ main thread; vì vậy <code>[Min(5f)]</code></td></tr>
+      <tr><td>Đúng một host</td><td><code>Initialize()</code> không guard</td></tr>
+      <tr><td><strong>Khoá là wire format</strong></td><td>đổi <code>Key</code>, <code>KeyPrefix</code>, hay hình dạng model sau khi ship = save mồ côi, không gì báo</td></tr>
+      <tr><td>Không đường không-làm-gì âm thầm</td><td>khoá trùng/rỗng, field sai, đọc/ghi hỏng, <code>Flush</code> entry lạ, <code>FlushNow</code> không chủ — mỗi ca một <code>LogError</code> nêu khoá hoặc field</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<!-- ============ BẪY ============ -->
+<section id="bay">
+  <h2>Bẫy và quyết định</h2>
+  <div class="note bad"><strong>Đọc trước khi "sửa cho gọn".</strong></div>
+  <div class="tw"><table>
+    <thead><tr><th>Chỗ</th><th>Sự thật</th></tr></thead>
+    <tbody>
+      <tr><td>Entry khai ở base = nghĩa vụ điền <code>Key</code> ở <strong>mọi</strong> collection con</td><td><code>lastSeenUtcSeconds</code> có mặt ở mọi lớp con, kể cả fixture test. <em>Đã sai một lần:</em> thêm field vào base, bốn case test đỏ ở dòng <code>LogError</code>, không ở khẳng định — sửa chỗ dựng collection, không sửa guard</td></tr>
+      <tr><td>Listener đăng ký trước <code>Initialize()</code> bị xoá</td><td><code>ScriptableObject</code> sống qua các lần Play khi tắt domain reload: listener phiên trước trỏ object đã huỷ → <code>MissingReferenceException</code>. Không phân biệt được listener cũ với mới, nên chặn bằng cấu trúc: <code>Initialize()</code> ở pha boot, subscribe sau</td></tr>
+      <tr><td>Bốn thứ sống qua các lần Play</td><td><code>value</code>, <code>storedPayload</code> (Setup reset) · cache của subclass (cặp hook) · <code>isInitialized</code> — host đặt <code>false</code> lúc quit; <code>TimeService.UtcNowUnix</code> đọc cờ này để trả giờ máy khi save chưa load. Fail-open: quit không bắn thì cờ ở lại <code>true</code></td></tr>
+      <tr><td><code>[ReadOnly]</code> trên <code>value</code></td><td>sửa tay bỏ qua setter: flush ghi số mới, view vẫn số cũ. Cửa sửa tay là <code>ImportPayload</code></td></tr>
+      <tr><td><code>storedPayload</code> không phải "chuỗi vừa ghi"</td><td>ở nhánh <code>Failed</code> nó là payload mặc định chưa từng xuống đĩa; <code>lastWrittenPayload</code> là tên sai đúng ca khó nhất</td></tr>
+      <tr><td><code>defaultValue</code> phải sao chép</td><td>gán thẳng là để game mutate vào asset. <code>CloneDefault()</code> round-trip serializer, đúng mọi <code>T</code></td></tr>
+      <tr><td>Quên <code>Initialize()</code></td><td>Remote Config quên thì về giá trị author, hồi được; save quên thì mọi thứ trong RAM rồi mất</td></tr>
+      <tr><td><code>[SerializeField]</code> trong <code>#if UNITY_EDITOR</code></td><td>Editor ghi field build strip → lệch byte → <strong>crash native</strong> không stack trace. Muốn hiện không serialize: <code>[NonSerialized, ShowInInspector]</code></td></tr>
+      <tr><td><code>IPersistenceDataCollection</code> không derive <code>IService&lt;&gt;</code></td><td>interface dự án derive cả hai thừa hưởng hai <code>static Service</code> → <strong>CS0229</strong></td></tr>
+      <tr><td><code>[Service]</code> không di truyền</td><td><code>Inherited = false</code>: khai ở base là không ai đọc. Vì vậy <code>[Service]</code>, <code>[CreateAssetMenu]</code> thuộc dự án, base <code>abstract</code></td></tr>
+      <tr><td><code>partial</code> không qua ranh assembly</td><td>nửa dự án vào SDK bằng <code>.asmref</code> kéo cả model theo; chiều ngược là circular. Khuôn là <strong>kế thừa</strong></td></tr>
+      <tr><td><code>implicit operator T</code> khi so sánh</td><td><code>entry == null</code> so tham chiếu. So với toán hạng kiểu <code>T</code> thì entry bị convert: <code>PersistenceDataEntry&lt;string&gt;</code> có <code>Value</code> null → <code>entry == null</code> là <code>false</code>, <code>entry == s</code> (<code>s</code> null) là <code>true</code></td></tr>
+      <tr><td>Magic method ở subclass che bản base</td><td>collection hôm nay không dùng magic method; thêm thì <code>protected virtual</code></td></tr>
+      <tr><td><code>Flush(entry)</code> không rẻ hơn <code>FlushAll()</code> ở phần đĩa</td><td><code>Save()</code> ghi cả kho; nó để chốt sổ sớm, không để tối ưu</td></tr>
+      <tr><td><em>Đã sai một lần:</em> reset cờ dirty trước khi ghi</td><td>ghi luôn chạy, và một lần ghi lỗi mất im lặng vì cờ đã tắt</td></tr>
+      <tr><td><em>Đã sai một lần:</em> serialize theo nhịp đổi giá trị</td><td>mỗi thay đổi → <code>ToJson</code> cả blob + <code>Save()</code> trong frame</td></tr>
+      <tr><td><em>Đã sai một lần:</em> đường no-op im lặng</td><td>hàm gán service không caller → autosave chạy đều mà không lưu, không log</td></tr>
+      <tr><td><em>Đã sai một lần:</em> deserialize không <code>try/catch</code></td><td>exception mỗi boot, save brick vĩnh viễn</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>Ba giới hạn của PlayerPrefs</h3>
+  <p>Một file nền tảng ghi hộ (Android <code>SharedPreferences</code>, iOS <code>NSUserDefaults</code>, Editor Windows registry <code>HKCU\Software\&lt;Company&gt;\&lt;Product&gt;</code>), parse một lần rồi giữ RAM.</p>
+  <div class="grid">
+    <div class="cell"><div class="v">1 khối</div><div class="l">hỏng một lần mất mọi khoá</div></div>
+    <div class="cell"><div class="v">toàn bộ</div><div class="l">mỗi <code>Save()</code> ghi cả kho</div></div>
+    <div class="cell"><div class="v">RAM</div><div class="l">cả kho nằm RAM suốt phiên</div></div>
+  </div>
+  <p>Tổng payload vượt vài chục KB thì đổi sang kho file — chỉ sửa nội bộ <code>FlushInternal</code> và <code>LoadEntry</code>. Không gian khoá phẳng chung với Firebase, ads, cache <code>RemoteConfig&lt;T&gt;</code>; tiền tố <code>"persistence_"</code> là thứ duy nhất chặn khoá SDK đè tiến độ.</p>
+
+  <h3>Cố ý không làm</h3>
+  <div class="tw"><table>
+    <thead><tr><th>Không làm</th><th>Vì sao</th></tr></thead>
+    <tbody>
+      <tr><td>Cờ dirty song song phép so payload</td><td>hai cơ chế trả lời một câu hỏi phải khớp đời đời; cờ là thứ phải nhớ gọi</td></tr>
+      <tr><td><code>HasUnstoredChanges</code> cho Inspector</td><td>serialize mỗi lần vẽ lại; ô <code>storedPayload</code> đủ để soi</td></tr>
+      <tr><td>Phép so payload trong entry · entry tự lo nhánh đọc hỏng</td><td>tách điều kiện khỏi lệnh ghi bắt đọc hai file</td></tr>
+      <tr><td><code>Prefs&lt;T&gt;</code> cho giá trị lẻ</td><td>bộ máy thứ hai nằm ngoài phép so và ngoài <code>Save()</code></td></tr>
+      <tr><td><code>ISerializer</code> · <code>IPersistenceStore</code></td><td>mỗi cái một implementation; "entry chỉ nói bằng chuỗi" đủ để đổi kho</td></tr>
+      <tr><td><code>Register()</code> lúc runtime</td><td>không liệt kê, không kiểm trùng, quên gọi thì im lặng, không mốc load</td></tr>
+      <tr><td>Kiểm trong <code>OnValidate</code></td><td>lúc thêm entry khoá luôn rỗng — cảnh báo thường trực</td></tr>
+      <tr><td>Ghi nguyên tử, crypto, cloud sync, migration</td><td>nền tảng ghi cả kho một lượt; chưa có nhu cầu thật</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>Bốn chỗ cố ý khác Remote Config</h3>
+  <p>Cùng khuôn: abstract base · <code>sealed partial</code> + <code>partial interface</code> · attribute + reflection · <code>[Service]</code> dưới interface dự án · <code>RESOURCE_PATH</code>. Sửa khuôn một bên thì sửa cả hai; thêm chỗ thứ năm phải ghi lý do ở đây.</p>
+  <div class="tw"><table>
+    <thead><tr><th>Chỗ khác</th><th>Lý do</th></tr></thead>
+    <tbody>
+      <tr><td>Cặp hook <code>ResetDerivedState</code> / <code>OnEntriesLoaded</code></td><td>Remote Config chỉ có hook "sau" và đã sinh cờ mang trạng thái phiên trước</td></tr>
+      <tr><td><code>value</code>, <code>storedPayload</code> không serialize</td><td>tiến độ người chơi không vào git</td></tr>
+      <tr><td><code>[ReadOnly]</code> trên <code>value</code></td><td>sửa tay làm màn hình và save lệch</td></tr>
+      <tr><td>So payload thay vì cờ <code>fetched</code></td><td>Remote Config hỏi "đã fetch chưa" — sự kiện của chính nó; Persistence hỏi "người chơi đổi gì" — qua tham chiếu entry không quan sát được</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<!-- ============ CHỮ KÝ ============ -->
+<section id="chu-ky">
+  <h2>Chữ ký</h2>
+  <p>Namespace <code>Horcrux.Runtime.Abstractions.Persistence</code>:</p>
+  <div class="tw"><table>
+    <thead><tr><th>Type</th><th>Thành viên</th></tr></thead>
+    <tbody>
+      <tr><td><code>IPersistenceDataEntry</code></td><td><code>string Key { get; }</code> · <code>string StoredPayload { get; }</code> · <code>void Setup(IPersistenceDataCollection)</code> · <code>void ReadPayload(string)</code> · <code>string WritePayload()</code> · <code>void CacheStoredPayload(string)</code></td></tr>
+      <tr><td><code>IPersistenceDataCollection</code></td><td><code>IReadOnlyList&lt;IPersistenceDataEntry&gt; Entries { get; }</code> · <code>bool IsInitialized { get; set; }</code> · <code>void Initialize()</code> · <code>void FlushAll()</code> · <code>void Flush(IPersistenceDataEntry)</code> · <code>UniTask RunAutosaveAsync(CancellationToken)</code></td></tr>
+      <tr><td><code>PersistenceDataEntry&lt;T&gt;</code></td><td><code>[Serializable]</code> · <code>T Value { get; set; }</code> · <code>event Action&lt;T, T&gt; OnValueChanged</code> · <code>void FlushNow()</code> · <code>implicit operator T</code> · <code>Setup</code> / <code>ReadPayload</code> / <code>WritePayload</code> public cho collection · <code>CacheStoredPayload</code> explicit</td></tr>
+      <tr><td><code>MarkedPersistence</code></td><td><code>[AttributeUsage(AttributeTargets.Field)]</code></td></tr>
+      <tr><td><code>BasePersistenceDataCollection</code></td><td><code>abstract</code>, <code>ScriptableObject</code> · <code>protected virtual void ResetDerivedState()</code> · <code>protected virtual void OnEntriesLoaded()</code> · nút <code>ValidateKeys</code> · <code>.TimeService.cs</code>: <code>protected internal PersistenceDataEntry&lt;long&gt; lastSeenUtcSeconds</code> + <code>LastSeenUtcSeconds</code> — entry duy nhất base tự khai, cho <code>TimeService</code> (<code>TimeSystem.md</code>); <code>protected internal</code> để <code>TimeService</code> cùng assembly với tới mà scan type con vẫn thấy</td></tr>
+    </tbody>
+  </table></div>
+  <p>Namespace <code>Horcrux.Runtime.Implementations.Persistence</code>: <code>SaveDriver</code> · <code>SaveBootstep</code> · <code>SaveBootstepInitializer</code> (internal) — mục <a href="#host">Hai host</a>.</p>
+</section>
+
+<!-- ============ FILE ============ -->
+<section id="file">
+  <h2>Cấu trúc file</h2>
+<div class="arch">Runtime/Abstractions/Foundations/Persistence/
+├── IPersistenceDataEntry.cs · IPersistenceDataCollection.cs   <em>interface thuần</em>
+├── PersistenceDataEntry.cs · .Editor.cs                       <em>giá trị, payload kho giữ, event, JSON · ImportPayload</em>
+├── BasePersistenceDataCollection.cs                           <em>scan, load, autosave, flush hai giai đoạn</em>
+├── BasePersistenceDataCollection.Editor.cs                    <em>ValidateKeys + kiểm kiểu payload</em>
+└── BasePersistenceDataCollection.TimeService.cs               <em>lastSeenUtcSeconds</em>
+Runtime/Implementations/Foundations/Persistence/SaveDriver.cs
+Runtime/Implementations/Composites/SaveBootstep.cs · SaveBootstepInitializer.cs
+Tests/EditMode/PersistenceSeedingTests.cs
+docs/Runtime/Persistence.md · Persistence.html</div>
+</section>
+
+<!-- ============ CÒN ĐỂ MỞ ============ -->
+<section id="mo">
+  <h2>Còn để mở</h2>
+  <ul>
+    <li><strong>Hệ SDK lấy giá trị save bằng đường nào — chưa chốt.</strong> Module nhận <code>PersistenceDataEntry&lt;T&gt;</code> qua Init (compile-depend vào Persistence), hoặc module phơi field thường và dự án glue một chiều qua <code>OnValueChanged</code> (<code>HapticSystem.md</code>, <code>AudioSystem.md</code> đang đi đường này).</li>
+    <li><strong>Hệ sẽ dùng:</strong> Audio, Haptics, Economy, Rating, LiveOps — dự án khai entry rồi nối. Ngoại lệ duy nhất base tự khai: <code>lastSeenUtcSeconds</code>, vì Time cần mốc chống lùi giờ ở mọi dự án.</li>
+    <li><strong>Rẻ, thêm không sửa cũ:</strong> nút xoá từng entry · kho file khi chạm giới hạn PlayerPrefs · migration version · cloud sync · crypto decorator quanh serializer.</li>
+    <li><strong><code>ValidateKeys</code> kiểm luật 2:</strong> serialize <code>CloneDefault()</code> hai lần rồi so. Bắt <code>HashSet</code>/<code>Dictionary</code> có phần tử trong <code>Default Value</code>; không bắt container rỗng.</li>
+    <li><strong>Remote Config nên học lại:</strong> <code>RemoteConfigs</code> thành <code>IReadOnlyList&lt;&gt;</code>; cache <code>PlayerPrefs</code> có tiền tố riêng.</li>
+  </ul>
+</section>
+
+</main>
+<footer>Horcrux · Persistence System · Horcrux.Runtime.Abstractions.Persistence · nguồn: Persistence.md</footer>
+</body>
+</html>
