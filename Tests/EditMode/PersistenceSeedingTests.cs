@@ -17,15 +17,16 @@ namespace Horcrux.Tests
         private const string ModelKey = "seeding_model";
         private const string RouteKey = "seeding_route";
 
-        // lastSeenUtcSeconds is inherited from the base; an unkeyed entry makes ScanEntries log an error.
+        // lastSeenUtcSeconds and userSegmentState are inherited from the base; an unkeyed entry makes ScanEntries log an error.
         private const string ClockKey = "seeding_clock";
+        private const string SegmentKey = "seeding_user_segment";
 
         private const int ProbeDefault = 7;
         private const int SecondDefault = 3;
         private const string TextDefault = "fallback";
 
         private static readonly string[] AuthoredKeys =
-            { ProbeKey, SecondKey, TextKey, ModelKey, RouteKey, ClockKey };
+            { ProbeKey, SecondKey, TextKey, ModelKey, RouteKey, ClockKey, SegmentKey };
 
         private ProbeCollection collection;
 
@@ -45,6 +46,7 @@ namespace Horcrux.Tests
             AuthorKey(serialized, "model", ModelKey);
             AuthorKey(serialized, "route", RouteKey);
             AuthorKey(serialized, "lastSeenUtcSeconds", ClockKey);
+            AuthorKey(serialized, "userSegmentState", SegmentKey);
 
             // An entry left unauthored seeds the type default, which reads the same as a value someone meant.
             serialized.FindProperty("probe").FindPropertyRelative("defaultValue").intValue = ProbeDefault;
