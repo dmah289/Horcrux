@@ -275,7 +275,17 @@ Commit   entry.Value = state                     luôn: SessionCount, LastCampai
     </tbody>
   </table></div>
 
-  <p>Phiên 1…N còn phân lại được; cửa sổ đóng ở đầu phiên N+1 (N = <code>ResegmentMaxSessions</code>).</p>
+  <h3>Phiên</h3>
+  <p>Một phiên là một lần mở app: tiến trình khởi động, <code>BootstrapService</code> cold boot đúng một lần, host chạy <code>OnBoot</code> và <code>SessionCount++</code>. Phiên kết thúc khi tiến trình chết: user vuốt tắt app, hệ điều hành kill, hay crash. State lưu qua Persistence nên lần mở sau đọc lại <code>SessionCount</code> của lần trước: <code>SessionCount</code> là số lần mở app kể từ khi cài. Không mở phiên mới: xuống nền rồi trở lại (<code>OnGoToBackground</code>), chuyển scene hay load level (<code>ReinitializeAsync</code>), ở nền lâu bao nhiêu cũng vậy.</p>
+  <div class="tw"><table>
+    <thead><tr><th>Lần mở app</th><th><code>OnBoot</code></th><th>Attribution chưa về thì</th></tr></thead>
+    <tbody>
+      <tr><td>1, vừa cài</td><td><code>SessionCount</code> 0 → 1, <code>curr = default</code></td><td>bước Adjust chặn boot, chờ tối đa <code>firstSessionWaitSeconds</code>; chưa có thì poll nền tối đa <code>lateArrivalPollSeconds</code></td></tr>
+      <tr><td>2 … N</td><td><code>SessionCount</code> tăng 1</td><td>chỉ poll nền tối đa <code>lateArrivalPollSeconds</code></td></tr>
+      <tr><td>N + 1</td><td><code>SessionCount</code> = N ≥ N: khoá, rồi tăng 1</td><td>bước Adjust thoát ngay; tập giữ nguyên, thường là <code>default</code></td></tr>
+    </tbody>
+  </table></div>
+  <p>Phiên 1…N còn phân lại được; cửa sổ đóng ở đầu phiên N+1 (N = <code>ResegmentMaxSessions</code>). <code>IsFirstSession</code> là <code>SessionCount == 1</code>: lần mở đầu tiên sau khi cài.</p>
 
   <div class="fig"><div class="cap">Cửa sổ phân lại với N = 3</div>
   <svg viewBox="0 0 860 150" role="img" aria-label="Cửa sổ phân lại theo phiên">
@@ -445,6 +455,7 @@ internal sealed class MySegmentationHostInitializer : Initializer&lt;MySegmentat
   <div class="note bad"><strong>Pool rỗng hoặc thiếu hàng <code>default</code>.</strong> Exception ném trong <code>InitializeAsync</code> sau khi state đã nạp: <code>IsReady</code> là true nhưng <code>CurrConfig</code> vẫn <code>null</code>. <code>BootstrapService</code> ghi lỗi bước rồi vào game; consumer đầu tiên đọc config ném NRE.</div>
   <div class="note"><strong>Lỗi "order must be lower" của bước Adjust</strong> cũng hiện khi host thiếu Initializer: đọc dòng lỗi của host in trước nó.</div>
   <div class="note"><strong>Collection giả trong test</strong> phải điền <code>Key</code> cho <code>userSegmentState</code> như mọi entry base tự khai (<code>Persistence.md</code>, mục Bẫy và quyết định).</div>
+  <div class="note bad"><strong>"Phiên" ở đây không phải session của Adjust hay Firebase.</strong> Hai SDK đó mặc định tính phiên mới khi app ở nền quá 30 phút; hệ này chỉ đếm lần mở app (cold boot). Số session trên dashboard thường lớn hơn <code>SessionCount</code>: đặt <code>ResegmentMaxSessions</code> theo số lần mở app, không theo số session dashboard.</div>
 </section>
 
 <!-- ============ KIỂM THỬ ============ -->

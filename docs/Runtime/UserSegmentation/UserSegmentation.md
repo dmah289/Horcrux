@@ -73,7 +73,20 @@ Nhịp: mọi phép tính chạy theo sự kiện (boot, campaign, mua), không 
 | đọc config | `curr != purchased` | hàng của `curr` |
 | đọc config | `curr == purchased` | `hàng purchased.InheritFrom(hàng prev)`; `prev == 0` thì hàng `default` |
 
-Phiên 1…N còn phân lại được; cửa sổ đóng ở đầu phiên N+1 (N = `ResegmentMaxSessions`).
+**Phiên.** Một phiên là một lần mở app: tiến trình khởi động, `BootstrapService` cold boot đúng một lần, host chạy `OnBoot`
+và `SessionCount++`. Phiên kết thúc khi tiến trình chết: user vuốt tắt app, hệ điều hành kill, hay crash. State lưu qua
+Persistence nên lần mở sau đọc lại `SessionCount` của lần trước: `SessionCount` là số lần mở app kể từ khi cài.
+Không mở phiên mới: xuống nền rồi trở lại (`OnGoToBackground`), chuyển scene hay load level (`ReinitializeAsync`), ở nền lâu
+bao nhiêu cũng vậy.
+
+| Lần mở app | `OnBoot` | Attribution chưa về thì |
+|---|---|---|
+| 1, vừa cài | `SessionCount` 0 → 1, `curr = default` | bước Adjust chặn boot, chờ tối đa `firstSessionWaitSeconds`; chưa có thì poll nền tối đa `lateArrivalPollSeconds` |
+| 2 … N | `SessionCount` tăng 1 | chỉ poll nền tối đa `lateArrivalPollSeconds` |
+| N + 1 | `SessionCount` = N ≥ N: khoá, rồi tăng 1 | bước Adjust thoát ngay; tập giữ nguyên, thường là `default` |
+
+Phiên 1…N còn phân lại được; cửa sổ đóng ở đầu phiên N+1 (N = `ResegmentMaxSessions`). `IsFirstSession` là
+`SessionCount == 1`: lần mở đầu tiên sau khi cài.
 
 **Khớp keyword.** Một hàng khớp khi camp chứa **bất kỳ** keyword nào của hàng (`IndexOf(keyword, OrdinalIgnoreCase) >= 0`).
 Hàng đầu bảng khớp thì thắng; keyword báo ra là keyword đầu trong **mảng** khớp được, không theo thứ tự trong camp.
@@ -220,6 +233,9 @@ keyword also matched`.
 - **Lỗi "order must be lower" của bước Adjust** cũng hiện khi host thiếu Initializer: đọc dòng lỗi của host in trước nó.
 - **Collection giả trong test** phải điền `Key` cho `userSegmentState` như mọi entry base tự khai (`Persistence.md`, mục
   Bẫy và quyết định).
+- **"Phiên" ở đây không phải session của Adjust hay Firebase.** Hai SDK đó mặc định tính phiên mới khi app ở nền quá 30 phút;
+  hệ này chỉ đếm lần mở app (cold boot). Số session trên dashboard thường lớn hơn `SessionCount`: đặt `ResegmentMaxSessions`
+  theo số lần mở app, không theo số session dashboard.
 
 ## Kiểm thử
 
