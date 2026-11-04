@@ -22,7 +22,7 @@ Thêm tập là thêm hàng dữ liệu (một hàng pool, một hàng keyword),
 
 | Horcrux giữ | Dự án khai |
 |---|---|
-| `AUserSegmentationHost` (boot step, toàn bộ cơ chế) · `AUserSegmentationHost<TConfig>` (tra và cache config) | host con: hai id vai, pool, bảng keyword, hai núm config, kèm một `Initializer` |
+| `AUserSegmentationHost` (boot step, toàn bộ cơ chế) · `AUserSegmentationHost<TConfig>` (tra và cache config) | host con: hai id vai, pool, bảng keyword, một núm config, kèm một `Initializer` |
 | `IUserSegmentConfig<TSelf>` · `IUserSegmentKeywordRule` | DTO hàng pool (có `InheritFrom`) · DTO hàng keyword |
 | `UserSegmentDecider` · `UserSegmentKeywordMatcher` · `UserSegmentInheritance` · `UserSegmentConfigTable` — static thuần | — |
 | `UserSegmentState` + entry `userSegmentState` trong base collection | `Key` của entry trên asset collection |
@@ -68,7 +68,6 @@ Nhịp: mọi phép tính chạy theo sự kiện (boot, campaign, mua), không 
 | `OnCampaign(camp)` | `curr == purchased` | `IsCampaignLocked = true`, không đổi |
 | `OnCampaign(camp)` | tập khớp `== purchased` | coi như không khớp rồi áp dòng dưới |
 | `OnCampaign(camp)` | còn lại | `IsCampaignLocked = true`; đích = tập khớp, không khớp hay camp rỗng thì `default`; đích khác `curr` thì `curr = đích`, thay đổi `CampaignResolved` kèm keyword và cờ `IsAmbiguous` |
-| `OnPurchase` | `!IsPurchaseRuleEnabled` | không đổi |
 | `OnPurchase` | `curr == purchased` | không đổi |
 | `OnPurchase` | còn lại | `prev = curr` (`curr` là 0 thì `prev = default`), `curr = purchased`, `IsCampaignLocked = true`, thay đổi `Purchase` |
 | đọc config | `curr != purchased` | hàng của `curr` |
@@ -133,7 +132,7 @@ public sealed class MyKeywordRule : IUserSegmentKeywordRule
 }
 ```
 
-**3 · Host và Initializer** — id lấy từ dữ liệu của dự án; bốn núm còn lại đọc từ remote config đã ép kiểu:
+**3 · Host và Initializer** — id lấy từ dữ liệu của dự án; ba núm còn lại đọc từ remote config đã ép kiểu:
 
 ```csharp
 public sealed class MySegmentationHost : AUserSegmentationHost<MySegmentConfig>
@@ -143,7 +142,6 @@ public sealed class MySegmentationHost : AUserSegmentationHost<MySegmentConfig>
     protected override IReadOnlyList<MySegmentConfig> Configs => MyRemoteConfig.SegmentPool;
     protected override IReadOnlyList<IUserSegmentKeywordRule> KeywordRules => MyRemoteConfig.SegmentKeywords;
     protected override int ResegmentMaxSessions => MyRemoteConfig.ResegmentMaxSessions;
-    protected override bool IsPurchaseRuleEnabled => MyRemoteConfig.IsPurchaseRuleEnabled;
 }
 
 internal sealed class MySegmentationHostInitializer : Initializer<MySegmentationHost, BasePersistenceDataCollection>
@@ -243,12 +241,12 @@ Namespace `Horcrux.Runtime.Abstractions.UserSegmentation`:
 
 | Type | Thành viên |
 |---|---|
-| `AUserSegmentationHost` | `abstract`, `ABootStep`, `IInitializable<BasePersistenceDataCollection>` · `bool IsReady` · `int CurrSegmentId` · `int PrevSegmentId` · `bool IsCampaignLocked` · `bool IsFirstSession` · `string LastCampaign` · `void ReportCampaign(string)` · `void ReportPurchase()` · abstract `DefaultSegmentId` · `PurchasedSegmentId` · `IReadOnlyList<IUserSegmentKeywordRule> KeywordRules` · `ResegmentMaxSessions` · `IsPurchaseRuleEnabled` |
+| `AUserSegmentationHost` | `abstract`, `ABootStep`, `IInitializable<BasePersistenceDataCollection>` · `bool IsReady` · `int CurrSegmentId` · `int PrevSegmentId` · `bool IsCampaignLocked` · `bool IsFirstSession` · `string LastCampaign` · `void ReportCampaign(string)` · `void ReportPurchase()` · abstract `DefaultSegmentId` · `PurchasedSegmentId` · `IReadOnlyList<IUserSegmentKeywordRule> KeywordRules` · `ResegmentMaxSessions` |
 | `AUserSegmentationHost<TConfig>` | `where TConfig : class, IUserSegmentConfig<TConfig>` · `TConfig CurrConfig` · abstract `IReadOnlyList<TConfig> Configs` |
 | `IUserSegmentConfig` · `IUserSegmentConfig<TSelf>` | `int Id` · `TSelf InheritFrom(TSelf prev)` |
 | `IUserSegmentKeywordRule` | `int SegmentId` · `IReadOnlyList<string> Keywords` |
 | `UserSegmentState` | `[Serializable]` · `int CurrSegmentId` · `int PrevSegmentId` · `bool IsCampaignLocked` · `int SessionCount` · `string LastCampaign` |
-| `UserSegmentDecider` | `Change OnBoot(state, defaultId, maxSessions)` · `Change OnCampaign(state, campaign, matchedId, keyword, isAmbiguous, defaultId, purchasedId)` · `Change OnPurchase(state, isRuleEnabled, defaultId, purchasedId)` · `readonly struct Change { HasChange, PrevSegmentId, CurrSegmentId, Reason, MatchedKeyword, IsAmbiguous; static None }` |
+| `UserSegmentDecider` | `Change OnBoot(state, defaultId, maxSessions)` · `Change OnCampaign(state, campaign, matchedId, keyword, isAmbiguous, defaultId, purchasedId)` · `Change OnPurchase(state, defaultId, purchasedId)` · `readonly struct Change { HasChange, PrevSegmentId, CurrSegmentId, Reason, MatchedKeyword, IsAmbiguous; static None }` |
 | `UserSegmentKeywordMatcher` | `bool TryMatch(string campaign, IReadOnlyList<IUserSegmentKeywordRule>, out int segmentId, out string keyword, out bool isAmbiguous)` |
 | `UserSegmentInheritance` | `const int InheritValue = -1` · `int Pick(int target, int prev)` |
 | `UserSegmentConfigTable` | `TConfig Find<TConfig>(IReadOnlyList<TConfig>, int id)` · `bool Validate<TConfig>(configs, rules, int defaultSegmentId, List<string> errors)` |

@@ -79,12 +79,8 @@ namespace Horcrux.Runtime.Abstractions.UserSegmentation
         }
 
         /// <summary>A real purchase (not restore, not refund, not a remove-ads-only pack: the project filters those).</summary>
-        public static Change OnPurchase(UserSegmentState state, bool isRuleEnabled, int defaultSegmentId,
-            int purchasedSegmentId)
+        public static Change OnPurchase(UserSegmentState state, int defaultSegmentId, int purchasedSegmentId)
         {
-            if (!isRuleEnabled)
-                return Change.None;
-
             if (state.CurrSegmentId == purchasedSegmentId)
                 return Change.None;
 

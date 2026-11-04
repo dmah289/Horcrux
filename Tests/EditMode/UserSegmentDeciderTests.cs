@@ -19,8 +19,8 @@ namespace Horcrux.Tests
             string matchedKeyword = null, bool isAmbiguous = false)
             => UserSegmentDecider.OnCampaign(state, campaign, matchedSegmentId, matchedKeyword, isAmbiguous, Default, Purchased);
 
-        private static UserSegmentDecider.Change Purchase(UserSegmentState state, bool isRuleEnabled = true)
-            => UserSegmentDecider.OnPurchase(state, isRuleEnabled, Default, Purchased);
+        private static UserSegmentDecider.Change Purchase(UserSegmentState state)
+            => UserSegmentDecider.OnPurchase(state, Default, Purchased);
 
         /// <summary>State after the first boot: default segment, session 1, window open.</summary>
         private static UserSegmentState Booted()
@@ -184,17 +184,6 @@ namespace Horcrux.Tests
             Assert.AreEqual(Default, state.PrevSegmentId);
             Assert.AreEqual(Purchased, state.CurrSegmentId);
             Assert.IsTrue(state.IsCampaignLocked);
-        }
-
-        [Test]
-        public void OnPurchase_RuleDisabled_NoChangeStateUntouched()
-        {
-            UserSegmentState state = Booted();
-
-            Assert.IsFalse(Purchase(state, isRuleEnabled: false).HasChange);
-            Assert.AreEqual(Default, state.CurrSegmentId);
-            Assert.AreEqual(0, state.PrevSegmentId);
-            Assert.IsFalse(state.IsCampaignLocked);
         }
 
         [Test]

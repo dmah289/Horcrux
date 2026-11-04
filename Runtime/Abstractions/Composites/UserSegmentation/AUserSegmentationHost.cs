@@ -39,7 +39,6 @@ namespace Horcrux.Runtime.Abstractions.UserSegmentation
         /// <summary>Row order is priority. Read at boot and on each campaign report, never cached here.</summary>
         protected abstract IReadOnlyList<IUserSegmentKeywordRule> KeywordRules { get; }
         protected abstract int ResegmentMaxSessions { get; }
-        protected abstract bool IsPurchaseRuleEnabled { get; }
 
         #endregion
 
@@ -80,11 +79,8 @@ namespace Horcrux.Runtime.Abstractions.UserSegmentation
                 Debug.LogError(LogPrefix + "ReportPurchase before InitializeAsync; check step order", this);
                 return;
             }
-            
-            if (!IsPurchaseRuleEnabled)
-                Debug.Log(LogPrefix + "purchase rule disabled by config, segment stays", this);
-            
-            Commit(UserSegmentDecider.OnPurchase(_state, IsPurchaseRuleEnabled, DefaultSegmentId, PurchasedSegmentId));
+
+            Commit(UserSegmentDecider.OnPurchase(_state, DefaultSegmentId, PurchasedSegmentId));
         }
 
         #endregion

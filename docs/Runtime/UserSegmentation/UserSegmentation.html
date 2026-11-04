@@ -172,7 +172,7 @@ footer{text-align:center;padding:2.5rem 1rem;color:var(--tx3);font-size:.82rem;b
   <div class="tw"><table>
     <thead><tr><th>Horcrux giữ</th><th>Dự án khai</th></tr></thead>
     <tbody>
-      <tr><td><code>AUserSegmentationHost</code> (boot step, toàn bộ cơ chế) · <code>AUserSegmentationHost&lt;TConfig&gt;</code> (tra và cache config)</td><td>host con: hai id vai, pool, bảng keyword, hai núm config, kèm một <code>Initializer</code></td></tr>
+      <tr><td><code>AUserSegmentationHost</code> (boot step, toàn bộ cơ chế) · <code>AUserSegmentationHost&lt;TConfig&gt;</code> (tra và cache config)</td><td>host con: hai id vai, pool, bảng keyword, một núm config, kèm một <code>Initializer</code></td></tr>
       <tr><td><code>IUserSegmentConfig&lt;TSelf&gt;</code> · <code>IUserSegmentKeywordRule</code></td><td>DTO hàng pool (có <code>InheritFrom</code>) · DTO hàng keyword</td></tr>
       <tr><td><code>UserSegmentDecider</code> · <code>UserSegmentKeywordMatcher</code> · <code>UserSegmentInheritance</code> · <code>UserSegmentConfigTable</code>: static thuần</td><td>không</td></tr>
       <tr><td><code>UserSegmentState</code> + entry <code>userSegmentState</code> trong base collection</td><td><code>Key</code> của entry trên asset collection</td></tr>
@@ -268,7 +268,6 @@ Commit   entry.Value = state                     luôn: SessionCount, LastCampai
       <tr><td><code>OnCampaign(camp)</code></td><td><code>curr == purchased</code></td><td><code>IsCampaignLocked = true</code>, không đổi</td></tr>
       <tr><td><code>OnCampaign(camp)</code></td><td>tập khớp <code>== purchased</code></td><td>coi như không khớp rồi áp dòng dưới</td></tr>
       <tr><td><code>OnCampaign(camp)</code></td><td>còn lại</td><td><code>IsCampaignLocked = true</code>; đích = tập khớp, không khớp hay camp rỗng thì <code>default</code>; đích khác <code>curr</code> thì <code>curr = đích</code>, thay đổi <code>CampaignResolved</code> kèm keyword và cờ <code>IsAmbiguous</code></td></tr>
-      <tr><td><code>OnPurchase</code></td><td><code>!IsPurchaseRuleEnabled</code></td><td>không đổi</td></tr>
       <tr><td><code>OnPurchase</code></td><td><code>curr == purchased</code></td><td>không đổi</td></tr>
       <tr><td><code>OnPurchase</code></td><td>còn lại</td><td><code>prev = curr</code> (<code>curr</code> là 0 thì <code>prev = default</code>), <code>curr = purchased</code>, <code>IsCampaignLocked = true</code>, thay đổi <code>Purchase</code></td></tr>
       <tr><td>đọc config</td><td><code>curr != purchased</code></td><td>hàng của <code>curr</code></td></tr>
@@ -348,7 +347,7 @@ public sealed class MyKeywordRule : IUserSegmentKeywordRule
     public IReadOnlyList&lt;string&gt; Keywords =&gt; keywords;
 }</code></pre></li>
     <li><strong>Host và Initializer</strong>
-      <p>Id lấy từ dữ liệu của dự án; bốn núm còn lại đọc từ remote config đã ép kiểu.</p>
+      <p>Id lấy từ dữ liệu của dự án; ba núm còn lại đọc từ remote config đã ép kiểu.</p>
 <pre><code>public sealed class MySegmentationHost : AUserSegmentationHost&lt;MySegmentConfig&gt;
 {
     protected override int DefaultSegmentId =&gt; MySegmentIds.Default;
@@ -356,7 +355,6 @@ public sealed class MyKeywordRule : IUserSegmentKeywordRule
     protected override IReadOnlyList&lt;MySegmentConfig&gt; Configs =&gt; MyRemoteConfig.SegmentPool;
     protected override IReadOnlyList&lt;IUserSegmentKeywordRule&gt; KeywordRules =&gt; MyRemoteConfig.SegmentKeywords;
     protected override int ResegmentMaxSessions =&gt; MyRemoteConfig.ResegmentMaxSessions;
-    protected override bool IsPurchaseRuleEnabled =&gt; MyRemoteConfig.IsPurchaseRuleEnabled;
 }
 
 internal sealed class MySegmentationHostInitializer : Initializer&lt;MySegmentationHost, BasePersistenceDataCollection&gt;
@@ -472,12 +470,12 @@ internal sealed class MySegmentationHostInitializer : Initializer&lt;MySegmentat
   <div class="tw"><table>
     <thead><tr><th>Type</th><th>Thành viên</th></tr></thead>
     <tbody>
-      <tr><td><code>AUserSegmentationHost</code></td><td><code>abstract</code>, <code>ABootStep</code>, <code>IInitializable&lt;BasePersistenceDataCollection&gt;</code> · <code>bool IsReady</code> · <code>int CurrSegmentId</code> · <code>int PrevSegmentId</code> · <code>bool IsCampaignLocked</code> · <code>bool IsFirstSession</code> · <code>string LastCampaign</code> · <code>void ReportCampaign(string)</code> · <code>void ReportPurchase()</code> · abstract <code>DefaultSegmentId</code> · <code>PurchasedSegmentId</code> · <code>IReadOnlyList&lt;IUserSegmentKeywordRule&gt; KeywordRules</code> · <code>ResegmentMaxSessions</code> · <code>IsPurchaseRuleEnabled</code></td></tr>
+      <tr><td><code>AUserSegmentationHost</code></td><td><code>abstract</code>, <code>ABootStep</code>, <code>IInitializable&lt;BasePersistenceDataCollection&gt;</code> · <code>bool IsReady</code> · <code>int CurrSegmentId</code> · <code>int PrevSegmentId</code> · <code>bool IsCampaignLocked</code> · <code>bool IsFirstSession</code> · <code>string LastCampaign</code> · <code>void ReportCampaign(string)</code> · <code>void ReportPurchase()</code> · abstract <code>DefaultSegmentId</code> · <code>PurchasedSegmentId</code> · <code>IReadOnlyList&lt;IUserSegmentKeywordRule&gt; KeywordRules</code> · <code>ResegmentMaxSessions</code></td></tr>
       <tr><td><code>AUserSegmentationHost&lt;TConfig&gt;</code></td><td><code>where TConfig : class, IUserSegmentConfig&lt;TConfig&gt;</code> · <code>TConfig CurrConfig</code> · abstract <code>IReadOnlyList&lt;TConfig&gt; Configs</code></td></tr>
       <tr><td><code>IUserSegmentConfig</code> · <code>IUserSegmentConfig&lt;TSelf&gt;</code></td><td><code>int Id</code> · <code>TSelf InheritFrom(TSelf prev)</code></td></tr>
       <tr><td><code>IUserSegmentKeywordRule</code></td><td><code>int SegmentId</code> · <code>IReadOnlyList&lt;string&gt; Keywords</code></td></tr>
       <tr><td><code>UserSegmentState</code></td><td><code>[Serializable]</code> · <code>int CurrSegmentId</code> · <code>int PrevSegmentId</code> · <code>bool IsCampaignLocked</code> · <code>int SessionCount</code> · <code>string LastCampaign</code></td></tr>
-      <tr><td><code>UserSegmentDecider</code></td><td><code>Change OnBoot(state, defaultId, maxSessions)</code> · <code>Change OnCampaign(state, campaign, matchedId, keyword, isAmbiguous, defaultId, purchasedId)</code> · <code>Change OnPurchase(state, isRuleEnabled, defaultId, purchasedId)</code> · <code>readonly struct Change { HasChange, PrevSegmentId, CurrSegmentId, Reason, MatchedKeyword, IsAmbiguous; static None }</code></td></tr>
+      <tr><td><code>UserSegmentDecider</code></td><td><code>Change OnBoot(state, defaultId, maxSessions)</code> · <code>Change OnCampaign(state, campaign, matchedId, keyword, isAmbiguous, defaultId, purchasedId)</code> · <code>Change OnPurchase(state, defaultId, purchasedId)</code> · <code>readonly struct Change { HasChange, PrevSegmentId, CurrSegmentId, Reason, MatchedKeyword, IsAmbiguous; static None }</code></td></tr>
       <tr><td><code>UserSegmentKeywordMatcher</code></td><td><code>bool TryMatch(string campaign, IReadOnlyList&lt;IUserSegmentKeywordRule&gt;, out int segmentId, out string keyword, out bool isAmbiguous)</code></td></tr>
       <tr><td><code>UserSegmentInheritance</code></td><td><code>const int InheritValue = -1</code> · <code>int Pick(int target, int prev)</code></td></tr>
       <tr><td><code>UserSegmentConfigTable</code></td><td><code>TConfig Find&lt;TConfig&gt;(IReadOnlyList&lt;TConfig&gt;, int id)</code> · <code>bool Validate&lt;TConfig&gt;(configs, rules, int defaultSegmentId, List&lt;string&gt; errors)</code></td></tr>
