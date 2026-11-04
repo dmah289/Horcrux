@@ -574,7 +574,7 @@ namespace Horcrux.Runtime.Abstractions.UserSegmentation
 - `Runtime/Abstractions/Composites/UserSegmentation/AUserSegmentationHost.Generic.cs`
 
 **Consumes:** Task 1, Task 2; `ABootStep`, `BasePersistenceDataCollection`, `PersistenceDataEntry<T>`, `MarkedPersistence`,
-`Splitter`, `EventBus<T>`.
+`Splitter`, `EventBus<T>`, `IInitializable<T>` (Sisus.Init).
 **Produces:** `AUserSegmentationHost` (kiểu kéo thả cho bước Adjust và tool Editor; giữ bảng keyword và khớp camp) ·
 `AUserSegmentationHost<TConfig>` (dự án kế thừa; giữ pool và `CurrConfig`).
 
@@ -587,12 +587,13 @@ using UnityEngine;
 
 namespace Horcrux.Runtime.Abstractions.Persistence
 {
+    // Lives in the system folder, not Foundations/Persistence: the foundation layer must not reference a Composites type.
     public abstract partial class BasePersistenceDataCollection
     {
-        [Splitter("User Segmentation")]
-        [MarkedPersistence, SerializeField]
+        [Splitter("User Segment")]
+        [SerializeField, MarkedPersistence]
         protected internal PersistenceDataEntry<UserSegmentState> userSegmentState;
-
+        
         public PersistenceDataEntry<UserSegmentState> UserSegmentState => userSegmentState;
     }
 }
@@ -608,31 +609,29 @@ using Horcrux.Runtime.Abstractions.Bootstrap;
 using Horcrux.Runtime.Abstractions.Persistence;
 using Horcrux.Runtime.Utilities;
 using Horcrux.Runtime.Utilities.EventBus;
+using Sisus.Init;
 using UnityEngine;
 
 namespace Horcrux.Runtime.Abstractions.UserSegmentation
 {
     /// <summary>
     /// Boot step owning the segment state. Two write gates: <see cref="ReportCampaign"/> and <see cref="ReportPurchase"/>.
-    /// Must run after the step that initializes the save collection. Not generic so vendor steps and Editor tools can reference it.
+    /// Must run after <c>SaveBootstep</c>. Not generic so vendor steps and Editor tools can reference it.
     /// Segment ids are ints from the project's data; the base only knows the default and the purchased roles.
     /// </summary>
-    public abstract class AUserSegmentationHost : ABootStep
+    public abstract class AUserSegmentationHost : ABootStep, IInitializable<BasePersistenceDataCollection>
     {
-        #region Properties
-
         protected const string LogPrefix = "[UserSegmentation]: ";
-
-        [Splitter("References")]
-        [SerializeField] private BasePersistenceDataCollection saveCollection;
 
         private PersistenceDataEntry<UserSegmentState> _entry;
         private UserSegmentState _state;
 
-        /// <summary>False until <see cref="InitializeAsync"/> ran with a valid collection. While false, derived config is null: a missing setup must surface, not run at a default.</summary>
+        #region Properties
+
+        /// <summary>False until <see cref="InitializeAsync"/> ran with an initialized collection. While false, derived config is null: a missing setup must surface, not run at a default.</summary>
         public bool IsReady => _state != null;
-        public int CurrSegmentId => _state != null ? _state.CurrSegmentId : 0;
-        public int PrevSegmentId => _state != null ? _state.PrevSegmentId : 0;
+        public int CurrSegmentId => _state?.CurrSegmentId ?? 0;
+        public int PrevSegmentId => _state?.PrevSegmentId ?? 0;
         public bool IsCampaignLocked => _state != null && _state.IsCampaignLocked;
         public bool IsFirstSession => _state != null && _state.SessionCount == 1;
         public string LastCampaign => _state?.LastCampaign;
@@ -648,17 +647,13 @@ namespace Horcrux.Runtime.Abstractions.UserSegmentation
 
         #endregion
 
-        #region Unity Callbacks
+        #region API
 
         public override UniTask InitializeAsync(CancellationToken ct)
         {
             Initialize();
             return UniTask.CompletedTask;
         }
-
-        #endregion
-
-        #region API
 
         /// <summary>Attribution answered. Pass empty for organic. Locks the campaign; ignored (but recorded) once locked.</summary>
         public void ReportCampaign(string campaign)
@@ -670,13 +665,14 @@ namespace Horcrux.Runtime.Abstractions.UserSegmentation
             }
 
             bool wasLocked = _state.IsCampaignLocked;
-            UserSegmentKeywordMatcher.TryMatch(campaign, KeywordRules, out int segmentId, out string keyword, out bool isAmbiguous);
-            UserSegmentDecider.Change change = UserSegmentDecider.OnCampaign(_state, campaign, segmentId,
-                keyword, isAmbiguous, DefaultSegmentId, PurchasedSegmentId);
-
-            if (wasLocked)
+            UserSegmentKeywordMatcher.TryMatch(campaign, KeywordRules, out int segmentId, out string keyword,
+                out bool isAmbiguous);
+            UserSegmentDecider.Change change = UserSegmentDecider.OnCampaign(_state, campaign, segmentId, keyword,
+                isAmbiguous, DefaultSegmentId, PurchasedSegmentId);
+            
+            if(wasLocked)
                 Debug.Log(LogPrefix + $"campaign '{campaign}' arrived after lock, segment stays {_state.CurrSegmentId}", this);
-
+            
             Commit(change);
         }
 
@@ -688,10 +684,10 @@ namespace Horcrux.Runtime.Abstractions.UserSegmentation
                 Debug.LogError(LogPrefix + "ReportPurchase before InitializeAsync; check step order", this);
                 return;
             }
-
+            
             if (!IsPurchaseRuleEnabled)
                 Debug.Log(LogPrefix + "purchase rule disabled by config, segment stays", this);
-
+            
             Commit(UserSegmentDecider.OnPurchase(_state, IsPurchaseRuleEnabled, DefaultSegmentId, PurchasedSegmentId));
         }
 
@@ -702,14 +698,14 @@ namespace Horcrux.Runtime.Abstractions.UserSegmentation
         /// <summary>Typed side: LogError every invalid row once at boot (<see cref="UserSegmentConfigTable.Validate{TConfig}"/>). Never fix the data.</summary>
         protected abstract void ValidateConfigs();
 
-        /// <summary>Called after boot and after every change: rebuild the resolved config.</summary>
+        /// <summary>Called after boot and after every change of segment: rebuild the resolved config.</summary>
         protected abstract void OnStateApplied();
 
         private void Initialize()
         {
             if (saveCollection == null)
             {
-                Debug.LogError(LogPrefix + "saveCollection is empty; drag the project's persistence collection asset", this);
+                Debug.LogError(LogPrefix + "saveCollection was not injected; check the Init section of this step", this);
                 return;
             }
 
@@ -722,31 +718,48 @@ namespace Horcrux.Runtime.Abstractions.UserSegmentation
             if (ResegmentMaxSessions < 1)
                 Debug.LogWarning(LogPrefix + $"ResegmentMaxSessions = {ResegmentMaxSessions}, clamped to 1", this);
 
-            _entry = saveCollection.UserSegmentState;
             _state = _entry.Value;
-
+            
             ValidateConfigs();
+            // Forced: a warm boot changes nothing, yet CurrConfig starts null every launch and must be built.
             Commit(UserSegmentDecider.OnBoot(_state, DefaultSegmentId, ResegmentMaxSessions), forceApply: true);
         }
 
+        /// <summary>Saves the state, rebuilds the config when needed, logs and publishes <see cref="UserSegmentChanged"/> only when the segment changed.</summary>
+        /// <param name="forceApply">Rebuild the config even without a change. Never publishes on its own.</param>
         private void Commit(in UserSegmentDecider.Change change, bool forceApply = false)
         {
+            // Through the setter on every call: SessionCount or LastCampaign may have changed without a segment change.
             _entry.Value = _state;
 
             if (!change.HasChange && !forceApply)
                 return;
-
+            
             OnStateApplied();
 
             if (!change.HasChange)
                 return;
-
+            
             Debug.Log(LogPrefix + $"{change.Reason}: segment {change.PrevSegmentId} -> {change.CurrSegmentId}"
                 + (change.MatchedKeyword != null ? $" by keyword '{change.MatchedKeyword}'" : string.Empty)
                 + (change.IsAmbiguous ? ", another segment's keyword also matched" : string.Empty), this);
-
+            
             EventBus<UserSegmentChanged>.Publish(new UserSegmentChanged(change.PrevSegmentId, change.CurrSegmentId,
                 change.Reason, change.MatchedKeyword, change.IsAmbiguous));
+        }
+
+        #endregion
+
+        #region DI
+
+        private BasePersistenceDataCollection saveCollection;
+        
+        public void Init(BasePersistenceDataCollection argument)
+        {
+            saveCollection = argument;
+
+            // Safe before the collection loads: loading writes into this same entry object, never replaces it.
+            _entry = saveCollection.UserSegmentState;
         }
 
         #endregion
@@ -769,13 +782,13 @@ namespace Horcrux.Runtime.Abstractions.UserSegmentation
     public abstract class AUserSegmentationHost<TConfig> : AUserSegmentationHost
         where TConfig : class, IUserSegmentConfig<TConfig>
     {
-        #region Properties
-
+        // Cached, not computed in the getter: consumers read it many times per level and InheritFrom allocates a new row.
         private TConfig _currConfig;
+
+        #region Properties
 
         /// <summary>Resolved row of the current segment; for the purchased segment, -1 fields are taken from the previous segment's row. Null only while <see cref="AUserSegmentationHost.IsReady"/> is false.</summary>
         public TConfig CurrConfig => _currConfig;
-
         /// <summary>Segment pool: one row per segment id, ids from 1. Read at boot and on each change, never cached here.</summary>
         protected abstract IReadOnlyList<TConfig> Configs { get; }
 
@@ -792,7 +805,7 @@ namespace Horcrux.Runtime.Abstractions.UserSegmentation
                 _currConfig = target;
                 return;
             }
-
+            
             int prevId = PrevSegmentId != 0 ? PrevSegmentId : DefaultSegmentId;
             _currConfig = target.InheritFrom(FindConfigOrDefault(prevId));
         }
@@ -801,30 +814,32 @@ namespace Horcrux.Runtime.Abstractions.UserSegmentation
         {
             List<string> errors = new();
             UserSegmentConfigTable.Validate(Configs, KeywordRules, DefaultSegmentId, errors);
-
+            
             for (int i = 0; i < errors.Count; i++)
                 Debug.LogError(LogPrefix + errors[i], this);
         }
 
+        /// <summary>Row of <paramref name="id"/>, else the default segment's row with a LogError, else throws.</summary>
         private TConfig FindConfigOrDefault(int id)
         {
             TConfig row = UserSegmentConfigTable.Find(Configs, id);
 
             if (row != null)
                 return row;
-
+            
             Debug.LogError(LogPrefix + $"no pool row for segment {id}, using the default segment's row", this);
             row = UserSegmentConfigTable.Find(Configs, DefaultSegmentId);
-
+            
             if (row != null)
                 return row;
 
             // An empty row would be a zero economy (interstitial from level 1, free boosters) running silently: an authoring error must explode.
-            throw new InvalidOperationException(LogPrefix
-                + $"no pool row for segment {id} nor for the default segment {DefaultSegmentId}; the segment pool on the remote config asset is empty or wrong");
+            throw new InvalidOperationException(LogPrefix + $"no pool row for segment {id} nor for the default segment " +
+                                                $"{DefaultSegmentId}, the segment pool on the remote config asset is empty or wrong");
         }
 
         #endregion
+        
     }
 }
 ```
@@ -835,7 +850,10 @@ namespace Horcrux.Runtime.Abstractions.UserSegmentation
 | Hàng trùng `id`: hàng cuối thắng | tất định, và `Validate` đã báo; khớp với cách `UserSegmentConfigTable.Find` duyệt hết |
 | `FindConfigOrDefault` hai bậc rồi ném | hàng của tập, rồi hàng default; hết hai bậc là bảng rỗng — lỗi authoring, nổ ở lần Play đầu thay vì kinh tế bằng 0 |
 | `CurrConfig` là field cache, không tính trong getter | consumer có thể đọc nhiều lần trong một level; `InheritFrom` cấp phát một hàng mới mỗi lần gọi |
-| `saveCollection` trống: `LogError` rồi thoát, `CurrConfig` để null | consumer nổ ở lần chạm đầu — đúng ý: setup thiếu phải lộ, không chạy cả phiên ở tập mặc định như thể đã dựng đúng |
+| `saveCollection` tiêm qua `IInitializable<BasePersistenceDataCollection>` như `SaveBootstep`, không phải ô kéo thả | cùng một nguồn collection với bước save, không có ô Inspector để quên kéo |
+| `_entry` lấy ngay trong `Init`, trước khi collection load | `LoadEntry` ghi vào chính object entry có sẵn, không thay reference, nên reference giữ từ `Init` vẫn đúng |
+| `forceApply` chỉ ở boot, và không tự bắn sự kiện | boot nóng không đổi tập nhưng `CurrConfig` mỗi lần mở app là null, phải dựng; campaign hay purchase đổi tập đã có `HasChange` nên tự qua cả hai cổng, không đổi thì `CurrConfig` cũ vẫn đúng |
+| `saveCollection` chưa được tiêm: `LogError` rồi thoát, `CurrConfig` để null | consumer nổ ở lần chạm đầu — đúng ý: setup thiếu phải lộ, không chạy cả phiên ở tập mặc định như thể đã dựng đúng |
 | `LogPrefix` là `protected const` ở base | lớp generic và lớp con của dự án log cùng một tiền tố, không khai lại |
 | `KeywordRules` và khớp camp ở base, không ở lớp generic | bảng keyword không mang kiểu dự án; Simulator đọc nó qua kiểu `AUserSegmentationHost` không cần reflection generic |
 | `DefaultSegmentId`, `PurchasedSegmentId` là abstract dự án trả hằng, không phải ô Inspector | hai id là wire format đã chốt cùng bảng, đổi là đổi dữ liệu đã lưu; ô số mặc định `0` là ô trống hợp lệ không ai thấy |
