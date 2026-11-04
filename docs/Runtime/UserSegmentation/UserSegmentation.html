@@ -172,7 +172,7 @@ footer{text-align:center;padding:2.5rem 1rem;color:var(--tx3);font-size:.82rem;b
   <div class="tw"><table>
     <thead><tr><th>Horcrux giữ</th><th>Dự án khai</th></tr></thead>
     <tbody>
-      <tr><td><code>AUserSegmentationHost</code> (boot step, toàn bộ cơ chế) · <code>AUserSegmentationHost&lt;TConfig&gt;</code> (tra và cache config)</td><td>host con: hai id vai, pool, bảng keyword, một núm config, kèm một <code>Initializer</code></td></tr>
+      <tr><td><code>AUserSegmentationHost</code> (boot step, toàn bộ cơ chế) · <code>AUserSegmentationHost&lt;TConfig&gt;</code> (tra và cache config)</td><td>host con: hai id vai, pool, bảng keyword, kèm một <code>Initializer</code></td></tr>
       <tr><td><code>IUserSegmentConfig&lt;TSelf&gt;</code> · <code>IUserSegmentKeywordRule</code></td><td>DTO hàng pool (có <code>InheritFrom</code>) · DTO hàng keyword</td></tr>
       <tr><td><code>UserSegmentDecider</code> · <code>UserSegmentKeywordMatcher</code> · <code>UserSegmentInheritance</code> · <code>UserSegmentConfigTable</code>: static thuần</td><td>không</td></tr>
       <tr><td><code>UserSegmentState</code> + entry <code>userSegmentState</code> trong base collection</td><td><code>Key</code> của entry trên asset collection</td></tr>
@@ -285,7 +285,7 @@ Commit   entry.Value = state                     luôn: SessionCount, LastCampai
       <tr><td>N + 1</td><td><code>SessionCount</code> = N ≥ N: khoá, rồi tăng 1</td><td>bước Adjust thoát ngay; tập giữ nguyên, thường là <code>default</code></td></tr>
     </tbody>
   </table></div>
-  <p>Phiên 1…N còn phân lại được; cửa sổ đóng ở đầu phiên N+1 (N = <code>ResegmentMaxSessions</code>). <code>IsFirstSession</code> là <code>SessionCount == 1</code>: lần mở đầu tiên sau khi cài.</p>
+  <p>Phiên 1…N còn phân lại được; cửa sổ đóng ở đầu phiên N+1 (N = <code>ResegmentMaxSessions</code>, mặc định 3 trong code, không qua remote config). <code>IsFirstSession</code> là <code>SessionCount == 1</code>: lần mở đầu tiên sau khi cài.</p>
 
   <div class="fig"><div class="cap">Cửa sổ phân lại với N = 3</div>
   <svg viewBox="0 0 860 150" role="img" aria-label="Cửa sổ phân lại theo phiên">
@@ -357,14 +357,13 @@ public sealed class MyKeywordRule : IUserSegmentKeywordRule
     public IReadOnlyList&lt;string&gt; Keywords =&gt; keywords;
 }</code></pre></li>
     <li><strong>Host và Initializer</strong>
-      <p>Id lấy từ dữ liệu của dự án; ba núm còn lại đọc từ remote config đã ép kiểu.</p>
+      <p>Id lấy từ dữ liệu của dự án; pool và bảng keyword đọc từ remote config đã ép kiểu.</p>
 <pre><code>public sealed class MySegmentationHost : AUserSegmentationHost&lt;MySegmentConfig&gt;
 {
     protected override int DefaultSegmentId =&gt; MySegmentIds.Default;
     protected override int PurchasedSegmentId =&gt; MySegmentIds.Purchased;
     protected override IReadOnlyList&lt;MySegmentConfig&gt; Configs =&gt; MyRemoteConfig.SegmentPool;
     protected override IReadOnlyList&lt;IUserSegmentKeywordRule&gt; KeywordRules =&gt; MyRemoteConfig.SegmentKeywords;
-    protected override int ResegmentMaxSessions =&gt; MyRemoteConfig.ResegmentMaxSessions;
 }
 
 internal sealed class MySegmentationHostInitializer : Initializer&lt;MySegmentationHost, BasePersistenceDataCollection&gt;
@@ -481,7 +480,7 @@ internal sealed class MySegmentationHostInitializer : Initializer&lt;MySegmentat
   <div class="tw"><table>
     <thead><tr><th>Type</th><th>Thành viên</th></tr></thead>
     <tbody>
-      <tr><td><code>AUserSegmentationHost</code></td><td><code>abstract</code>, <code>ABootStep</code>, <code>IInitializable&lt;BasePersistenceDataCollection&gt;</code> · <code>bool IsReady</code> · <code>int CurrSegmentId</code> · <code>int PrevSegmentId</code> · <code>bool IsCampaignLocked</code> · <code>bool IsFirstSession</code> · <code>string LastCampaign</code> · <code>void ReportCampaign(string)</code> · <code>void ReportPurchase()</code> · abstract <code>DefaultSegmentId</code> · <code>PurchasedSegmentId</code> · <code>IReadOnlyList&lt;IUserSegmentKeywordRule&gt; KeywordRules</code> · <code>ResegmentMaxSessions</code></td></tr>
+      <tr><td><code>AUserSegmentationHost</code></td><td><code>abstract</code>, <code>ABootStep</code>, <code>IInitializable&lt;BasePersistenceDataCollection&gt;</code> · <code>bool IsReady</code> · <code>int CurrSegmentId</code> · <code>int PrevSegmentId</code> · <code>bool IsCampaignLocked</code> · <code>bool IsFirstSession</code> · <code>string LastCampaign</code> · <code>void ReportCampaign(string)</code> · <code>void ReportPurchase()</code> · abstract <code>DefaultSegmentId</code> · <code>PurchasedSegmentId</code> · <code>IReadOnlyList&lt;IUserSegmentKeywordRule&gt; KeywordRules</code> · virtual <code>int ResegmentMaxSessions</code> (mặc định 3)</td></tr>
       <tr><td><code>AUserSegmentationHost&lt;TConfig&gt;</code></td><td><code>where TConfig : class, IUserSegmentConfig&lt;TConfig&gt;</code> · <code>TConfig CurrConfig</code> · abstract <code>IReadOnlyList&lt;TConfig&gt; Configs</code></td></tr>
       <tr><td><code>IUserSegmentConfig</code> · <code>IUserSegmentConfig&lt;TSelf&gt;</code></td><td><code>int Id</code> · <code>TSelf InheritFrom(TSelf prev)</code></td></tr>
       <tr><td><code>IUserSegmentKeywordRule</code></td><td><code>int SegmentId</code> · <code>IReadOnlyList&lt;string&gt; Keywords</code></td></tr>

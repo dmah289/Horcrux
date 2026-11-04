@@ -38,7 +38,8 @@ namespace Horcrux.Runtime.Abstractions.UserSegmentation
         protected abstract int PurchasedSegmentId { get; }
         /// <summary>Row order is priority. Read at boot and on each campaign report, never cached here.</summary>
         protected abstract IReadOnlyList<IUserSegmentKeywordRule> KeywordRules { get; }
-        protected abstract int ResegmentMaxSessions { get; }
+        /// <summary>Cold boots that may still resegment while attribution has not answered. Override only for a reason; values below 1 clamp to 1.</summary>
+        protected virtual int ResegmentMaxSessions => 3;
 
         #endregion
 

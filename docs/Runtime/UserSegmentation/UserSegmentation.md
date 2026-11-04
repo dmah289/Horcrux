@@ -22,7 +22,7 @@ Thêm tập là thêm hàng dữ liệu (một hàng pool, một hàng keyword),
 
 | Horcrux giữ | Dự án khai |
 |---|---|
-| `AUserSegmentationHost` (boot step, toàn bộ cơ chế) · `AUserSegmentationHost<TConfig>` (tra và cache config) | host con: hai id vai, pool, bảng keyword, một núm config, kèm một `Initializer` |
+| `AUserSegmentationHost` (boot step, toàn bộ cơ chế) · `AUserSegmentationHost<TConfig>` (tra và cache config) | host con: hai id vai, pool, bảng keyword, kèm một `Initializer` |
 | `IUserSegmentConfig<TSelf>` · `IUserSegmentKeywordRule` | DTO hàng pool (có `InheritFrom`) · DTO hàng keyword |
 | `UserSegmentDecider` · `UserSegmentKeywordMatcher` · `UserSegmentInheritance` · `UserSegmentConfigTable` — static thuần | — |
 | `UserSegmentState` + entry `userSegmentState` trong base collection | `Key` của entry trên asset collection |
@@ -85,7 +85,7 @@ bao nhiêu cũng vậy.
 | 2 … N | `SessionCount` tăng 1 | chỉ poll nền tối đa `lateArrivalPollSeconds` |
 | N + 1 | `SessionCount` = N ≥ N: khoá, rồi tăng 1 | bước Adjust thoát ngay; tập giữ nguyên, thường là `default` |
 
-Phiên 1…N còn phân lại được; cửa sổ đóng ở đầu phiên N+1 (N = `ResegmentMaxSessions`). `IsFirstSession` là
+Phiên 1…N còn phân lại được; cửa sổ đóng ở đầu phiên N+1 (N = `ResegmentMaxSessions`, mặc định 3 trong code, không qua remote config). `IsFirstSession` là
 `SessionCount == 1`: lần mở đầu tiên sau khi cài.
 
 **Khớp keyword.** Một hàng khớp khi camp chứa **bất kỳ** keyword nào của hàng (`IndexOf(keyword, OrdinalIgnoreCase) >= 0`).
@@ -145,7 +145,7 @@ public sealed class MyKeywordRule : IUserSegmentKeywordRule
 }
 ```
 
-**3 · Host và Initializer** — id lấy từ dữ liệu của dự án; ba núm còn lại đọc từ remote config đã ép kiểu:
+**3 · Host và Initializer** — id lấy từ dữ liệu của dự án; pool và bảng keyword đọc từ remote config đã ép kiểu:
 
 ```csharp
 public sealed class MySegmentationHost : AUserSegmentationHost<MySegmentConfig>
@@ -154,7 +154,6 @@ public sealed class MySegmentationHost : AUserSegmentationHost<MySegmentConfig>
     protected override int PurchasedSegmentId => MySegmentIds.Purchased;
     protected override IReadOnlyList<MySegmentConfig> Configs => MyRemoteConfig.SegmentPool;
     protected override IReadOnlyList<IUserSegmentKeywordRule> KeywordRules => MyRemoteConfig.SegmentKeywords;
-    protected override int ResegmentMaxSessions => MyRemoteConfig.ResegmentMaxSessions;
 }
 
 internal sealed class MySegmentationHostInitializer : Initializer<MySegmentationHost, BasePersistenceDataCollection>
@@ -257,7 +256,7 @@ Namespace `Horcrux.Runtime.Abstractions.UserSegmentation`:
 
 | Type | Thành viên |
 |---|---|
-| `AUserSegmentationHost` | `abstract`, `ABootStep`, `IInitializable<BasePersistenceDataCollection>` · `bool IsReady` · `int CurrSegmentId` · `int PrevSegmentId` · `bool IsCampaignLocked` · `bool IsFirstSession` · `string LastCampaign` · `void ReportCampaign(string)` · `void ReportPurchase()` · abstract `DefaultSegmentId` · `PurchasedSegmentId` · `IReadOnlyList<IUserSegmentKeywordRule> KeywordRules` · `ResegmentMaxSessions` |
+| `AUserSegmentationHost` | `abstract`, `ABootStep`, `IInitializable<BasePersistenceDataCollection>` · `bool IsReady` · `int CurrSegmentId` · `int PrevSegmentId` · `bool IsCampaignLocked` · `bool IsFirstSession` · `string LastCampaign` · `void ReportCampaign(string)` · `void ReportPurchase()` · abstract `DefaultSegmentId` · `PurchasedSegmentId` · `IReadOnlyList<IUserSegmentKeywordRule> KeywordRules` · virtual `int ResegmentMaxSessions` (mặc định 3) |
 | `AUserSegmentationHost<TConfig>` | `where TConfig : class, IUserSegmentConfig<TConfig>` · `TConfig CurrConfig` · abstract `IReadOnlyList<TConfig> Configs` |
 | `IUserSegmentConfig` · `IUserSegmentConfig<TSelf>` | `int Id` · `TSelf InheritFrom(TSelf prev)` |
 | `IUserSegmentKeywordRule` | `int SegmentId` · `IReadOnlyList<string> Keywords` |
