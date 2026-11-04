@@ -55,6 +55,10 @@ Tiêu chí: **một tool là một đơn vị gói kín** · **thứ dùng chung
 > `EnableUIToolkitSupport`: `PropertyDrawer` có `CreatePropertyGUI` vẽ bằng UI Toolkit đè toạ độ IMGUI, lệch đúng chiều cao
 > `IMGUIContainer` phía trên (khối Init của InitArgs) — tắt cờ trong `GeneralDrawerConfig`.
 
+> **Nền tảng** — tool đọc dữ liệu qua đối tượng runtime nhận phụ thuộc bằng `Init` của InitArgs: ngoài Play chưa ai tiêm,
+> getter ném `NullReferenceException`. Tool đọc **trong Play qua chính đối tượng đó** — thấy đúng thứ runtime thấy — không
+> dựng bản thứ hai của getter để chạy ngoài Play; việc chỉ được làm khi không Play (xoá save) là nút riêng, nguồn lấy từ ô asset.
+
 **Sổ tay** — cache IMGUI: `static readonly` cho bất biến (`Color`, `GUILayoutOption[]`, `GUIContent` chỉ text) · static
 lazy trong `EnsureStyles()` cho thứ cần `GUI.skin` · dirty flag cho layout khi resize · tính nặng (filter, sort, format) ở
 `EventType.Layout`, `Repaint` dùng lại.
