@@ -1,12 +1,13 @@
 ---
 name: ui-reskin
-description: Dùng khi dựng hoặc reskin UI theo ảnh demo: cách tổ chức prefab UI để đúng demo và dễ mở rộng, cách làm việc với Editor qua công cụ (MCP, eval) khi dựng, soát, chụp, đo, và các bẫy của UGUI, prefab, sprite, TMP đã trả giá.
+description: Dùng khi dựng hoặc reskin UI theo ảnh demo, hay thêm art UI: cách tổ chức prefab UI để đúng demo và dễ mở rộng, chia atlas và bundle cho art UI, cách làm việc với Editor qua công cụ (MCP, eval) khi dựng, soát, chụp, đo, và các bẫy của UGUI, prefab, sprite, TMP đã trả giá.
 ---
 
 # ui-reskin — prefab UI theo demo
 
 Skill công cụ dưới `Skills/horcrux_skill.md` (NT, ba tầng, ký hiệu định nghĩa ở đó). Tool: `docs/Editor/UIReskin.md` (dựng,
-soát, chụp, đo) · `docs/Editor/Probe.md` (cỡ Game view, vào Play, chờ scene, bấm).
+soát, chụp, đo) · `docs/Editor/Probe.md` (cỡ Game view, vào Play, chờ scene, bấm) · `docs/Editor/SpriteAtlasBuilder.md` (soát, dựng
+atlas).
 
 Mục dưới là **tiêu chí và lý do**, không phải trình tự. Bài nào có đường ngắn hơn mà vẫn đạt tiêu chí thì đi đường đó (NT6),
 nói lý do và phép kiểm.
@@ -40,6 +41,31 @@ Khối thiết kế theo một bề rộng thì giữ bề rộng đó: màn h�
 
 **Câu hỏi về hành vi thuộc developer.** Nút trên demo chưa có logic, nút cũ không còn chỗ trên demo, chữ demo khác chữ code: hỏi
 trước khi dựng (NT5), ghi câu trả lời vào tài liệu thiết kế của màn.
+
+## Atlas
+
+Màn dựng xong mà art còn lẻ vẫn vẽ đúng, nên thiếu atlas không lộ qua ảnh chụp; soát bằng `AtlasAudit` (`docs/Editor/SpriteAtlasBuilder.md`)
+mỗi khi thêm art UI, dựng bằng `SpriteAtlasBuilder`.
+
+**Chia atlas theo thứ hiện cùng lúc, không theo tên thư mục art.** Mỗi lần đổi texture giữa hai Graphic kề nhau là một batch, mỗi
+atlas nạp là cả trang vào bộ nhớ: một màn vẽ từ ít atlas nhất, và không nạp trang mà phần lớn nó không dùng. Art của một màn vào
+atlas của màn; art nhiều màn cùng dùng vào atlas chung hoặc atlas của bên luôn có mặt (khung popup mở trên mọi màn). Thư mục art là
+packable của atlas để art mới thả vào tự vào atlas; thứ không nên pack thì dời sang thư mục khác (GUID giữ, reference không vỡ).
+
+**Thứ không nên pack: to hơn trang, hoặc chỉ một trong vài bản hiện.** Nền toàn màn vượt trang thì để lẻ; nền theo loại máy
+(mobile, tablet) chỉ một bản hiện, pack chung là nạp cả hai. Sprite to nhưng vừa trang (`BIG`) thì so hai phương án bằng số — trang
+nhỏ hơn cộng texture lẻ, với trang lớn chứa nó: texture lẻ cỡ lẻ trên Android rơi về format nặng hơn nên thường thua.
+
+**Atlas mà nhiều bundle cùng dùng là entry Addressables tường minh**, không thì mỗi bundle chép một bản (`DUP`). Group theo vòng
+đời: thứ mọi màn dùng nạp lúc boot, thứ của một màn đi với màn. Khai ở bảng layout của dự án (`AddressablesLayout`), không thêm tay.
+Cài đặt importer theo spec atlas sẵn có của dự án, không đặt mới cho từng atlas.
+
+**Object tắt vẫn nạp atlas của nó.** Skin cũ tắt để giữ merge (mục trên) kéo theo atlas cũ — `Usage` báo `off`. Atlas cũ đã nạp
+sẵn lúc boot thì không tốn thêm; atlas chỉ còn object tắt giữ là giá của việc giữ skin cũ: báo developer atlas nào, cỡ trang bao
+nhiêu, không tự gỡ.
+
+**Nghiệm thu bằng số trước–sau** trên cùng màn: batch trong Play (`UnityEditor.UnityStats.batches`), số trang và fill
+(`AtlasAudit.Atlases`), không còn `DUP` và texture lẻ ngoài thứ cố ý để lẻ, ảnh chụp trước–sau sai khác ~0.
 
 ## Làm việc qua Editor tool
 
@@ -77,6 +103,8 @@ sách file của task, không `add` cả thư mục.
 | Thay đổi trên instance trong scene mất sau khi lưu thành prefab | modification không được ghi lại · sửa trong nội dung prefab (`PrefabEdit.Edit`) hoặc gọi `RecordPrefabInstancePropertyModifications` |
 | Sửa prefab gốc mà màn không đổi | override lồng ở variant hay instance che giá trị gốc · `ListOverrides` trên chuỗi variant, gỡ đúng dòng |
 | Border đặt xong vẫn như cũ | sprite Multiple bỏ qua `spriteBorder` của importer · `SpriteSlicing.SetBorder` (đi qua sprite data provider) |
+| Đường dẫn của sprite đã pack là file `.spriteatlasv2` | `sprite.texture` trả trang atlas · lấy nguồn bằng `AssetDatabase.GetAssetPath(sprite)` |
+| Art đã vào atlas mà bundle vẫn chứa texture nguồn | RawImage, material, sprite asset TMP giữ thẳng texture, không qua atlas · chấp nhận khi nhỏ, hoặc tách art đó ra |
 | Sprite lấy ra là mảnh vụn | `LoadAssetAtPath<Sprite>` trả mảnh đầu · `SpriteSlicing.LargestSlice` |
 | Số đo pixel lệch đều một tỉ lệ | texture nguồn vượt Max Size nên bị thu lúc import · `SpriteSlicing.Report` báo `SHRUNK`, nâng Max Size |
 | Chữ TMP có `<sprite=0>` không hiện gì, không lỗi | sprite asset có face info bằng 0 · `TmpSpriteAssetBuilder.Create` |
