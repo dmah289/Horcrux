@@ -15,7 +15,7 @@ namespace Horcrux.Runtime.Abstractions.UserSegmentation
     /// Must run after <c>SaveBootstep</c>. Not generic so vendor steps and Editor tools can reference it.
     /// Segment ids are ints from the project's data; the base only knows the default and the purchased roles.
     /// </summary>
-    public abstract class AUserSegmentationHost : ABootStep, IInitializable<BasePersistenceDataCollection>
+    public abstract partial class AUserSegmentationHost : ABootStep, IInitializable<BasePersistenceDataCollection>
     {
         protected const string LogPrefix = "[UserSegmentation]: ";
 
@@ -31,6 +31,9 @@ namespace Horcrux.Runtime.Abstractions.UserSegmentation
         public bool IsCampaignLocked => _state != null && _state.IsCampaignLocked;
         public bool IsFirstSession => _state != null && _state.SessionCount == 1;
         public string LastCampaign => _state?.LastCampaign;
+        /// <summary>Cold boots since install, this one included; 0 before <see cref="InitializeAsync"/>.</summary>
+        public int SessionCount => _state?.SessionCount ?? 0;
+        public UserSegmentLockReason LockReason => _state?.LockReason ?? UserSegmentLockReason.None;
 
         /// <summary>Segment a user lands in without a matching campaign. Must have a pool row.</summary>
         protected abstract int DefaultSegmentId { get; }

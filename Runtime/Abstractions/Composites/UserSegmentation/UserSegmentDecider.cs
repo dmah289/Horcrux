@@ -43,7 +43,7 @@ namespace Horcrux.Runtime.Abstractions.UserSegmentation
             int maxSessions = Math.Max(1, resegmentMaxSessions);
 
             if (!state.IsCampaignLocked && state.SessionCount >= maxSessions)
-                state.IsCampaignLocked = true;
+                Lock(state, UserSegmentLockReason.SessionWindow);
 
             state.SessionCount++;
             return change;
@@ -59,7 +59,7 @@ namespace Horcrux.Runtime.Abstractions.UserSegmentation
             if (state.IsCampaignLocked)
                 return Change.None;
 
-            state.IsCampaignLocked = true;
+            Lock(state, UserSegmentLockReason.Attribution);
 
             if (state.CurrSegmentId == purchasedSegmentId)
                 return Change.None;
@@ -87,9 +87,16 @@ namespace Horcrux.Runtime.Abstractions.UserSegmentation
             int prev = state.CurrSegmentId != 0 ? state.CurrSegmentId : defaultSegmentId;
             state.PrevSegmentId = prev;
             state.CurrSegmentId = purchasedSegmentId;
-            state.IsCampaignLocked = true;
+            Lock(state, UserSegmentLockReason.Purchase);
 
             return new Change(prev, purchasedSegmentId, UserSegmentChangeReason.Purchase, null, false);
+        }
+
+        /// <summary>The first reason wins: a lock means the resegment window closed, later causes do not rewrite why.</summary>
+        private static void Lock(UserSegmentState state, UserSegmentLockReason reason)
+        {
+            if (state.LockReason == UserSegmentLockReason.None)
+                state.LockReason = reason;
         }
     }
 }
