@@ -29,6 +29,9 @@ nó, không phải lý do bỏ.
 xong **trước tín hiệu cần tới nó** — tín hiệu phát ngay sau khi bật cây thì `Awake` đã chạy còn `Start` chưa, nên cặp là
 `Awake`/`OnDestroy`; view tự ẩn bằng tắt chính nó thì cặp bật/tắt gỡ nó khỏi chủ ngay lần ẩn đầu.
 
+> **Nền tảng** — lúc thoát app, `OnApplicationQuit` của mọi object chạy trước `OnDestroy`: service tự quản đời (singleton
+> bên thứ ba) có thể đã trả `null` khi vế huỷ chạy. Vế huỷ của object sống suốt phiên kiểm `null` trước khi gỡ.
+
 **Điều kiện dựng hệ ghi vào tài liệu, không sinh code canh.** Tạo asset, dựng GameObject, gán reference, đặt layer, thêm
 scene vào build là mục **"Trước khi chạy"** của tài liệu module (`docs` › `.md`); thiếu thì xử lý theo bảng guard
 (`code-design` › Bất biến). Bước setup tay là cách developer hiểu hệ — người tự kéo asset giữ được trong đầu chỗ các mảnh

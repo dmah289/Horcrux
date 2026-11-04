@@ -114,7 +114,8 @@ phải chạm `private`, gọi đúng lệnh thật của hệ. Panel có trong 
 Lệnh, cửa đọc `private` và suy luận thuộc **hệ**, không phụ thuộc công cụ debug — hệ framework mang được sang dự án dùng
 panel khác; lớp nối với panel thuộc dự án. **Đưa về trạng thái đầu** đi qua chủ giữ state: thay bản trong RAM lẫn bản lưu,
 flush, rồi **thoát app** — xoá kho lưu giữa phiên bị flush lúc pause/quit ghi đè, việc chỉ chạy lúc boot (grant, cache dẫn
-xuất) không chạy lại. "Như cài mới" xoá đúng danh sách key, không xoá cả kho (consent, prefs của SDK).
+xuất) không chạy lại. Cờ của khởi tạo lười giữ ở "đã kiểm" tới hết tiến trình: mở lại thì thứ đọc trước lúc thoát khởi tạo lại
+từ state cũ và bật lại cờ vừa xoá. "Như cài mới" xoá đúng danh sách key, không xoá cả kho (consent, prefs của SDK).
 
 > **Nền tảng** — khi dự án dùng SRDebugger: tab Options, một category mỗi hệ, trigger `Off`; cách mở panel do dự án quyết.
 > Option chỉ đọc lại getter khi bind, `OnEnable` (mở panel, đổi tab) hoặc khi được báo, không theo frame: lệnh xong phải
