@@ -5,6 +5,8 @@ using System.Text;
 using System.Threading;
 using Cysharp.Threading.Tasks;
 using UnityEngine;
+using UnityEngine.EventSystems;
+using UnityEngine.SceneManagement;
 using Object = UnityEngine.Object;
 
 namespace Horcrux.Editor.Probe
@@ -40,6 +42,33 @@ namespace Horcrux.Editor.Probe
                         return t.gameObject;
                 await UniTask.Yield(ct);
             }
+        }
+
+        /// <summary>
+        /// Chờ tới khi scene mang đúng tên đã nạp xong; kiểm mỗi frame ở Update. Gọi service của game trước khi scene chứa nó nạp
+        /// là chạy trước boot: game kẹt ở màn chờ.
+        /// </summary>
+        public static async UniTask<Scene> WaitForSceneAsync(string sceneName, CancellationToken ct)
+        {
+            while (true)
+            {
+                var scene = SceneManager.GetSceneByName(sceneName);
+                if (scene.isLoaded)
+                    return scene;
+                await UniTask.Yield(ct);
+            }
+        }
+
+        /// <summary>
+        /// Bấm như ngón tay: pointerDown, pointerUp, pointerClick vào handler gần nhất từ target lên cha. Nút nghe ở down hay up
+        /// đều nhận; không đi qua raycast nên object bị che vẫn nhận. Cần EventSystem trong scene.
+        /// </summary>
+        public static void Click(GameObject target)
+        {
+            var data = new PointerEventData(EventSystem.current) { button = PointerEventData.InputButton.Left };
+            ExecuteEvents.ExecuteHierarchy(target, data, ExecuteEvents.pointerDownHandler);
+            ExecuteEvents.ExecuteHierarchy(target, data, ExecuteEvents.pointerUpHandler);
+            ExecuteEvents.ExecuteHierarchy(target, data, ExecuteEvents.pointerClickHandler);
         }
 
         /// <summary>Đọc field theo tên, kể cả private khai trên base: GetField(NonPublic) không thấy private của base.</summary>

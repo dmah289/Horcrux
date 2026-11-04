@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
 # Một lệnh kiểm sau mỗi task: dotnet build các csproj → Unity recompile → test EditMode theo assembly. In gọn, mã thoát 1 khi một bước hỏng.
 # Editor phải đang mở project cho hai bước Unity; --no-unity chỉ chạy dotnet build.
-# Dùng: bash verify.sh [--project <path>] [--csproj a.csproj,b.csproj] [--tests Asm1,Asm2] [--no-unity] [--no-tests] [--timeout giây]
+# Dùng: bash verify.sh [--project <path>] [--csproj a.csproj,b.csproj] [--tests Asm1,Asm2] [--no-unity] [--no-tests] [--timeout giây] [--help]
 #   --csproj   csproj do Unity sinh ở gốc project (gitignore), build bằng dotnet, chỉ in lỗi. Bỏ trống thì bỏ bước này.
 #   --tests    assembly test EditMode, mỗi assembly một lần `test run`. Bỏ trống thì bỏ bước này.
+#   --timeout  giây chờ mỗi assembly test (mặc định 600).
 #   UNITY_CLI ép đường dẫn unity.exe (mặc định tìm `unity` trên PATH). Chạy từ gốc project hoặc đặt --project.
 set -u
-PROJECT="$PWD"; CSPROJ=""; TESTS=""; UNITY=1; RUN_TESTS=1; TIMEOUT=300
+PROJECT="$PWD"; CSPROJ=""; TESTS=""; UNITY=1; RUN_TESTS=1; TIMEOUT=600
 while [ $# -gt 0 ]; do
   case "$1" in
     --project) PROJECT="$2"; shift 2 ;;
@@ -15,6 +16,7 @@ while [ $# -gt 0 ]; do
     --no-unity) UNITY=0; shift ;;
     --no-tests) RUN_TESTS=0; shift ;;
     --timeout) TIMEOUT="$2"; shift 2 ;;
+    --help|-h) sed -n '2,/^set -u/p' "$0" | sed '$d;s/^# \{0,1\}//'; exit 0 ;;
     *) echo "verify.sh: tham số lạ $1"; exit 2 ;;
   esac
 done
@@ -81,11 +83,15 @@ else echo "recompile: $status"; fi
 IFS=',' read -ra ASMS <<< "$TESTS"
 for asm in "${ASMS[@]}"; do
   [ -z "$asm" ] && continue
+  # scene đang mở có thay đổi chưa lưu thì Test Runner mở hộp thoại hỏi lưu: lệnh đứng tới timeout, Editor không trả lời CLI
   raw="$("$U" cmd --project-path "$W" --result-only test run --mode EditMode --filter_type assembly --filter "$asm" --timeout "$TIMEOUT" 2>&1)"
   for i in $(seq 1 $((TIMEOUT / 5))); do
     [ "$(echo "$raw" | jfield status)" = "in_progress" ] || break
     sleep 5; raw="$("$U" cmd --project-path "$W" --result-only test status 2>&1)"
   done
+  if [ "$(echo "$raw" | jfield status)" = "in_progress" ]; then
+    echo "tests $asm: chưa xong sau $TIMEOUT s. Editor có hộp thoại đang mở (scene chưa lưu thì Test Runner hỏi lưu và đứng chờ)? Không có thì tăng --timeout"; FAIL="$FAIL tests"; continue
+  fi
   total="$(echo "$raw" | jfield Summary.Total)"; passed="$(echo "$raw" | jfield Summary.Passed)"; failed="$(echo "$raw" | jfield Summary.Failed)"
   if [ -z "$total" ]; then echo "tests $asm: không đọc được kết quả"; echo "$raw" | head -c 600; echo; FAIL="$FAIL tests"; continue; fi
   echo "tests $asm: $passed/$total pass, $failed fail"

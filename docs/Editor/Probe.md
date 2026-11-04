@@ -12,7 +12,7 @@ kiểm tĩnh trước: `PrefabDump` không cần vào Play.
 | Mục | Chốt |
 |---|---|
 | Người dùng | agent, khi chỉnh feeling, dò lỗi trình diễn, đo hiệu năng; quy trình chọn công cụ ở `Skills/feel-tune/SKILL.md` |
-| Ranh giới | Horcrux giữ runner, ghi kết quả, reflection, dump prefab, ghép ảnh. Dự án giữ **đường tắt vào trạng thái cần đo** (bấm menu, chờ level, chọn entity), một class Editor của dự án |
+| Ranh giới | Horcrux giữ runner, ghi kết quả, reflection, chờ scene, bấm nút, dump prefab, ghép ảnh, cỡ Game view, vào Play từ scene đầu. Dự án giữ **đường tắt vào trạng thái cần đo** (bấm menu, chờ level, chọn entity), một class Editor của dự án |
 | Chỗ đặt | C# ở `Editor/Probe/` (assembly `com.horcrux.editor`). Shell ở `Editor/Probe/Tools~/`: Unity không import, không vào build |
 | Quan hệ với FeelTrace | `feeltrace.sh` chạy qua `playrun.sh`; `FeelTraceRecorder` dùng chung cờ `.done` |
 
@@ -21,7 +21,6 @@ kiểm tĩnh trước: `PrefabDump` không cần vào Play.
 | Không làm | Vì |
 |---|---|
 | Chạy từ menu Editor | eval của Unity CLI chạy được trong Play, đổi script không cần domain reload |
-| Tự chỉnh cỡ Game view | Unity CLI không có lệnh; cỡ Game view giữ nguyên giữa các lần Play nên là bước "Trước khi chạy" |
 | Vẽ nhãn lên ảnh ghép | thứ tự ảnh cố định (trên trái, theo hàng) là đủ đọc; vẽ chữ cần font và shader |
 | `PlayProbe` bọc `UniTask.WaitUntil`, `DelayFrame` | UniTask đã có, gọi thẳng |
 
@@ -33,6 +32,9 @@ kiểm tĩnh trước: `PrefabDump` không cần vào Play.
 | `playrun.sh` in `LOG` đã bỏ stack trace và gộp dòng lặp; file vẫn giữ đủ | lỗi có sẵn của game (thiếu remote config…) lặp hàng trăm dòng stack che mất kết quả; cần stack thì mở file |
 | `PlayProbe.Field`, `Call` dò lên từng base | `GetField(NonPublic)` không thấy private khai trên base, script tự viết reflection hay quên |
 | `PrefabDump` tính bounds từ `sprite.bounds`, không từ `Renderer.bounds` | prefab asset chưa instantiate thì renderer không có bounds thế giới |
+| `GameViewSize` đi qua reflection | Unity CLI và API công khai không có lệnh đổi cỡ Game view; tên type, method nội bộ đã kiểm trên Unity 6, đổi version thì kiểm lại |
+| `PlayFrom` nhớ scene khởi động cũ bằng `SessionState` | vào Play có domain reload: biến static mất, `SessionState` còn tới khi đóng Editor |
+| `PlayProbe.Click` gửi thẳng tới object, không raycast | bấm theo tên object không phụ thuộc toạ độ màn và thứ che phía trên; kiểm nút có bị che thì nhìn ảnh chụp |
 
 ## Luồng dữ liệu
 
@@ -58,8 +60,12 @@ playrun.sh: thấy .done → playmode stop → chuyển file về <file ra> → 
 | `PlayProbe.Run(string outPath, Func<StringBuilder, CancellationToken, UniTask> body)` | chạy nền trong đời phiên Play (`Application.exitCancellationToken`). Body ném hay thoát Play vẫn ghi file và cờ `.done`; exception vào `LOG` dạng `probe: …` |
 | `PlayProbe.DoneFlagPath(string outPath)` | `outPath + ".done"`; FeelTrace dùng chung |
 | `PlayProbe.WaitForActiveAsync(string objectName, CancellationToken ct)` | trả GameObject active đầu tiên mang đúng tên; kiểm mỗi frame ở `Update` |
+| `PlayProbe.WaitForSceneAsync(string sceneName, CancellationToken ct)` | trả `Scene` khi scene đúng tên đã nạp xong. Gọi service của game trước khi scene chứa nó nạp là chạy trước boot |
+| `PlayProbe.Click(GameObject target)` | pointerDown, pointerUp, pointerClick vào handler gần nhất từ `target` lên cha; cần EventSystem |
+| `GameViewSize.Set(int width, int height)` · `Restore()` · `Current()` | chọn cỡ cố định (chưa có thì thêm vào nhóm của platform đang chọn, lưu trong preference của máy), trả `index: nhãn`; `Restore` về cỡ trước lần `Set` đầu. Trong và ngoài Play; layout UI cập nhật vài frame sau |
+| `PlayFrom.FirstBuildScene()` · `Arm()` | đặt scene đầu Build Settings làm scene khởi động (`FirstBuildScene` vào Play luôn); về Edit mode thì trả scene khởi động cũ. Trong Play bật `Application.runInBackground` |
 | `PlayProbe.Field<T>(object target, string fieldName)` · `Call(object target, string methodName, params object[] args)` | instance, public hay không, dò từ type thật lên base. Không có thì ném `MissingFieldException` / `MissingMethodException`; nhiều overload cùng tên thì `AmbiguousMatchException` |
-| `PrefabDump.Dump(GameObject root, string pathFilter = null)` | một dòng mỗi object (xem "Đọc PrefabDump"); `pathFilter` giữ dòng có đường dẫn chứa chuỗi đó |
+| `PrefabDump.Dump(GameObject root, string pathFilter = null)` | một dòng mỗi object (xem "Đọc PrefabDump"); `pathFilter` giữ dòng có đường dẫn chứa chuỗi đó. Soát override, reference gãy của prefab UI ở `docs/Editor/UIReskin.md` |
 | `PrefabDump.DumpAsset(string assetPath, string pathFilter = null)` | prefab nạp qua `AssetDatabase`, không instantiate, không cần Play |
 | `new FrameSheet(RectInt crop, int shrink = 2)` | `crop` theo pixel Game view, gốc dưới trái, `width` 0 là cả màn; `shrink` thu nhỏ nguyên lần |
 | `FrameSheet.CaptureAsync(CancellationToken ct)` | chờ cuối frame hiện tại rồi chụp Game view (gồm UI overlay). Gọi trong `Act` của FeelTrace là chụp đúng frame đó |
@@ -78,7 +84,8 @@ bash "Assets/Horcrux/Editor/Probe/Tools~/playrun.sh" <script .cs> <file ra> [mar
 | `token` | `playrun` | script trả chuỗi này ở dòng cuối; runner dựa vào nó để biết eval đã chạy tới cuối |
 | `timeout` | `240` | giây chờ cờ `.done`; hết giờ thì thoát Play, báo `timeout`, giữ thư mục tạm |
 
-Chạy từ gốc project hoặc đặt `PROJECT_PATH`; `UNITY_CLI` đổi đường dẫn `unity.exe`. Mã thoát khác 0 khi script lỗi compile (in đủ
+Chạy từ gốc project hoặc đặt `PROJECT_PATH`; `UNITY_CLI` đổi đường dẫn `unity.exe`; `PLAY_FROM_BUILD_SCENE=1` vào Play từ scene đầu Build
+Settings qua `PlayFrom.Arm`. Mã thoát khác 0 khi script lỗi compile (in đủ
 lỗi, dừng ngay), không chạy, hay timeout.
 
 ## Hợp đồng script
@@ -104,6 +111,7 @@ Kết quả viết thành **bản tóm tắt** (vài dòng số đã tính), kh�
 
 ```
 sprite_offset/box_anim/lid OFF p=0,0.762,0 s=1,1,1 r=0 | sr target_1_0 Default#30 a=1 root c=0,0.762 size=2.26,2.05
+header/txt_title on p=20,-105,0 s=1,1,1 r=0 | rt a=20,8 sd=660,130 anc=0.5,0.5-0.5,0.5 pv=0.5,0.5 | tmp "Title" 92 auto Font SDF Outline
 ```
 
 | Phần | Nghĩa |
@@ -114,6 +122,11 @@ sprite_offset/box_anim/lid OFF p=0,0.762,0 s=1,1,1 r=0 | sr target_1_0 Default#3
 | `rt a sd anc pv` | RectTransform: `anchoredPosition`, `sizeDelta`, `anchorMin-anchorMax`, `pivot` |
 | `sr` | SpriteRenderer: `OFF` khi tắt, tên sprite, `sortingLayer#order`, alpha, `drawMode size` khi không Simple, `root c size` là tâm và cỡ khung bao trong hệ toạ độ root |
 | `sg` | SortingGroup `layer#order` |
+| `img` | Image: `OFF` khi tắt, sprite, kiểu, `ppum` khi khác 1, `c` khi khác trắng, `ray` khi nhận raycast |
+| `tmp` | chữ TMP: nội dung (24 ký tự đầu), cỡ, `auto` khi auto size, material, `c` khi khác trắng |
+| `hlg` `vlg` `grid` | LayoutGroup: spacing, `ctrl` trục điều khiển cỡ con (grid: cell, constraint), `pad` trái, phải, trên, dưới, căn |
+| `csf` `le` | ContentSizeFitter ngang, dọc · LayoutElement `ignore`, `pref`, `min` |
+| `prefab` | root của prefab instance: prefab nguồn trực tiếp; `ov` số override trừ override bắt buộc, chỉ ở instance ngoài cùng |
 | cuối dòng | component còn lại; `Missing` là script mất |
 
 ## Trước khi chạy
@@ -122,8 +135,8 @@ sprite_offset/box_anim/lid OFF p=0,0.762,0 s=1,1,1 r=0 | sr target_1_0 Default#3
 |---|---|---|
 | 1 | Unity Editor mở project; Unity CLI và package `com.unity.pipeline` đã cài; `unity status --project-path <project>` báo `ready` | runner báo `pipeline not ready` |
 | 2 | Không có lỗi compile trong project | Editor vào Safe Mode, pipeline không nạp |
-| 3 | Scene khởi động của game đang mở, nếu script vào level qua menu | script chờ mãi, runner báo timeout |
-| 4 | Game view giữ một độ phân giải cho mọi lần đo so với nhau, và cho mọi `crop` của `FrameSheet` | toạ độ, vùng cắt lệch |
+| 3 | Scene khởi động của game đang mở, hoặc chạy với `PLAY_FROM_BUILD_SCENE=1`, nếu script vào level qua menu | script chờ mãi, runner báo timeout |
+| 4 | Game view giữ một độ phân giải cho mọi lần đo so với nhau, và cho mọi `crop` của `FrameSheet`: script gọi `GameViewSize.Set` trước khi đo | toạ độ, vùng cắt lệch |
 
 Run In Background và auto-tick runner tự bật, và trả lại khi thoát ở mọi đường ra (override ghi vào `ProjectSettings/Packages/com.unity.pipeline`).
 
@@ -134,6 +147,8 @@ Run In Background và auto-tick runner tự bật, và trả lại khi thoát �
 - **Lệnh Unity CLI đổi cài đặt Editor ghi vào file của project**: override Run In Background nằm trong
   `ProjectSettings/Packages/com.unity.pipeline/EditorPipelineConfig.json`. *Đã sai một lần:* runner bật mà không trả, file hiện trong
   `git status` của dự án sau mỗi lần đo. Runner trả lại bằng `trap … EXIT`; thêm lệnh cài đặt mới thì trả lại cùng chỗ.
+- **Scene đang mở có thay đổi chưa lưu**: Editor hỏi lưu khi vào Play hay khi chạy test và đứng chờ hộp thoại; CLI chỉ thấy timeout,
+  `unity status` báo `unreachable`. Lưu hoặc bỏ thay đổi trước khi chạy.
 - **`FindObjectsByType` mỗi frame cấp phát**: trong script đo GC, gom danh sách một lần lúc vào level.
 - **`Time.captureFramerate` còn khoá sau khi script tự đặt**: `PlayProbe.Run` không trả về 0; script đặt thì tự trả, hoặc dùng
   `FeelTraceRecorder` (tự trả ở mọi đường ra).
@@ -148,5 +163,4 @@ level, tap, chụp bốn ảnh ghép một sheet, đọc field private, in kết
 
 ## Mở rộng sau
 
-- Cỡ Game view do runner đặt, nếu Unity CLI có lệnh đó.
 - Ghép ảnh kèm nhãn frame, nếu đọc lưới theo thứ tự không đủ.

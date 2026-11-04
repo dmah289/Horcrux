@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Chạy một script C# trong Play qua Unity CLI rồi trả file kết quả. Mọi phép đo cần Play (trace, số đo, ảnh chụp) đi qua đây.
 # Editor phải đang mở project. Chạy từ gốc project hoặc đặt PROJECT_PATH; UNITY_CLI ép đường dẫn unity.exe (mặc định tìm `unity` trên PATH).
+# PLAY_FROM_BUILD_SCENE=1 vào Play từ scene đầu của Build Settings (PlayFrom.Arm), không cần mở scene khởi động trước.
 # Dùng: bash playrun.sh <script .cs> <file ra> [marker] [token] [timeout giây]
 #   marker  chuỗi trong script được thay bằng đường dẫn file ra kiểu Windows, đúng một lần (mặc định __OUT__)
 #   token   chuỗi script trả về ở dòng cuối, để biết eval đã chạy tới cuối (mặc định playrun)
@@ -36,6 +37,10 @@ cli editor set_auto_tick --enable true
 trap 'cli editor.playmode set_run_in_background --enable false; cli editor set_auto_tick --enable false' EXIT
 cli editor.playmode stop
 sleep 2; waitready || exit 1
+if [ "${PLAY_FROM_BUILD_SCENE:-0}" = "1" ]; then
+  echo 'return Horcrux.Editor.Probe.PlayFrom.Arm();' > "$WORK/arm.cs"
+  echo "start scene: $("$U" cmd --project-path "$P" --result-only script eval_file --file "$(cygpath -w "$WORK/arm.cs")" 2>&1 | head -c 200)"
+fi
 cli editor.playmode start
 sleep 4; waitready || exit 1
 started=0

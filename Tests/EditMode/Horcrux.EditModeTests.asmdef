@@ -1,7 +1,7 @@
 {
     "name": "Horcrux.EditModeTests",
     "rootNamespace": "Horcrux.Tests",
-    "references": [ "com.horcrux.runtime", "com.horcrux.editor", "UniTask", "Unity.TextMeshPro", "UnityEngine.TestRunner", "UnityEditor.TestRunner" ],
+    "references": [ "com.horcrux.runtime", "com.horcrux.editor", "UniTask", "Unity.TextMeshPro", "UnityEngine.UI", "UnityEngine.TestRunner", "UnityEditor.TestRunner" ],
     "includePlatforms": [ "Editor" ],
     "overrideReferences": true,
     "precompiledReferences": [ "nunit.framework.dll" ],
