@@ -26,7 +26,7 @@ namespace Horcrux.Vendors.Adjust
         [SerializeField, Min(0f), Tooltip("First session: wait for attribution at most this long before entering the game")]
         private float firstSessionWaitSeconds = 3f;
         [SerializeField, Min(0f), Tooltip("Keep polling in the background at most this long per session while the campaign is not locked")]
-        private float lateArrivalPollSeconds = 60f;
+        private float lateArrivalPollSeconds = 10f;
 
         private AdjustAttribution _attribution;
         private bool _hasAttribution;
