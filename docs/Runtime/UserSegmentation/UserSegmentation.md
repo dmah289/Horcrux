@@ -104,7 +104,7 @@ trị thật, không kế thừa. DTO của dự án gọi `Pick` cho từng c�
 | Kiểm | Không kiểm, vì |
 |---|---|
 | pool không rỗng · hàng không `null` · `segment_id >= 1` · không hai hàng cùng id (hàng cuối thắng khi tra) · có hàng `default` | thiếu hàng `purchased`: lõi không biết vai này có bắt buộc với dự án không |
-| bảng keyword không rỗng · hàng không `null` · có ít nhất một keyword · không keyword rỗng · id trỏ tới có hàng pool | ô `-1` ở hàng không phải `purchased` · hàng keyword trỏ vào `purchased`: cần nhìn cột hoặc vai, thuộc tool Editor của dự án |
+| bảng keyword không rỗng · hàng không `null` · có ít nhất một keyword · không keyword rỗng · id trỏ tới có hàng pool | ô `-1` ở hàng không phải `purchased` · hàng keyword trỏ vào `purchased`: cần nhìn cột hoặc vai, Simulator kiểm (`docs/Editor/UserSegmentationSimulator.md`) |
 
 ## Trước khi chạy
 
@@ -179,7 +179,8 @@ internal sealed class MySegmentationHostInitializer : Initializer<MySegmentation
 | Package `com.adjust.sdk` ≥ 5.0.0 có trong dự án, và wrapper Adjust của dự án init SDK | thiếu package: assembly `com.horcrux.adjust` không biên dịch, component thành "missing script"; SDK chưa init: không attribution nào về, cửa sổ đóng sau N phiên ở `default` |
 | Code xác nhận mua của dự án gọi `host.ReportPurchase()`, chỉ cho giao dịch thật: không restore, không refund, không gói chỉ bỏ quảng cáo | user mua không sang tập `purchased` |
 
-**Reset để thử lại từ chưa quyết:** menu **Horcrux → Player Prefs Editor**, xoá key `persistence_` + `Key` của entry.
+**Reset để thử lại từ chưa quyết:** ngoài Play, **Horcrux → User Segmentation → Simulator** → **Xoá save phân tập**; hoặc menu
+**Horcrux → Player Prefs Editor**, xoá key `persistence_` + `Key` của entry.
 
 ## Consumer
 
@@ -281,7 +282,8 @@ Runtime/Abstractions/Composites/UserSegmentation/
 ├── UserSegmentState.cs · UserSegmentChanged.cs                    save model · event
 └── BasePersistenceDataCollection.UserSegmentation.cs              entry save
 Vendors/Adjust/com.horcrux.adjust.asmdef · AdjustCampaignBootStep.cs
-Tests/EditMode/UserSegment*Tests.cs
+Editor/UserSegmentation/UserSegmentationSimulatorWindow.cs · UserSegmentationSimulatorCore.cs   tool Editor
+Tests/EditMode/UserSegment*Tests.cs · UserSegmentationSimulatorTests.cs
 ```
 
 ## Mở rộng sau
