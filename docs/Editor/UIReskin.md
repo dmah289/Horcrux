@@ -75,6 +75,20 @@ Dòng override: `~ variant | boosters/booster_1:RectTransform.m_AnchoredPosition
 | trước `|` | instance ngoài cùng (root của variant in tên root) |
 | sau `|` | object trên instance `:` component `.` property `=` giá trị (reference in tên object) |
 
+### `HiddenArt` — art trên skin cũ đã tắt
+
+Skin cũ tắt để giữ cây và merge với prefab gốc, nhưng sprite nó giữ vẫn nạp theo prefab, kéo cả trang atlas cũ. Reskin không
+dùng lại art kiểu cũ: gỡ reference art, giữ object.
+
+| Member | Hợp đồng |
+|---|---|
+| `List(string prefabPath)` | mỗi gốc tắt một dòng `gốc \| N ref \| texture, ...`: object tắt ngoài cùng (`""` khi chính root tắt), hay `object:Type` cho component tắt trên object đang bật |
+| `Clear(string prefabPath, string[] roots, bool apply = false)` | gỡ mọi Sprite, Texture2D (kể cả phần tử mảng, như sprite của UV module ParticleSystem) mà component dưới các gốc giữ; object, component giữ nguyên. Gốc đang bật thì ném. Trên variant, gỡ thành override của variant. `apply` false chỉ in `object:Type.property = texture` |
+
+Gốc tắt có thể là skin cũ, cũng có thể là trạng thái code bật lên (ô thưởng, nút chỉ hiện ở một màn): đọc `List` rồi chọn gốc
+theo tay. Prefab gốc của variant còn giữ art; build nướng variant thành prefab đầy đủ nên art đã gỡ không theo vào bundle, và
+`AtlasAudit.Usage` không đếm art đi qua prefab gốc.
+
 ### `SpriteSlicing`
 
 | Member | Hợp đồng |
@@ -133,10 +147,14 @@ return Horcrux.Editor.UIReskin.PrefabAudit.Report("Assets/MyGame/Popups");
 `Tests/EditMode/UIReskinTests.cs`: `BBox`, `Runs` theo gốc trên trái; `TemplateMatch` tìm đúng chỗ art đặt sẵn; `SideBySide` ghép
 đúng cỡ; `PruneNoise` gỡ vị trí do LayoutGroup ghi và giữ cỡ cố ý, chạy thử không đổi file; `SetBorder` trả giá trị cũ và ghi;
 sprite asset TMP mang face info, metric, version; `CopyLogic` nối reference sang object mới. Asset tạm ở
-`Assets/HorcruxUIReskinTestTemp`, xoá sau mỗi test.
+`Assets/HorcruxUIReskinTestTemp`, xoá sau mỗi test. `Tests/EditMode/HiddenArtTests.cs`: `List` gom theo object tắt ngoài cùng;
+`Clear` chạy thử không đổi, gỡ thật chỉ thành override của variant, từ chối gốc đang bật; art đã gỡ trên variant không còn trong
+`AtlasAudit.Usage`.
 
 Kiểm bằng chạy thật trên một dự án: `Report` 16 prefab popup; `ListOverrides` khớp override thấy trong Inspector; `Canvas` chụp
-1080×2340 và 1536×2048; `TemplateMatch` tìm art tim trong demo khớp khung bao màu đỏ đo bằng `BBox`.
+1080×2340 và 1536×2048; `TemplateMatch` tìm art tim trong demo khớp khung bao màu đỏ đo bằng `BBox`. `HiddenArt.Clear` gỡ 280
+reference art trên skin cũ của PopupShop, Pause, Setting, RefillLive: các popup thôi nạp hai atlas cũ (một trang 1024×2048 của
+shop) và một texture lẻ; chụp trong Play không đổi hình, không lỗi mới.
 
 ## Mở rộng sau
 

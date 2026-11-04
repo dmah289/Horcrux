@@ -15,9 +15,10 @@ nói lý do và phép kiểm.
 ## Tổ chức prefab
 
 **Skin là lớp hình đặt lên prefab đang có hành vi, không phải prefab viết lại.** Script, address, reference đã nối là hợp đồng
-với code; dựng lại từ đầu là nối lại từng ô và mất override của dự án nguồn. Dạng thường gặp: variant của prefab gốc, hình cũ
-**tắt** thay vì xoá — prefab gốc còn nhận bản cập nhật từ nơi khác thì merge không vỡ. Tắt chỉ an toàn khi code không với tới
-object tắt: `GetComponentInChildren`, `GetComponentsInChildren(false)` bỏ qua object tắt, reference kéo thả thì không.
+với code; dựng lại từ đầu là nối lại từng ô và mất override của dự án nguồn. Dạng thường gặp: variant của prefab gốc, cây
+hình cũ **tắt** thay vì xoá — prefab gốc còn nhận bản cập nhật từ nơi khác thì merge không vỡ, và phát triển tiếp còn thấy chỗ
+cũ. Tắt chỉ an toàn khi code không với tới object tắt: `GetComponentInChildren`, `GetComponentsInChildren(false)` bỏ qua object
+tắt, reference kéo thả thì không. **Cây giữ, art cũ thì gỡ** (mục Atlas): art khác style không quay lại.
 
 **Thứ lặp lại là một khối dùng chung; khác nhau ở dữ liệu là variant; khác hình dạng là khối riêng.** Tiêu chí: đổi kiểu (khung,
 nút, font) ở một chỗ thì mọi chỗ theo, và thêm một mục mới là *thêm* một variant hay kéo một khối vào, không chép. Số tầng
@@ -60,12 +61,15 @@ nhỏ hơn cộng texture lẻ, với trang lớn chứa nó: texture lẻ cỡ 
 đời: thứ mọi màn dùng nạp lúc boot, thứ của một màn đi với màn. Khai ở bảng layout của dự án (`AddressablesLayout`), không thêm tay.
 Cài đặt importer theo spec atlas sẵn có của dự án, không đặt mới cho từng atlas.
 
-**Object tắt vẫn nạp atlas của nó.** Skin cũ tắt để giữ merge (mục trên) kéo theo atlas cũ — `Usage` báo `off`. Atlas cũ đã nạp
-sẵn lúc boot thì không tốn thêm; atlas chỉ còn object tắt giữ là giá của việc giữ skin cũ: báo developer atlas nào, cỡ trang bao
-nhiêu, không tự gỡ.
+**Object tắt vẫn nạp art của nó.** Skin cũ tắt để giữ cây (mục trên) mà còn giữ sprite thì kéo theo cả trang atlas cũ — `Usage`
+báo `off`. Reskin đổi style nên art cũ không dùng lại: gỡ reference art trên cây skin cũ, giữ object (`HiddenArt`,
+`docs/Editor/UIReskin.md`). Trên variant, gỡ là override của variant: prefab gốc không đổi, merge vẫn sạch. Gốc tắt không phải
+lúc nào cũng là skin cũ — ô thưởng, nút chỉ hiện ở một màn, trạng thái code bật lên thuộc skin mới, giữ art: chọn gốc từ `List`
+theo tay, rồi vào Play mở từng màn đã gỡ, xem hình và console.
 
 **Nghiệm thu bằng số trước–sau** trên cùng màn: batch trong Play (`UnityEditor.UnityStats.batches`), số trang và fill
-(`AtlasAudit.Atlases`), không còn `DUP` và texture lẻ ngoài thứ cố ý để lẻ, ảnh chụp trước–sau sai khác ~0.
+(`AtlasAudit.Atlases`), không còn `DUP`, texture lẻ ngoài thứ cố ý để lẻ, hay atlas cũ chỉ object tắt giữ; ảnh chụp trước–sau
+sai khác ~0.
 
 ## Làm việc qua Editor tool
 

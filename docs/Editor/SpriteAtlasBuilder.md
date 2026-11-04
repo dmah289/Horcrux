@@ -93,8 +93,9 @@ dựng (còn lẻ, còn trùng, mấy trang).
 | `TextureAtlasMap()` | texture → các atlas (không tính variant) có packable phủ nó |
 
 Trạng thái: `on` có component đang bật giữ texture · `off` chỉ object tắt hay component tắt giữ (vẫn nạp theo prefab) · `dep` đến qua
-asset khác hoặc từ scene (scene không mở để đọc cây). Texture mà RawImage, material, sprite asset TMP giữ thẳng là texture nguồn,
-không qua atlas, dù dòng của nó tính vào atlas chứa nó: bundle của bên giữ chép texture nguồn.
+asset mà cây prefab tham chiếu (material, config, prefab khác, sprite asset TMP) hoặc từ scene (scene không mở để đọc cây).
+Texture mà RawImage, material, sprite asset TMP giữ thẳng là texture nguồn, không qua atlas, dù dòng của nó tính vào atlas chứa nó:
+bundle của bên giữ chép texture nguồn. `off` của skin cũ gỡ bằng `HiddenArt` (`docs/Editor/UIReskin.md`).
 
 ```csharp
 // eval C# 6: mỗi màn một đơn vị, thứ mở chồng lên (popup) là đơn vị riêng
@@ -118,6 +119,7 @@ return Horcrux.Editor.SpriteAtlasBuilder.AtlasAudit.Usage(false, "Assets/Game/Sc
 | Đường dẫn của sprite lấy bằng `AssetDatabase.GetAssetPath(sprite)` | `sprite.texture` của sprite đã pack trả trang atlas, đường dẫn là file `.spriteatlasv2` |
 | Đơn vị không có group (`-`) không tính khi xét `DUP` | prefab lồng trong scene hay popup đi theo bundle của bên chứa nó |
 | Texture nằm nhiều atlas thì tính atlas đầu | Unity chỉ dùng một bản khi vẽ; dòng `ALSO` của `Atlases` báo chỗ trùng để gỡ |
+| `dep` của prefab không đi qua prefab gốc của variant, prefab lồng (`m_CorrespondingSourceObject`, `m_PrefabAsset`) | build nướng chúng vào prefab; `GetDependencies` đệ quy đi qua prefab gốc và báo cả art mà variant đã gỡ |
 
 **Đã sai một lần**
 
@@ -125,5 +127,6 @@ return Horcrux.Editor.SpriteAtlasBuilder.AtlasAudit.Usage(false, "Assets/Game/Sc
   không ai thấy vì màn vẫn vẽ đúng. Chỉ số batch (21, 33, 39 → 10, 15, 12) và dòng `DUP` lộ ra.
 
 **Nghiệm thu**: test `AtlasAuditTests` (texture trong atlas gom một dòng, texture lẻ giữ bởi object tắt báo `off`, atlas dùng
-chung hiện ở `shared`, thư mục packable phủ texture con, pack ra một trang có fill). Trên dự án: batch trước–sau trên cùng màn, ảnh
+chung hiện ở `shared`, thư mục packable phủ texture con, pack ra một trang có fill) và `HiddenArtTests` (art variant đã gỡ không
+còn tính qua prefab gốc). Trên dự án: batch trước–sau trên cùng màn, ảnh
 chụp trước–sau sai khác ~0.

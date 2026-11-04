@@ -225,27 +225,50 @@ namespace Horcrux.Editor.SpriteAtlasBuilder
             return AssetDatabase.FindAssets("t:Prefab", new[] { unit }).Select(AssetDatabase.GUIDToAssetPath).Distinct();
         }
 
-        /// <summary>Gộp trạng thái mạnh nhất: on thắng off thắng dep.</summary>
+        /// <summary>
+        /// Gộp trạng thái mạnh nhất: on thắng off thắng dep. Prefab: dep đi qua asset mà cây đã nạp tham chiếu (material, config,
+        /// sprite asset TMP), không qua prefab gốc của variant hay prefab lồng — build nướng chúng vào prefab, art mà variant đã gỡ
+        /// không theo vào bundle. Scene: mọi dependency.
+        /// </summary>
         private static void Collect(string root, Dictionary<string, string> states)
         {
-            if (root.EndsWith(".prefab", StringComparison.OrdinalIgnoreCase))
+            if (!root.EndsWith(".prefab", StringComparison.OrdinalIgnoreCase))
             {
-                var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(root);
-                foreach (var component in prefab.GetComponentsInChildren<Component>(true))
+                AddDependencies(root, states);
+                return;
+            }
+
+            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(root);
+            var referenced = new HashSet<string>();
+            foreach (var component in prefab.GetComponentsInChildren<Component>(true))
+            {
+                if (component == null) continue;
+                var drawn = IsActive(component.transform, prefab.transform) && (component is not Behaviour b || b.enabled);
+                var property = new SerializedObject(component).GetIterator();
+                while (property.Next(true))
                 {
-                    if (component == null) continue;
-                    var drawn = IsActive(component.transform, prefab.transform) && (component is not Behaviour b || b.enabled);
-                    var property = new SerializedObject(component).GetIterator();
-                    while (property.Next(true))
-                    {
-                        // Path của sprite là texture nguồn; sprite.texture của sprite đã pack là trang atlas.
-                        if (property.propertyType == SerializedPropertyType.ObjectReference && property.objectReferenceValue is Sprite or Texture2D)
-                            Merge(states, AssetDatabase.GetAssetPath(property.objectReferenceValue), drawn ? "on" : "off");
-                    }
+                    if (property.propertyType != SerializedPropertyType.ObjectReference || property.objectReferenceValue == null) continue;
+                    if (PrefabLinks.Contains(property.propertyPath)) continue;
+                    // Path của sprite là texture nguồn; sprite.texture của sprite đã pack là trang atlas.
+                    var value = property.objectReferenceValue;
+                    var path = AssetDatabase.GetAssetPath(value);
+                    if (value is Sprite or Texture2D)
+                        Merge(states, path, drawn ? "on" : "off");
+                    else if (path != root && !path.EndsWith(".cs", StringComparison.Ordinal))
+                        referenced.Add(path);
                 }
             }
 
-            foreach (var dependency in AssetDatabase.GetDependencies(root, true))
+            foreach (var path in referenced)
+                AddDependencies(path, states);
+        }
+
+        // Liên kết tới prefab nguồn trên object của instance lồng và variant; không phải reference vào build.
+        private static readonly HashSet<string> PrefabLinks = new() { "m_CorrespondingSourceObject", "m_PrefabInstance", "m_PrefabAsset" };
+
+        private static void AddDependencies(string path, Dictionary<string, string> states)
+        {
+            foreach (var dependency in AssetDatabase.GetDependencies(path, true))
                 if (AssetDatabase.GetMainAssetTypeAtPath(dependency) == typeof(Texture2D))
                     Merge(states, dependency, "dep");
         }
