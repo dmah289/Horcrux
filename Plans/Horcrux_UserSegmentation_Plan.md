@@ -50,7 +50,7 @@ Mọi thứ trong Plan chỉ **thêm**: không file Horcrux nào đang có bị 
 | Base không generic giữ toàn bộ cơ chế kể cả khớp keyword, lớp generic chỉ tra config theo kiểu DTO | bước Adjust và tool Editor cần một kiểu kéo thả được; bảng keyword không mang kiểu dự án nên không có lý do nằm ở lớp generic |
 | Base gọi `OnStateApplied()` cả khi không có thay đổi lúc boot | cache `CurrConfig` phải đúng ở mọi phiên, không chỉ phiên có đổi tập |
 | Một hàng keyword mang **mảng** keyword, không mỗi keyword một hàng | bảng console đọc một dòng một tập; giá: CSV importer của RemoteConfigSystem chỉ nhận hàng phẳng nên bảng keyword nhập bằng Inspector hoặc ImportJson, pool vẫn đi CSV |
-| `Application.isEditor` thay `#if UNITY_EDITOR` trong bước Adjust | `Adjust.GetAttribution` trong Editor return không gọi callback; kiểm runtime cùng cách SDK kiểm, không cắt đôi hàm async |
+| Bước Adjust không có nhánh Editor | campaign giả cho Editor thuộc hệ cheat làm sau; trong Editor `Adjust.GetAttribution` return không gọi callback nên phiên đầu chờ hết `firstSessionWaitSeconds` rồi poll nền vô ích, chậm nhưng không sai |
 
 **Mở rộng sau**
 
@@ -877,8 +877,8 @@ namespace Horcrux.Runtime.Abstractions.UserSegmentation
     "rootNamespace": "",
     "references": [
         "com.horcrux.runtime",
-        "AdjustSdk.Scripts",
-        "UniTask"
+        "UniTask",
+        "AdjustSdk.Scripts"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
@@ -921,8 +921,6 @@ namespace Horcrux.Vendors.Adjust
     /// </summary>
     public sealed class AdjustCampaignBootStep : ABootStep
     {
-        #region Properties
-
         private const string LogPrefix = "[AdjustCampaign]: ";
         private const float PollIntervalSeconds = 0.5f;
 
@@ -934,15 +932,11 @@ namespace Horcrux.Vendors.Adjust
         private float firstSessionWaitSeconds = 3f;
         [SerializeField, Min(0f), Tooltip("Keep polling in the background at most this long per session while the campaign is not locked")]
         private float lateArrivalPollSeconds = 60f;
-        [SerializeField, Tooltip("Editor has no Adjust: this campaign is reported instead, to test keywords")]
-        private string editorCampaign;
 
         private AdjustAttribution _attribution;
         private bool _hasAttribution;
 
-        #endregion
-
-        #region Unity Callbacks
+        #region API
 
         public override async UniTask InitializeAsync(CancellationToken ct)
         {
@@ -961,12 +955,6 @@ namespace Horcrux.Vendors.Adjust
             if (segmentation.IsCampaignLocked)
                 return;
 
-            if (Application.isEditor)
-            {
-                segmentation.ReportCampaign(editorCampaign);
-                return;
-            }
-
             if (segmentation.IsFirstSession && await PollAsync(firstSessionWaitSeconds, ct))
                 return;
 
@@ -978,7 +966,7 @@ namespace Horcrux.Vendors.Adjust
 
         #region Class Methods
 
-        /// <summary>True when attribution arrived and was reported within <paramref name="maxSeconds"/>.</summary>
+        /// <summary>True when the campaign got locked, by this poll or by another report, within <paramref name="maxSeconds"/>.</summary>
         private async UniTask<bool> PollAsync(float maxSeconds, CancellationToken ct)
         {
             float deadline = Time.realtimeSinceStartup + maxSeconds;
@@ -988,19 +976,30 @@ namespace Horcrux.Vendors.Adjust
                 if (segmentation.IsCampaignLocked)
                     return true;
 
+                // Fully qualified: inside Horcrux.Vendors.Adjust, "Adjust" resolves to the namespace.
+                // Method group into a field, never awaited: the SDK may skip the callback while it has no attribution.
                 AdjustSdk.Adjust.GetAttribution(OnAttribution);
+
                 await UniTask.Delay(TimeSpan.FromSeconds(PollIntervalSeconds), DelayType.Realtime, cancellationToken: ct);
 
                 if (!_hasAttribution)
                     continue;
 
                 segmentation.ReportCampaign(_attribution.Campaign ?? string.Empty);
+
                 return true;
             }
 
             return false;
         }
 
+        private void OnAttribution(AdjustAttribution attribution)
+        {
+            _attribution = attribution;
+            _hasAttribution = attribution != null;
+        }
+
+        /// <summary>Late attribution: polls up to <see cref="lateArrivalPollSeconds"/>; not locked by then means the next session retries.</summary>
         private async UniTaskVoid PollInBackgroundAsync(CancellationToken ct)
         {
             try
@@ -1019,12 +1018,6 @@ namespace Horcrux.Vendors.Adjust
             }
         }
 
-        private void OnAttribution(AdjustAttribution attribution)
-        {
-            _attribution = attribution;
-            _hasAttribution = attribution != null;
-        }
-
         #endregion
     }
 }
@@ -1035,7 +1028,7 @@ namespace Horcrux.Vendors.Adjust
 | Poll `GetAttribution` thay vì `AttributionChangedDelegate` | delegate đặt trên `AdjustConfig` lúc `InitSdk`, đã thuộc về wrapper của dự án; poll chạy với mọi wrapper |
 | Callback là method group ghi vào field, loop đọc field | SDK có thể không gọi callback khi chưa có attribution; await callback là treo vô hạn |
 | `destroyCancellationToken` cho vòng nền | token boot đóng khi bước trả về; vòng nền sống cùng component, chết khi service bị huỷ |
-| `Application.isEditor` | cùng cách SDK kiểm (`IsEditor()`); trong Editor callback không bao giờ tới |
+| Không có nhánh `Application.isEditor` | campaign giả cho Editor để hệ cheat làm sau, không nhét ô `editorCampaign` vào bước vendor |
 | Phiên đầu chờ, phiên sau không | grant đầu phiên (coin, booster) chỉ xảy ra một lần và không bù; phiên sau đổi tập chỉ đổi config |
 | Gọi `AdjustSdk.Adjust.GetAttribution` đầy đủ namespace | bên trong namespace `Horcrux.Vendors.Adjust`, tên `Adjust` trỏ về namespace, không phải class SDK |
 
@@ -1075,15 +1068,17 @@ camp → Decider → save → event → config; bảng luật; "Trước khi ch�
 Hệ chỉ chạy khi dự án đã dựng đủ; thiếu bước nào thì host `LogError` rồi thoát, `IsReady` ở lại false và `CurrConfig` là null:
 consumer đầu tiên đọc config sẽ ném. Đó là chủ ý — setup thiếu phải lộ ngay lần Play đầu, không chạy cả phiên ở tập mặc định.
 
-1. Dự án có `GamePersistenceDataCollection : BasePersistenceDataCollection` và asset của nó. Trên asset, mục **User Segmentation**:
+1. Dự án có `GamePersistenceDataCollection : BasePersistenceDataCollection` và asset của nó. Trên asset, mục **User Segment**:
    `Key` = `user_segment_state`, `Default Value` để nguyên số 0 và chuỗi rỗng. Thiếu key: Persistence `LogError` lúc `Initialize`.
-2. Dự án có host kế thừa `AUserSegmentationHost<TConfig>`, trả hai id vai và bốn model từ remote config của nó.
+2. Dự án có host kế thừa `AUserSegmentationHost<TConfig>`, trả hai id vai và bốn model từ remote config của nó, kèm
+   `Initializer<HostCuaDuAn, BasePersistenceDataCollection>` theo mẫu `SaveBootstepInitializer` (host nhận collection qua `Init`).
 3. Scene boot: `BootstrapService` với ba bước con theo thứ tự `order`: `SaveBootstep` (1) → host (2) → `AdjustCampaignBootStep` (3).
-   Kéo asset collection vào `saveCollection` của host và vào `SaveBootstepInitializer`; kéo host vào `segmentation` của bước Adjust.
+   Kéo asset collection vào Initializer của host và vào `SaveBootstepInitializer`; kéo host vào `segmentation` của bước Adjust.
+   Thiếu Initializer: host `LogError` "saveCollection was not injected".
    Sai thứ tự: host hoặc bước Adjust `LogError` "order must be lower".
 4. Remote config của dự án đã fetch xong (có thời hạn) **trước** `bootstrap.InitializeAsync()`.
-5. Test trong Editor: điền `editorCampaign` trên bước Adjust rồi Play; đổi camp thì xoá key `persistence_user_segment_state`
-   (tool PlayerPrefsEditor của Horcrux) để boot lại từ chưa quyết.
+5. Test trong Editor: chưa có campaign giả (hệ cheat làm sau); Play chỉ kiểm được tập default. Muốn boot lại từ chưa quyết
+   thì xoá key `persistence_user_segment_state` (tool PlayerPrefsEditor của Horcrux).
 
 ---
 
