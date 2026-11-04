@@ -111,8 +111,16 @@ bản buộc khớp; trước–sau refactor phải trùng). Không dấu hiệu
 trong thời gian hợp lý**: thời gian (hết tuần) · khối lượng (đủ điểm mốc cuối) · trạng thái đầu (save mới). Mỗi nút là một
 dòng phải giữ đúng mãi. Hàng đọc chỉ cho thứ màn hình không hiện, qua API sẵn có, không bọc thứ đã public; lệnh riêng chỉ khi
 phải chạm `private`, gọi đúng lệnh thật của hệ. Panel có trong **build chính thức, không `#if`** — QA kiểm bản người chơi cầm.
+Lệnh, cửa đọc `private` và suy luận thuộc **hệ**, không phụ thuộc công cụ debug — hệ framework mang được sang dự án dùng
+panel khác; lớp nối với panel thuộc dự án. **Đưa về trạng thái đầu** đi qua chủ giữ state: thay bản trong RAM lẫn bản lưu,
+flush, rồi **thoát app** — xoá kho lưu giữa phiên bị flush lúc pause/quit ghi đè, việc chỉ chạy lúc boot (grant, cache dẫn
+xuất) không chạy lại. "Như cài mới" xoá đúng danh sách key, không xoá cả kho (consent, prefs của SDK).
 
 > **Nền tảng** — khi dự án dùng SRDebugger: tab Options, một category mỗi hệ, trigger `Off`; cách mở panel do dự án quyết.
+> Option chỉ đọc lại getter khi bind, `OnEnable` (mở panel, đổi tab) hoặc khi được báo, không theo frame: lệnh xong phải
+> báo các hàng đọc.
 > **Sổ tay** — partial `<Hệ>.Debug.cs` giữ lệnh, plain class `<Hệ>DebugOptions` giữ hàng UI (nhận hệ qua constructor,
 > `Init/Dispose` ở `Awake/OnDestroy`, `internal sealed` vì SRDebugger quét mọi public member) · hàng đọc là `string`
-> read-only · lệnh có tham số = property số + method không tham số · `INotifyPropertyChanged` bắn `null` sau mỗi lệnh.
+> read-only · lệnh có tham số = property số hoặc chuỗi + method không tham số · `INotifyPropertyChanged` bắn `null` sau mỗi
+> lệnh · hàng là delegate đọc hệ thì `DynamicOptionContainer` + `OptionDefinition.Create`/`FromMethod`, báo bằng
+> `Property.NotifyValueChanged()`, không còn class public cho SRDebugger quét.
