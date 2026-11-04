@@ -4,7 +4,7 @@ using NUnit.Framework;
 
 namespace Horcrux.Tests
 {
-    /// <summary>Covers the keyword rule in Horcrux_UserSegmentation_Plan "Luật nghiệp vụ": any keyword of a row, first row wins, ambiguity across segments only.</summary>
+    /// <summary>Covers the keyword rule in UserSegmentation.md "Luật": any keyword of a row, first row wins, ambiguity across segments only.</summary>
     public sealed class UserSegmentKeywordMatcherTests
     {
         private const int Default = 1;
@@ -16,7 +16,7 @@ namespace Horcrux.Tests
             out int segmentId, out string keyword, out bool isAmbiguous)
             => UserSegmentKeywordMatcher.TryMatch(campaign, rules, out segmentId, out keyword, out isAmbiguous);
 
-        /// <summary>The category-jam table: IAP before Ads, BLD row with three keywords.</summary>
+        /// <summary>Sample table: IAP before Ads, default row with three keywords.</summary>
         private static List<IUserSegmentKeywordRule> Table() => new List<IUserSegmentKeywordRule>
         {
             new Rule(Iap, "IAP"),
@@ -154,7 +154,7 @@ namespace Horcrux.Tests
         {
             List<IUserSegmentKeywordRule> rules = new List<IUserSegmentKeywordRule> { new Rule(Ads, adsKeyword) };
 
-            Assert.IsFalse(Match("CategoryJam_Android_US", rules, out _, out _, out _));
+            Assert.IsFalse(Match("Puzzle_Android_US", rules, out _, out _, out _));
         }
         #endregion
 

@@ -296,7 +296,7 @@ chỗ không bắn.
 ## Kiểm thử
 
 `Tests/EditMode/PersistenceSeedingTests.cs` — 12 case. Fixture `ProbeCollection` khai năm entry (`int` ×2 · `string` ·
-model có `List<int>` · `List<Vector3>`) cộng `lastSeenUtcSeconds` kế thừa; `SetUp` điền `Key` cho **tất cả** qua
+model có `List<int>` · `List<Vector3>`) cộng hai entry kế thừa (`lastSeenUtcSeconds`, `userSegmentState`); `SetUp` điền `Key` cho **tất cả** qua
 `SerializedObject` — cùng cửa Inspector. Mỗi case chỉ khẳng định trên khoá của nó.
 
 | Case | Khẳng định |
@@ -335,7 +335,7 @@ Biên đã phủ: rỗng · một phần tử · payload hỏng · `"null"` · h
 
 | Chỗ | Sự thật |
 |---|---|
-| Entry khai ở base = nghĩa vụ điền `Key` ở **mọi** collection con | `lastSeenUtcSeconds` có mặt ở mọi lớp con, kể cả fixture test. *Đã sai một lần:* thêm field vào base, bốn case test đỏ ở dòng `LogError`, không ở khẳng định — sửa chỗ dựng collection, không sửa guard |
+| Entry khai ở base = nghĩa vụ điền `Key` ở **mọi** collection con | `lastSeenUtcSeconds`, `userSegmentState` có mặt ở mọi lớp con, kể cả fixture test. *Đã sai một lần:* thêm field vào base, bốn case test đỏ ở dòng `LogError`, không ở khẳng định — sửa chỗ dựng collection, không sửa guard |
 | Listener đăng ký trước `Initialize()` bị xoá | `ScriptableObject` sống qua các lần Play khi tắt domain reload: listener phiên trước trỏ object đã huỷ → `MissingReferenceException`. Không phân biệt được listener cũ với mới, nên chặn bằng cấu trúc: `Initialize()` ở pha boot, subscribe sau |
 | Bốn thứ sống qua các lần Play | `value`, `storedPayload` (Setup reset) · cache của subclass (cặp hook) · `isInitialized` — host đặt `false` lúc quit; `TimeService.UtcNowUnix` đọc cờ này để trả giờ máy khi save chưa load. Fail-open: quit không bắn thì cờ ở lại `true` |
 | `[ReadOnly]` trên `value` | sửa tay bỏ qua setter: flush ghi số mới, view vẫn số cũ. Cửa sửa tay là `ImportPayload` |
@@ -394,7 +394,7 @@ Namespace `Horcrux.Runtime.Abstractions.Persistence`:
 | `IPersistenceDataCollection` | `IReadOnlyList<IPersistenceDataEntry> Entries { get; }` · `bool IsInitialized { get; set; }` · `void Initialize()` · `void FlushAll()` · `void Flush(IPersistenceDataEntry)` · `UniTask RunAutosaveAsync(CancellationToken)` |
 | `PersistenceDataEntry<T>` | `[Serializable]` · `T Value { get; set; }` · `event Action<T, T> OnValueChanged` · `void FlushNow()` · `implicit operator T` · `Setup` / `ReadPayload` / `WritePayload` public cho collection · `CacheStoredPayload` explicit |
 | `MarkedPersistence` | `[AttributeUsage(AttributeTargets.Field)]` |
-| `BasePersistenceDataCollection` | `abstract`, `ScriptableObject` · `protected virtual void ResetDerivedState()` · `protected virtual void OnEntriesLoaded()` · nút `ValidateKeys` · `.TimeService.cs`: `protected internal PersistenceDataEntry<long> lastSeenUtcSeconds` + `LastSeenUtcSeconds` — entry duy nhất base tự khai, cho `TimeService` (`TimeSystem.md`); `protected internal` để `TimeService` cùng assembly với tới mà scan type con vẫn thấy |
+| `BasePersistenceDataCollection` | `abstract`, `ScriptableObject` · `protected virtual void ResetDerivedState()` · `protected virtual void OnEntriesLoaded()` · nút `ValidateKeys` · `.TimeService.cs`: `protected internal PersistenceDataEntry<long> lastSeenUtcSeconds` + `LastSeenUtcSeconds` cho `TimeService` (`TimeSystem.md`) · `.UserSegmentation.cs` (nằm trong thư mục hệ `Composites/UserSegmentation/`): `protected internal PersistenceDataEntry<UserSegmentState> userSegmentState` + `UserSegmentState` cho `UserSegmentation.md`. `protected internal` để hệ cùng assembly với tới mà scan type con vẫn thấy |
 
 Namespace `Horcrux.Runtime.Implementations.Persistence`: `SaveDriver` · `SaveBootstep` · `SaveBootstepInitializer`
 (internal) — mục "Hai host".
@@ -408,6 +408,7 @@ Runtime/Abstractions/Foundations/Persistence/
 ├── BasePersistenceDataCollection.cs                           scan, load, autosave, flush hai giai đoạn
 ├── BasePersistenceDataCollection.Editor.cs                    ValidateKeys + kiểm kiểu payload
 └── BasePersistenceDataCollection.TimeService.cs               lastSeenUtcSeconds
+Runtime/Abstractions/Composites/UserSegmentation/BasePersistenceDataCollection.UserSegmentation.cs   userSegmentState
 Runtime/Implementations/Foundations/Persistence/SaveDriver.cs
 Runtime/Implementations/Composites/SaveBootstep.cs · SaveBootstepInitializer.cs
 Tests/EditMode/PersistenceSeedingTests.cs
@@ -419,8 +420,8 @@ docs/Runtime/Persistence/Persistence.md · Persistence.html
 - **Hệ SDK lấy giá trị save bằng đường nào — chưa chốt.** Module nhận `PersistenceDataEntry<T>` qua Init (compile-depend
   vào Persistence), hoặc module phơi field thường và dự án glue một chiều qua `OnValueChanged` (`HapticSystem.md`,
   `AudioSystem.md` đang đi đường này). Chốt thì **sửa dòng này**.
-- **Hệ sẽ dùng:** Audio, Haptics, Economy, Rating, LiveOps — dự án khai entry rồi nối. Ngoại lệ duy nhất base tự khai:
-  `lastSeenUtcSeconds`, vì Time cần mốc chống lùi giờ ở mọi dự án.
+- **Hệ sẽ dùng:** Audio, Haptics, Economy, Rating, LiveOps — dự án khai entry rồi nối. Ngoại lệ base tự khai:
+  `lastSeenUtcSeconds` (Time cần mốc chống lùi giờ ở mọi dự án) · `userSegmentState` (UserSegmentation).
 - **Rẻ, thêm không sửa cũ:** nút xoá từng entry · kho file khi chạm giới hạn PlayerPrefs · migration version · cloud sync
   · crypto decorator quanh serializer.
 - **`ValidateKeys` kiểm luật 2:** serialize `CloneDefault()` hai lần rồi so. Bắt `HashSet`/`Dictionary` có phần tử

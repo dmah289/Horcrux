@@ -4,7 +4,7 @@ using NUnit.Framework;
 
 namespace Horcrux.Tests
 {
-    /// <summary>Covers Find and the data guard in Horcrux_UserSegmentation_Plan "Luật nghiệp vụ": one line per invalid row, no role checks besides default.</summary>
+    /// <summary>Covers Find and the data guard in UserSegmentation.md "Luật": one line per invalid row, no role checks besides default.</summary>
     public sealed class UserSegmentConfigTableTests
     {
         private const int Default = 1;

@@ -3,7 +3,7 @@ using NUnit.Framework;
 
 namespace Horcrux.Tests
 {
-    /// <summary>Covers the rule table in Horcrux_UserSegmentation_Plan "Luật nghiệp vụ", ids as in category-jam: BLD 1 default, IAP 2, Purchased 3, Ads 4.</summary>
+    /// <summary>Covers the rule table in UserSegmentation.md "Luật"; sample ids: default 1, IAP 2, purchased 3, ads 4.</summary>
     public sealed class UserSegmentDeciderTests
     {
         private const int Default = 1;
