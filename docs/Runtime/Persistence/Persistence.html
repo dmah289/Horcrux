@@ -288,6 +288,7 @@ footer{text-align:center;padding:2.5rem 1rem;color:var(--tx3);font-size:.82rem;b
     <div class="cell"><div class="v">10 s</div><div class="l">nhịp autosave mặc định — không phải hot path</div></div>
     <div class="cell"><div class="v">0</div><div class="l">việc chạy theo frame</div></div>
   </div>
+  <p><strong>Giá.</strong> Serialize thuộc nhịp flush, không thuộc nhịp đổi giá trị.</p>
   <p><strong>Vì sao mỗi flush serialize mọi entry.</strong> Đó là cách duy nhất thấy model bị sửa tại chỗ: serialize <strong>là</strong> lần duyệt object, và sản phẩm của nó chính là chuỗi cần ghi. So tham chiếu rẻ hơn nhưng chỉ bắt được đường qua setter. <code>Save()</code> cùng tick đắt hơn vài bậc. Reflection quét field cache một lần mỗi phiên.</p>
 </section>
 
@@ -646,7 +647,7 @@ protected override void OnEntriesLoaded()  { /* SAU LoadAllEntries — dựng lo
 <!-- ============ TEST ============ -->
 <section id="test">
   <h2>Kiểm thử</h2>
-  <p><code>Tests/EditMode/PersistenceSeedingTests.cs</code> — 12 case. Fixture <code>ProbeCollection</code> khai năm entry (<code>int</code> ×2 · <code>string</code> · model có <code>List&lt;int&gt;</code> · <code>List&lt;Vector3&gt;</code>) cộng <code>lastSeenUtcSeconds</code> kế thừa; <code>SetUp</code> điền <code>Key</code> cho <strong>tất cả</strong> qua <code>SerializedObject</code> — cùng cửa Inspector. Mỗi case chỉ khẳng định trên khoá của nó.</p>
+  <p><code>Tests/EditMode/PersistenceSeedingTests.cs</code> — 12 case. Fixture <code>ProbeCollection</code> khai năm entry (<code>int</code> ×2 · <code>string</code> · model có <code>List&lt;int&gt;</code> · <code>List&lt;Vector3&gt;</code>) cộng hai entry kế thừa (<code>lastSeenUtcSeconds</code>, <code>userSegmentState</code>); <code>SetUp</code> điền <code>Key</code> cho <strong>tất cả</strong> qua <code>SerializedObject</code> — cùng cửa Inspector. Mỗi case chỉ khẳng định trên khoá của nó.</p>
   <div class="tw"><table>
     <thead><tr><th>Case</th><th>Khẳng định</th></tr></thead>
     <tbody>
@@ -692,7 +693,7 @@ protected override void OnEntriesLoaded()  { /* SAU LoadAllEntries — dựng lo
   <div class="tw"><table>
     <thead><tr><th>Chỗ</th><th>Sự thật</th></tr></thead>
     <tbody>
-      <tr><td>Entry khai ở base = nghĩa vụ điền <code>Key</code> ở <strong>mọi</strong> collection con</td><td><code>lastSeenUtcSeconds</code> có mặt ở mọi lớp con, kể cả fixture test. <em>Đã sai một lần:</em> thêm field vào base, bốn case test đỏ ở dòng <code>LogError</code>, không ở khẳng định — sửa chỗ dựng collection, không sửa guard</td></tr>
+      <tr><td>Entry khai ở base = nghĩa vụ điền <code>Key</code> ở <strong>mọi</strong> collection con</td><td><code>lastSeenUtcSeconds</code>, <code>userSegmentState</code> có mặt ở mọi lớp con, kể cả fixture test. <em>Đã sai một lần:</em> thêm field vào base, bốn case test đỏ ở dòng <code>LogError</code>, không ở khẳng định — sửa chỗ dựng collection, không sửa guard</td></tr>
       <tr><td>Listener đăng ký trước <code>Initialize()</code> bị xoá</td><td><code>ScriptableObject</code> sống qua các lần Play khi tắt domain reload: listener phiên trước trỏ object đã huỷ → <code>MissingReferenceException</code>. Không phân biệt được listener cũ với mới, nên chặn bằng cấu trúc: <code>Initialize()</code> ở pha boot, subscribe sau</td></tr>
       <tr><td>Bốn thứ sống qua các lần Play</td><td><code>value</code>, <code>storedPayload</code> (Setup reset) · cache của subclass (cặp hook) · <code>isInitialized</code> — host đặt <code>false</code> lúc quit; <code>TimeService.UtcNowUnix</code> đọc cờ này để trả giờ máy khi save chưa load. Fail-open: quit không bắn thì cờ ở lại <code>true</code></td></tr>
       <tr><td><code>[ReadOnly]</code> trên <code>value</code></td><td>sửa tay bỏ qua setter: flush ghi số mới, view vẫn số cũ. Cửa sửa tay là <code>ImportPayload</code></td></tr>
@@ -761,7 +762,7 @@ protected override void OnEntriesLoaded()  { /* SAU LoadAllEntries — dựng lo
       <tr><td><code>IPersistenceDataCollection</code></td><td><code>IReadOnlyList&lt;IPersistenceDataEntry&gt; Entries { get; }</code> · <code>bool IsInitialized { get; set; }</code> · <code>void Initialize()</code> · <code>void FlushAll()</code> · <code>void Flush(IPersistenceDataEntry)</code> · <code>UniTask RunAutosaveAsync(CancellationToken)</code></td></tr>
       <tr><td><code>PersistenceDataEntry&lt;T&gt;</code></td><td><code>[Serializable]</code> · <code>T Value { get; set; }</code> · <code>event Action&lt;T, T&gt; OnValueChanged</code> · <code>void FlushNow()</code> · <code>implicit operator T</code> · <code>Setup</code> / <code>ReadPayload</code> / <code>WritePayload</code> public cho collection · <code>CacheStoredPayload</code> explicit</td></tr>
       <tr><td><code>MarkedPersistence</code></td><td><code>[AttributeUsage(AttributeTargets.Field)]</code></td></tr>
-      <tr><td><code>BasePersistenceDataCollection</code></td><td><code>abstract</code>, <code>ScriptableObject</code> · <code>protected virtual void ResetDerivedState()</code> · <code>protected virtual void OnEntriesLoaded()</code> · nút <code>ValidateKeys</code> · <code>.TimeService.cs</code>: <code>protected internal PersistenceDataEntry&lt;long&gt; lastSeenUtcSeconds</code> + <code>LastSeenUtcSeconds</code> — entry duy nhất base tự khai, cho <code>TimeService</code> (<code>TimeSystem.md</code>); <code>protected internal</code> để <code>TimeService</code> cùng assembly với tới mà scan type con vẫn thấy</td></tr>
+      <tr><td><code>BasePersistenceDataCollection</code></td><td><code>abstract</code>, <code>ScriptableObject</code> · <code>protected virtual void ResetDerivedState()</code> · <code>protected virtual void OnEntriesLoaded()</code> · nút <code>ValidateKeys</code> · <code>.TimeService.cs</code>: <code>protected internal PersistenceDataEntry&lt;long&gt; lastSeenUtcSeconds</code> + <code>LastSeenUtcSeconds</code> cho <code>TimeService</code> (<code>TimeSystem.md</code>) · <code>.UserSegmentation.cs</code> (nằm trong thư mục hệ <code>Composites/UserSegmentation/</code>): <code>protected internal PersistenceDataEntry&lt;UserSegmentState&gt; userSegmentState</code> + <code>UserSegmentState</code> cho <code>UserSegmentation.md</code>. <code>protected internal</code> để hệ cùng assembly với tới mà scan type con vẫn thấy</td></tr>
     </tbody>
   </table></div>
   <p>Namespace <code>Horcrux.Runtime.Implementations.Persistence</code>: <code>SaveDriver</code> · <code>SaveBootstep</code> · <code>SaveBootstepInitializer</code> (internal) — mục <a href="#host">Hai host</a>.</p>
@@ -776,6 +777,7 @@ protected override void OnEntriesLoaded()  { /* SAU LoadAllEntries — dựng lo
 ├── BasePersistenceDataCollection.cs                           <em>scan, load, autosave, flush hai giai đoạn</em>
 ├── BasePersistenceDataCollection.Editor.cs                    <em>ValidateKeys + kiểm kiểu payload</em>
 └── BasePersistenceDataCollection.TimeService.cs               <em>lastSeenUtcSeconds</em>
+Runtime/Abstractions/Composites/UserSegmentation/BasePersistenceDataCollection.UserSegmentation.cs   <em>userSegmentState</em>
 Runtime/Implementations/Foundations/Persistence/SaveDriver.cs
 Runtime/Implementations/Composites/SaveBootstep.cs · SaveBootstepInitializer.cs
 Tests/EditMode/PersistenceSeedingTests.cs
@@ -786,8 +788,8 @@ docs/Runtime/Persistence/Persistence.md · Persistence.html</div>
 <section id="mo">
   <h2>Còn để mở</h2>
   <ul>
-    <li><strong>Hệ SDK lấy giá trị save bằng đường nào — chưa chốt.</strong> Module nhận <code>PersistenceDataEntry&lt;T&gt;</code> qua Init (compile-depend vào Persistence), hoặc module phơi field thường và dự án glue một chiều qua <code>OnValueChanged</code> (<code>HapticSystem.md</code>, <code>AudioSystem.md</code> đang đi đường này).</li>
-    <li><strong>Hệ sẽ dùng:</strong> Audio, Haptics, Economy, Rating, LiveOps — dự án khai entry rồi nối. Ngoại lệ duy nhất base tự khai: <code>lastSeenUtcSeconds</code>, vì Time cần mốc chống lùi giờ ở mọi dự án.</li>
+    <li><strong>Hệ SDK lấy giá trị save bằng đường nào — chưa chốt.</strong> Module nhận <code>PersistenceDataEntry&lt;T&gt;</code> qua Init (compile-depend vào Persistence), hoặc module phơi field thường và dự án glue một chiều qua <code>OnValueChanged</code> (<code>HapticSystem.md</code>, <code>AudioSystem.md</code> đang đi đường này). Chốt thì <strong>sửa dòng này</strong>.</li>
+    <li><strong>Hệ sẽ dùng:</strong> Audio, Haptics, Economy, Rating, LiveOps — dự án khai entry rồi nối. Ngoại lệ base tự khai: <code>lastSeenUtcSeconds</code> (Time cần mốc chống lùi giờ ở mọi dự án) · <code>userSegmentState</code> (UserSegmentation).</li>
     <li><strong>Rẻ, thêm không sửa cũ:</strong> nút xoá từng entry · kho file khi chạm giới hạn PlayerPrefs · migration version · cloud sync · crypto decorator quanh serializer.</li>
     <li><strong><code>ValidateKeys</code> kiểm luật 2:</strong> serialize <code>CloneDefault()</code> hai lần rồi so. Bắt <code>HashSet</code>/<code>Dictionary</code> có phần tử trong <code>Default Value</code>; không bắt container rỗng.</li>
     <li><strong>Remote Config nên học lại:</strong> <code>RemoteConfigs</code> thành <code>IReadOnlyList&lt;&gt;</code>; cache <code>PlayerPrefs</code> có tiền tố riêng.</li>
