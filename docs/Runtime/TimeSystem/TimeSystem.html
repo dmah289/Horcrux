@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Time</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#0d1117;--bg2:#161b22;--bg3:#1c2333;--bg4:#242d3a;--tx:#e6edf3;--tx2:#8b949e;--tx3:#484f58;--ac:#58a6ff;--ac2:#bc8cff;--gr:#3fb950;--or:#d29922;--rd:#f85149;--bd:#30363d;--r:10px;--mono:'JetBrains Mono','Fira Code',Consolas,monospace;--sans:'Inter','Segoe UI',system-ui,sans-serif}
+html{scroll-behavior:smooth;background:var(--bg);color:var(--tx);font:16px/1.65 var(--sans)}
+body{background:var(--bg);overflow-x:hidden}
+a{color:var(--ac);text-decoration:none}a:hover{text-decoration:underline}
+#header{max-width:960px;margin:0 auto;padding:3.5rem 1rem 1.5rem;border-bottom:1px solid var(--bd)}
+#header h1{font-size:clamp(2rem,5vw,2.8rem);font-weight:800;letter-spacing:-.03em;color:var(--ac)}
+#header .sub{color:var(--tx2);margin-top:.4rem}
+.badge{display:inline-block;margin:.8rem .4rem 0 0;padding:.25em .8em;border:1px solid var(--bd);border-radius:99px;font-family:var(--mono);font-size:.75rem;color:var(--tx2)}
+#toc{max-width:960px;margin:2rem auto 0;padding:0 1rem}
+#toc h2{font-size:1.15rem;border:none;margin-bottom:.6rem}
+#toc ol{columns:3;column-gap:2rem;padding-left:1.4em}
+#toc li{font-size:.9rem;margin-bottom:.25rem;break-inside:avoid}
+@media(max-width:760px){#toc ol{columns:2}}
+@media(max-width:480px){#toc ol{columns:1}}
+main{max-width:960px;margin:0 auto;padding:0 1rem 5rem}
+section{padding-top:3.2rem}
+h2{font-size:1.65rem;font-weight:700;letter-spacing:-.02em;margin-bottom:1.1rem;padding-bottom:.45rem;border-bottom:1px solid var(--bd)}
+h3{font-size:1.15rem;font-weight:600;margin:2rem 0 .8rem;color:var(--ac)}
+h4{font-size:1rem;font-weight:600;margin:1.6rem 0 .7rem}
+p,ul,ol{margin-bottom:.9rem}ul,ol{padding-left:1.3em}li{margin-bottom:.25rem}
+strong{color:var(--tx);font-weight:600}
+em{color:var(--ac2);font-style:normal}
+code{font-family:var(--mono);font-size:.86em;background:var(--bg3);padding:.1em .35em;border-radius:4px;overflow-wrap:anywhere}
+pre{background:var(--bg3);border:1px solid var(--bd);border-radius:var(--r);padding:1rem 1.1rem;margin:1rem 0;overflow-x:auto}
+pre code{background:none;padding:0;font-size:.83rem;line-height:1.6;overflow-wrap:normal}
+.tw{overflow-x:auto;margin:1rem 0}
+table{width:100%;border-collapse:collapse;font-size:.88rem}
+th{text-align:left;padding:.55rem .7rem;border-bottom:2px solid var(--bd);color:var(--ac);font-weight:600;vertical-align:bottom}
+td{padding:.5rem .7rem;border-bottom:1px solid var(--bd);vertical-align:top}
+tr:last-child td{border-bottom:none}
+.note{border-left:3px solid var(--ac);background:var(--bg2);padding:.85rem 1.1rem;border-radius:0 var(--r) var(--r) 0;margin:1.2rem 0;font-size:.92rem;color:var(--tx2)}
+.note strong{color:var(--ac)}
+.note.good{border-left-color:var(--gr)}.note.good strong{color:var(--gr)}
+.note.bad{border-left-color:var(--rd)}.note.bad strong{color:var(--rd)}
+.hero{border:1px solid var(--gr);background:var(--bg2);border-radius:var(--r);padding:1.1rem 1.3rem;margin:1.5rem 0}
+.hero .big{font-size:1.25rem;font-weight:700;color:var(--gr)}
+.fig{background:var(--bg2);border:1px solid var(--bd);border-radius:var(--r);padding:1rem;margin:1.3rem 0;overflow-x:auto}
+.fig svg{display:block;width:100%;min-width:680px;height:auto}
+.fig .cap{font-family:var(--mono);font-size:.75rem;color:var(--ac2);text-transform:uppercase;letter-spacing:.07em;margin-bottom:.7rem}
+.arch{font-family:var(--mono);font-size:.8rem;line-height:1.7;white-space:pre;overflow-x:auto;padding:1rem;background:var(--bg3);border-radius:var(--r);color:var(--tx2);margin:1rem 0}
+.steps{counter-reset:s;list-style:none;padding:0}
+.steps>li{counter-increment:s;position:relative;padding:0 0 1.2rem 2.6rem;border-left:2px solid var(--bd);margin-left:.9rem}
+.steps>li:last-child{border-left-color:transparent}
+.steps>li::before{content:counter(s);position:absolute;left:-.95rem;top:0;width:1.8rem;height:1.8rem;border-radius:50%;background:var(--ac);color:var(--bg);font-weight:700;font-size:.85rem;display:flex;align-items:center;justify-content:center}
+.steps>li>strong:first-child{display:block;margin-bottom:.4rem;color:var(--ac)}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:.9rem;margin:1.2rem 0}
+.cell{background:var(--bg3);border-radius:var(--r);padding:1rem;text-align:center}
+.cell .v{font-size:1.35rem;font-weight:800;color:var(--ac);font-family:var(--mono)}
+.cell .l{font-size:.8rem;color:var(--tx2);margin-top:.2rem}
+.tag{display:inline-block;font-family:var(--mono);font-size:.72rem;padding:.05em .5em;border-radius:4px;border:1px solid currentColor}
+.t-ok{color:var(--gr)}.t-warn{color:var(--or)}.t-bad{color:var(--rd)}.t-info{color:var(--ac)}
+/* SVG */
+.sv-box{fill:var(--bg3);stroke:var(--bd);stroke-width:1.5}
+.sv-sdk{fill:var(--bg3);stroke:var(--ac);stroke-width:1.5}
+.sv-prj{fill:var(--bg3);stroke:var(--ac2);stroke-width:1.5}
+.sv-ok{fill:var(--bg3);stroke:var(--gr);stroke-width:1.5}
+.sv-warn{fill:var(--bg3);stroke:var(--or);stroke-width:1.5}
+.sv-bad{fill:var(--bg3);stroke:var(--rd);stroke-width:1.5}
+.sv-disk{fill:var(--bg4);stroke:var(--gr);stroke-width:2}
+.sv-t{fill:var(--tx);font:13px var(--sans)}
+.sv-tb{fill:var(--tx);font:600 13px var(--sans)}
+.sv-m{fill:var(--tx2);font:11.5px var(--mono)}
+.sv-s{fill:var(--tx2);font:11.5px var(--sans)}
+.sv-ac{fill:var(--ac)}.sv-ac2{fill:var(--ac2)}.sv-gr{fill:var(--gr)}.sv-or{fill:var(--or)}.sv-rd{fill:var(--rd)}
+.sv-ln{stroke:var(--tx2);stroke-width:1.5;fill:none}
+.sv-lnac{stroke:var(--ac);stroke-width:1.8;fill:none}
+.sv-lngr{stroke:var(--gr);stroke-width:1.8;fill:none}
+.sv-lnrd{stroke:var(--rd);stroke-width:1.8;fill:none;stroke-dasharray:5 4}
+.sv-lnor{stroke:var(--or);stroke-width:1.8;fill:none}
+.sv-axis{stroke:var(--tx3);stroke-width:1.5}
+.sv-loss{fill:var(--rd);opacity:.18}
+footer{text-align:center;padding:2.5rem 1rem;color:var(--tx3);font-size:.82rem;border-top:1px solid var(--bd)}
+@media print{
+  :root{--bg:#fff;--bg2:#f6f8fa;--bg3:#f0f2f5;--bg4:#e6e9ee;--tx:#111;--tx2:#444;--tx3:#888;--bd:#ccc;--ac:#0b5cc2;--ac2:#7a3fc4;--gr:#1a7f37;--or:#9a6700;--rd:#c62828}
+  #toc{display:none}section{padding-top:1.5rem;break-inside:auto}.fig,table,pre{break-inside:avoid}
+}
+</style>
+</head>
+<body>
+<header id="header">
+  <h1>Time</h1>
+  <p class="sub"><code>ITimeService.UtcNowUnix</code> trả Unix giây UTC lấy từ giờ máy, chặn lùi bằng một mốc lưu qua Persistence. Logic theo thời gian (lịch, countdown, rollover) đọc giờ ở đây, không gọi <code>DateTime.UtcNow</code>.</p>
+  <span class="badge">Horcrux.Runtime.Abstractions.Time</span>
+  <span class="badge">Horcrux.Runtime.Implementations.Time</span>
+  <span class="badge">Code: Runtime/Abstractions/Foundations/Time/ · Runtime/Implementations/Foundations/Time/</span>
+</header>
+
+<nav id="toc"><h2>Mục lục</h2><ol>
+  <li><a href="#tong-quan">Tổng quan</a></li>
+  <li><a href="#kich-ban">Kịch bản</a></li>
+  <li><a href="#cach-dung">Cách dùng</a></li>
+  <li><a href="#flow">Flow</a></li>
+  <li><a href="#luu-y">Lưu ý</a></li>
+</ol></nav>
+
+<main>
+
+<!-- ============ TỔNG QUAN ============ -->
+<section id="tong-quan">
+  <h2>Tổng quan</h2>
+  <div class="fig">
+  <div class="cap">caller ─► TimeService ◄─ giờ máy · mốc nằm trong collection save</div>
+  <svg viewBox="0 0 900 260" role="img" aria-label="LiveOpsHost đọc UtcNowUnix mỗi giây và cấp now cho module; code khác đọc khi cần. TimeService lấy giờ máy DateTimeOffset.UtcNow, đọc mốc lastSeenUtcSeconds trong collection save, trả max của giờ máy và mốc, và ghi mốc khi giờ máy vượt mốc từ 60 giây. Host save flush mốc xuống PlayerPrefs">
+    <rect x="10" y="40" width="220" height="56" rx="8" class="sv-sdk"/>
+    <text x="120" y="62" class="sv-tb" text-anchor="middle">LiveOpsHost</text>
+    <text x="120" y="82" class="sv-s" text-anchor="middle">mỗi giây, cấp now cho module</text>
+
+    <rect x="10" y="130" width="220" height="56" rx="8" class="sv-prj"/>
+    <text x="120" y="152" class="sv-tb" text-anchor="middle">code khác</text>
+    <text x="120" y="172" class="sv-s" text-anchor="middle">đọc mỗi lần cần giờ</text>
+
+    <rect x="330" y="50" width="240" height="120" rx="8" class="sv-sdk"/>
+    <text x="450" y="76" class="sv-tb" text-anchor="middle">TimeService</text>
+    <text x="450" y="100" class="sv-m" text-anchor="middle">UtcNowUnix</text>
+    <text x="450" y="122" class="sv-m" text-anchor="middle">max(device, mốc)</text>
+    <text x="450" y="148" class="sv-s" text-anchor="middle">không phải boot step</text>
+
+    <rect x="670" y="20" width="220" height="56" rx="8" class="sv-box"/>
+    <text x="780" y="42" class="sv-tb" text-anchor="middle">giờ máy</text>
+    <text x="780" y="62" class="sv-m" text-anchor="middle">DateTimeOffset.UtcNow</text>
+
+    <rect x="670" y="110" width="220" height="66" rx="8" class="sv-prj"/>
+    <text x="780" y="134" class="sv-tb" text-anchor="middle">collection save</text>
+    <text x="780" y="156" class="sv-m" text-anchor="middle">lastSeenUtcSeconds</text>
+
+    <rect x="670" y="206" width="220" height="46" rx="8" class="sv-disk"/>
+    <text x="780" y="234" class="sv-tb" text-anchor="middle">PlayerPrefs</text>
+
+    <path d="M230 68 L280 68 L280 90 L324 90" class="sv-lnac"/><path d="M330 90 l-8 -5 v10 z" class="sv-ac"/>
+    <path d="M230 158 L280 158 L280 130 L324 130" class="sv-lnac"/><path d="M330 130 l-8 -5 v10 z" class="sv-ac"/>
+    <text x="280" y="115" class="sv-m" text-anchor="middle">UtcNowUnix</text>
+
+    <path d="M670 48 L620 48 L620 70 L576 70" class="sv-ln"/><path d="M570 70 l8 -5 v10 z" class="sv-ac"/>
+    <text x="608" y="40" class="sv-s" text-anchor="middle">device</text>
+
+    <path d="M670 128 L576 128" class="sv-ln"/><path d="M570 128 l8 -5 v10 z" class="sv-ac"/>
+    <text x="620" y="121" class="sv-s" text-anchor="middle">đọc mốc</text>
+    <path d="M570 158 L664 158" class="sv-lnor"/><path d="M670 158 l-8 -5 v10 z" class="sv-or"/>
+    <text x="620" y="151" class="sv-s" text-anchor="middle">ghi ≥ 60 s</text>
+
+    <path d="M780 176 L780 200" class="sv-lngr"/><path d="M780 206 l-5 -8 h10 z" class="sv-gr"/>
+    <text x="788" y="195" class="sv-s">flush của host save</text>
+  </svg>
+  </div>
+  <div class="tw"><table>
+    <thead><tr><th>Mục</th><th>Chốt</th></tr></thead>
+    <tbody>
+      <tr><td>Nguồn giờ</td><td><code>DateTimeOffset.UtcNow</code> của máy, không hiệu chỉnh, không server time</td></tr>
+      <tr><td>Chống lùi</td><td>giờ máy dưới mốc → trả mốc</td></tr>
+      <tr><td>Độ mịn</td><td>mốc chỉ ghi khi giờ máy vượt mốc ≥ 60 s → lùi dưới 60 s lọt qua</td></tr>
+      <tr><td>Chống tiến</td><td>không — giờ máy tua tới được nhận nguyên</td></tr>
+      <tr><td>Ai giữ mốc</td><td><code>TimeService</code>; field nằm sẵn trong <code>BasePersistenceDataCollection</code>, dự án chỉ điền Key</td></tr>
+      <tr><td>Cố ý KHÔNG làm</td><td>server time · nhịp riêng · trạng thái "đang bị lùi" · API gỡ mốc</td></tr>
+    </tbody>
+  </table></div>
+  <div class="hero"><div class="big">mọi logic theo thời gian đọc <code>UtcNowUnix</code></div>
+  <p style="margin:.5rem 0 0">Không gọi <code>DateTime.UtcNow</code>.</p></div>
+</section>
+
+<!-- ============ KỊCH BẢN ============ -->
+<section id="kich-ban">
+  <h2>Kịch bản</h2>
+  <div class="tw"><table>
+    <thead><tr><th>Tình huống</th><th>Hệ làm gì</th><th>Kết quả</th></tr></thead>
+    <tbody>
+      <tr><td>giờ máy chạy bình thường</td><td>trả giờ máy; ghi mốc khi giờ máy vượt mốc ≥ 60 s</td><td><span class="tag t-ok">theo giờ thật</span></td></tr>
+      <tr><td>giờ máy lùi xa, dưới mốc</td><td>trả mốc</td><td>countdown, lịch <strong>đứng</strong>, không âm</td></tr>
+      <tr><td>mở lại app, giờ máy lùi so với phiên trước</td><td>mốc đọc từ PlayerPrefs</td><td>trả mốc</td></tr>
+      <tr><td>giờ máy lùi dưới 60 s</td><td>mốc kém giá trị đã trả tới 59 s</td><td><span class="tag t-bad">lọt</span> — <code>UtcNowUnix</code> lùi theo</td></tr>
+      <tr><td>giờ máy tua tới</td><td>nhận nguyên</td><td><span class="tag t-warn">không chặn</span> — chặn cần server time</td></tr>
+      <tr><td>tua tới rồi chỉnh giờ về đúng</td><td>mốc nằm ở tương lai</td><td><span class="tag t-bad">giờ đứng</span> tới khi giờ thật đuổi kịp</td></tr>
+      <tr><td>đọc trước <code>Initialize()</code> của host save, hoặc sau khi thoát</td><td>không đọc, không ghi mốc</td><td>giờ máy trần</td></tr>
+      <tr><td>app bị giết giữa hai lượt flush</td><td>mốc mới chỉ ở bộ nhớ</td><td>phiên sau mốc cũ hơn thêm tối đa một chu kỳ autosave</td></tr>
+      <tr><td>Key của mốc trống</td><td>entry bị loại khỏi kho</td><td>chống lùi trong phiên; giữa hai phiên <span class="tag t-bad">lọt</span></td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<!-- ============ CÁCH DÙNG ============ -->
+<section id="cach-dung">
+  <h2>Cách dùng</h2>
+
+  <h3>Trước khi chạy</h3>
+  <p>Dựng từ 0 theo thứ tự; mỗi bước kèm chỗ hỏng nếu thiếu. Collection save dựng theo <code>Persistence.md</code>.</p>
+  <ol class="steps">
+    <li><strong>Key cho mốc.</strong> Chọn asset collection save của dự án → nhóm <strong>Time Service</strong> → <code>Last Seen Utc Seconds</code> → ô <strong>Key</strong> điền chuỗi tự đặt, ví dụ <code>time_last_seen_utc</code>; ô <strong>Default Value</strong> để <code>0</code>. Bấm <strong>Validate Keys</strong>.</li>
+    <li><strong>Collection đăng ký service base.</strong> Lớp collection có dòng <code>[Service(typeof(BasePersistenceDataCollection), ResourcePath = RESOURCE_PATH)]</code> (<code>Persistence.md</code> › Trước khi chạy, bước 2). <code>TimeService</code> nhận asset qua đường này; không có Initializer.</li>
+    <li><strong>Service.</strong> Trong scene sống suốt phiên, tạo GameObject, Add Component <code>TimeService</code>. Không kéo vào ô <strong>Steps</strong> của <code>BootstrapService</code>.</li>
+    <li><strong>Save được load.</strong> Đúng một host save (<code>SaveDriver</code> hoặc <code>SaveBootstep</code>, <code>Persistence.md</code> › Hai host) gọi <code>Initialize()</code> của collection.</li>
+    <li><strong>Caller.</strong> Đọc giờ mỗi lần cần, không cache qua nhiều frame:
+<pre><code>long now = ITimeService.Service.UtcNowUnix;</code></pre>
+      Hoặc nhận qua InitArgs như <code>LiveOpsHost</code>: <code>IInitializable&lt;ITimeService&gt;</code> + Initializer, ô <strong>Time Service</strong> để <strong>Service</strong>.</li>
+  </ol>
+
+  <div class="tw"><table>
+    <thead><tr><th>Thiếu</th><th>Hỏng ở đâu</th></tr></thead>
+    <tbody>
+      <tr><td>Key của <code>Last Seen Utc Seconds</code></td><td><code>[PersistenceDataCollection]: Field 'lastSeenUtcSeconds' has an empty key.</code> lúc <code>Initialize</code>; entry bị loại khỏi kho: mốc chỉ sống trong phiên, mở lại app là mất → lùi giờ giữa hai phiên lọt</td></tr>
+      <tr><td><strong>Default Value</strong> <code>0</code></td><td>giá trị lớn hơn giờ thật → lần chạy đầu <code>UtcNowUnix</code> đứng ở giá trị đó (<a href="#luu-y">Lưu ý</a>, "mốc ở tương lai")</td></tr>
+      <tr><td>dòng <code>[Service(typeof(BasePersistenceDataCollection))]</code></td><td>Editor: InitArgs ném <code>MissingInitArgumentsException</code> ở <code>Awake</code> của <code>TimeService</code>; bản build: collection <code>null</code> → <code>NullReferenceException</code> ở lần đọc <code>UtcNowUnix</code> đầu</td></tr>
+      <tr><td><code>TimeService</code> trong scene</td><td>InitArgs <code>LogWarning "Service Not Found: There is no 'TimeService' found in the active scene …"</code>; <code>ITimeService.Service</code> ném <code>NullReferenceException</code> ở caller đầu</td></tr>
+      <tr><td><strong><code>FindFromScene</code> thấy được scene chứa service</strong> — scene nạp bằng Addressables là nạp <strong>sau</strong> khi InitArgs khởi tạo (<code>LiveOpsHost.md</code> › Trước khi chạy)</td><td>như trên</td></tr>
+      <tr><td>host save</td><td><code>IsInitialized</code> mãi <code>false</code> → <code>UtcNowUnix</code> trả giờ máy trần, không chống lùi, <strong>không log nào</strong>. Lộ ở hệ đọc giờ (lịch nhảy lùi), không ở Time</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>Gọi gì, khi nào</h3>
+  <div class="tw"><table>
+    <thead><tr><th>Gọi</th><th>Ai gọi, khi nào</th><th>Hành vi</th></tr></thead>
+    <tbody>
+      <tr><td><code>ITimeService.UtcNowUnix</code></td><td>logic theo thời gian, mỗi lần cần giờ</td><td><code>long</code> Unix giây UTC. Getter <strong>có ghi</strong>: đặt <code>LastSeenUtcSeconds.Value</code> khi giờ máy vượt mốc ≥ 60 s</td></tr>
+      <tr><td><code>BasePersistenceDataCollection.LastSeenUtcSeconds</code></td><td>chỉ <code>TimeService</code></td><td><code>PersistenceDataEntry&lt;long&gt;</code> giữ mốc</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<!-- ============ FLOW ============ -->
+<section id="flow">
+  <h2>Flow</h2>
+
+  <h3>Một lần đọc <code>UtcNowUnix</code></h3>
+  <div class="fig">
+  <div class="cap">device = giờ máy (giây) · mốc = lastSeenUtcSeconds</div>
+  <svg viewBox="0 0 900 240" role="img" aria-label="Caller đọc UtcNowUnix, device là giờ máy tính bằng giây. Save chưa IsInitialized thì trả device, chưa chống lùi. Đã IsInitialized thì kiểm device lớn hơn hoặc bằng mốc cộng 60; đúng thì đặt mốc bằng device, host save ghi PlayerPrefs ở lượt flush. Cuối cùng trả max của device và mốc">
+    <rect x="10" y="30" width="170" height="56" rx="8" class="sv-prj"/>
+    <text x="95" y="54" class="sv-m" text-anchor="middle">UtcNowUnix</text>
+    <text x="95" y="74" class="sv-s" text-anchor="middle">device = giờ máy</text>
+    <path d="M180 58 L224 58" class="sv-ln"/><path d="M230 58 l-8 -5 v10 z" class="sv-ac"/>
+
+    <rect x="230" y="30" width="170" height="56" rx="8" class="sv-box"/>
+    <text x="315" y="63" class="sv-m" text-anchor="middle">IsInitialized ?</text>
+    <path d="M400 58 L444 58" class="sv-lngr"/><path d="M450 58 l-8 -5 v10 z" class="sv-gr"/>
+    <text x="425" y="50" class="sv-s" text-anchor="middle">có</text>
+
+    <rect x="450" y="30" width="190" height="56" rx="8" class="sv-box"/>
+    <text x="545" y="63" class="sv-m" text-anchor="middle">device ≥ mốc + 60 ?</text>
+    <path d="M640 58 L684 58" class="sv-lngr"/><path d="M690 58 l-8 -5 v10 z" class="sv-gr"/>
+    <text x="665" y="50" class="sv-s" text-anchor="middle">không</text>
+
+    <rect x="690" y="30" width="200" height="56" rx="8" class="sv-ok"/>
+    <text x="790" y="54" class="sv-tb" text-anchor="middle">return</text>
+    <text x="790" y="74" class="sv-m" text-anchor="middle">max(device, mốc)</text>
+
+    <path d="M315 86 L315 144" class="sv-lnor"/><path d="M315 150 l-5 -8 h10 z" class="sv-or"/>
+    <text x="323" y="122" class="sv-s">không</text>
+    <rect x="230" y="150" width="170" height="70" rx="8" class="sv-warn"/>
+    <text x="315" y="176" class="sv-tb" text-anchor="middle">return device</text>
+    <text x="315" y="198" class="sv-s" text-anchor="middle">chưa chống lùi</text>
+
+    <path d="M545 86 L545 144" class="sv-lnac"/><path d="M545 150 l-5 -8 h10 z" class="sv-ac"/>
+    <text x="553" y="122" class="sv-s">có</text>
+    <rect x="450" y="150" width="190" height="70" rx="8" class="sv-box"/>
+    <text x="545" y="176" class="sv-m" text-anchor="middle">mốc.Value = device</text>
+    <text x="545" y="198" class="sv-s" text-anchor="middle">flush ghi PlayerPrefs</text>
+
+    <path d="M640 185 L790 185 L790 92" class="sv-ln"/><path d="M790 86 l-5 8 h10 z" class="sv-ac"/>
+  </svg>
+  </div>
+
+  <h3>Lần theo mốc <code>1000</code></h3>
+  <div class="fig">
+  <div class="cap">mốc là giờ máy lần ghi gần nhất, không phải giá trị lớn nhất đã trả</div>
+  <svg viewBox="0 0 900 270" role="img" aria-label="Năm lần đọc với mốc ban đầu 1000. Lần 1 giờ máy 1030, trả 1030, không ghi. Lần 2 giờ máy 1060, ghi mốc 1060, trả 1060. Lần 3 giờ máy 1075, trả 1075. Lần 4 giờ máy lùi về 1065, trả 1065, nhỏ hơn 1075 đã trả: lùi 10 giây lọt. Lần 5 giờ máy lùi xa về 900, trả mốc 1060">
+    <path d="M190 16 L220 16" class="sv-lngr"/><text x="228" y="20" class="sv-s">UtcNowUnix trả</text>
+    <path d="M360 16 L390 16" class="sv-ln" stroke-dasharray="5 4"/><text x="398" y="20" class="sv-s">giờ máy</text>
+    <path d="M490 16 L520 16" class="sv-lnor"/><text x="528" y="20" class="sv-s">mốc</text>
+
+    <path d="M80 36 L80 230 L870 230" class="sv-axis" fill="none"/>
+    <text x="72" y="206" class="sv-m" text-anchor="end">900</text>
+    <text x="72" y="115" class="sv-m" text-anchor="end">1000</text>
+    <text x="72" y="61" class="sv-m" text-anchor="end">1060</text>
+    <path d="M76 202 L80 202 M76 111 L80 111 M76 57 L80 57" class="sv-axis"/>
+    <text x="150" y="250" class="sv-s" text-anchor="middle">đọc 1</text>
+    <text x="300" y="250" class="sv-s" text-anchor="middle">đọc 2</text>
+    <text x="450" y="250" class="sv-s" text-anchor="middle">đọc 3</text>
+    <text x="600" y="250" class="sv-s" text-anchor="middle">đọc 4</text>
+    <text x="750" y="250" class="sv-s" text-anchor="middle">đọc 5</text>
+
+    <path d="M150 111 L300 111 L300 57 L750 57" class="sv-lnor"/>
+    <text x="160" y="128" class="sv-s">mốc 1000</text>
+    <text x="310" y="72" class="sv-s">ghi mốc 1060</text>
+
+    <path d="M600 53 L750 202" class="sv-ln" stroke-dasharray="5 4"/>
+    <path d="M150 84 L300 57 L450 44 L600 53 L750 57" class="sv-lngr"/>
+
+    <circle cx="150" cy="84" r="5" class="sv-gr"/><text x="150" y="74" class="sv-m" text-anchor="middle">1030</text>
+    <circle cx="300" cy="57" r="5" class="sv-gr"/><text x="300" y="47" class="sv-m" text-anchor="middle">1060</text>
+    <circle cx="450" cy="44" r="5" class="sv-gr"/><text x="450" y="34" class="sv-m" text-anchor="middle">1075</text>
+    <circle cx="600" cy="53" r="6" class="sv-rd"/><text x="600" y="40" class="sv-m" text-anchor="middle">1065</text>
+    <text x="590" y="84" class="sv-s sv-rd" text-anchor="end">lùi 10 s lọt:</text>
+    <text x="590" y="100" class="sv-s sv-rd" text-anchor="end">1065 &lt; 1075 đã trả</text>
+    <circle cx="750" cy="57" r="5" class="sv-gr"/><text x="750" y="47" class="sv-m" text-anchor="middle">1060</text>
+    <text x="762" y="80" class="sv-s">đứng tại mốc</text>
+    <circle cx="750" cy="202" r="4" class="sv-ac"/><text x="762" y="206" class="sv-s">giờ máy 900</text>
+  </svg>
+  </div>
+  <div class="tw"><table>
+    <thead><tr><th><code>device</code></th><th>Ghi mốc</th><th>Trả</th></tr></thead>
+    <tbody>
+      <tr><td><code>1030</code></td><td>không</td><td><code>1030</code></td></tr>
+      <tr><td><code>1060</code></td><td>mốc = <code>1060</code></td><td><code>1060</code></td></tr>
+      <tr><td><code>1075</code></td><td>không</td><td><code>1075</code></td></tr>
+      <tr><td><code>1065</code> — lùi 10 s</td><td>không</td><td><code>1065</code> — nhỏ hơn <code>1075</code> đã trả</td></tr>
+      <tr><td><code>900</code> — lùi xa</td><td>không</td><td><code>1060</code></td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>Vòng đời</h3>
+  <div class="fig">
+  <div class="cap">thời gian ─► · chống lùi chỉ bật giữa Initialize() và lúc thoát</div>
+  <svg viewBox="0 0 900 175" role="img" aria-label="Awake: InitArgs tiêm collection. Trước Initialize của host save, UtcNowUnix trả giờ máy trần. Initialize đọc mốc từ PlayerPrefs, chống lùi bật, mốc ghi thưa 60 giây và xuống PlayerPrefs ở mỗi lượt flush: autosave mặc định 10 giây, vào nền. Thoát app: FlushAll rồi IsInitialized bằng false, từ đó trả giờ máy trần">
+    <text x="40" y="46" class="sv-tb">Awake</text>
+    <text x="40" y="62" class="sv-s">Init nhận collection</text>
+    <text x="230" y="46" class="sv-m" text-anchor="middle">Initialize()</text>
+    <text x="230" y="62" class="sv-s" text-anchor="middle">mốc đọc từ PlayerPrefs</text>
+    <text x="740" y="46" class="sv-tb" text-anchor="middle">thoát app</text>
+    <text x="740" y="62" class="sv-s" text-anchor="middle">FlushAll · IsInitialized = false</text>
+
+    <rect x="40" y="80" width="190" height="20" rx="4" class="sv-warn"/>
+    <rect x="230" y="80" width="510" height="20" rx="4" class="sv-ok"/>
+    <rect x="740" y="80" width="140" height="20" rx="4" class="sv-warn"/>
+    <path d="M40 70 L40 80 M230 70 L230 80 M740 70 L740 80" class="sv-ln"/>
+
+    <text x="135" y="124" class="sv-s sv-or" text-anchor="middle">giờ máy trần</text>
+    <text x="485" y="124" class="sv-s sv-gr" text-anchor="middle">chống lùi bật · mốc ghi thưa 60 s</text>
+    <text x="810" y="124" class="sv-s sv-or" text-anchor="middle">giờ máy trần</text>
+
+    <path d="M360 100 L360 108 M470 100 L470 108 M600 100 L600 108" class="sv-lngr"/>
+    <text x="485" y="152" class="sv-s" text-anchor="middle">flush — autosave (mặc định 10 s), vào nền: mốc xuống PlayerPrefs</text>
+  </svg>
+  </div>
+</section>
+
+<!-- ============ LƯU Ý ============ -->
+<section id="luu-y">
+  <h2>Lưu ý</h2>
+
+  <h3>Mốc ở tương lai làm giờ đứng</h3>
+  <div class="fig">
+  <div class="cap">tua tới rồi chỉnh giờ về đúng · thời gian thật ─►</div>
+  <svg viewBox="0 0 900 270" role="img" aria-label="Trục ngang là thời gian thật. Ban đầu giờ máy và UtcNowUnix theo giờ thật. Giờ máy tua tới một ngày: UtcNowUnix nhảy theo và mốc được ghi ở tương lai. Chỉnh giờ về đúng: giờ máy rơi về giờ thật nhưng UtcNowUnix đứng tại mốc, giờ game đứng, tới khi giờ thật đuổi kịp mốc thì chạy lại theo giờ thật">
+    <path d="M190 18 L220 18" class="sv-lngr"/><text x="228" y="22" class="sv-s">UtcNowUnix trả</text>
+    <path d="M360 18 L390 18" class="sv-ln" stroke-dasharray="5 4"/><text x="398" y="22" class="sv-s">giờ máy</text>
+    <path d="M490 18 L520 18" class="sv-axis"/><text x="528" y="22" class="sv-s">giờ thật</text>
+
+    <path d="M80 36 L80 230 L870 230" class="sv-axis" fill="none"/>
+    <text x="870" y="250" class="sv-s" text-anchor="end">thời gian thật</text>
+
+    <path d="M380 66 L752 66 L380 146 Z" class="sv-loss"/>
+    <text x="490" y="98" class="sv-s sv-rd">giờ game đứng</text>
+
+    <path d="M80 210 L870 40" class="sv-axis"/>
+    <path d="M80 210 L220 180 L220 100 L380 66 L380 146 L870 40" class="sv-ln" stroke-dasharray="5 4"/>
+    <path d="M80 210 L220 180 L220 100 L380 66 L752 66 L870 40" class="sv-lngr"/>
+
+    <circle cx="220" cy="100" r="5" class="sv-or"/>
+    <text x="212" y="120" class="sv-s" text-anchor="end">tua tới +1 ngày:</text>
+    <text x="212" y="136" class="sv-s" text-anchor="end">mốc ghi ở tương lai</text>
+    <circle cx="380" cy="146" r="5" class="sv-ac"/>
+    <text x="390" y="166" class="sv-s">chỉnh giờ về đúng</text>
+    <circle cx="752" cy="66" r="5" class="sv-gr"/>
+    <text x="745" y="54" class="sv-s" text-anchor="end">giờ thật đuổi kịp mốc</text>
+  </svg>
+  </div>
+  <div class="note bad"><strong>Không API gỡ mốc.</strong> Chỉ xoá key <code>persistence_&lt;key&gt;</code> khỏi PlayerPrefs. Giờ máy sai rồi được sửa (đồng hồ máy lệch, không cố ý) cũng rơi vào đây.</div>
+
+  <div class="tw"><table>
+    <thead><tr><th>Chỗ</th><th>Sự thật</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Lùi dưới 60 s lọt</strong></td><td>mốc kém giá trị đã trả tới 59 s; giờ máy lùi vào khoảng đó thì <code>UtcNowUnix</code> lùi theo. Logic so <code>now</code> với thời điểm đã lưu (hết hạn, lần nhận) chịu được; logic cần đơn điệu tuyệt đối thì tự giữ <code>max</code></td></tr>
+      <tr><td><strong>Mốc ở tương lai làm giờ đứng</strong></td><td>giờ máy từng tua tới — cố ý, hoặc đồng hồ máy sai rồi được sửa — thì mốc nằm ở tương lai; giờ về đúng thì <code>UtcNowUnix</code> đứng tại mốc tới khi giờ thật đuổi kịp, countdown và lịch đứng theo</td></tr>
+      <tr><td><strong>Ngoài <code>IsInitialized</code> không chống lùi</strong></td><td>caller đọc trước <code>Initialize()</code> (<code>Awake</code>, boot step đứng trước host save) hay sau khi thoát nhận giờ máy trần</td></tr>
+      <tr><td><strong>App bị giết giữa hai lượt flush</strong></td><td>mốc mới chỉ ở bộ nhớ; phiên sau mốc cũ hơn thêm tối đa một chu kỳ autosave</td></tr>
+      <tr><td><strong>Tua tới không bị chặn</strong></td><td>cố ý; chặn cần server time</td></tr>
+      <tr><td><strong>Không phải boot step</strong></td><td>không kéo <code>TimeService</code> vào ô <strong>Steps</strong> của <code>BootstrapService</code>, không có <strong>Order</strong>; thứ tự với save do guard <code>IsInitialized</code> trong getter lo</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>Chẩn đoán</h3>
+  <div class="tw"><table>
+    <thead><tr><th>Log / triệu chứng</th><th>Nghĩa</th><th>Sửa</th></tr></thead>
+    <tbody>
+      <tr><td><code>[PersistenceDataCollection]: Field 'lastSeenUtcSeconds' has an empty key.</code></td><td>Key chưa điền</td><td>Trước khi chạy, bước 1</td></tr>
+      <tr><td><code>MissingInitArgumentsException</code> trên <code>TimeService</code> (Editor)</td><td>collection không đăng ký service <code>BasePersistenceDataCollection</code></td><td>Trước khi chạy, bước 2</td></tr>
+      <tr><td><code>Service Not Found: There is no 'TimeService' found in the active scene …</code></td><td>không có <code>TimeService</code> lúc InitArgs tìm</td><td>Trước khi chạy, bước 3</td></tr>
+      <tr><td><code>NullReferenceException: No globally accessible Service of type ITimeService was found.</code></td><td><code>ITimeService.Service</code> gọi khi service không có</td><td>Trước khi chạy, bước 3</td></tr>
+      <tr><td>lùi giờ máy, logic lùi theo</td><td>save chưa load, hoặc lùi dưới 60 s</td><td>Trước khi chạy, bước 4; dòng đầu bảng trên</td></tr>
+      <tr><td>giờ game đứng, countdown không chạy</td><td>mốc ở tương lai</td><td>dòng hai bảng trên</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+</main>
+<footer>Horcrux · Time · Horcrux.Runtime.Implementations.Time · nguồn: TimeSystem.md</footer>
+</body>
+</html>
