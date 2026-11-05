@@ -60,8 +60,10 @@ Người đọc muốn **dùng hệ đúng mà không mở code**. Bốn phần,
 **Không mang sang:** chữ ký API đầy đủ · cấu trúc file · test · thuật toán bên trong · performance · quyết định chỉ người sửa
 hệ cần — cần thì mở `.md`. Kịch bản ở đây là **kịch bản dùng**, không phải kịch bản chơi thử của một game.
 
-Trực quan hoá theo loại nội dung: so sánh → bảng · luồng → diagram · định lượng → công thức · giá trị liên tục → Canvas ·
-nhiều bước → step; số trong demo cũng là "bản chết" nếu không đối chiếu `.md`. Demo chỉ khi bảng và text không đủ.
+**Thứ tự ưu tiên hình thức:** flowchart, biểu đồ các loại → bảng → văn xuôi chỉ khi không biểu thị được bằng hai dạng
+trước. Theo loại nội dung: luồng, rẽ nhánh → flowchart · thứ tự, vòng đời → sơ đồ trạng thái hoặc timeline · so sánh, tình
+huống → kết quả → bảng · định lượng → công thức, đồ thị · giá trị liên tục → Canvas · nhiều bước → step; số trong demo
+cũng là "bản chết" nếu không đối chiếu `.md`. Demo chỉ khi biểu đồ và bảng không đủ.
 **Nghiệm thu:** người mới đọc xong dựng và dùng được hệ không mở code · single file, không build · TOC khớp · đọc được trên
 màn hình nhỏ, khi in, tắt JavaScript, mất mạng · không tương tác thì không tiến trình nào chạy · không thư viện tô màu code.
 
