@@ -28,11 +28,11 @@ Dựng từ 0 theo thứ tự; mỗi bước kèm chỗ hỏng nếu thiếu.
 1. **Provider.** Dự án có gói `com.google.firebase.remote-config` thì không viết gì: asmdef `com.horcrux.firebase` bật qua
    define `HORCRUX_FIREBASE_REMOTE_CONFIG` và `FirebaseRemoteConfigProvider` tự đăng ký `[Service(typeof(IRemoteConfigProvider))]`.
    Vendor khác: tự cài `IRemoteConfigProvider` theo hợp đồng §6, mang `[Service(typeof(IRemoteConfigProvider))]`.
-2. **Interface collection** trong assembly dự án:
+2. **Interface collection.** Trong assembly dự án:
    ```csharp
    public partial interface IGameRemoteConfig : IRemoteConfigCollection, IService<IGameRemoteConfig> { }
    ```
-3. **Class collection**, cùng namespace:
+3. **Class collection.** Cùng namespace với interface:
    ```csharp
    [Service(typeof(IGameRemoteConfig), ResourcePath = RESOURCE_PATH)]
    [CreateAssetMenu(fileName = "GameRemoteConfig", menuName = "Configs/GameRemoteConfig")]
@@ -44,7 +44,7 @@ Dựng từ 0 theo thứ tự; mỗi bước kèm chỗ hỏng nếu thiếu.
    `partial` để chia biến theo nhóm ra nhiều file (`GameRemoteConfig.Level.cs`…), mỗi nhóm một cặp file class + interface.
 4. **Asset.** Project window → **Create** → **Configs** → **GameRemoteConfig**, đặt ở
    `Assets/…/Resources/Config/GameRemoteConfig.asset`. Đường dẫn sau `Resources/`, bỏ đuôi, phải bằng `RESOURCE_PATH`.
-5. **Mỗi biến — hai chỗ, luôn đi cùng nhau:**
+5. **Mỗi biến.** Hai chỗ, luôn đi cùng nhau:
    ```csharp
    public partial interface IGameRemoteConfig
    {
@@ -61,13 +61,13 @@ Dựng từ 0 theo thứ tự; mỗi bước kèm chỗ hỏng nếu thiếu.
    }
    ```
    Chọn asset, trong Inspector điền **Firebase Key**, **Allow Fetching**, **Value** của biến đó.
-6. **Màn boot** gọi `Initialize`, rồi fetch và chờ xong mới vào game:
+6. **Màn boot.** Gọi `Initialize`, rồi fetch và chờ xong mới vào game:
    ```csharp
    IGameRemoteConfig.Service.Initialize();
    await remoteConfigProvider.FetchAndActivateAsync(TimeSpan.FromSeconds(2), destroyCancellationToken);
    ```
    `remoteConfigProvider` nhận qua InitArgs hoặc `IRemoteConfigProvider.Service`. Thứ tự hai lời gọi không quan trọng (§2).
-7. **Console Firebase:** khai cùng key, giá trị cùng định dạng §4. Chạy tool `RemoteConfigDiff` (`docs/Editor/RemoteConfigDiff.md`)
+7. **Console Firebase.** Khai cùng key, giá trị cùng định dạng §4. Chạy tool `RemoteConfigDiff` (`docs/Editor/RemoteConfigDiff.md`)
    để so asset với template console.
 
 | Thiếu | Hỏng ở đâu |
