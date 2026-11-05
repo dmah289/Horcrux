@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pooling</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#0d1117;--bg2:#161b22;--bg3:#1c2333;--bg4:#242d3a;--tx:#e6edf3;--tx2:#8b949e;--tx3:#484f58;--ac:#58a6ff;--ac2:#bc8cff;--gr:#3fb950;--or:#d29922;--rd:#f85149;--bd:#30363d;--r:10px;--mono:'JetBrains Mono','Fira Code',Consolas,monospace;--sans:'Inter','Segoe UI',system-ui,sans-serif}
+html{scroll-behavior:smooth;background:var(--bg);color:var(--tx);font:16px/1.65 var(--sans)}
+body{background:var(--bg);overflow-x:hidden}
+a{color:var(--ac);text-decoration:none}a:hover{text-decoration:underline}
+#header{max-width:960px;margin:0 auto;padding:3.5rem 1rem 1.5rem;border-bottom:1px solid var(--bd)}
+#header h1{font-size:clamp(2rem,5vw,2.8rem);font-weight:800;letter-spacing:-.03em;color:var(--ac)}
+#header .sub{color:var(--tx2);margin-top:.4rem}
+.badge{display:inline-block;margin:.8rem .4rem 0 0;padding:.25em .8em;border:1px solid var(--bd);border-radius:99px;font-family:var(--mono);font-size:.75rem;color:var(--tx2)}
+#toc{max-width:960px;margin:2rem auto 0;padding:0 1rem}
+#toc h2{font-size:1.15rem;border:none;margin-bottom:.6rem}
+#toc ol{columns:3;column-gap:2rem;padding-left:1.4em}
+#toc li{font-size:.9rem;margin-bottom:.25rem;break-inside:avoid}
+@media(max-width:760px){#toc ol{columns:2}}
+@media(max-width:480px){#toc ol{columns:1}}
+main{max-width:960px;margin:0 auto;padding:0 1rem 5rem}
+section{padding-top:3.2rem}
+h2{font-size:1.65rem;font-weight:700;letter-spacing:-.02em;margin-bottom:1.1rem;padding-bottom:.45rem;border-bottom:1px solid var(--bd)}
+h3{font-size:1.15rem;font-weight:600;margin:2rem 0 .8rem;color:var(--ac)}
+h4{font-size:1rem;font-weight:600;margin:1.6rem 0 .7rem}
+p,ul,ol{margin-bottom:.9rem}ul,ol{padding-left:1.3em}li{margin-bottom:.25rem}
+strong{color:var(--tx);font-weight:600}
+em{color:var(--ac2);font-style:normal}
+code{font-family:var(--mono);font-size:.86em;background:var(--bg3);padding:.1em .35em;border-radius:4px;overflow-wrap:anywhere}
+pre{background:var(--bg3);border:1px solid var(--bd);border-radius:var(--r);padding:1rem 1.1rem;margin:1rem 0;overflow-x:auto}
+pre code{background:none;padding:0;font-size:.83rem;line-height:1.6;overflow-wrap:normal}
+.tw{overflow-x:auto;margin:1rem 0}
+table{width:100%;border-collapse:collapse;font-size:.88rem}
+th{text-align:left;padding:.55rem .7rem;border-bottom:2px solid var(--bd);color:var(--ac);font-weight:600;vertical-align:bottom}
+td{padding:.5rem .7rem;border-bottom:1px solid var(--bd);vertical-align:top}
+tr:last-child td{border-bottom:none}
+.note{border-left:3px solid var(--ac);background:var(--bg2);padding:.85rem 1.1rem;border-radius:0 var(--r) var(--r) 0;margin:1.2rem 0;font-size:.92rem;color:var(--tx2)}
+.note strong{color:var(--ac)}
+.note.good{border-left-color:var(--gr)}.note.good strong{color:var(--gr)}
+.note.bad{border-left-color:var(--rd)}.note.bad strong{color:var(--rd)}
+.hero{border:1px solid var(--gr);background:var(--bg2);border-radius:var(--r);padding:1.1rem 1.3rem;margin:1.5rem 0}
+.hero .big{font-size:1.25rem;font-weight:700;color:var(--gr)}
+.fig{background:var(--bg2);border:1px solid var(--bd);border-radius:var(--r);padding:1rem;margin:1.3rem 0;overflow-x:auto}
+.fig svg{display:block;width:100%;min-width:680px;height:auto}
+.fig .cap{font-family:var(--mono);font-size:.75rem;color:var(--ac2);text-transform:uppercase;letter-spacing:.07em;margin-bottom:.7rem}
+.arch{font-family:var(--mono);font-size:.8rem;line-height:1.7;white-space:pre;overflow-x:auto;padding:1rem;background:var(--bg3);border-radius:var(--r);color:var(--tx2);margin:1rem 0}
+.steps{counter-reset:s;list-style:none;padding:0}
+.steps>li{counter-increment:s;position:relative;padding:0 0 1.2rem 2.6rem;border-left:2px solid var(--bd);margin-left:.9rem}
+.steps>li:last-child{border-left-color:transparent}
+.steps>li::before{content:counter(s);position:absolute;left:-.95rem;top:0;width:1.8rem;height:1.8rem;border-radius:50%;background:var(--ac);color:var(--bg);font-weight:700;font-size:.85rem;display:flex;align-items:center;justify-content:center}
+.steps>li>strong:first-child{display:block;margin-bottom:.4rem;color:var(--ac)}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:.9rem;margin:1.2rem 0}
+.cell{background:var(--bg3);border-radius:var(--r);padding:1rem;text-align:center}
+.cell .v{font-size:1.35rem;font-weight:800;color:var(--ac);font-family:var(--mono)}
+.cell .l{font-size:.8rem;color:var(--tx2);margin-top:.2rem}
+.tag{display:inline-block;font-family:var(--mono);font-size:.72rem;padding:.05em .5em;border-radius:4px;border:1px solid currentColor}
+.t-ok{color:var(--gr)}.t-warn{color:var(--or)}.t-bad{color:var(--rd)}.t-info{color:var(--ac)}
+/* SVG */
+.sv-box{fill:var(--bg3);stroke:var(--bd);stroke-width:1.5}
+.sv-sdk{fill:var(--bg3);stroke:var(--ac);stroke-width:1.5}
+.sv-prj{fill:var(--bg3);stroke:var(--ac2);stroke-width:1.5}
+.sv-ok{fill:var(--bg3);stroke:var(--gr);stroke-width:1.5}
+.sv-warn{fill:var(--bg3);stroke:var(--or);stroke-width:1.5}
+.sv-bad{fill:var(--bg3);stroke:var(--rd);stroke-width:1.5}
+.sv-disk{fill:var(--bg4);stroke:var(--gr);stroke-width:2}
+.sv-t{fill:var(--tx);font:13px var(--sans)}
+.sv-tb{fill:var(--tx);font:600 13px var(--sans)}
+.sv-m{fill:var(--tx2);font:11.5px var(--mono)}
+.sv-s{fill:var(--tx2);font:11.5px var(--sans)}
+.sv-ac{fill:var(--ac)}.sv-ac2{fill:var(--ac2)}.sv-gr{fill:var(--gr)}.sv-or{fill:var(--or)}.sv-rd{fill:var(--rd)}
+.sv-ln{stroke:var(--tx2);stroke-width:1.5;fill:none}
+.sv-lnac{stroke:var(--ac);stroke-width:1.8;fill:none}
+.sv-lngr{stroke:var(--gr);stroke-width:1.8;fill:none}
+.sv-lnrd{stroke:var(--rd);stroke-width:1.8;fill:none;stroke-dasharray:5 4}
+.sv-lnor{stroke:var(--or);stroke-width:1.8;fill:none}
+.sv-axis{stroke:var(--tx3);stroke-width:1.5}
+.sv-loss{fill:var(--rd);opacity:.18}
+footer{text-align:center;padding:2.5rem 1rem;color:var(--tx3);font-size:.82rem;border-top:1px solid var(--bd)}
+@media print{
+  :root{--bg:#fff;--bg2:#f6f8fa;--bg3:#f0f2f5;--bg4:#e6e9ee;--tx:#111;--tx2:#444;--tx3:#888;--bd:#ccc;--ac:#0b5cc2;--ac2:#7a3fc4;--gr:#1a7f37;--or:#9a6700;--rd:#c62828}
+  #toc{display:none}section{padding-top:1.5rem;break-inside:auto}.fig,table,pre{break-inside:avoid}
+}
+</style>
+</head>
+<body>
+<header id="header">
+  <h1>Pooling</h1>
+  <p class="sub">Pool instance của prefab Addressables theo key enum của dự án; sống từ <code>WarmAsync</code> tới <code>ReleaseAll</code>.</p>
+  <span class="badge">Horcrux.Runtime.Abstractions.Pooling</span>
+  <span class="badge">Horcrux.Runtime.Implementations.Pooling</span>
+  <span class="badge">Code: Runtime/Abstractions/Foundations/Pooling/ · Runtime/Implementations/Foundations/Pooling/</span>
+</header>
+
+<nav id="toc"><h2>Mục lục</h2><ol>
+  <li><a href="#tong-quan">Tổng quan</a></li>
+  <li><a href="#kich-ban">Kịch bản</a></li>
+  <li><a href="#cach-dung">Cách dùng</a></li>
+  <li><a href="#flow">Flow</a></li>
+  <li><a href="#luu-y">Lưu ý</a></li>
+</ol></nav>
+
+<main>
+
+<!-- ============ TỔNG QUAN ============ -->
+<section id="tong-quan">
+  <h2>Tổng quan</h2>
+  <div class="tw"><table>
+    <thead><tr><th>Thành phần</th><th>Việc</th><th>Ai viết</th></tr></thead>
+    <tbody>
+      <tr><td><code>PoolService&lt;TKey&gt;</code></td><td>Bảng tra, warm, <code>Get</code>/<code>Return</code>, release, guard</td><td>Horcrux</td></tr>
+      <tr><td><code>MyPoolService</code></td><td>Lớp con rỗng: đóng key enum, mang <code>[Service]</code></td><td>dự án</td></tr>
+      <tr><td><code>PoolConfig&lt;TKey&gt;</code></td><td>Một phần tử <strong>Pool Configs</strong>: <strong>Key</strong>, <strong>Prefab</strong>, <strong>Initial Pool Size</strong>, <strong>Max Pool Size</strong></td><td>dự án điền trên Inspector</td></tr>
+      <tr><td><code>IPoolable</code> · <code>PoolableBehaviour</code></td><td>Hook <code>OnGetFromPool</code>/<code>OnReturnToPool</code> trên prefab</td><td>khung Horcrux · reset do dự án</td></tr>
+    </tbody>
+  </table></div>
+  <div class="tw"><table>
+    <thead><tr><th>Mục</th><th>Chốt</th></tr></thead>
+    <tbody>
+      <tr><td>Tầm sống</td><td>từ <code>WarmAsync</code> tới <code>ReleaseAll</code>; chơi lại hay sang level kế không chạm pool</td></tr>
+      <tr><td>Asset</td><td>prefab qua <code>AssetReference</code>; pool giữ handle tới <code>ReleaseAll</code></td></tr>
+      <tr><td>Reset</td><td>hook <code>OnGetFromPool</code>/<code>OnReturnToPool</code>, không dựa vào <code>OnEnable</code>/<code>OnDisable</code></td></tr>
+      <tr><td>Cố ý KHÔNG làm</td><td>giới hạn số instance active · tự <code>Return</code> khi instance bị huỷ · gọi <code>OnReturnToPool</code> trong <code>ReleaseAll</code> · kiểm config lúc boot</td></tr>
+    </tbody>
+  </table></div>
+  <div class="hero"><div class="big"><code>Get</code>/<code>Return</code> 0 byte heap, mọi guard O(1).</div>
+  <p style="margin:.5rem 0 0"><code>Return</code> không cần key: pool tra instance trong bảng active, và chính bảng đó chặn trả hai lần hay trả object lạ.</p></div>
+</section>
+
+<!-- ============ KỊCH BẢN ============ -->
+<section id="kich-ban">
+  <h2>Kịch bản</h2>
+  <h3>Theo màn</h3>
+  <div class="tw"><table>
+    <thead><tr><th>Tình huống</th><th>Hệ làm gì</th></tr></thead>
+    <tbody>
+      <tr><td>Vào màn dùng pool</td><td><code>WarmAsync</code> load prefab mọi config song song, tạo sẵn <code>initialPoolSize</code> instance tắt dưới pool</td></tr>
+      <tr><td>Chơi lại, sang level kế</td><td>Không chạm pool; entity <code>Return</code> khi level dọn</td></tr>
+      <tr><td>Rời màn</td><td><code>ReleaseAll</code>: <code>Destroy</code> mọi instance active lẫn inactive, <code>ReleaseAsset</code> prefab</td></tr>
+      <tr><td>Rời màn khi warm chưa xong</td><td><code>ReleaseAll</code> huỷ warm; prefab đang load được release; <code>await WarmAsync</code> kết thúc bình thường, không ném</td></tr>
+      <tr><td>Một prefab load lỗi</td><td><code>ReleaseAsset</code> key đó; ngoại lệ ném tiếp ra <code>WarmAsync</code></td></tr>
+      <tr><td>Gọi <code>WarmAsync</code> khi lần trước chưa xong</td><td><code>LogError</code>, bỏ lượt sau</td></tr>
+      <tr><td>Gọi <code>WarmAsync</code> lần hai mà chưa <code>ReleaseAll</code></td><td><code>LogError</code> cho từng key; pool cũ vẫn dùng được</td></tr>
+      <tr><td>Service bị huỷ</td><td><code>OnDestroy</code> → <code>ReleaseAll</code></td></tr>
+    </tbody>
+  </table></div>
+  <h3>Get và Return</h3>
+  <div class="tw"><table>
+    <thead><tr><th>Tình huống</th><th>Hệ làm gì</th></tr></thead>
+    <tbody>
+      <tr><td><code>Get</code>, stack còn instance</td><td>Lấy instance trên đỉnh, không <code>Instantiate</code></td></tr>
+      <tr><td><code>Get</code>, stack rỗng</td><td><code>Instantiate</code> thêm; số active không có trần</td></tr>
+      <tr><td><code>Get</code> key chưa warm</td><td><code>LogError</code>, trả <code>null</code></td></tr>
+      <tr><td><code>Return</code>, stack chưa đầy</td><td><code>OnReturnToPool</code>, tắt, về làm con của pool, chờ <code>Get</code> kế</td></tr>
+      <tr><td><code>Return</code> khi <code>Inactive.Count ≥ maxPoolSize</code></td><td><code>OnReturnToPool</code> rồi <code>Destroy</code></td></tr>
+      <tr><td><code>Return</code> hai lần, hoặc instance không lấy từ pool</td><td><code>LogError</code>, bỏ qua; không gọi hook, không chạm object</td></tr>
+      <tr><td>Cha của instance bị huỷ trước <code>Return</code></td><td>Instance chết theo; <code>Return</code> sau đó log, <code>Get</code> sau đó <code>Instantiate</code> cái mới</td></tr>
+      <tr><td>Có chỗ <code>Destroy</code> instance đang nằm trong stack</td><td><code>Get</code> bỏ qua kèm <code>LogError</code>, lấy cái kế hoặc <code>Instantiate</code></td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<!-- ============ CÁCH DÙNG ============ -->
+<section id="cach-dung">
+  <h2>Cách dùng</h2>
+
+  <h3>Trước khi chạy</h3>
+  <p>Dựng từ 0 theo thứ tự; mỗi bước kèm chỗ hỏng nếu thiếu.</p>
+  <ol class="steps">
+    <li>Khai <code>enum</code> key với số tường minh từ <code>= 1</code>; số đã lưu vào asset thì chỉ thêm ở cuối.</li>
+    <li>Khai lớp con rỗng, đóng key và mang <code>[Service]</code> (Sisus Init):
+<pre><code>[Service(typeof(IPoolService&lt;MyPool&gt;), FindFromScene = true)]
+public sealed class MyPoolService : PoolService&lt;MyPool&gt; { }</code></pre>
+      Lớp con không viết <code>OnDestroy</code>: base có <code>OnDestroy</code> private gọi <code>ReleaseAll</code>, lớp con viết <code>OnDestroy</code> riêng là che nó.</li>
+    <li>Trong scene sống suốt phiên, tạo GameObject, Add Component <code>MyPoolService</code>. GameObject này là cha của mọi instance đang nằm trong pool.</li>
+    <li>Ô <strong>Pool Configs</strong>: mỗi phần tử điền <strong>Key</strong>, <strong>Prefab</strong> (prefab Addressables), <strong>Initial Pool Size</strong>, <strong>Max Pool Size</strong>. Bấm nút <strong>Validate Configs</strong>, Console không có lỗi.</li>
+    <li>Mỗi prefab có đúng một component cài <code>IPoolable</code> (thường kế thừa <code>PoolableBehaviour</code>) trên GameObject gốc. Kiểu <code>T</code> khi <code>Get&lt;T&gt;</code> là component đó.</li>
+    <li>Chỗ đổi màn của dự án: <code>await IPoolService&lt;MyPool&gt;.Service.WarmAsync(ct)</code> trước khi load màn dùng pool, <strong>một lần mỗi lần vào</strong>; <code>IPoolService&lt;MyPool&gt;.Service.ReleaseAll()</code> khi rời màn.</li>
+    <li>Trước khi cha của một instance bị huỷ (unload scene, <code>Destroy</code> root level), <code>Return</code> instance đó.</li>
+  </ol>
+  <div class="tw"><table>
+    <thead><tr><th>Thiếu</th><th>Hỏng ở đâu</th></tr></thead>
+    <tbody>
+      <tr><td>bước 1, số ngầm</td><td>thêm hay đổi thứ tự member làm lệch <strong>Key</strong> đã lưu trong scene</td></tr>
+      <tr><td>bước 2</td><td>không có service: <code>IPoolService&lt;MyPool&gt;.Service</code> throw ở lần gọi đầu</td></tr>
+      <tr><td>bước 2, lớp con viết <code>OnDestroy</code></td><td>huỷ service không <code>ReleaseAll</code>: bundle prefab nằm lại memory</td></tr>
+      <tr><td>bước 3, scene bị unload</td><td>service bị huỷ cùng scene (<code>OnDestroy</code> → <code>ReleaseAll</code>); lần gọi sau không còn service</td></tr>
+      <tr><td>bước 4, <strong>Prefab</strong> trống</td><td><code>LogError</code> <code>Prefab … is invalid.</code> ở warm, key đó không có pool</td></tr>
+      <tr><td>bước 4, hai phần tử cùng <strong>Key</strong></td><td><code>LogError</code> <code>Pool with key '…' already exists.</code> ở warm, phần tử sau bị bỏ</td></tr>
+      <tr><td>bước 5, không có <code>IPoolable</code></td><td><code>LogError</code> <code>doesn't implement IPoolable.</code> ở warm, key đó không có pool</td></tr>
+      <tr><td>bước 5, <code>T</code> sai</td><td><code>InvalidCastException</code> ở lần <code>Get</code> đầu; instance vừa lấy ra mồ côi dưới <code>parent</code></td></tr>
+      <tr><td>bước 6, không warm</td><td><code>Get</code> log <code>has not been warmed</code>, trả <code>null</code></td></tr>
+      <tr><td>bước 6, warm mỗi level</td><td><code>LogError</code> <code>has already existed</code> cho từng key; pool cũ vẫn dùng được</td></tr>
+      <tr><td>bước 6, không <code>ReleaseAll</code></td><td>bundle prefab và instance nằm lại memory sau khi rời màn</td></tr>
+      <tr><td>bước 7</td><td>instance chết theo cha; <code>Return</code> sau đó log <code>has been destroyed before returning</code>; pool <code>Instantiate</code> cái mới</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>Gọi gì, khi nào</h3>
+  <p>Truy cập qua <code>IPoolService&lt;TKey&gt;.Service</code> (thiếu service thì throw) hoặc <code>IPoolService&lt;TKey&gt;.TryGet(out service)</code>.</p>
+  <div class="tw"><table>
+    <thead><tr><th>Gọi</th><th>Khi nào</th><th>Nhận được</th></tr></thead>
+    <tbody>
+      <tr><td><code>WarmAsync(CancellationToken ct)</code></td><td>vào màn dùng pool, trước khi load màn</td><td>prefab đã load, <code>initialPoolSize</code> instance tắt mỗi key</td></tr>
+      <tr><td><code>Get&lt;T&gt;(TKey key, Transform parent)</code></td><td>cần một instance</td><td>instance đã active, con của <code>parent</code>, đã gọi <code>OnGetFromPool</code>; caller tự đặt vị trí</td></tr>
+      <tr><td><code>Return&lt;T&gt;(T instance)</code></td><td>xong việc với instance, trước khi cha của nó bị huỷ</td><td>instance về pool, hoặc bị <code>Destroy</code> nếu stack đầy</td></tr>
+      <tr><td><code>ReleaseAll()</code></td><td>rời màn dùng pool</td><td>mọi instance bị <code>Destroy</code>, prefab được release</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>Viết prefab và gọi pool</h3>
+<pre><code>public sealed class Piece : PoolableBehaviour
+{
+    private Tween _idle;
+
+    public override void OnGetFromPool() =&gt; _idle = Tween.Scale(transform, 1.05f, 0.6f, cycles: -1, cycleMode: CycleMode.Yoyo);
+
+    public override void OnReturnToPool() =&gt; StopAll();
+
+    private void OnDestroy() =&gt; StopAll();
+
+    private void StopAll()
+    {
+        _idle.Stop();
+        transform.localScale = Vector3.one;
+    }
+}
+
+// phía dùng
+Piece piece = IPoolService&lt;MyPool&gt;.Service.Get&lt;Piece&gt;(MyPool.Piece, row);
+piece.transform.localPosition = slotPosition;
+// ...
+IPoolService&lt;MyPool&gt;.Service.Return(piece);</code></pre>
+
+  <div class="tw"><table>
+    <thead><tr><th>Luật</th><th>Vì sao</th></tr></thead>
+    <tbody>
+      <tr><td>Reset mọi trạng thái trong <code>OnGetFromPool</code>/<code>OnReturnToPool</code></td><td>instance mang trạng thái của lần dùng trước</td></tr>
+      <tr><td>Đặt vị trí sau <code>Get</code></td><td><code>SetParent</code> giữ world transform: instance lấy từ stack đứng ở vị trí lúc trả, instance mới đứng ở vị trí gốc của prefab</td></tr>
+      <tr><td>Không <code>Return</code> trong <code>OnDestroy</code></td><td><code>ReleaseAll</code> đã xoá bảng trước khi <code>OnDestroy</code> chạy: <code>LogError</code> <code>was not found in any pool</code> cho từng instance</td></tr>
+      <tr><td>Không <code>Destroy</code> instance đang ở trong pool</td><td><code>Get</code> sau đó gặp instance chết: <code>LogError</code> <code>is destroyed, skip</code>, lấy cái kế</td></tr>
+      <tr><td>Không giữ tham chiếu sau <code>Return</code></td><td>instance có thể bị lấy ra cho chỗ khác, hoặc bị <code>Destroy</code> khi stack đầy</td></tr>
+      <tr><td>Một nơi duy nhất gọi <code>Return</code> cho mỗi instance</td><td><code>Return</code> hai lần: <code>LogError</code>, lần sau bỏ qua</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<!-- ============ FLOW ============ -->
+<section id="flow">
+  <h2>Flow</h2>
+
+  <h3>Vòng đời theo màn</h3>
+  <div class="fig">
+  <div class="cap">WarmAsync ─► Get / Return qua mọi level ─► ReleaseAll</div>
+  <svg viewBox="0 0 900 190" role="img" aria-label="Pool sống từ WarmAsync lúc vào màn tới ReleaseAll lúc rời màn; chơi lại và level kế chỉ Get và Return">
+    <path d="M150 30 L150 22 L760 22 L760 30" class="sv-lngr"/>
+    <text x="455" y="16" class="sv-s" text-anchor="middle">pool sống</text>
+
+    <rect x="10" y="62" width="120" height="56" rx="8" class="sv-box"/>
+    <text x="70" y="95" class="sv-t" text-anchor="middle">màn khác</text>
+    <path d="M130 90 L144 90" class="sv-ln"/><path d="M150 90 l-8 -5 v10 z" class="sv-ac"/>
+
+    <rect x="150" y="56" width="140" height="68" rx="8" class="sv-ok"/>
+    <text x="220" y="84" class="sv-tb" text-anchor="middle">WarmAsync</text>
+    <text x="220" y="104" class="sv-s" text-anchor="middle">load + tạo sẵn</text>
+    <path d="M290 90 L304 90" class="sv-ln"/><path d="M310 90 l-8 -5 v10 z" class="sv-ac"/>
+
+    <rect x="310" y="62" width="90" height="56" rx="8" class="sv-prj"/>
+    <text x="355" y="95" class="sv-t" text-anchor="middle">level</text>
+    <path d="M400 90 L404 90" class="sv-ln"/><path d="M410 90 l-6 -4 v8 z" class="sv-ac"/>
+    <rect x="410" y="62" width="90" height="56" rx="8" class="sv-prj"/>
+    <text x="455" y="95" class="sv-t" text-anchor="middle">chơi lại</text>
+    <path d="M500 90 L504 90" class="sv-ln"/><path d="M510 90 l-6 -4 v8 z" class="sv-ac"/>
+    <rect x="510" y="62" width="90" height="56" rx="8" class="sv-prj"/>
+    <text x="555" y="95" class="sv-t" text-anchor="middle">level kế</text>
+    <path d="M600 90 L614 90" class="sv-ln"/><path d="M620 90 l-8 -5 v10 z" class="sv-ac"/>
+
+    <rect x="620" y="56" width="140" height="68" rx="8" class="sv-warn"/>
+    <text x="690" y="84" class="sv-tb" text-anchor="middle">ReleaseAll</text>
+    <text x="690" y="104" class="sv-s" text-anchor="middle">Destroy + ReleaseAsset</text>
+    <path d="M760 90 L774 90" class="sv-ln"/><path d="M780 90 l-8 -5 v10 z" class="sv-ac"/>
+
+    <rect x="780" y="62" width="110" height="56" rx="8" class="sv-box"/>
+    <text x="835" y="95" class="sv-t" text-anchor="middle">màn khác</text>
+
+    <path d="M310 136 L310 144 L600 144 L600 136" class="sv-ln"/>
+    <text x="455" y="164" class="sv-s" text-anchor="middle">chỉ Get / Return — không warm, không release</text>
+  </svg>
+  </div>
+
+  <h3>Ba chỗ của một instance</h3>
+  <div class="fig">
+  <div class="cap">mỗi instance ở đúng một chỗ: stack inactive · bảng active · đã Destroy</div>
+  <svg viewBox="0 0 900 310" role="img" aria-label="Warm đưa instance vào stack inactive; Get chuyển sang bảng active, stack rỗng thì Instantiate; Return đưa về stack; Return khi đầy và ReleaseAll thì Destroy">
+    <rect x="10" y="130" width="160" height="60" rx="8" class="sv-sdk"/>
+    <text x="90" y="157" class="sv-tb" text-anchor="middle">Prefab đã load</text>
+    <text x="90" y="177" class="sv-s" text-anchor="middle">AssetReference</text>
+
+    <rect x="330" y="40" width="220" height="64" rx="8" class="sv-ok"/>
+    <text x="440" y="67" class="sv-tb" text-anchor="middle">Stack inactive</text>
+    <text x="440" y="87" class="sv-s" text-anchor="middle">con của pool · tắt</text>
+
+    <rect x="330" y="220" width="220" height="64" rx="8" class="sv-prj"/>
+    <text x="440" y="247" class="sv-tb" text-anchor="middle">Bảng active</text>
+    <text x="440" y="267" class="sv-s" text-anchor="middle">con của parent · bật</text>
+
+    <rect x="700" y="130" width="170" height="60" rx="8" class="sv-bad"/>
+    <text x="785" y="157" class="sv-tb" text-anchor="middle">Destroy</text>
+    <text x="785" y="177" class="sv-s" text-anchor="middle">cuối frame</text>
+
+    <path d="M170 145 L250 145 L250 72 L324 72" class="sv-ln"/><path d="M330 72 l-8 -5 v10 z" class="sv-ac"/>
+    <text x="245" y="60" class="sv-s" text-anchor="middle">Warm × initialPoolSize</text>
+
+    <path d="M170 175 L250 175 L250 252 L324 252" class="sv-ln"/><path d="M330 252 l-8 -5 v10 z" class="sv-ac"/>
+    <text x="250" y="272" class="sv-s" text-anchor="middle">Get, stack rỗng</text>
+    <text x="250" y="288" class="sv-s" text-anchor="middle">Instantiate</text>
+
+    <path d="M410 104 L410 214" class="sv-lnac"/><path d="M410 220 l-5 -8 h10 z" class="sv-ac"/>
+    <text x="400" y="166" class="sv-s" text-anchor="end">Get (pop)</text>
+
+    <path d="M470 220 L470 110" class="sv-lngr"/><path d="M470 104 l-5 8 h10 z" class="sv-gr"/>
+    <text x="480" y="166" class="sv-s">Return</text>
+
+    <path d="M550 72 L785 72 L785 124" class="sv-ln"/><path d="M785 130 l-5 -8 h10 z" class="sv-rd"/>
+    <text x="665" y="62" class="sv-s" text-anchor="middle">ReleaseAll</text>
+
+    <path d="M550 252 L785 252 L785 196" class="sv-ln"/><path d="M785 190 l-5 8 h10 z" class="sv-rd"/>
+    <text x="667" y="272" class="sv-s" text-anchor="middle">Return khi stack đầy · ReleaseAll</text>
+  </svg>
+  </div>
+  <div class="tw"><table>
+    <thead><tr><th>Chuyển</th><th>Thứ tự callback Unity và hook</th></tr></thead>
+    <tbody>
+      <tr><td>Warm</td><td><code>Instantiate</code> con của pool → <code>Awake</code>, <code>OnEnable</code> → <code>SetActive(false)</code> → <code>OnDisable</code></td></tr>
+      <tr><td><code>Get</code>, lấy từ stack</td><td><code>SetParent(parent)</code> → <code>SetActive(true)</code> → <code>OnEnable</code> → <code>OnGetFromPool</code></td></tr>
+      <tr><td><code>Get</code>, stack rỗng</td><td><code>Instantiate</code> ở gốc scene → <code>Awake</code>, <code>OnEnable</code> → <code>SetParent(parent)</code> → <code>OnGetFromPool</code></td></tr>
+      <tr><td><code>Return</code></td><td><code>OnReturnToPool</code> → <code>SetActive(false)</code> → <code>OnDisable</code> → <code>SetParent(pool)</code></td></tr>
+      <tr><td><code>Return</code>, stack đầy</td><td><code>OnReturnToPool</code> → <code>Destroy</code> (cuối frame <code>OnDisable</code>, <code>OnDestroy</code>)</td></tr>
+      <tr><td><code>ReleaseAll</code></td><td><code>Destroy</code> (cuối frame <code>OnDisable</code>, <code>OnDestroy</code>); <strong>không</strong> <code>OnReturnToPool</code></td></tr>
+    </tbody>
+  </table></div>
+  <p>Prefab gốc active thì <code>Awake</code>/<code>OnEnable</code> chạy ngay lúc <code>Instantiate</code>.</p>
+
+  <h3>Warm một config</h3>
+  <div class="fig">
+  <div class="cap">WarmAsync ─► WarmOneAsync cho mọi config, song song</div>
+  <svg viewBox="0 0 900 290" role="img" aria-label="Mỗi config qua năm kiểm: key đã có, prefab trống, load, có IPoolable, thêm key; hỏng bước nào thì bỏ config đó, qua hết thì tạo sẵn initialPoolSize instance">
+    <rect x="10" y="40" width="160" height="56" rx="8" class="sv-box"/>
+    <text x="90" y="73" class="sv-tb" text-anchor="middle">key đã có?</text>
+    <path d="M170 68 L179 68" class="sv-ln"/><path d="M185 68 l-6 -4 v8 z" class="sv-ac"/>
+
+    <rect x="185" y="40" width="160" height="56" rx="8" class="sv-box"/>
+    <text x="265" y="73" class="sv-tb" text-anchor="middle">Prefab trống?</text>
+    <path d="M345 68 L354 68" class="sv-ln"/><path d="M360 68 l-6 -4 v8 z" class="sv-ac"/>
+
+    <rect x="360" y="40" width="160" height="56" rx="8" class="sv-sdk"/>
+    <text x="440" y="73" class="sv-m" text-anchor="middle">LoadAssetAsync</text>
+    <path d="M520 68 L529 68" class="sv-ln"/><path d="M535 68 l-6 -4 v8 z" class="sv-ac"/>
+
+    <rect x="535" y="40" width="160" height="56" rx="8" class="sv-box"/>
+    <text x="615" y="73" class="sv-tb" text-anchor="middle">có IPoolable?</text>
+    <path d="M695 68 L704 68" class="sv-ln"/><path d="M710 68 l-6 -4 v8 z" class="sv-ac"/>
+
+    <rect x="710" y="40" width="160" height="56" rx="8" class="sv-box"/>
+    <text x="790" y="73" class="sv-tb" text-anchor="middle">thêm key</text>
+
+    <path d="M90 96 L90 204" class="sv-lnrd"/><path d="M90 210 l-5 -8 h10 z" class="sv-rd"/>
+    <text x="98" y="150" class="sv-s">đã có</text>
+    <path d="M265 96 L265 204" class="sv-lnrd"/><path d="M265 210 l-5 -8 h10 z" class="sv-rd"/>
+    <text x="273" y="150" class="sv-s">trống</text>
+    <path d="M440 96 L440 204" class="sv-lnrd"/><path d="M440 210 l-5 -8 h10 z" class="sv-rd"/>
+    <text x="448" y="150" class="sv-s">huỷ / lỗi</text>
+    <path d="M615 96 L615 204" class="sv-lnrd"/><path d="M615 210 l-5 -8 h10 z" class="sv-rd"/>
+    <text x="623" y="150" class="sv-s">thiếu</text>
+    <path d="M740 96 L740 180 L665 180 L665 204" class="sv-lnrd"/><path d="M665 210 l-5 -8 h10 z" class="sv-rd"/>
+    <text x="748" y="150" class="sv-s">trùng</text>
+
+    <rect x="10" y="210" width="680" height="50" rx="8" class="sv-bad"/>
+    <text x="350" y="240" class="sv-tb" text-anchor="middle">bỏ config này · config khác vẫn warm</text>
+
+    <path d="M830 96 L830 204" class="sv-lngr"/><path d="M830 210 l-5 -8 h10 z" class="sv-gr"/>
+    <rect x="720" y="210" width="170" height="50" rx="8" class="sv-ok"/>
+    <text x="805" y="232" class="sv-tb" text-anchor="middle">Instantiate × N</text>
+    <text x="805" y="250" class="sv-s" text-anchor="middle">tắt, con của pool</text>
+  </svg>
+  </div>
+  <div class="tw"><table>
+    <thead><tr><th>Nhánh</th><th>Xử lý</th></tr></thead>
+    <tbody>
+      <tr><td>key đã có (warm lần hai mà chưa <code>ReleaseAll</code>)</td><td><code>LogError</code> <code>Pool {key} has already existed.</code></td></tr>
+      <tr><td>ô <strong>Prefab</strong> trống</td><td><code>LogError</code> <code>Prefab {key} is invalid.</code></td></tr>
+      <tr><td>load bị huỷ (<code>ReleaseAll</code>, hoặc <code>ct</code> của caller)</td><td><code>ReleaseAsset</code>, không log, không ném</td></tr>
+      <tr><td>load lỗi</td><td><code>ReleaseAsset</code>; ngoại lệ ném tiếp ra <code>WarmAsync</code></td></tr>
+      <tr><td>prefab thiếu <code>IPoolable</code></td><td><code>LogError</code> <code>prefab {name} of {key} doesn't implement IPoolable.</code>, <code>ReleaseAsset</code></td></tr>
+      <tr><td>hai config cùng key</td><td><code>LogError</code> <code>Pool with key '{key}' already exists.</code>, <code>ReleaseAsset</code></td></tr>
+      <tr><td>qua hết</td><td>tạo sẵn <code>initialPoolSize</code> instance, tắt, con của pool</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>Get và Return</h3>
+  <div class="fig">
+  <div class="cap">Get(key, parent) · Return(instance)</div>
+  <svg viewBox="0 0 900 340" role="img" aria-label="Get: tra key, lấy từ stack hoặc Instantiate, SetParent, ép kiểu T, vào bảng active, bật, OnGetFromPool. Return: tra bảng active, kiểm còn sống, OnReturnToPool, stack đầy thì Destroy, chưa đầy thì tắt, về con của pool, Push">
+    <text x="10" y="22" class="sv-tb sv-ac">Get</text>
+    <rect x="10" y="34" width="118" height="52" rx="8" class="sv-box"/>
+    <text x="69" y="64" class="sv-t" text-anchor="middle">tra key</text>
+    <rect x="138" y="34" width="118" height="52" rx="8" class="sv-sdk"/>
+    <text x="197" y="56" class="sv-t" text-anchor="middle">pop</text>
+    <text x="197" y="74" class="sv-s" text-anchor="middle">rỗng ⇒ Instantiate</text>
+    <rect x="266" y="34" width="118" height="52" rx="8" class="sv-box"/>
+    <text x="325" y="64" class="sv-m" text-anchor="middle">SetParent</text>
+    <rect x="394" y="34" width="118" height="52" rx="8" class="sv-box"/>
+    <text x="453" y="64" class="sv-t" text-anchor="middle">ép kiểu T</text>
+    <rect x="522" y="34" width="118" height="52" rx="8" class="sv-box"/>
+    <text x="581" y="64" class="sv-t" text-anchor="middle">vào bảng active</text>
+    <rect x="650" y="34" width="118" height="52" rx="8" class="sv-box"/>
+    <text x="709" y="64" class="sv-m" text-anchor="middle">SetActive(true)</text>
+    <rect x="778" y="34" width="112" height="52" rx="8" class="sv-ok"/>
+    <text x="834" y="64" class="sv-m" text-anchor="middle">OnGetFromPool</text>
+    <path d="M128 60 L132 60" class="sv-ln"/><path d="M138 60 l-6 -4 v8 z" class="sv-ac"/>
+    <path d="M256 60 L260 60" class="sv-ln"/><path d="M266 60 l-6 -4 v8 z" class="sv-ac"/>
+    <path d="M384 60 L388 60" class="sv-ln"/><path d="M394 60 l-6 -4 v8 z" class="sv-ac"/>
+    <path d="M512 60 L516 60" class="sv-ln"/><path d="M522 60 l-6 -4 v8 z" class="sv-ac"/>
+    <path d="M640 60 L644 60" class="sv-ln"/><path d="M650 60 l-6 -4 v8 z" class="sv-ac"/>
+    <path d="M768 60 L772 60" class="sv-ln"/><path d="M778 60 l-6 -4 v8 z" class="sv-ac"/>
+
+    <path d="M69 86 L69 112" class="sv-lnrd"/>
+    <text x="69" y="128" class="sv-s sv-rd" text-anchor="middle">không có ⇒ null</text>
+    <path d="M453 86 L453 112" class="sv-lnrd"/>
+    <text x="453" y="128" class="sv-s sv-rd" text-anchor="middle">sai ⇒ InvalidCastException</text>
+
+    <text x="10" y="182" class="sv-tb sv-gr">Return</text>
+    <rect x="10" y="194" width="118" height="52" rx="8" class="sv-box"/>
+    <text x="69" y="224" class="sv-t" text-anchor="middle">tra bảng active</text>
+    <rect x="138" y="194" width="118" height="52" rx="8" class="sv-box"/>
+    <text x="197" y="224" class="sv-t" text-anchor="middle">còn sống?</text>
+    <rect x="266" y="194" width="118" height="52" rx="8" class="sv-ok"/>
+    <text x="325" y="224" class="sv-m" text-anchor="middle">OnReturnToPool</text>
+    <rect x="394" y="194" width="118" height="52" rx="8" class="sv-box"/>
+    <text x="453" y="224" class="sv-t" text-anchor="middle">stack đầy?</text>
+    <rect x="522" y="194" width="118" height="52" rx="8" class="sv-box"/>
+    <text x="581" y="224" class="sv-m" text-anchor="middle">SetActive(false)</text>
+    <rect x="650" y="194" width="118" height="52" rx="8" class="sv-box"/>
+    <text x="709" y="224" class="sv-m" text-anchor="middle">SetParent(pool)</text>
+    <rect x="778" y="194" width="112" height="52" rx="8" class="sv-ok"/>
+    <text x="834" y="224" class="sv-m" text-anchor="middle">Push</text>
+    <path d="M128 220 L132 220" class="sv-ln"/><path d="M138 220 l-6 -4 v8 z" class="sv-ac"/>
+    <path d="M256 220 L260 220" class="sv-ln"/><path d="M266 220 l-6 -4 v8 z" class="sv-ac"/>
+    <path d="M384 220 L388 220" class="sv-ln"/><path d="M394 220 l-6 -4 v8 z" class="sv-ac"/>
+    <path d="M512 220 L516 220" class="sv-ln"/><path d="M522 220 l-6 -4 v8 z" class="sv-ac"/>
+    <path d="M640 220 L644 220" class="sv-ln"/><path d="M650 220 l-6 -4 v8 z" class="sv-ac"/>
+    <path d="M768 220 L772 220" class="sv-ln"/><path d="M778 220 l-6 -4 v8 z" class="sv-ac"/>
+
+    <path d="M69 246 L69 272" class="sv-lnrd"/>
+    <text x="69" y="288" class="sv-s sv-rd" text-anchor="middle">không có ⇒ LogError</text>
+    <path d="M197 246 L197 272" class="sv-lnrd"/>
+    <text x="197" y="288" class="sv-s sv-rd" text-anchor="middle">đã chết ⇒ LogError</text>
+    <path d="M453 246 L453 274" class="sv-lnor"/><path d="M453 280 l-5 -8 h10 z" class="sv-or"/>
+    <rect x="394" y="280" width="118" height="44" rx="8" class="sv-bad"/>
+    <text x="453" y="307" class="sv-m" text-anchor="middle">Destroy</text>
+    <text x="462" y="264" class="sv-s">đầy</text>
+  </svg>
+  </div>
+</section>
+
+<!-- ============ LƯU Ý ============ -->
+<section id="luu-y">
+  <h2>Lưu ý</h2>
+  <div class="tw"><table>
+    <thead><tr><th></th><th>Chỗ</th><th>Sự thật</th></tr></thead>
+    <tbody>
+      <tr><td><span class="tag t-bad">bẫy</span></td><td><strong><code>ReleaseAll</code> không gọi <code>OnReturnToPool</code></strong></td><td>Dọn dẹp bắt buộc (huỷ đăng ký event, dừng tween) đặt ở chỗ cả <code>OnReturnToPool</code> lẫn <code>OnDestroy</code> cùng gọi</td></tr>
+      <tr><td><span class="tag t-bad">bẫy</span></td><td><strong><code>OnEnable</code> không phải lúc bắt đầu dùng</strong></td><td><code>OnEnable</code> chạy cả lúc warm, và chạy <strong>trước</strong> <code>OnGetFromPool</code> khi lấy từ stack → logic bắt đầu vòng đời đặt trong <code>OnGetFromPool</code></td></tr>
+      <tr><td><span class="tag t-bad">bẫy</span></td><td><strong><code>Return</code> trong <code>OnDestroy</code></strong></td><td><code>ReleaseAll</code> đã xoá bảng trước khi <code>OnDestroy</code> chạy: <code>LogError</code> <code>was not found in any pool</code> cho từng instance</td></tr>
+      <tr><td><span class="tag t-bad">bẫy</span></td><td><strong>Lớp con viết <code>OnDestroy</code></strong></td><td>Che <code>OnDestroy</code> private của base: huỷ service không <code>ReleaseAll</code>, bundle prefab nằm lại memory</td></tr>
+      <tr><td><span class="tag t-bad">bẫy</span></td><td><strong><code>T</code> sai khi <code>Get</code></strong></td><td><code>InvalidCastException</code>; instance đã <code>SetParent(parent)</code>, không vào bảng nào, <code>ReleaseAll</code> không huỷ nó</td></tr>
+      <tr><td><span class="tag t-bad">bẫy</span></td><td><strong>Cha bị huỷ trước <code>Return</code></strong></td><td>Instance chết theo; <code>Return</code> trước khi unload scene hay <code>Destroy</code> root level</td></tr>
+      <tr><td><span class="tag t-bad">bẫy</span></td><td><strong>Giữ tham chiếu sau <code>Return</code></strong></td><td>Instance có thể bị lấy ra cho chỗ khác, hoặc bị <code>Destroy</code> khi stack đầy</td></tr>
+      <tr><td><span class="tag t-info">biết</span></td><td><strong><code>maxPoolSize</code> chỉ chặn stack inactive</strong></td><td><code>Get</code> khi stack rỗng luôn <code>Instantiate</code> thêm; <code>Return</code> cắt đỉnh tạm thời về <code>maxPoolSize</code></td></tr>
+      <tr><td><span class="tag t-info">biết</span></td><td><strong>Vị trí sau <code>Get</code></strong></td><td><code>SetParent</code> giữ world transform → caller tự đặt vị trí</td></tr>
+      <tr><td><span class="tag t-info">biết</span></td><td><strong><code>await WarmAsync</code> không ném khi bị huỷ</strong></td><td>Caller không phân biệt được warm xong hay bị huỷ; load lỗi thì ném</td></tr>
+      <tr><td><span class="tag t-info">biết</span></td><td><strong><code>initialPoolSize &gt; maxPoolSize</code></strong></td><td>Warm tạo đủ <code>initialPoolSize</code>; <code>Return</code> <code>Destroy</code> cho tới khi stack dưới <code>maxPoolSize</code></td></tr>
+      <tr><td><span class="tag t-info">biết</span></td><td><strong><code>Get</code> với <code>parent</code> là <code>null</code></strong></td><td>Instance nằm ở gốc scene</td></tr>
+      <tr><td><span class="tag t-info">biết</span></td><td><strong><code>Return(null)</code></strong></td><td><code>ArgumentNullException</code> từ <code>Dictionary.Remove</code></td></tr>
+      <tr><td><span class="tag t-ok">nên</span></td><td><strong>Key enum</strong></td><td>Số tường minh từ <code>= 1</code>; chỉ thêm ở cuối</td></tr>
+      <tr><td><span class="tag t-ok">nên</span></td><td><strong>Sau mỗi lần sửa Pool Configs</strong></td><td>Bấm <strong>Validate Configs</strong>; config chỉ bị kiểm lúc warm nếu bỏ qua bước này</td></tr>
+      <tr><td><span class="tag t-ok">nên</span></td><td><strong>Một nơi gọi <code>Return</code></strong></td><td>Mỗi instance chỉ một chỗ trả; <code>Return</code> hai lần chỉ để lại <code>LogError</code></td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>Chẩn đoán</h3>
+  <div class="tw"><table>
+    <thead><tr><th>Log <code>[PoolService]: …</code></th><th>Nguyên nhân</th></tr></thead>
+    <tbody>
+      <tr><td><code>pool '{key}' has not been warmed.</code></td><td><code>Get</code> trước <code>WarmAsync</code>, sau <code>ReleaseAll</code>, warm bị huỷ, hoặc config của key lỗi lúc warm</td></tr>
+      <tr><td><code>{instance} was not found in any pool.</code></td><td><code>Return</code> hai lần, object không lấy từ pool, <code>Return</code> sau <code>ReleaseAll</code> (kể cả trong <code>OnDestroy</code>)</td></tr>
+      <tr><td><code>instance in pool {key} has been destroyed before returning.</code></td><td>cha của instance bị huỷ trước khi <code>Return</code> (Trước khi chạy, bước 7)</td></tr>
+      <tr><td><code>An instance in pool {key} is destroyed, skip.</code></td><td>có chỗ <code>Destroy</code> instance sau khi đã <code>Return</code></td></tr>
+      <tr><td><code>WarmAsync is running, skip overlap calling.</code></td><td>gọi <code>WarmAsync</code> khi lần trước chưa xong</td></tr>
+      <tr><td><code>Pool {key} has already existed.</code></td><td><code>WarmAsync</code> lần hai mà chưa <code>ReleaseAll</code></td></tr>
+      <tr><td><code>Prefab {key} is invalid.</code></td><td>ô <strong>Prefab</strong> trống</td></tr>
+      <tr><td><code>prefab {name} of {key} doesn't implement IPoolable.</code></td><td>prefab thiếu component <code>IPoolable</code> trên GameObject gốc</td></tr>
+      <tr><td><code>Pool with key '{key}' already exists.</code></td><td>hai phần tử <strong>Pool Configs</strong> cùng <strong>Key</strong></td></tr>
+      <tr><td><code>poolConfigs[{i}] '{key}' has not assigned prefab yet.</code></td><td>từ <strong>Validate Configs</strong>: ô <strong>Prefab</strong> trống</td></tr>
+      <tr><td><code>poolConfigs[{j}] and [{i}] have the same key '{key}'.</code></td><td>từ <strong>Validate Configs</strong>: key trùng</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+</main>
+<footer>Horcrux · Pooling · Horcrux.Runtime.Implementations.Pooling · nguồn: Pooling.md</footer>
+</body>
+</html>
