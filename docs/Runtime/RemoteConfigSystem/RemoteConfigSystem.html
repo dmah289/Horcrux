@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Remote Config</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#0d1117;--bg2:#161b22;--bg3:#1c2333;--bg4:#242d3a;--tx:#e6edf3;--tx2:#8b949e;--tx3:#484f58;--ac:#58a6ff;--ac2:#bc8cff;--gr:#3fb950;--or:#d29922;--rd:#f85149;--bd:#30363d;--r:10px;--mono:'JetBrains Mono','Fira Code',Consolas,monospace;--sans:'Inter','Segoe UI',system-ui,sans-serif}
+html{scroll-behavior:smooth;background:var(--bg);color:var(--tx);font:16px/1.65 var(--sans)}
+body{background:var(--bg);overflow-x:hidden}
+a{color:var(--ac);text-decoration:none}a:hover{text-decoration:underline}
+#header{max-width:960px;margin:0 auto;padding:3.5rem 1rem 1.5rem;border-bottom:1px solid var(--bd)}
+#header h1{font-size:clamp(2rem,5vw,2.8rem);font-weight:800;letter-spacing:-.03em;color:var(--ac)}
+#header .sub{color:var(--tx2);margin-top:.4rem}
+.badge{display:inline-block;margin:.8rem .4rem 0 0;padding:.25em .8em;border:1px solid var(--bd);border-radius:99px;font-family:var(--mono);font-size:.75rem;color:var(--tx2)}
+#toc{max-width:960px;margin:2rem auto 0;padding:0 1rem}
+#toc h2{font-size:1.15rem;border:none;margin-bottom:.6rem}
+#toc ol{columns:3;column-gap:2rem;padding-left:1.4em}
+#toc li{font-size:.9rem;margin-bottom:.25rem;break-inside:avoid}
+@media(max-width:760px){#toc ol{columns:2}}
+@media(max-width:480px){#toc ol{columns:1}}
+main{max-width:960px;margin:0 auto;padding:0 1rem 5rem}
+section{padding-top:3.2rem}
+h2{font-size:1.65rem;font-weight:700;letter-spacing:-.02em;margin-bottom:1.1rem;padding-bottom:.45rem;border-bottom:1px solid var(--bd)}
+h3{font-size:1.15rem;font-weight:600;margin:2rem 0 .8rem;color:var(--ac)}
+h4{font-size:1rem;font-weight:600;margin:1.6rem 0 .7rem}
+p,ul,ol{margin-bottom:.9rem}ul,ol{padding-left:1.3em}li{margin-bottom:.25rem}
+strong{color:var(--tx);font-weight:600}
+em{color:var(--ac2);font-style:normal}
+code{font-family:var(--mono);font-size:.86em;background:var(--bg3);padding:.1em .35em;border-radius:4px;overflow-wrap:anywhere}
+pre{background:var(--bg3);border:1px solid var(--bd);border-radius:var(--r);padding:1rem 1.1rem;margin:1rem 0;overflow-x:auto}
+pre code{background:none;padding:0;font-size:.83rem;line-height:1.6;overflow-wrap:normal}
+.tw{overflow-x:auto;margin:1rem 0}
+table{width:100%;border-collapse:collapse;font-size:.88rem}
+th{text-align:left;padding:.55rem .7rem;border-bottom:2px solid var(--bd);color:var(--ac);font-weight:600;vertical-align:bottom}
+td{padding:.5rem .7rem;border-bottom:1px solid var(--bd);vertical-align:top}
+tr:last-child td{border-bottom:none}
+.note{border-left:3px solid var(--ac);background:var(--bg2);padding:.85rem 1.1rem;border-radius:0 var(--r) var(--r) 0;margin:1.2rem 0;font-size:.92rem;color:var(--tx2)}
+.note strong{color:var(--ac)}
+.note.good{border-left-color:var(--gr)}.note.good strong{color:var(--gr)}
+.note.bad{border-left-color:var(--rd)}.note.bad strong{color:var(--rd)}
+.hero{border:1px solid var(--gr);background:var(--bg2);border-radius:var(--r);padding:1.1rem 1.3rem;margin:1.5rem 0}
+.hero .big{font-size:1.25rem;font-weight:700;color:var(--gr)}
+.fig{background:var(--bg2);border:1px solid var(--bd);border-radius:var(--r);padding:1rem;margin:1.3rem 0;overflow-x:auto}
+.fig svg{display:block;width:100%;min-width:680px;height:auto}
+.fig .cap{font-family:var(--mono);font-size:.75rem;color:var(--ac2);text-transform:uppercase;letter-spacing:.07em;margin-bottom:.7rem}
+.arch{font-family:var(--mono);font-size:.8rem;line-height:1.7;white-space:pre;overflow-x:auto;padding:1rem;background:var(--bg3);border-radius:var(--r);color:var(--tx2);margin:1rem 0}
+.steps{counter-reset:s;list-style:none;padding:0}
+.steps>li{counter-increment:s;position:relative;padding:0 0 1.2rem 2.6rem;border-left:2px solid var(--bd);margin-left:.9rem}
+.steps>li:last-child{border-left-color:transparent}
+.steps>li::before{content:counter(s);position:absolute;left:-.95rem;top:0;width:1.8rem;height:1.8rem;border-radius:50%;background:var(--ac);color:var(--bg);font-weight:700;font-size:.85rem;display:flex;align-items:center;justify-content:center}
+.steps>li>strong:first-child{display:block;margin-bottom:.4rem;color:var(--ac)}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:.9rem;margin:1.2rem 0}
+.cell{background:var(--bg3);border-radius:var(--r);padding:1rem;text-align:center}
+.cell .v{font-size:1.35rem;font-weight:800;color:var(--ac);font-family:var(--mono)}
+.cell .l{font-size:.8rem;color:var(--tx2);margin-top:.2rem}
+.tag{display:inline-block;font-family:var(--mono);font-size:.72rem;padding:.05em .5em;border-radius:4px;border:1px solid currentColor}
+.t-ok{color:var(--gr)}.t-warn{color:var(--or)}.t-bad{color:var(--rd)}.t-info{color:var(--ac)}
+/* SVG */
+.sv-box{fill:var(--bg3);stroke:var(--bd);stroke-width:1.5}
+.sv-sdk{fill:var(--bg3);stroke:var(--ac);stroke-width:1.5}
+.sv-prj{fill:var(--bg3);stroke:var(--ac2);stroke-width:1.5}
+.sv-ok{fill:var(--bg3);stroke:var(--gr);stroke-width:1.5}
+.sv-warn{fill:var(--bg3);stroke:var(--or);stroke-width:1.5}
+.sv-bad{fill:var(--bg3);stroke:var(--rd);stroke-width:1.5}
+.sv-disk{fill:var(--bg4);stroke:var(--gr);stroke-width:2}
+.sv-t{fill:var(--tx);font:13px var(--sans)}
+.sv-tb{fill:var(--tx);font:600 13px var(--sans)}
+.sv-m{fill:var(--tx2);font:11.5px var(--mono)}
+.sv-s{fill:var(--tx2);font:11.5px var(--sans)}
+.sv-ac{fill:var(--ac)}.sv-ac2{fill:var(--ac2)}.sv-gr{fill:var(--gr)}.sv-or{fill:var(--or)}.sv-rd{fill:var(--rd)}
+.sv-ln{stroke:var(--tx2);stroke-width:1.5;fill:none}
+.sv-lnac{stroke:var(--ac);stroke-width:1.8;fill:none}
+.sv-lngr{stroke:var(--gr);stroke-width:1.8;fill:none}
+.sv-lnrd{stroke:var(--rd);stroke-width:1.8;fill:none;stroke-dasharray:5 4}
+.sv-lnor{stroke:var(--or);stroke-width:1.8;fill:none}
+.sv-axis{stroke:var(--tx3);stroke-width:1.5}
+.sv-loss{fill:var(--rd);opacity:.18}
+footer{text-align:center;padding:2.5rem 1rem;color:var(--tx3);font-size:.82rem;border-top:1px solid var(--bd)}
+@media print{
+  :root{--bg:#fff;--bg2:#f6f8fa;--bg3:#f0f2f5;--bg4:#e6e9ee;--tx:#111;--tx2:#444;--tx3:#888;--bd:#ccc;--ac:#0b5cc2;--ac2:#7a3fc4;--gr:#1a7f37;--or:#9a6700;--rd:#c62828}
+  #toc{display:none}section{padding-top:1.5rem;break-inside:auto}.fig,table,pre{break-inside:avoid}
+}
+</style>
+</head>
+<body>
+<header id="header">
+  <h1>Remote Config</h1>
+  <p class="sub">Một <code>ScriptableObject</code> của dự án giữ mọi biến remote config; mỗi biến là một <code>RemoteConfig&lt;T&gt;</code>, call site đọc có kiểu đầy đủ.</p>
+  <span class="badge">Horcrux.Runtime.Abstractions.RemoteConfigSystem</span>
+  <span class="badge">Horcrux.Runtime.Implementations.RemoteConfigSystem</span>
+  <span class="badge">Horcrux.Vendors.Firebase</span>
+  <span class="badge">Code: Runtime/Abstractions/Foundations/RemoteConfigSystem/ · Runtime/Implementations/Foundations/RemoteConfigSystem/ · Vendors/Firebase/</span>
+</header>
+
+<nav id="toc"><h2>Mục lục</h2><ol>
+  <li><a href="#tong-quan">Tổng quan</a></li>
+  <li><a href="#kich-ban">Kịch bản</a></li>
+  <li><a href="#cach-dung">Cách dùng</a></li>
+  <li><a href="#flow">Flow</a></li>
+  <li><a href="#luu-y">Lưu ý</a></li>
+</ol></nav>
+
+<main>
+
+<!-- ============ TỔNG QUAN ============ -->
+<section id="tong-quan">
+  <h2>Tổng quan</h2>
+  <div class="fig">
+  <div class="cap">phụ thuộc một chiều: dự án ─► Horcrux</div>
+  <svg viewBox="0 0 900 270" role="img" aria-label="Dự án khai IGameRemoteConfig derive IRemoteConfigCollection, GameRemoteConfig kế thừa BaseRemoteConfigCollection và giữ field RemoteConfig of T, asset nằm trong Resources. BaseRemoteConfigCollection tra IRemoteConfigProvider; FirebaseRemoteConfigProvider cài IRemoteConfigProvider">
+    <text x="145" y="22" class="sv-tb sv-ac2" text-anchor="middle">Dự án — assembly game</text>
+    <text x="455" y="22" class="sv-tb sv-ac" text-anchor="middle">Horcrux — com.horcrux.runtime</text>
+    <text x="765" y="22" class="sv-tb sv-ac" text-anchor="middle">Provider</text>
+
+    <rect x="10" y="40" width="270" height="50" rx="8" class="sv-prj"/>
+    <text x="145" y="62" class="sv-m" text-anchor="middle">IGameRemoteConfig</text>
+    <text x="145" y="80" class="sv-s" text-anchor="middle">1 property mỗi biến</text>
+    <rect x="10" y="120" width="270" height="50" rx="8" class="sv-prj"/>
+    <text x="145" y="142" class="sv-m" text-anchor="middle">GameRemoteConfig</text>
+    <text x="145" y="160" class="sv-s" text-anchor="middle">[Service] · [CreateAssetMenu] · field mỗi biến</text>
+    <rect x="10" y="200" width="270" height="50" rx="8" class="sv-prj"/>
+    <text x="145" y="222" class="sv-m" text-anchor="middle">GameRemoteConfig.asset</text>
+    <text x="145" y="240" class="sv-s" text-anchor="middle">trong Resources/Config/</text>
+
+    <rect x="320" y="40" width="270" height="50" rx="8" class="sv-sdk"/>
+    <text x="455" y="62" class="sv-m" text-anchor="middle">IRemoteConfigCollection</text>
+    <text x="455" y="80" class="sv-s" text-anchor="middle">interface thuần, không IService&lt;&gt;</text>
+    <rect x="320" y="120" width="270" height="50" rx="8" class="sv-sdk"/>
+    <text x="455" y="142" class="sv-m" text-anchor="middle">BaseRemoteConfigCollection</text>
+    <text x="455" y="160" class="sv-s" text-anchor="middle">quét · wire · apply · 2 nút</text>
+    <rect x="320" y="200" width="270" height="50" rx="8" class="sv-sdk"/>
+    <text x="455" y="222" class="sv-m" text-anchor="middle">RemoteConfig&lt;T&gt;</text>
+    <text x="455" y="240" class="sv-s" text-anchor="middle">giá trị · parse · cache PlayerPrefs</text>
+
+    <rect x="630" y="40" width="260" height="50" rx="8" class="sv-sdk"/>
+    <text x="760" y="62" class="sv-m" text-anchor="middle">IRemoteConfigProvider</text>
+    <text x="760" y="80" class="sv-s" text-anchor="middle">hợp đồng nguồn fetch</text>
+    <rect x="630" y="160" width="260" height="50" rx="8" class="sv-box"/>
+    <text x="760" y="182" class="sv-m" text-anchor="middle">FirebaseRemoteConfigProvider</text>
+    <text x="760" y="200" class="sv-s" text-anchor="middle">com.horcrux.firebase</text>
+    <text x="760" y="232" class="sv-s" text-anchor="middle">chỉ compile khi có gói</text>
+    <text x="760" y="248" class="sv-s" text-anchor="middle">com.google.firebase.remote-config</text>
+
+    <path d="M280 65 L314 65" class="sv-ln"/><path d="M320 65 l-8 -5 v10 z" class="sv-ac"/>
+    <path d="M280 145 L314 145" class="sv-ln"/><path d="M320 145 l-8 -5 v10 z" class="sv-ac"/>
+    <path d="M280 160 L300 160 L300 225 L314 225" class="sv-ln"/><path d="M320 225 l-8 -5 v10 z" class="sv-ac"/>
+    <path d="M590 145 L610 145 L610 65 L624 65" class="sv-lnac"/><path d="M630 65 l-8 -5 v10 z" class="sv-ac"/>
+    <text x="604" y="110" class="sv-s" text-anchor="end">TryGet</text>
+    <path d="M760 160 L760 96" class="sv-ln"/><path d="M760 90 l-5 8 h10 z" class="sv-ac"/>
+    <text x="768" y="130" class="sv-s">cài</text>
+  </svg>
+  </div>
+  <div class="tw"><table>
+    <thead><tr><th>Mục</th><th>Chốt</th></tr></thead>
+    <tbody>
+      <tr><td>Ranh giới</td><td>Horcrux giữ: quét field, wire provider, parse, cache, nút Editor, bản provider Firebase. Dự án giữ: interface và class collection, <code>[Service]</code>, <code>[CreateAssetMenu]</code>, đường dẫn Resources, chỗ gọi <code>Initialize</code> và fetch, timeout boot</td></tr>
+      <tr><td>Phụ thuộc</td><td>dự án chỉ gọi tên <code>IRemoteConfigProvider</code>, không gọi tên bản Firebase — gỡ gói Firebase thì asmdef vendor tắt, dự án vẫn compile</td></tr>
+      <tr><td>Tầm sống giá trị</td><td>apply một lần mỗi lượt fetch; giá trị đứng yên suốt phiên</td></tr>
+      <tr><td>Định dạng đường truyền</td><td>chuỗi; kiểu không phải số, <code>bool</code>, <code>enum</code>, <code>string</code> thì JSON. CSV chỉ để author trong Editor</td></tr>
+      <tr><td>Cố ý KHÔNG làm</td><td>tự gọi <code>Initialize</code> · tự fetch · áp lại giá trị giữa phiên · gỡ cache khi key biến khỏi server</td></tr>
+    </tbody>
+  </table></div>
+  <div class="hero"><div class="big">remote → cache <code>PlayerPrefs</code> → Inspector</div>
+  <p style="margin:.5rem 0 0">Dừng ở bậc đầu parse được. Cache chỉ ghi khi parse thành công, nên payload hỏng trên server không phá cache tốt.</p></div>
+</section>
+
+<!-- ============ KỊCH BẢN ============ -->
+<section id="kich-ban">
+  <h2>Kịch bản</h2>
+  <h3>Giá trị nào chạy</h3>
+  <div class="tw"><table>
+    <thead><tr><th>Tình huống</th><th>Giá trị chạy</th></tr></thead>
+    <tbody>
+      <tr><td>máy lần đầu, mất mạng</td><td>Inspector</td></tr>
+      <tr><td>đã từng fetch, lần này mất mạng hay quá hạn</td><td>Firebase activate bản phiên trước nếu có, không thì cache <code>PlayerPrefs</code></td></tr>
+      <tr><td>server gửi chuỗi sai định dạng</td><td>cache <code>PlayerPrefs</code>; cache tốt <strong>không bị ghi đè</strong></td></tr>
+      <tr><td>key bị xoá khỏi console</td><td>máy đã từng fetch giữ giá trị cũ trong <code>PlayerPrefs</code> <strong>mãi</strong>, không về Inspector; máy mới dùng Inspector</td></tr>
+      <tr><td>server gửi chuỗi rỗng</td><td>cache rồi Inspector</td></tr>
+      <tr><td>sửa <strong>Value</strong> trong Inspector, Play trong Editor</td><td>remote hay cache vẫn đè; tắt <strong>Allow Fetching</strong> để thấy giá trị vừa sửa</td></tr>
+      <tr><td><strong>Allow Fetching</strong> tắt</td><td>luôn Inspector, không đọc remote, không đọc cache</td></tr>
+    </tbody>
+  </table></div>
+  <h3>Lúc boot</h3>
+  <div class="tw"><table>
+    <thead><tr><th>Tình huống</th><th>Hệ làm gì</th></tr></thead>
+    <tbody>
+      <tr><td><code>Initialize</code> trước, fetch sau</td><td>subscribe rồi đợi <code>OnFetched</code></td></tr>
+      <tr><td>fetch xong trước <code>Initialize</code></td><td><code>Initialize</code> thấy <code>IsFetched == true</code> và apply ngay trong lời gọi đó</td></tr>
+      <tr><td><code>Initialize()</code> lần hai</td><td>gỡ subscription cũ <strong>trước</strong> khi ghi đè field provider. Giá trị đã apply giữ nguyên, không về Inspector</td></tr>
+      <tr><td>fetch quá <code>timeout</code></td><td>activate bản đang giữ; fetch chạy tiếp, về muộn thì để phiên sau</td></tr>
+      <tr><td>gọi fetch lần thứ hai</td><td>trả về <strong>ngay</strong>, không chờ lời gọi đầu</td></tr>
+      <tr><td>chưa gọi <code>Initialize</code></td><td><code>RemoteConfigs</code> rỗng, không wire provider: mọi biến đứng ở giá trị Inspector, không log</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<!-- ============ CÁCH DÙNG ============ -->
+<section id="cach-dung">
+  <h2>Cách dùng</h2>
+
+  <h3>Trước khi chạy</h3>
+  <p>Dựng từ 0 theo thứ tự; mỗi bước kèm chỗ hỏng nếu thiếu.</p>
+  <ol class="steps">
+    <li><strong>Provider.</strong> Dự án có gói <code>com.google.firebase.remote-config</code> thì không viết gì: asmdef <code>com.horcrux.firebase</code> bật qua define <code>HORCRUX_FIREBASE_REMOTE_CONFIG</code> và <code>FirebaseRemoteConfigProvider</code> tự đăng ký <code>[Service(typeof(IRemoteConfigProvider))]</code>. Vendor khác: tự cài <code>IRemoteConfigProvider</code> theo hợp đồng ở <a href="#hop-dong">Hợp đồng provider</a>, mang <code>[Service(typeof(IRemoteConfigProvider))]</code>.</li>
+    <li><strong>Interface collection.</strong> Trong assembly dự án:
+<pre><code>public partial interface IGameRemoteConfig : IRemoteConfigCollection, IService&lt;IGameRemoteConfig&gt; { }</code></pre></li>
+    <li><strong>Class collection.</strong> Cùng namespace với interface:
+<pre><code>[Service(typeof(IGameRemoteConfig), ResourcePath = RESOURCE_PATH)]
+[CreateAssetMenu(fileName = "GameRemoteConfig", menuName = "Configs/GameRemoteConfig")]
+public partial class GameRemoteConfig : BaseRemoteConfigCollection, IGameRemoteConfig
+{
+    private const string RESOURCE_PATH = "Config/GameRemoteConfig";
+}</code></pre>
+      <code>partial</code> để chia biến theo nhóm ra nhiều file (<code>GameRemoteConfig.Level.cs</code>…), mỗi nhóm một cặp file class + interface.</li>
+    <li><strong>Asset.</strong> Project window → <strong>Create</strong> → <strong>Configs</strong> → <strong>GameRemoteConfig</strong>, đặt ở <code>Assets/…/Resources/Config/GameRemoteConfig.asset</code>. Đường dẫn sau <code>Resources/</code>, bỏ đuôi, phải bằng <code>RESOURCE_PATH</code>.</li>
+    <li><strong>Mỗi biến.</strong> Hai chỗ, luôn đi cùng nhau:
+<pre><code>public partial interface IGameRemoteConfig
+{
+    RemoteConfig&lt;int&gt; MaxRetryCount { get; }
+}
+
+public partial class GameRemoteConfig
+{
+    [Splitter("Level")]                       // tuỳ chọn — tiêu đề nhóm trong Inspector
+    [MarkedRemoteConfig]
+    [SerializeField] private RemoteConfig&lt;int&gt; maxRetryCount;
+
+    public RemoteConfig&lt;int&gt; MaxRetryCount =&gt; maxRetryCount;
+}</code></pre>
+      Chọn asset, trong Inspector điền <strong>Firebase Key</strong>, <strong>Allow Fetching</strong>, <strong>Value</strong> của biến đó.</li>
+    <li><strong>Màn boot.</strong> Gọi <code>Initialize</code>, rồi fetch và chờ xong mới vào game:
+<pre><code>IGameRemoteConfig.Service.Initialize();
+await remoteConfigProvider.FetchAndActivateAsync(TimeSpan.FromSeconds(2), destroyCancellationToken);</code></pre>
+      <code>remoteConfigProvider</code> nhận qua InitArgs hoặc <code>IRemoteConfigProvider.Service</code>. Thứ tự hai lời gọi không quan trọng.</li>
+    <li><strong>Console Firebase.</strong> Khai cùng key, giá trị cùng định dạng ở <a href="#parse">Parse theo kiểu T</a>. Chạy tool <code>RemoteConfigDiff</code> (<code>docs/Editor/RemoteConfigDiff.md</code>) để so asset với template console.</li>
+  </ol>
+  <div class="tw"><table>
+    <thead><tr><th>Thiếu</th><th>Hỏng ở đâu</th></tr></thead>
+    <tbody>
+      <tr><td>bước 1</td><td><code>Initialize</code> log <code>No IRemoteConfigProvider found in the scene…</code>; mọi biến đứng ở giá trị Inspector</td></tr>
+      <tr><td>bước 2, interface derive thêm <code>IService&lt;&gt;</code> qua <code>IRemoteConfigCollection</code></td><td>lỗi biên dịch CS0229 ở mọi <code>.Service</code></td></tr>
+      <tr><td>bước 3, <code>[Service]</code> khai ở lớp cha thay vì class dự án</td><td>không đăng ký: <code>IGameRemoteConfig.Service</code> ném ở lần chạm đầu</td></tr>
+      <tr><td>bước 4, sai đường dẫn hay thiếu asset</td><td><code>IGameRemoteConfig.Service</code> ném ở lần chạm đầu</td></tr>
+      <tr><td>bước 5, thiếu <code>[MarkedRemoteConfig]</code></td><td>biến không vào <code>RemoteConfigs</code>, <strong>không log</strong>: đứng ở giá trị Inspector mãi</td></tr>
+      <tr><td>bước 5, field <code>public</code></td><td>quét chỉ lấy field non-public: biến bị bỏ, <strong>không log</strong></td></tr>
+      <tr><td>bước 5, field khai <code>private</code> ở lớp cha của class dự án</td><td>quét không thấy private của lớp cha: biến bị bỏ, <strong>không log</strong></td></tr>
+      <tr><td>bước 5, thiếu property trên interface</td><td>call site không đọc được biến qua <code>IGameRemoteConfig</code></td></tr>
+      <tr><td>bước 5, <strong>Firebase Key</strong> trống hay sai</td><td>mỗi lượt apply log <code>Can't find remote config value for key …</code>, biến rơi về cache rồi Inspector</td></tr>
+      <tr><td>bước 6, không gọi <code>Initialize</code></td><td><code>RemoteConfigs</code> rỗng, không wire provider: mọi biến đứng ở giá trị Inspector, không log</td></tr>
+      <tr><td>bước 6, không chờ fetch</td><td>call site đọc trước apply: giá trị Inspector, rồi đổi giữa chừng khi apply</td></tr>
+      <tr><td>bước 7, key thiếu trên console</td><td><code>LogError</code> mỗi lần boot, biến rơi về cache rồi Inspector</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>Gọi gì, khi nào</h3>
+  <p>Truy cập qua <code>IGameRemoteConfig.Service</code> (thiếu thì ném) hoặc <code>IGameRemoteConfig.TryGet(out var rc)</code>.</p>
+  <div class="tw"><table>
+    <thead><tr><th>Ai gọi</th><th>Gọi</th><th>Nhận được</th></tr></thead>
+    <tbody>
+      <tr><td>màn boot</td><td><code>void Initialize()</code></td><td>quét field, wire provider; provider đã fetch thì apply ngay</td></tr>
+      <tr><td>màn boot</td><td><code>UniTask FetchAndActivateAsync(TimeSpan timeout, CancellationToken ct)</code></td><td>trên provider. Người gọi chọn <code>timeout</code> vì đó là luật boot của game</td></tr>
+      <tr><td>call site</td><td><code>RemoteConfig&lt;T&gt;</code> qua property interface</td><td><code>implicit operator T</code> (biến null → <code>default</code>) hoặc <code>.Value</code></td></tr>
+      <tr><td>call site</td><td><code>bool AllRemoteConfigsApplied</code></td><td><code>true</code> sau lượt apply đầu; <code>Initialize</code> đặt lại <code>false</code>. Nghĩa là <strong>đã chạy apply</strong>, không phải remote đã về</td></tr>
+      <tr><td>dự án</td><td><code>protected virtual void OnRemoteConfigsApplied()</code></td><td>chạy một lần sau khi apply xong mọi biến. <code>override</code> thì <strong>gọi <code>base</code></strong></td></tr>
+      <tr><td>dự án</td><td><code>protected virtual void OnDestroy()</code></td><td>gỡ subscription. <code>override</code> thì <strong>gọi <code>base</code></strong></td></tr>
+    </tbody>
+  </table></div>
+<pre><code>int a = IGameRemoteConfig.Service.MaxRetryCount;         // implicit operator T
+int b = IGameRemoteConfig.Service.MaxRetryCount.Value;   // tường minh
+
+protected override void OnRemoteConfigsApplied()
+{
+    base.OnRemoteConfigsApplied();
+    // parse JSON thành model, bắn event…
+}</code></pre>
+
+  <h3 id="parse">Parse theo kiểu T</h3>
+  <p>Cùng một hàm cho remote, cache, nút <strong>Import Json</strong> và tool <code>RemoteConfigDiff</code>.</p>
+  <div class="tw"><table>
+    <thead><tr><th>T</th><th>Cách parse</th><th>Chú ý</th></tr></thead>
+    <tbody>
+      <tr><td><code>string</code></td><td>nguyên chuỗi</td><td></td></tr>
+      <tr><td><code>enum</code></td><td><code>Enum.Parse</code></td><td>phân biệt hoa thường; nhận cả số, kể cả số không khai trong enum</td></tr>
+      <tr><td><code>int</code> · <code>long</code></td><td><code>Parse</code></td><td></td></tr>
+      <tr><td><code>bool</code></td><td><code>bool.Parse</code></td><td>nhận <code>true</code>/<code>false</code> không phân biệt hoa thường; <code>1</code>/<code>0</code> là trượt</td></tr>
+      <tr><td><code>float</code> · <code>double</code></td><td><code>Parse</code> với <code>InvariantCulture</code></td><td>server phải dùng dấu chấm</td></tr>
+      <tr><td>còn lại</td><td><code>JsonConvert.DeserializeObject&lt;T&gt;</code></td><td>khớp tên property không phân biệt hoa thường, không đổi tên: đổi tên field thì key cũ trên server rơi thành <code>default</code> <strong>im lặng</strong>. Key thừa bị bỏ qua</td></tr>
+    </tbody>
+  </table></div>
+  <p>Giá trị có cấu trúc khai <code>RemoteConfig&lt;MyData&gt;</code> với class dữ liệu thuần, không <code>RemoteConfig&lt;string&gt;</code> rồi tự parse. JSON hỏng thì hệ tự <code>LogError</code> và giữ cache; consumer không <code>try/catch</code>.</p>
+
+  <h3>Inspector và nút Editor</h3>
+  <div class="tw"><table>
+    <thead><tr><th>Ô trên mỗi biến</th><th>Nghĩa</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Firebase Key</strong></td><td>key trên server; cũng là key <code>PlayerPrefs</code></td></tr>
+      <tr><td><strong>Allow Fetching</strong></td><td>tắt = chốt giá trị Inspector</td></tr>
+      <tr><td><strong>Value</strong></td><td>mặc định, và là giá trị đang chạy sau apply</td></tr>
+      <tr><td><strong>Fetched</strong></td><td>chỉ đọc: <code>true</code> = giá trị đến từ remote ở lượt vừa rồi</td></tr>
+      <tr><td><strong>Value To Import</strong></td><td>ô dán JSON/CSV, <code>[NonSerialized]</code></td></tr>
+    </tbody>
+  </table></div>
+  <div class="tw"><table>
+    <thead><tr><th>Nút</th><th>Ở đâu</th><th>Làm gì</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Copy Json To Clipboard</strong></td><td>mỗi biến</td><td>copy <strong>Value</strong> ra JSON indent — dán thẳng lên console</td></tr>
+      <tr><td><strong>Import Json</strong></td><td>mỗi biến</td><td>parse <strong>Value To Import</strong>, ghi vào <strong>Value</strong>; hỏng thì <code>LogError</code>, không ghi</td></tr>
+      <tr><td><strong>Copy Csv To Clipboard</strong></td><td>mỗi biến</td><td>copy <strong>Value</strong> ra CSV, header trước</td></tr>
+      <tr><td><strong>Import Csv</strong></td><td>mỗi biến</td><td>parse <strong>Value To Import</strong> như CSV — <strong>all-or-nothing</strong></td></tr>
+      <tr><td><strong>Search Firebase Key Usage</strong></td><td>collection</td><td>log field <strong>đầu tiên</strong> mang key; không thấy thì không log gì</td></tr>
+      <tr><td><strong>Enable All Fetching</strong></td><td>collection</td><td>bật <strong>Allow Fetching</strong> cho mọi biến</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>CSV</h3>
+  <div class="tw"><table>
+    <thead><tr><th>Mục</th><th>Luật</th></tr></thead>
+    <tbody>
+      <tr><td>Hình dạng nhận</td><td>một scalar · một object phẳng (một dòng) · <code>List&lt;&gt;</code> của scalar hay object phẳng (nhiều dòng)</td></tr>
+      <tr><td>Kiểu cell</td><td><code>enum</code> · <code>string</code> · <code>int</code> · <code>long</code> · <code>float</code> · <code>double</code> · <code>bool</code></td></tr>
+      <tr><td>Cột</td><td>field Unity serialize: <code>public</code>, hoặc <code>private</code> + <code>[SerializeField]</code></td></tr>
+      <tr><td>Object có field không phải cell</td><td>không có dạng CSV; báo tên field, bảo dùng JSON</td></tr>
+      <tr><td>Header</td><td>dòng dữ liệu đầu được nhận là header khi mọi cell khớp tên cột (không phân biệt hoa thường); header cho đổi thứ tự cột</td></tr>
+      <tr><td>Bỏ qua</td><td>dòng trống, dòng mở đầu <code>#</code> hay <code>//</code></td></tr>
+      <tr><td>Tách cell</td><td><strong>không hỗ trợ dấu nháy</strong>: chuỗi chứa dấu phẩy làm lệch số cột → huỷ cả lần import</td></tr>
+      <tr><td><code>enum</code></td><td>không phân biệt hoa thường; chỉ nhận giá trị đã khai (trừ <code>[Flags]</code>)</td></tr>
+      <tr><td>Cell <code>""</code>, <code>-</code>, <code>None</code> ở cột không phải <code>string</code></td><td>dòng "không áp dụng": <code>List&lt;&gt;</code> bỏ dòng đó và báo số dòng; giá trị một dòng thì huỷ import</td></tr>
+      <tr><td>Lỗi</td><td>báo số dòng và tên cột; không ghi gì</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<!-- ============ FLOW ============ -->
+<section id="flow">
+  <h2>Flow</h2>
+
+  <h3>Boot: hai thứ tự đều đúng</h3>
+  <div class="fig">
+  <div class="cap">Initialize · FetchAndActivateAsync ─► apply ─► OnRemoteConfigsApplied</div>
+  <svg viewBox="0 0 900 260" role="img" aria-label="FetchAndActivateAsync đặt IsFetched và bắn OnFetched. Initialize quét field và subscribe; nếu IsFetched thì apply ngay, chưa thì đợi OnFetched. Apply mọi biến rồi gọi OnRemoteConfigsApplied, đặt AllRemoteConfigsApplied">
+    <rect x="10" y="20" width="200" height="56" rx="8" class="sv-sdk"/>
+    <text x="110" y="44" class="sv-m" text-anchor="middle">FetchAndActivateAsync</text>
+    <text x="110" y="64" class="sv-s" text-anchor="middle">màn boot, một lần</text>
+    <path d="M210 48 L224 48" class="sv-ln"/><path d="M230 48 l-8 -5 v10 z" class="sv-ac"/>
+    <rect x="230" y="20" width="220" height="56" rx="8" class="sv-sdk"/>
+    <text x="340" y="44" class="sv-m" text-anchor="middle">IsFetched = true</text>
+    <text x="340" y="64" class="sv-s" text-anchor="middle">bắn OnFetched — mọi đường ra</text>
+
+    <rect x="10" y="150" width="140" height="56" rx="8" class="sv-prj"/>
+    <text x="80" y="174" class="sv-m" text-anchor="middle">Initialize()</text>
+    <text x="80" y="194" class="sv-s" text-anchor="middle">quét field · subscribe</text>
+    <path d="M150 178 L174 178" class="sv-ln"/><path d="M180 178 l-8 -5 v10 z" class="sv-ac"/>
+    <rect x="180" y="150" width="120" height="56" rx="8" class="sv-box"/>
+    <text x="240" y="183" class="sv-m" text-anchor="middle">IsFetched?</text>
+
+    <rect x="480" y="150" width="150" height="56" rx="8" class="sv-ok"/>
+    <text x="555" y="174" class="sv-tb" text-anchor="middle">apply mọi biến</text>
+    <text x="555" y="194" class="sv-s" text-anchor="middle">theo thứ tự khai field</text>
+
+    <path d="M300 178 L474 178" class="sv-lngr"/><path d="M480 178 l-8 -5 v10 z" class="sv-gr"/>
+    <text x="387" y="170" class="sv-s" text-anchor="middle">true ⇒ apply ngay</text>
+    <path d="M240 206 L240 222" class="sv-ln"/>
+    <text x="240" y="238" class="sv-s" text-anchor="middle">false ⇒ đợi OnFetched</text>
+
+    <path d="M450 48 L555 48 L555 144" class="sv-lnac"/><path d="M555 150 l-5 -8 h10 z" class="sv-ac"/>
+    <text x="563" y="100" class="sv-s">OnFetched</text>
+
+    <path d="M630 178 L674 178" class="sv-ln"/><path d="M680 178 l-8 -5 v10 z" class="sv-ac"/>
+    <rect x="680" y="150" width="210" height="56" rx="8" class="sv-ok"/>
+    <text x="785" y="174" class="sv-m" text-anchor="middle">OnRemoteConfigsApplied</text>
+    <text x="785" y="194" class="sv-s" text-anchor="middle">AllRemoteConfigsApplied = true</text>
+    <text x="785" y="238" class="sv-s" text-anchor="middle">call site đọc giá trị đứng yên</text>
+  </svg>
+  </div>
+
+  <h3>Một biến: giá trị nào thắng</h3>
+  <div class="fig">
+  <div class="cap">ApplyRemoteValue(provider) — dừng ở bậc đầu parse được</div>
+  <svg viewBox="0 0 900 250" role="img" aria-label="Allow Fetching tắt thì giữ Inspector. Bật thì thử remote: có key, không rỗng, parse được thì dùng và ghi PlayerPrefs. Trượt thì LogError và thử cache PlayerPrefs; parse được thì dùng, trượt thì giữ Value">
+    <rect x="10" y="30" width="150" height="56" rx="8" class="sv-box"/>
+    <text x="85" y="63" class="sv-tb" text-anchor="middle">Allow Fetching?</text>
+    <path d="M160 58 L194 58" class="sv-ln"/><path d="M200 58 l-8 -5 v10 z" class="sv-ac"/>
+    <text x="180" y="50" class="sv-s" text-anchor="middle">bật</text>
+
+    <rect x="200" y="30" width="220" height="56" rx="8" class="sv-sdk"/>
+    <text x="310" y="54" class="sv-tb" text-anchor="middle">remote</text>
+    <text x="310" y="74" class="sv-s" text-anchor="middle">có key · không rỗng · parse OK?</text>
+    <path d="M420 58 L474 58" class="sv-lnrd"/><path d="M480 58 l-8 -5 v10 z" class="sv-rd"/>
+    <text x="450" y="50" class="sv-s" text-anchor="middle">trượt</text>
+
+    <rect x="480" y="30" width="200" height="56" rx="8" class="sv-box"/>
+    <text x="580" y="54" class="sv-tb" text-anchor="middle">cache PlayerPrefs</text>
+    <text x="580" y="74" class="sv-s" text-anchor="middle">có · parse OK?</text>
+    <path d="M680 58 L734 58" class="sv-lnrd"/><path d="M740 58 l-8 -5 v10 z" class="sv-rd"/>
+    <text x="710" y="50" class="sv-s" text-anchor="middle">trượt</text>
+
+    <rect x="740" y="30" width="150" height="56" rx="8" class="sv-warn"/>
+    <text x="815" y="54" class="sv-tb" text-anchor="middle">giữ Value</text>
+    <text x="815" y="74" class="sv-s" text-anchor="middle">Inspector</text>
+
+    <path d="M85 86 L85 154" class="sv-ln"/><path d="M85 160 l-5 -8 h10 z" class="sv-ac"/>
+    <text x="93" y="126" class="sv-s">tắt</text>
+    <rect x="10" y="160" width="150" height="60" rx="8" class="sv-warn"/>
+    <text x="85" y="186" class="sv-tb" text-anchor="middle">Inspector</text>
+    <text x="85" y="206" class="sv-s" text-anchor="middle">không đọc remote, cache</text>
+
+    <path d="M310 86 L310 154" class="sv-lngr"/><path d="M310 160 l-5 -8 h10 z" class="sv-gr"/>
+    <text x="318" y="126" class="sv-s">OK</text>
+    <rect x="200" y="160" width="220" height="60" rx="8" class="sv-ok"/>
+    <text x="310" y="186" class="sv-tb" text-anchor="middle">dùng remote</text>
+    <text x="310" y="206" class="sv-s" text-anchor="middle">ghi chuỗi RAW · Fetched = true</text>
+
+    <path d="M580 86 L580 154" class="sv-lngr"/><path d="M580 160 l-5 -8 h10 z" class="sv-gr"/>
+    <text x="588" y="126" class="sv-s">OK</text>
+    <rect x="480" y="160" width="200" height="60" rx="8" class="sv-ok"/>
+    <text x="580" y="186" class="sv-tb" text-anchor="middle">dùng cache</text>
+    <text x="580" y="206" class="sv-s" text-anchor="middle">lần chạy trước</text>
+
+    <text x="815" y="126" class="sv-s" text-anchor="middle">mỗi bậc trượt:</text>
+    <text x="815" y="144" class="sv-s" text-anchor="middle">LogError kèm key</text>
+  </svg>
+  </div>
+
+  <h3 id="hop-dong">Hợp đồng provider</h3>
+  <div class="tw"><table>
+    <thead><tr><th>Thành viên</th><th>Hợp đồng</th></tr></thead>
+    <tbody>
+      <tr><td><code>FetchAndActivateAsync(timeout, ct)</code></td><td>chỉ lời gọi đầu có tác dụng · chờ tối đa <code>timeout</code> (giờ thật) rồi activate bản mới nhất đang giữ · fetch về muộn để phiên sau · <code>IsFetched = true</code> rồi bắn <code>OnFetched</code> đúng một lần ở <strong>mọi</strong> đường ra: xong, lỗi, quá hạn, huỷ</td></tr>
+      <tr><td><code>TryGetRemoteValue(key, out value)</code></td><td><code>false</code> khi server không khai key; chuỗi rỗng server trả về thì <code>true</code> để <code>RemoteConfig&lt;T&gt;</code> xử lý ca rỗng</td></tr>
+      <tr><td><code>IsFetched</code> · <code>event Action OnFetched</code></td><td>collection dùng cặp này để không phụ thuộc thứ tự khởi tạo</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>Đường ra của bản Firebase</h3>
+  <div class="fig">
+  <div class="cap">FirebaseRemoteConfigProvider.FetchAndActivateAsync</div>
+  <svg viewBox="0 0 900 190" role="img" aria-label="Lời gọi đầu mới chạy. CheckAndFixDependenciesAsync rồi FetchAsync, cả hai trong giới hạn timeout; quá hạn, huỷ hay exception đều log Fetch timed out và vẫn activate. Sau đó ActivateAsync nếu có instance, cuối cùng IsFetched true và bắn OnFetched ở mọi đường ra">
+    <path d="M160 46 L160 40 L555 40 L555 46" class="sv-lnor"/>
+    <text x="357" y="30" class="sv-s" text-anchor="middle">chờ tối đa timeout · quá hạn, huỷ, exception ⇒ Fetch timed out</text>
+
+    <rect x="10" y="56" width="120" height="56" rx="8" class="sv-box"/>
+    <text x="70" y="89" class="sv-tb" text-anchor="middle">lời gọi đầu?</text>
+    <path d="M130 84 L154 84" class="sv-ln"/><path d="M160 84 l-8 -5 v10 z" class="sv-ac"/>
+    <rect x="160" y="56" width="215" height="56" rx="8" class="sv-sdk"/>
+    <text x="267" y="89" class="sv-m" text-anchor="middle">CheckAndFixDependenciesAsync</text>
+    <path d="M375 84 L399 84" class="sv-ln"/><path d="M405 84 l-8 -5 v10 z" class="sv-ac"/>
+    <rect x="405" y="56" width="150" height="56" rx="8" class="sv-sdk"/>
+    <text x="480" y="89" class="sv-m" text-anchor="middle">FetchAsync</text>
+    <path d="M555 84 L579 84" class="sv-ln"/><path d="M585 84 l-8 -5 v10 z" class="sv-ac"/>
+    <rect x="585" y="56" width="140" height="56" rx="8" class="sv-sdk"/>
+    <text x="655" y="89" class="sv-m" text-anchor="middle">ActivateAsync</text>
+    <path d="M725 84 L749 84" class="sv-ln"/><path d="M755 84 l-8 -5 v10 z" class="sv-ac"/>
+    <rect x="755" y="56" width="135" height="56" rx="8" class="sv-ok"/>
+    <text x="822" y="80" class="sv-m" text-anchor="middle">IsFetched = true</text>
+    <text x="822" y="100" class="sv-s" text-anchor="middle">bắn OnFetched</text>
+
+    <path d="M70 112 L70 130" class="sv-lnrd"/>
+    <text x="70" y="146" class="sv-s sv-rd" text-anchor="middle">không ⇒ trả về ngay</text>
+    <text x="70" y="162" class="sv-s" text-anchor="middle">không chờ</text>
+    <path d="M267 112 L267 130" class="sv-lnrd"/>
+    <text x="267" y="146" class="sv-s sv-rd" text-anchor="middle">không dùng được ⇒ LogError</text>
+    <text x="267" y="162" class="sv-s" text-anchor="middle">bỏ Activate, mọi key → cache</text>
+    <path d="M480 112 L480 130" class="sv-lnrd"/>
+    <text x="480" y="146" class="sv-s sv-rd" text-anchor="middle">lỗi ⇒ LogWarning</text>
+    <text x="480" y="162" class="sv-s" text-anchor="middle">vẫn Activate</text>
+    <path d="M655 112 L655 130" class="sv-lnrd"/>
+    <text x="655" y="146" class="sv-s" text-anchor="middle">chỉ khi có instance</text>
+    <text x="655" y="162" class="sv-s sv-rd" text-anchor="middle">ct huỷ ⇒ ném sau OnFetched</text>
+    <path d="M822 112 L822 130" class="sv-lngr"/>
+    <text x="822" y="146" class="sv-s" text-anchor="middle">finally —</text>
+    <text x="822" y="162" class="sv-s" text-anchor="middle">mọi đường ra</text>
+  </svg>
+  </div>
+  <div class="tw"><table>
+    <thead><tr><th>Đường ra</th><th>Kết quả</th></tr></thead>
+    <tbody>
+      <tr><td>fetch xong trong <code>timeout</code></td><td>activate, mọi key server khai trả <code>true</code></td></tr>
+      <tr><td>quá <code>timeout</code></td><td><code>LogWarning</code> <code>Fetch timed out…</code>; activate bản đang giữ; fetch chạy tiếp, về muộn thì để phiên sau</td></tr>
+      <tr><td><code>FetchAsync</code> lỗi</td><td><code>LogWarning</code> <code>Fetch failed…</code>; activate bản đang giữ</td></tr>
+      <tr><td>dependency Firebase không dùng được</td><td><code>LogError</code> <code>Firebase can't be used…</code>; không activate, mọi <code>TryGetRemoteValue</code> trả <code>false</code> → cache rồi Inspector</td></tr>
+      <tr><td>exception khác ở bước chuẩn bị</td><td><code>TimeoutWithoutException</code> của UniTask nuốt exception và trả như quá hạn: log <code>Fetch timed out…</code></td></tr>
+      <tr><td><code>ct</code> bị huỷ</td><td>cũng log <code>Fetch timed out…</code>. Đã lấy được instance Firebase thì <code>ActivateAsync</code> <strong>ném</strong> <code>OperationCanceledException</code> sau khi bắn <code>OnFetched</code>; chưa lấy được thì kết thúc không ném</td></tr>
+      <tr><td>lời gọi thứ hai</td><td>trả về <strong>ngay</strong>, không chờ lời gọi đầu: chỗ khác cần chờ thì đọc <code>IsFetched</code> hay nghe <code>OnFetched</code></td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<!-- ============ LƯU Ý ============ -->
+<section id="luu-y">
+  <h2>Lưu ý</h2>
+  <div class="tw"><table>
+    <thead><tr><th></th><th>Chỗ</th><th>Sự thật</th></tr></thead>
+    <tbody>
+      <tr><td><span class="tag t-bad">bẫy</span></td><td><strong>Field không được quét</strong></td><td>Quét chỉ lấy field non-public của chính class và non-private của lớp cha: field <code>public</code>, field <code>private</code> của lớp cha, field thiếu <code>[MarkedRemoteConfig]</code> đều bị bỏ, <strong>không log</strong></td></tr>
+      <tr><td><span class="tag t-bad">bẫy</span></td><td><strong><code>OnRemoteConfigsApplied</code> và <code>OnDestroy</code> phải qua <code>base</code></strong></td><td>Không gọi <code>base.OnRemoteConfigsApplied()</code> thì <code>AllRemoteConfigsApplied</code> mãi <code>false</code>. Lớp con khai <code>OnDestroy</code> không <code>override</code> chỉ bị warning CS0114, listener chết nằm lại trên provider</td></tr>
+      <tr><td><span class="tag t-bad">bẫy</span></td><td><strong>Key xoá khỏi console vẫn còn trên máy</strong></td><td>Máy đã từng fetch giữ giá trị cũ trong <code>PlayerPrefs</code> mãi, không về Inspector</td></tr>
+      <tr><td><span class="tag t-bad">bẫy</span></td><td><strong>Play trong Editor ghi giá trị remote lên chính asset</strong></td><td>Thoát Play vẫn còn; sửa một ô khác của asset rồi lưu thì giá trị remote thành mặc định. Soát diff asset trước khi commit</td></tr>
+      <tr><td><span class="tag t-bad">bẫy</span></td><td><strong>Đổi tên field của class dữ liệu JSON</strong></td><td>Key cũ trên server rơi thành <code>default</code> im lặng</td></tr>
+      <tr><td><span class="tag t-bad">bẫy</span></td><td><strong><code>IRemoteConfigCollection</code> không derive <code>IService&lt;&gt;</code></strong></td><td>Interface dự án sẽ thừa hưởng hai static <code>Service</code> → CS0229. Code chỉ cần contract thì viết <code>IService&lt;IRemoteConfigCollection&gt;.Service</code></td></tr>
+      <tr><td><span class="tag t-bad">bẫy</span></td><td><strong><code>implicit operator T</code> khi so sánh</strong></td><td><code>variable == null</code> so tham chiếu; so với toán hạng có kiểu <code>T</code> thì variable bị convert: với <code>RemoteConfig&lt;string&gt;</code> có <code>Value</code> null, <code>variable == null</code> ra <code>false</code>, <code>variable == s</code> ra <code>true</code></td></tr>
+      <tr><td><span class="tag t-info">biết</span></td><td><strong><code>AllRemoteConfigsApplied</code></strong></td><td>Nghĩa là đã chạy apply, kể cả khi mọi biến rơi về cache hay Inspector</td></tr>
+      <tr><td><span class="tag t-info">biết</span></td><td><strong>Lời gọi fetch thứ hai</strong></td><td>Trả về ngay; chỗ khác cần chờ thì đọc <code>IsFetched</code> hay nghe <code>OnFetched</code></td></tr>
+      <tr><td><span class="tag t-info">biết</span></td><td><strong><code>bool</code> và <code>enum</code> trên server</strong></td><td><code>bool</code>: <code>1</code>/<code>0</code> là trượt. <code>enum</code>: phân biệt hoa thường, nhận cả số không khai</td></tr>
+      <tr><td><span class="tag t-info">biết</span></td><td><strong>Một lần parse hỏng ra nhiều dòng log</strong></td><td>Hàm parse tự <code>LogError</code>, apply log thêm một dòng mỗi bậc trượt</td></tr>
+      <tr><td><span class="tag t-info">biết</span></td><td><strong>Field mark nhưng không phải <code>IRemoteConfig</code></strong></td><td><code>Initialize</code> log tên field rồi bỏ qua, các biến khác vẫn apply. Hai nút collection thì ném</td></tr>
+      <tr><td><span class="tag t-ok">nên</span></td><td><strong>Test một giá trị tại máy</strong></td><td>Tắt <strong>Allow Fetching</strong> của biến đó</td></tr>
+      <tr><td><span class="tag t-ok">nên</span></td><td><strong>Sau khi khai key trên console</strong></td><td>Chạy <code>RemoteConfigDiff</code> so asset với template console</td></tr>
+      <tr><td><span class="tag t-ok">nên</span></td><td><strong>Chờ fetch xong mới vào game</strong></td><td>Giá trị đứng yên suốt phiên; không chờ thì call site đọc giá trị Inspector rồi đổi giữa chừng</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>Chẩn đoán</h3>
+  <div class="tw"><table>
+    <thead><tr><th>Log</th><th>Nghĩa</th><th>Sửa</th></tr></thead>
+    <tbody>
+      <tr><td><code>No IRemoteConfigProvider found in the scene…</code></td><td><code>Initialize</code> không tìm thấy provider</td><td>Trước khi chạy, bước 1</td></tr>
+      <tr><td><code>[RemoteConfig] … is marked MarkedRemoteConfig but holds no IRemoteConfig</code></td><td>field mark không phải <code>RemoteConfig&lt;T&gt;</code></td><td>đổi kiểu field hoặc bỏ attribute</td></tr>
+      <tr><td><code>Can't find remote config value for key …</code></td><td>provider không có key: console thiếu key, key sai, hoặc Firebase không dùng được</td><td>bước 5, bước 7</td></tr>
+      <tr><td><code>Remote config value for key … is empty</code></td><td>server trả chuỗi rỗng</td><td>điền giá trị trên console</td></tr>
+      <tr><td><code>Can't parse remote config value for key … with value … to type …</code></td><td>chuỗi không parse được theo luật parse</td><td>sửa giá trị trên console</td></tr>
+      <tr><td><code>Can't find remote config prefs value for key … -&gt; Using default value set on Editor</code></td><td>cache không có hoặc không parse được; biến giữ <strong>Value</strong></td><td>không cần sửa nếu remote cũng trượt có chủ đích</td></tr>
+      <tr><td><code>[FirebaseRemoteConfigProvider]: Fetch timed out. Using last session version.</code></td><td>quá <code>timeout</code>, <code>ct</code> bị huỷ, hoặc exception ở bước chuẩn bị</td><td>tăng <code>timeout</code> hoặc chấp nhận bản phiên trước</td></tr>
+      <tr><td><code>[FirebaseRemoteConfigProvider]: Fetch failed - …</code></td><td><code>FetchAsync</code> lỗi</td><td>xem mạng, cấu hình Firebase</td></tr>
+      <tr><td><code>[FirebaseRemoteConfigProvider]: Firebase can't be used (…). Using default</code></td><td>dependency Firebase hỏng; "default" ở đây là cache rồi Inspector</td><td>cài lại gói, file cấu hình Firebase</td></tr>
+      <tr><td><code>Remote config … has no CSV form: …</code></td><td>kiểu không có dạng CSV</td><td>dùng JSON</td></tr>
+      <tr><td><code>Remote config … CSV import aborted, nothing written: …</code></td><td>CSV bị từ chối; báo dòng, cột</td><td>sửa sheet theo luật CSV</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+</main>
+<footer>Horcrux · Remote Config · Horcrux.Runtime.Implementations.RemoteConfigSystem · nguồn: RemoteConfigSystem.md</footer>
+</body>
+</html>
