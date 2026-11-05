@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LiveOps Home Flow</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#0d1117;--bg2:#161b22;--bg3:#1c2333;--bg4:#242d3a;--tx:#e6edf3;--tx2:#8b949e;--tx3:#484f58;--ac:#58a6ff;--ac2:#bc8cff;--gr:#3fb950;--or:#d29922;--rd:#f85149;--bd:#30363d;--r:10px;--mono:'JetBrains Mono','Fira Code',Consolas,monospace;--sans:'Inter','Segoe UI',system-ui,sans-serif}
+html{scroll-behavior:smooth;background:var(--bg);color:var(--tx);font:16px/1.65 var(--sans)}
+body{background:var(--bg);overflow-x:hidden}
+a{color:var(--ac);text-decoration:none}a:hover{text-decoration:underline}
+#header{max-width:960px;margin:0 auto;padding:3.5rem 1rem 1.5rem;border-bottom:1px solid var(--bd)}
+#header h1{font-size:clamp(2rem,5vw,2.8rem);font-weight:800;letter-spacing:-.03em;color:var(--ac)}
+#header .sub{color:var(--tx2);margin-top:.4rem}
+.badge{display:inline-block;margin:.8rem .4rem 0 0;padding:.25em .8em;border:1px solid var(--bd);border-radius:99px;font-family:var(--mono);font-size:.75rem;color:var(--tx2)}
+#toc{max-width:960px;margin:2rem auto 0;padding:0 1rem}
+#toc h2{font-size:1.15rem;border:none;margin-bottom:.6rem}
+#toc ol{columns:3;column-gap:2rem;padding-left:1.4em}
+#toc li{font-size:.9rem;margin-bottom:.25rem;break-inside:avoid}
+@media(max-width:760px){#toc ol{columns:2}}
+@media(max-width:480px){#toc ol{columns:1}}
+main{max-width:960px;margin:0 auto;padding:0 1rem 5rem}
+section{padding-top:3.2rem}
+h2{font-size:1.65rem;font-weight:700;letter-spacing:-.02em;margin-bottom:1.1rem;padding-bottom:.45rem;border-bottom:1px solid var(--bd)}
+h3{font-size:1.15rem;font-weight:600;margin:2rem 0 .8rem;color:var(--ac)}
+p,ul,ol{margin-bottom:.9rem}ul,ol{padding-left:1.3em}li{margin-bottom:.25rem}
+strong{color:var(--tx);font-weight:600}
+em{color:var(--ac2);font-style:normal}
+code{font-family:var(--mono);font-size:.86em;background:var(--bg3);padding:.1em .35em;border-radius:4px;overflow-wrap:anywhere}
+pre{background:var(--bg3);border:1px solid var(--bd);border-radius:var(--r);padding:1rem 1.1rem;margin:1rem 0;overflow-x:auto}
+pre code{background:none;padding:0;font-size:.83rem;line-height:1.6;overflow-wrap:normal}
+.tw{overflow-x:auto;margin:1rem 0}
+table{width:100%;border-collapse:collapse;font-size:.88rem}
+th{text-align:left;padding:.55rem .7rem;border-bottom:2px solid var(--bd);color:var(--ac);font-weight:600;vertical-align:bottom}
+td{padding:.5rem .7rem;border-bottom:1px solid var(--bd);vertical-align:top}
+tr:last-child td{border-bottom:none}
+.note{border-left:3px solid var(--ac);background:var(--bg2);padding:.85rem 1.1rem;border-radius:0 var(--r) var(--r) 0;margin:1.2rem 0;font-size:.92rem;color:var(--tx2)}
+.note strong{color:var(--ac)}
+.note.good{border-left-color:var(--gr)}.note.good strong{color:var(--gr)}
+.note.bad{border-left-color:var(--rd)}.note.bad strong{color:var(--rd)}
+.hero{border:1px solid var(--gr);background:var(--bg2);border-radius:var(--r);padding:1.1rem 1.3rem;margin:1.5rem 0}
+.hero .big{font-size:1.25rem;font-weight:700;color:var(--gr)}
+.fig{background:var(--bg2);border:1px solid var(--bd);border-radius:var(--r);padding:1rem;margin:1.3rem 0;overflow-x:auto}
+.fig svg{display:block;width:100%;min-width:680px;height:auto}
+.fig .cap{font-family:var(--mono);font-size:.75rem;color:var(--ac2);text-transform:uppercase;letter-spacing:.07em;margin-bottom:.7rem}
+.arch{font-family:var(--mono);font-size:.8rem;line-height:1.7;white-space:pre;overflow-x:auto;padding:1rem;background:var(--bg3);border-radius:var(--r);color:var(--tx2);margin:1rem 0}
+.steps{counter-reset:s;list-style:none;padding:0}
+.steps>li{counter-increment:s;position:relative;padding:0 0 1.2rem 2.6rem;border-left:2px solid var(--bd);margin-left:.9rem}
+.steps>li:last-child{border-left-color:transparent}
+.steps>li::before{content:counter(s);position:absolute;left:-.95rem;top:0;width:1.8rem;height:1.8rem;border-radius:50%;background:var(--ac);color:var(--bg);font-weight:700;font-size:.85rem;display:flex;align-items:center;justify-content:center}
+.steps>li>strong:first-child{display:block;margin-bottom:.4rem;color:var(--ac)}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:.9rem;margin:1.2rem 0}
+.cell{background:var(--bg3);border-radius:var(--r);padding:1rem;text-align:center}
+.cell .v{font-size:1.35rem;font-weight:800;color:var(--ac);font-family:var(--mono)}
+.cell .l{font-size:.8rem;color:var(--tx2);margin-top:.2rem}
+.tag{display:inline-block;font-family:var(--mono);font-size:.72rem;padding:.05em .5em;border-radius:4px;border:1px solid currentColor}
+.t-ok{color:var(--gr)}.t-warn{color:var(--or)}.t-bad{color:var(--rd)}.t-info{color:var(--ac)}
+/* SVG */
+.sv-box{fill:var(--bg3);stroke:var(--bd);stroke-width:1.5}
+.sv-sdk{fill:var(--bg3);stroke:var(--ac);stroke-width:1.5}
+.sv-prj{fill:var(--bg3);stroke:var(--ac2);stroke-width:1.5}
+.sv-ok{fill:var(--bg3);stroke:var(--gr);stroke-width:1.5}
+.sv-warn{fill:var(--bg3);stroke:var(--or);stroke-width:1.5}
+.sv-bad{fill:var(--bg3);stroke:var(--rd);stroke-width:1.5}
+.sv-disk{fill:var(--bg4);stroke:var(--gr);stroke-width:2}
+.sv-t{fill:var(--tx);font:13px var(--sans)}
+.sv-tb{fill:var(--tx);font:600 13px var(--sans)}
+.sv-m{fill:var(--tx2);font:11.5px var(--mono)}
+.sv-s{fill:var(--tx2);font:11.5px var(--sans)}
+.sv-ac{fill:var(--ac)}.sv-ac2{fill:var(--ac2)}.sv-gr{fill:var(--gr)}.sv-or{fill:var(--or)}.sv-rd{fill:var(--rd)}
+.sv-ln{stroke:var(--tx2);stroke-width:1.5;fill:none}
+.sv-lnac{stroke:var(--ac);stroke-width:1.8;fill:none}
+.sv-lngr{stroke:var(--gr);stroke-width:1.8;fill:none}
+.sv-lnrd{stroke:var(--rd);stroke-width:1.8;fill:none;stroke-dasharray:5 4}
+.sv-lnor{stroke:var(--or);stroke-width:1.8;fill:none}
+.sv-axis{stroke:var(--tx3);stroke-width:1.5}
+.sv-loss{fill:var(--rd);opacity:.18}
+footer{text-align:center;padding:2.5rem 1rem;color:var(--tx3);font-size:.82rem;border-top:1px solid var(--bd)}
+@media print{
+  :root{--bg:#fff;--bg2:#f6f8fa;--bg3:#f0f2f5;--bg4:#e6e9ee;--tx:#111;--tx2:#444;--tx3:#888;--bd:#ccc;--ac:#0b5cc2;--ac2:#7a3fc4;--gr:#1a7f37;--or:#9a6700;--rd:#c62828}
+  #toc{display:none}section{padding-top:1.5rem;break-inside:auto}.fig,table,pre{break-inside:avoid}
+}
+</style>
+</head>
+<body>
+<header id="header">
+  <h1>LiveOps Home Flow</h1>
+  <p class="sub">Điều phối trình diễn của mọi live-ops lúc về Home theo bốn giai đoạn cố định.</p>
+  <span class="badge">Horcrux.Runtime.Abstractions.LiveOps</span>
+  <span class="badge">Horcrux.Runtime.Implementations.LiveOps</span>
+  <span class="badge">Code: Runtime/Abstractions/Composites/LiveOps/ · Runtime/Implementations/Composites/LiveOps/</span>
+</header>
+
+<nav id="toc"><h2>Mục lục</h2><ol>
+  <li><a href="#tong-quan">Tổng quan</a></li>
+  <li><a href="#kich-ban">Kịch bản</a></li>
+  <li><a href="#cach-dung">Cách dùng</a></li>
+  <li><a href="#flow">Flow</a></li>
+  <li><a href="#luu-y">Lưu ý</a></li>
+</ol></nav>
+
+<main>
+
+<!-- ============ TỔNG QUAN ============ -->
+<section id="tong-quan">
+  <h2>Tổng quan</h2>
+  <div class="tw"><table>
+    <thead><tr><th>Giai đoạn</th><th>Method của flow</th><th>Nghĩa</th><th>Dùng tài nguyên độc quyền</th></tr></thead>
+    <tbody>
+      <tr><td>1 · <code>First</code>, <code>Second</code></td><td><code>PlayProgressChangeAsync</code></td><td>Tiến trình tăng hoặc giảm, diễn trên icon/widget của chính module; <code>Second</code> cho live-ops cần ít chú ý hơn</td><td><strong>không</strong></td></tr>
+      <tr><td>1 · <code>Parallel</code></td><td><code>PlayProgressChangeAsync</code></td><td>Chuỗi dài chạy lần lượt mà không giữ chân <code>Second</code> (ceremony nhận thưởng)</td><td>có</td></tr>
+      <tr><td>2</td><td><code>PlayTutorialAsync</code></td><td>Tutorial lần đầu</td><td>có</td></tr>
+      <tr><td>3</td><td><code>PlayForcedReviewAsync</code></td><td>Mở giao diện cho người chơi xem tiến trình đầy đủ: mốc vừa đạt, cú tụt</td><td>có</td></tr>
+      <tr><td>4</td><td><code>PlayPromotionAsync</code></td><td>Popup gói bán, khi mọi live-ops đã ổn định — giai đoạn 3 đã chạy xong</td><td>có</td></tr>
+    </tbody>
+  </table></div>
+  <div class="tw"><table>
+    <thead><tr><th>Ai giữ</th><th>Việc</th></tr></thead>
+    <tbody>
+      <tr><td>Horcrux</td><td>Giai đoạn, thứ tự, huỷ, chạy bù, cô lập lỗi</td></tr>
+      <tr><td>Dự án</td><td>Luồng của từng module (class kế thừa <code>ALiveOpsHomeFlow</code>) và cầu nối báo vào/ra Home</td></tr>
+    </tbody>
+  </table></div>
+  <div class="hero"><div class="big">Live-ops mới chỉ override giai đoạn nó có.</div>
+  <p style="margin:.5rem 0 0">Mọi method giai đoạn của <code>ALiveOpsHomeFlow</code> mặc định trả về ngay.</p></div>
+</section>
+
+<!-- ============ KỊCH BẢN ============ -->
+<section id="kich-ban">
+  <h2>Kịch bản</h2>
+  <div class="tw"><table>
+    <thead><tr><th>Tình huống</th><th>Hệ làm gì</th></tr></thead>
+    <tbody>
+      <tr><td>Người chơi về Home</td><td>Chạy một lượt: bốn giai đoạn đúng thứ tự, mỗi giai đoạn gọi mọi flow</td></tr>
+      <tr><td>Nhiều flow <code>First</code></td><td>Chạy đồng thời; xong hết mới bắt đầu <code>Second</code> và <code>Parallel</code></td></tr>
+      <tr><td>Có cả <code>Second</code> và <code>Parallel</code></td><td>Bắt đầu cùng lúc; giai đoạn 2 chờ cả hai</td></tr>
+      <tr><td>Flow không khai phase</td><td>Là <code>Second</code></td></tr>
+      <tr><td>Module không có <code>HomeFlow</code></td><td>Bị bỏ qua, không log</td></tr>
+      <tr><td>Hai module cùng <code>Priority</code></td><td>Xếp theo <code>ModuleId</code> (so ordinal)</td></tr>
+      <tr><td><code>Priority</code> đổi giữa hai lượt, hoặc module thêm sau lượt đầu</td><td>Lượt sau theo thứ tự mới, có mặt module mới — runner sắp lại <strong>mỗi lượt</strong></td></tr>
+      <tr><td>Một flow ném exception</td><td>Báo lỗi kèm <code>ModuleId</code> và tên giai đoạn; flow khác vẫn chạy — ở cả làn đồng thời lẫn làn lần lượt</td></tr>
+      <tr><td>Module đổi state giữa lượt (<code>SetState</code>)</td><td>Thêm đúng một lượt sau lượt đang chạy</td></tr>
+      <tr><td>Ba request trong một lượt</td><td>Gộp thành đúng một lượt thêm</td></tr>
+      <tr><td>Request khi không ở Home</td><td>Không chạy gì</td></tr>
+      <tr><td>Rời Home giữa giai đoạn 2</td><td>Huỷ: không giai đoạn nào sau đó chạy, không tính là lỗi; lượt đang chờ bị bỏ</td></tr>
+      <tr><td>Vào lại Home khi lượt cũ đang dọn</td><td>Lượt mới chỉ bắt đầu sau khi lượt cũ đã thoát hết qua <code>finally</code></td></tr>
+      <tr><td>Flow đòi chạy lại ở mọi lượt</td><td>Dừng ở 3 lượt với một lỗi</td></tr>
+      <tr><td>Một flow treo vì lỗi logic</td><td>Chặn mọi giai đoạn sau tới khi rời Home — không có timeout</td></tr>
+      <tr><td>Mua hàng ở giai đoạn 4 làm đổi tiến trình module khác</td><td>Lượt bù diễn giai đoạn 1 sau khi màn quảng bá đóng, không diễn ngay</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<!-- ============ CÁCH DÙNG ============ -->
+<section id="cach-dung">
+  <h2>Cách dùng</h2>
+
+  <h3>Trước khi chạy</h3>
+  <div class="tw"><table>
+    <thead><tr><th>#</th><th>Thao tác</th><th>Thiếu thì hỏng ở đâu</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>Trong scene sống suốt phiên chứa <code>LiveOpsHost</code>: tạo GameObject <code>live_ops_home_flow</code>, <em>Add Component</em> <code>LiveOpsHomeFlowHost</code>, kéo object mang <code>LiveOpsHost</code> vào ô <code>Live Ops Host</code> (dưới tiêu đề <code>References</code>)</td><td><code>NullReferenceException</code> ở <code>Awake</code> lần Play đầu</td></tr>
+      <tr><td>2</td><td>Dự án viết cầu nối: Home hiện thì gọi <code>host.OnHomeEnter()</code>, Home ẩn thì gọi <code>host.OnHomeExit()</code>; kéo <code>live_ops_home_flow</code> vào ô của cầu nối</td><td>thiếu cầu nối: không lượt nào chạy, không log · thiếu ô: NRE ở lần về Home đầu</td></tr>
+      <tr><td>3</td><td>Mỗi module có trình diễn: override <code>HomeFlow</code> trả <strong>một</strong> instance flow giữ trong field, override <code>Priority</code> đọc từ remote config của module</td><td>thiếu <code>HomeFlow</code>: module bị bỏ qua, không log · thiếu <code>Priority</code>: mọi module bằng <code>0</code>, xếp theo <code>ModuleId</code></td></tr>
+      <tr><td>4</td><td>Cầu nối bật trước lần hiện Home đầu tiên, và gọi <code>OnHomeEnter()</code> sau <code>Awake</code> của host</td><td>Home hiện trước khi cầu nối nghe thì chưa có lượt nào tới lần về Home sau · gọi trước <code>Awake</code> của host: NRE vì runner chưa dựng</td></tr>
+    </tbody>
+  </table></div>
+  <p>Cầu nối mẫu (sự kiện Home là của dự án, tên trung tính):</p>
+<pre><code>public class HomeFlowBridge : MonoBehaviour
+{
+    [SerializeField] private LiveOpsHomeFlowHost host;
+
+    private void OnEnable()
+    {
+        HomeScreen.Shown += host.OnHomeEnter;
+        HomeScreen.Hidden += host.OnHomeExit;
+    }
+
+    private void OnDisable()
+    {
+        HomeScreen.Shown -= host.OnHomeEnter;
+        HomeScreen.Hidden -= host.OnHomeExit;
+    }
+}</code></pre>
+
+  <h3>Viết flow của một module</h3>
+<pre><code>public sealed class MyHomeFlow : ALiveOpsHomeFlow
+{
+    private readonly MyModule _module;
+
+    public MyHomeFlow(MyModule module) =&gt; _module = module;
+
+    public override async UniTask PlayProgressChangeAsync(CancellationToken ct)
+    {
+        if (_module.Widget == null || _module.Save.ShownProgress == _module.Progress)
+            return;                                                  // không có gì: trả về ngay
+
+        await _module.Widget.AnimateProgressAsync(_module.Save.ShownProgress, _module.Progress, ct);
+        _module.Save.ShownProgress = _module.Progress;               // tiến độ: tiêu thụ SAU khi diễn
+    }
+
+    public override async UniTask PlayTutorialAsync(CancellationToken ct)
+    {
+        if (_module.Save.TutorialSeen)
+            return;
+
+        _module.Save.TutorialSeen = true;                            // lời chào một lần: ghi TRƯỚC
+        try
+        {
+            await _module.Tutorial.ShowAsync(ct);                    // mở spotlight, chờ tap
+        }
+        finally
+        {
+            _module.Tutorial.Hide();                                 // tài nguyên dùng chung trả trong finally
+        }
+    }
+}</code></pre>
+  <p>Module giữ đúng một instance: <code>public override ALiveOpsHomeFlow HomeFlow =&gt; _homeFlow;</code></p>
+
+  <div class="tw"><table>
+    <thead><tr><th>Muốn</th><th>Override hoặc gọi</th></tr></thead>
+    <tbody>
+      <tr><td>Diễn tiến trình trên icon/widget</td><td><code>PlayProgressChangeAsync</code>; <code>ProgressChangePhase</code> mặc định <code>Second</code>, <code>First</code> dành cho số ít live-ops được ưu tiên nên phải khai rõ</td></tr>
+      <tr><td>Chuỗi dài dùng spotlight hay màn hình chồng ở giai đoạn 1</td><td><code>ProgressChangePhase</code> = <code>Parallel</code></td></tr>
+      <tr><td>Tutorial lần đầu</td><td><code>PlayTutorialAsync</code></td></tr>
+      <tr><td>Ép xem đầy đủ tiến trình</td><td><code>PlayForcedReviewAsync</code></td></tr>
+      <tr><td>Popup gói bán</td><td><code>PlayPromotionAsync</code></td></tr>
+      <tr><td>Báo "có thứ mới để diễn"</td><td><code>RequestHomeFlow()</code> — <code>SetState</code> đã tự gọi sau <code>OnStateChanged</code></td></tr>
+      <tr><td>Thứ tự giữa các module</td><td>Override <code>Priority</code>: số lớn trước · bằng nhau theo <code>ModuleId</code>. Dùng chung với <code>LiveOpsLossHelper</code></td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>Hợp đồng của flow</h3>
+  <div class="tw"><table>
+    <thead><tr><th>Luật</th><th>Vì</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Idempotent</strong>: đọc trạng thái đã lưu, chỉ làm phần chưa làm; không có gì thì trả về ngay</td><td>Runner gọi mọi flow ở mọi giai đoạn, mọi lượt — tự trả về là cách "chỉ module đến hạn tham gia"</td></tr>
+      <tr><td><strong>Điểm tiêu thụ trạng thái chọn theo "mất gì nếu diễn lại"</strong>: tiến độ cần thấy tiêu thụ <strong>sau</strong> khi diễn xong; lời chào một lần ghi <strong>trước</strong></td><td>Huỷ giữa chừng thì tiến độ diễn lại, lời chào không lặp</td></tr>
+      <tr><td>Mốc "đã thấy" nằm trong save, không trên view</td><td>View bị tắt và dựng lại; điều kiện của mọi giai đoạn suy được từ save</td></tr>
+      <tr><td>Kết thúc khi mọi thứ nó mở đã đóng</td><td>Flow kế không bao giờ thấy màn hình chồng</td></tr>
+      <tr><td>Tài nguyên dùng chung trả trong <code>finally</code></td><td>Huỷ khi rời Home không để lại lớp tối</td></tr>
+      <tr><td>Icon/widget chưa gắn thì trả về ngay; gắn thì module gọi <code>RequestHomeFlow()</code></td><td>Runner chạy độc lập với việc view có mặt</td></tr>
+      <tr><td>Icon/widget tự đăng ký với module ở <code>OnAwake</code>, gỡ ở <code>OnDestroy</code></td><td><code>Start</code> chạy sau sự kiện Home lúc trang dựng lần đầu nên lượt đầu bỏ qua module; <code>OnEnable</code>/<code>OnDisable</code> gỡ view khỏi module ngay lần nó tự ẩn</td></tr>
+      <tr><td><strong>Trước <code>await</code> đầu tiên không đổi state module</strong></td><td>Đổi state lúc đó là <code>Evaluate</code> lồng trong <code>Evaluate</code></td></tr>
+      <tr><td><code>First</code>/<code>Second</code> không dùng tài nguyên độc quyền</td><td>Spotlight và màn hình chồng chỉ có một bản</td></tr>
+      <tr><td>Vượt nhiều mốc trong một lần về Home nằm trong <strong>một</strong> lời gọi: dừng ở từng mốc, nhận nếu module muốn, rồi chạy tiếp</td><td>Tách ra nhiều lượt là chạy lại cả bốn giai đoạn giữa hai mốc</td></tr>
+      <tr><td>Cờ "ép xem" (nếu có) là remote config của module, chỉ module đọc</td><td>Khung không biết lý do ép; nhận thưởng hay không do module</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<!-- ============ FLOW ============ -->
+<section id="flow">
+  <h2>Flow</h2>
+
+  <h3>Một lượt: bốn giai đoạn</h3>
+  <div class="fig">
+  <div class="cap">RunPassAsync — module có HomeFlow, sắp theo ByPriority</div>
+  <svg viewBox="0 0 860 350" role="img" aria-label="Bốn giai đoạn của một lượt: First, rồi Second song song với Parallel, rồi Tutorial, ép xem, quảng bá lần lượt">
+    <text x="60" y="18" class="sv-s">GĐ1 · Thay đổi tiến trình · PlayProgressChangeAsync</text>
+    <rect x="60" y="30" width="180" height="100" rx="8" class="sv-sdk"/>
+    <text x="150" y="62" class="sv-tb" text-anchor="middle">First</text>
+    <text x="150" y="84" class="sv-s" text-anchor="middle">đồng thời</text>
+    <text x="150" y="106" class="sv-s" text-anchor="middle">xong hết mới đi tiếp</text>
+
+    <path d="M240 62 L284 51" class="sv-ln"/><path d="M290 50 l-9 -3 l2 9 z" class="sv-ac"/>
+    <path d="M240 98 L284 109" class="sv-ln"/><path d="M290 110 l-7 -6 l-2 9 z" class="sv-ac"/>
+
+    <rect x="290" y="30" width="260" height="42" rx="8" class="sv-sdk"/>
+    <text x="420" y="56" class="sv-tb" text-anchor="middle">Second · đồng thời</text>
+    <rect x="290" y="88" width="260" height="42" rx="8" class="sv-prj"/>
+    <text x="420" y="114" class="sv-tb" text-anchor="middle">Parallel · lần lượt theo Priority</text>
+
+    <path d="M550 51 L600 51 L600 109 L550 109" class="sv-lnac"/>
+    <text x="612" y="84" class="sv-s">chờ cả hai</text>
+
+    <path d="M600 109 L600 150 L150 150 L150 164" class="sv-ln"/><path d="M150 170 l-5 -8 h10 z" class="sv-ac"/>
+
+    <rect x="60" y="170" width="740" height="40" rx="8" class="sv-prj"/>
+    <text x="76" y="195" class="sv-tb">GĐ2 · Tutorial</text>
+    <text x="300" y="195" class="sv-m">PlayTutorialAsync</text>
+    <text x="784" y="195" class="sv-s" text-anchor="end">lần lượt theo Priority</text>
+    <path d="M150 210 L150 224" class="sv-ln"/><path d="M150 230 l-5 -8 h10 z" class="sv-ac"/>
+
+    <rect x="60" y="230" width="740" height="40" rx="8" class="sv-prj"/>
+    <text x="76" y="255" class="sv-tb">GĐ3 · Ép xem đầy đủ</text>
+    <text x="300" y="255" class="sv-m">PlayForcedReviewAsync</text>
+    <text x="784" y="255" class="sv-s" text-anchor="end">lần lượt theo Priority</text>
+    <path d="M150 270 L150 284" class="sv-ln"/><path d="M150 290 l-5 -8 h10 z" class="sv-ac"/>
+
+    <rect x="60" y="290" width="740" height="40" rx="8" class="sv-prj"/>
+    <text x="76" y="315" class="sv-tb">GĐ4 · Quảng bá</text>
+    <text x="300" y="315" class="sv-m">PlayPromotionAsync</text>
+    <text x="784" y="315" class="sv-s" text-anchor="end">lần lượt theo Priority</text>
+  </svg>
+  </div>
+  <div class="tw"><table>
+    <thead><tr><th>Ô</th><th>Nghĩa</th></tr></thead>
+    <tbody>
+      <tr><td><span class="tag t-info">viền xanh</span></td><td>Không dùng tài nguyên độc quyền</td></tr>
+      <tr><td><span class="tag" style="color:var(--ac2)">viền tím</span></td><td>Dùng được spotlight, màn hình chồng — chỉ làn lần lượt</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>Request và chạy bù</h3>
+  <div class="fig">
+  <div class="cap">host.OnHomeEnter · LiveOpsHomeFlowRequested ─► runner.Request</div>
+  <svg viewBox="0 0 860 220" role="img" aria-label="Request: không ở Home thì bỏ qua; ở Home thì bật cờ, chưa có vòng thì mở vòng chạy lượt">
+    <rect x="10" y="20" width="150" height="64" rx="8" class="sv-box"/>
+    <text x="85" y="47" class="sv-tb" text-anchor="middle">Request</text>
+    <text x="85" y="67" class="sv-s" text-anchor="middle">vào Home · SetState</text>
+    <path d="M160 52 L176 52" class="sv-ln"/><path d="M180 52 l-8 -5 v10 z" class="sv-ac"/>
+
+    <rect x="180" y="20" width="150" height="64" rx="8" class="sv-sdk"/>
+    <text x="255" y="57" class="sv-tb" text-anchor="middle">ở Home?</text>
+    <path d="M330 52 L346 52" class="sv-ln"/><path d="M350 52 l-8 -5 v10 z" class="sv-ac"/>
+
+    <rect x="350" y="20" width="150" height="64" rx="8" class="sv-sdk"/>
+    <text x="425" y="47" class="sv-tb" text-anchor="middle">bật cờ chờ</text>
+    <text x="425" y="67" class="sv-s" text-anchor="middle">nhiều request gộp một</text>
+    <path d="M500 52 L516 52" class="sv-ln"/><path d="M520 52 l-8 -5 v10 z" class="sv-ac"/>
+
+    <rect x="520" y="20" width="150" height="64" rx="8" class="sv-sdk"/>
+    <text x="595" y="57" class="sv-tb" text-anchor="middle">đang có vòng?</text>
+    <path d="M670 52 L686 52" class="sv-ln"/><path d="M690 52 l-8 -5 v10 z" class="sv-ac"/>
+
+    <rect x="690" y="20" width="160" height="64" rx="8" class="sv-ok"/>
+    <text x="770" y="47" class="sv-tb" text-anchor="middle">mở vòng</text>
+    <text x="770" y="67" class="sv-s" text-anchor="middle">chạy lượt, tối đa 3</text>
+
+    <path d="M255 84 L255 130" class="sv-lnrd"/><path d="M255 136 l-5 -8 h10 z" class="sv-rd"/>
+    <rect x="180" y="136" width="150" height="64" rx="8" class="sv-bad"/>
+    <text x="255" y="164" class="sv-tb" text-anchor="middle">không</text>
+    <text x="255" y="184" class="sv-s" text-anchor="middle">không chạy gì</text>
+
+    <path d="M595 84 L595 130" class="sv-lngr"/><path d="M595 136 l-5 -8 h10 z" class="sv-gr"/>
+    <rect x="520" y="136" width="150" height="64" rx="8" class="sv-ok"/>
+    <text x="595" y="164" class="sv-tb" text-anchor="middle">có</text>
+    <text x="595" y="184" class="sv-s" text-anchor="middle">thêm một lượt sau</text>
+  </svg>
+  </div>
+  <div class="tw"><table>
+    <thead><tr><th>Khi</th><th>Kết quả</th></tr></thead>
+    <tbody>
+      <tr><td>Vòng chạy lượt</td><td>Còn ở Home, còn cờ, chưa quá 3 lượt: xoá cờ, token mới, chạy một lượt</td></tr>
+      <tr><td>Vẫn còn request sau 3 lượt</td><td>Báo một lỗi, bỏ request</td></tr>
+      <tr><td>Home ẩn</td><td>Xoá cờ chờ, huỷ token ⇒ flow thoát qua <code>finally</code></td></tr>
+      <tr><td>Huỷ bằng token của runner</td><td>Im lặng</td></tr>
+      <tr><td>Flow ném <code>OperationCanceledException</code> từ token khác</td><td>Vẫn được báo là lỗi</td></tr>
+      <tr><td>Làn lần lượt</td><td>Kiểm huỷ trước mỗi flow</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<!-- ============ LƯU Ý ============ -->
+<section id="luu-y">
+  <h2>Lưu ý</h2>
+  <div class="tw"><table>
+    <thead><tr><th></th><th>Chỗ</th><th>Sự thật</th></tr></thead>
+    <tbody>
+      <tr><td><span class="tag t-bad">bẫy</span></td><td><strong>Thiếu cầu nối hay thiếu <code>HomeFlow</code></strong></td><td>Không lượt nào chạy, hoặc module bị bỏ qua — không log</td></tr>
+      <tr><td><span class="tag t-bad">bẫy</span></td><td><strong>Trước <code>await</code> đầu tiên không đổi state module</strong></td><td><code>Request</code> chạy đồng bộ bên trong <code>SetState</code>, giữa vòng tick của <code>LiveOpsHost</code>, và lượt đầu chạy đồng bộ tới <code>await</code> đầu tiên của flow</td></tr>
+      <tr><td><span class="tag t-bad">bẫy</span></td><td><strong><code>First</code>/<code>Second</code> dùng spotlight</strong></td><td>Hai flow cùng <code>First</code> mà cùng <code>Focus</code> là đè nhau</td></tr>
+      <tr><td><span class="tag t-bad">bẫy</span></td><td><strong>Không có timeout</strong></td><td>Flow treo vì lỗi logic chặn mọi giai đoạn sau tới khi rời Home. Tutorial chờ tap treo là chủ ý</td></tr>
+      <tr><td><span class="tag t-info">biết</span></td><td><strong>Flow <code>Parallel</code> làm tối màn</strong></td><td>Animation của <code>Second</code> chạy dưới lớp tối</td></tr>
+      <tr><td><span class="tag t-info">biết</span></td><td><strong>Lời chào ghi "đã chào" trước khi diễn</strong></td><td>Rời Home giữa lời chào thì lời chào mất trong chu kỳ đó</td></tr>
+      <tr><td><span class="tag t-info">biết</span></td><td><strong>Trần 3 lượt liên tiếp mỗi vòng</strong></td><td>Chơi bình thường một vòng chỉ 1–2 lượt. Ra rồi vào lại Home đúng lúc lượt thứ 3 của vòng đang dọn: lượt vào lại tính chung trần với vòng cũ nên bị bỏ</td></tr>
+      <tr><td><span class="tag t-info">biết</span></td><td><strong>Host chỉ nghe khi bật</strong></td><td>Nghe <code>LiveOpsHomeFlowRequested</code> ở <code>OnEnable</code>/<code>OnDisable</code>; <code>OnDestroy</code> huỷ lượt đang chạy</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>Chẩn đoán</h3>
+  <div class="tw"><table>
+    <thead><tr><th>Triệu chứng</th><th>Nguyên nhân</th></tr></thead>
+    <tbody>
+      <tr><td>Về Home mà không flow nào chạy, không log</td><td>Thiếu cầu nối, hoặc cầu nối chưa nghe lúc Home hiện lần đầu · module không override <code>HomeFlow</code></td></tr>
+      <tr><td><code>[LiveOpsHomeFlowRunner]: X threw in tutorial_stage; the other flows still run.</code></td><td>Flow của module <code>X</code> ném ở giai đoạn đó; exception gốc là inner exception. Tên giai đoạn: <code>progress_change_stage</code> · <code>tutorial_stage</code> · <code>forced_review_stage</code> · <code>promotion_stage</code></td></tr>
+      <tr><td><code>[LiveOpsHomeFlowRunner]: Flows kept asking for another pass; stopped after max pass amount = 3.</code></td><td>Một flow đổi state (hoặc gọi <code>RequestHomeFlow()</code>) ở mọi lượt · hoặc ra rồi vào lại Home đúng lúc lượt thứ 3 của vòng đang dọn</td></tr>
+      <tr><td>Flow huỷ bằng token riêng mà Console báo lỗi</td><td>Chỉ huỷ bằng token của runner mới im lặng</td></tr>
+      <tr><td>Hai màn hình chồng nhau trên Home</td><td>Flow <code>First</code>/<code>Second</code> dùng tài nguyên độc quyền · flow trả về trước khi đóng thứ nó mở</td></tr>
+      <tr><td>Lớp tối còn lại sau khi rời Home</td><td>Flow không trả tài nguyên dùng chung trong <code>finally</code></td></tr>
+      <tr><td>Giai đoạn sau không bao giờ tới</td><td>Một flow treo — không có timeout; thoát khi rời Home</td></tr>
+      <tr><td><code>Evaluate</code> lồng trong <code>Evaluate</code></td><td>Flow đổi state module trước <code>await</code> đầu tiên</td></tr>
+      <tr><td>Module mới mở không diễn trong lượt hiện tại</td><td>Đúng thiết kế: <code>SetState</code> bắn yêu cầu, runner chạy thêm đúng một lượt sau lượt đang chạy</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+</main>
+<footer>Horcrux · LiveOps Home Flow · Horcrux.Runtime.Implementations.LiveOps · nguồn: LiveOpsHomeFlow.md</footer>
+</body>
+</html>

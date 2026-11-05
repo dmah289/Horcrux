@@ -19,6 +19,36 @@ module ở `LiveOpsHost.md`.
 | Cố ý KHÔNG làm | giai đoạn và phase thành dữ liệu cấu hình (runner viết thẳng đọc một mạch) · trần số popup quảng bá mỗi lần về Home · timeout cho luồng · lease hay hàng đợi trên tài nguyên độc quyền (luật ở §1 làm chồng chéo không xảy ra) · luồng ngoài live-ops · màn hình khác ngoài Home |
 | Mở rộng sau | trần quảng bá: một điều kiện ở giai đoạn 4 của runner · màn hình thứ hai: host thứ hai, runner dùng lại nguyên |
 
+## Trước khi chạy
+
+| # | Thao tác | Thiếu thì hỏng ở đâu |
+|---|---|---|
+| 1 | Trong scene sống suốt phiên chứa `LiveOpsHost`: tạo GameObject `live_ops_home_flow`, *Add Component* `LiveOpsHomeFlowHost`, kéo object mang `LiveOpsHost` vào ô `Live Ops Host` (dưới tiêu đề `References`) | `NullReferenceException` ở `Awake` lần Play đầu |
+| 2 | Dự án viết cầu nối: Home hiện thì gọi `host.OnHomeEnter()`, Home ẩn thì gọi `host.OnHomeExit()`; kéo `live_ops_home_flow` vào ô của cầu nối | thiếu cầu nối: không lượt nào chạy, không log · thiếu ô: NRE ở lần về Home đầu |
+| 3 | Mỗi module có trình diễn: override `HomeFlow` trả **một** instance flow giữ trong field, override `Priority` đọc từ remote config của module | thiếu `HomeFlow`: module bị bỏ qua, không log · thiếu `Priority`: mọi module bằng `0`, xếp theo `ModuleId` |
+| 4 | Cầu nối bật trước lần hiện Home đầu tiên, và gọi `OnHomeEnter()` sau `Awake` của host | Home hiện trước khi cầu nối nghe thì chưa có lượt nào tới lần về Home sau · gọi trước `Awake` của host: NRE vì runner chưa dựng |
+
+Cầu nối mẫu (sự kiện Home là của dự án, tên trung tính):
+
+```csharp
+public class HomeFlowBridge : MonoBehaviour
+{
+    [SerializeField] private LiveOpsHomeFlowHost host;
+
+    private void OnEnable()
+    {
+        HomeScreen.Shown += host.OnHomeEnter;
+        HomeScreen.Hidden += host.OnHomeExit;
+    }
+
+    private void OnDisable()
+    {
+        HomeScreen.Shown -= host.OnHomeEnter;
+        HomeScreen.Hidden -= host.OnHomeExit;
+    }
+}
+```
+
 ## §1 Bốn giai đoạn
 
 ```
@@ -51,22 +81,7 @@ config của nó; `ALiveOpsModule` trả `0`.
 Runner sắp lại **mỗi lượt**. Priority đọc từ remote config và module đăng ký muộn, nên danh sách sắp sẵn cần một bất
 biến "ai làm mới, khi nào"; sắp lại chừng chục phần tử vào buffer dùng lại, ở nhịp mỗi lần về Home, rẻ hơn giữ bất biến đó.
 
-## §3 Thành phần
-
-| Thành phần | Tầng | Việc |
-|---|---|---|
-| `LiveOpsProgressChangePhase` | Abstractions | enum `First`, `Second`, `Parallel` |
-| `ALiveOpsHomeFlow` | Abstractions, class thuần | `ProgressChangePhase` và bốn method giai đoạn, đều `virtual`, mặc định trả về ngay; module override giai đoạn nó có |
-| `ILiveOpsModule` | Abstractions | `int Priority` · `ALiveOpsHomeFlow HomeFlow` |
-| `ALiveOpsModule` | Abstractions | `Priority => 0` · `HomeFlow => null` · `protected RequestHomeFlow()` bắn `LiveOpsHomeFlowRequested` · `SetState` gọi nó sau `OnStateChanged` |
-| `ILiveOpsHost.Modules` | Abstractions | danh sách module runner đọc mỗi lượt |
-| `LiveOpsHomeFlowRequested` | Abstractions | sự kiện EventBus "có thứ mới để diễn", không payload |
-| `LiveOpsHomeFlowRunner` | Implementations, class thuần | lượt bốn giai đoạn, sắp xếp, cô lập lỗi, huỷ, chạy bù; không chạm Unity object nên test không cần engine |
-| `LiveOpsHomeFlowHost` | Implementations, component | ô kéo `LiveOpsHost` · nghe `LiveOpsHomeFlowRequested` khi bật · `OnHomeEnter`/`OnHomeExit` cho cầu nối của dự án · lỗi thành `Debug.LogException` kèm `this` |
-| Cầu nối Home | dự án | sự kiện hiện/ẩn Home của game → `host.OnHomeEnter()` / `host.OnHomeExit()` |
-| Flow của module | dự án | class kế thừa `ALiveOpsHomeFlow`, module trả qua `HomeFlow` |
-
-## §4 Một lượt
+## §3 Một lượt
 
 ```
 Home hiện ─► cầu nối dự án ─► host.OnHomeEnter ─► runner.OnHomeEnter ─► Request
@@ -102,7 +117,43 @@ Home ẩn ─► host.OnHomeExit ─► runner.OnHomeExit: xoá _hasPendingPassR
 - **Nguồn yêu cầu là sự kiện EventBus**: module không giữ tham chiếu host. Host chỉ nghe khi bật (`OnEnable`/`OnDisable`);
   `OnDestroy` huỷ lượt đang chạy.
 
-## §5 Hợp đồng của flow
+## §4 Hợp đồng của flow
+
+```csharp
+public sealed class MyHomeFlow : ALiveOpsHomeFlow
+{
+    private readonly MyModule _module;
+
+    public MyHomeFlow(MyModule module) => _module = module;
+
+    public override async UniTask PlayProgressChangeAsync(CancellationToken ct)
+    {
+        if (_module.Widget == null || _module.Save.ShownProgress == _module.Progress)
+            return;                                                  // không có gì: trả về ngay
+
+        await _module.Widget.AnimateProgressAsync(_module.Save.ShownProgress, _module.Progress, ct);
+        _module.Save.ShownProgress = _module.Progress;               // tiến độ: tiêu thụ SAU khi diễn
+    }
+
+    public override async UniTask PlayTutorialAsync(CancellationToken ct)
+    {
+        if (_module.Save.TutorialSeen)
+            return;
+
+        _module.Save.TutorialSeen = true;                            // lời chào một lần: ghi TRƯỚC
+        try
+        {
+            await _module.Tutorial.ShowAsync(ct);                    // mở spotlight, chờ tap
+        }
+        finally
+        {
+            _module.Tutorial.Hide();                                 // tài nguyên dùng chung trả trong finally
+        }
+    }
+}
+```
+
+Module giữ đúng một instance: `public override ALiveOpsHomeFlow HomeFlow => _homeFlow;`.
 
 | Luật | Vì |
 |---|---|
@@ -113,23 +164,43 @@ Home ẩn ─► host.OnHomeExit ─► runner.OnHomeExit: xoá _hasPendingPassR
 | Tài nguyên dùng chung trả trong `finally` | huỷ khi rời Home không để lại lớp tối |
 | Icon/widget chưa gắn thì trả về ngay; gắn thì module gọi `RequestHomeFlow()` | runner chạy độc lập với việc view có mặt |
 | Icon/widget tự đăng ký với module ở `OnAwake`, gỡ ở `OnDestroy` | `Start` chạy sau sự kiện Home lúc trang dựng lần đầu nên lượt đầu bỏ qua module; `OnEnable`/`OnDisable` gỡ view khỏi module ngay lần nó tự ẩn |
-| **Trước `await` đầu tiên không đổi state module** | `Request` chạy đồng bộ bên trong `SetState`, giữa vòng tick của `LiveOpsHost`; đổi state lúc đó là `Evaluate` lồng trong `Evaluate` |
+| **Trước `await` đầu tiên không đổi state module** | `Request` chạy đồng bộ bên trong `SetState`, giữa vòng tick của `LiveOpsHost`, và lượt đầu chạy đồng bộ tới `await` đầu tiên của flow; đổi state lúc đó là `Evaluate` lồng trong `Evaluate` |
 | `First`/`Second` không dùng tài nguyên độc quyền | §1 |
 | Vượt nhiều mốc trong một lần về Home nằm trong **một** lời gọi: dừng ở từng mốc, nhận nếu module muốn, rồi chạy tiếp | runner không biết mốc; tách ra nhiều lượt là chạy lại cả bốn giai đoạn giữa hai mốc |
 | Cờ "ép xem" (nếu có) là remote config của module, chỉ module đọc | khung không biết lý do ép; force chỉ mở giao diện xem, nhận thưởng hay không do module |
 
-## Trước khi chạy
+## §5 Thành phần
 
-| # | Thao tác | Thiếu thì hỏng ở đâu |
+| Thành phần | Tầng | Việc |
 |---|---|---|
-| 1 | Trong scene sống suốt phiên chứa `LiveOpsHost`: tạo GameObject `live_ops_home_flow`, *Add Component* `LiveOpsHomeFlowHost`, kéo object mang `LiveOpsHost` vào ô `Live Ops Host` | `NullReferenceException` ở `Awake` lần Play đầu |
-| 2 | Dự án viết cầu nối: Home hiện thì gọi `host.OnHomeEnter()`, Home ẩn thì gọi `host.OnHomeExit()`; kéo `live_ops_home_flow` vào ô của cầu nối | thiếu cầu nối: không lượt nào chạy, không log · thiếu ô: NRE ở lần về Home đầu |
-| 3 | Mỗi module có trình diễn: override `HomeFlow` trả **một** instance flow giữ trong field, override `Priority` đọc từ remote config của module | thiếu `HomeFlow`: module bị bỏ qua, không log · thiếu `Priority`: mọi module bằng `0`, xếp theo `ModuleId` |
-| 4 | Cầu nối bật trước lần hiện Home đầu tiên | Home hiện trước khi cầu nối nghe thì chưa có lượt nào tới lần về Home sau |
+| `LiveOpsProgressChangePhase` | Abstractions | enum `First`, `Second`, `Parallel` |
+| `ALiveOpsHomeFlow` | Abstractions, class thuần | `ProgressChangePhase` và bốn method giai đoạn, đều `virtual`, mặc định trả về ngay; module override giai đoạn nó có |
+| `ILiveOpsModule` | Abstractions | `int Priority` · `ALiveOpsHomeFlow HomeFlow` |
+| `ALiveOpsModule` | Abstractions | `Priority => 0` · `HomeFlow => null` · `protected RequestHomeFlow()` bắn `LiveOpsHomeFlowRequested` · `SetState` gọi nó sau `OnStateChanged` |
+| `ILiveOpsHost.Modules` | Abstractions | danh sách module runner đọc mỗi lượt |
+| `LiveOpsHomeFlowRequested` | Abstractions | sự kiện EventBus "có thứ mới để diễn", không payload |
+| `LiveOpsHomeFlowRunner` | Implementations, class thuần | lượt bốn giai đoạn, sắp xếp, cô lập lỗi, huỷ, chạy bù; không chạm Unity object nên test không cần engine |
+| `LiveOpsHomeFlowHost` | Implementations, component | ô kéo `LiveOpsHost` · nghe `LiveOpsHomeFlowRequested` khi bật · `OnHomeEnter`/`OnHomeExit` cho cầu nối của dự án · lỗi thành `Debug.LogException` kèm `this` |
+| Cầu nối Home | dự án | sự kiện hiện/ẩn Home của game → `host.OnHomeEnter()` / `host.OnHomeExit()` |
+| Flow của module | dự án | class kế thừa `ALiveOpsHomeFlow`, module trả qua `HomeFlow` |
+
+## §6 Chẩn đoán
+
+| Triệu chứng | Nguyên nhân |
+|---|---|
+| Về Home mà không flow nào chạy, không log | Thiếu cầu nối, hoặc cầu nối chưa nghe lúc Home hiện lần đầu · module không override `HomeFlow` |
+| `[LiveOpsHomeFlowRunner]: X threw in tutorial_stage; the other flows still run.` | Flow của module `X` ném ở giai đoạn đó; exception gốc là inner exception. Tên giai đoạn: `progress_change_stage` · `tutorial_stage` · `forced_review_stage` · `promotion_stage` |
+| `[LiveOpsHomeFlowRunner]: Flows kept asking for another pass; stopped after max pass amount = 3.` | Một flow đổi state (hoặc gọi `RequestHomeFlow()`) ở mọi lượt · hoặc ra rồi vào lại Home đúng lúc lượt thứ 3 của vòng đang dọn: lượt vào lại tính chung trần với vòng cũ nên bị bỏ |
+| Flow huỷ bằng token riêng mà Console báo lỗi | Chỉ huỷ bằng token của runner mới im lặng (§3) |
+| Hai màn hình chồng nhau trên Home | Flow `First`/`Second` dùng tài nguyên độc quyền (§1) · flow trả về trước khi đóng thứ nó mở (§4) |
+| Lớp tối còn lại sau khi rời Home | Flow không trả tài nguyên dùng chung trong `finally` (§4) |
+| Giai đoạn sau không bao giờ tới | Một flow treo — không có timeout; thoát khi rời Home |
+| `Evaluate` lồng trong `Evaluate` | Flow đổi state module trước `await` đầu tiên (§4) |
+| Module mới mở không diễn trong lượt hiện tại | Đúng thiết kế: `SetState` bắn yêu cầu, runner chạy thêm đúng một lượt sau lượt đang chạy |
 
 ## Kiểm
 
-EditMode `LiveOpsHomeFlowRunnerTests` (agent chạy qua compile-check), mỗi ca một test:
+EditMode `LiveOpsHomeFlowRunnerTests`, mỗi ca một test:
 
 | Nhóm | Ca |
 |---|---|
