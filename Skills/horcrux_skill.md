@@ -156,6 +156,6 @@ kể cả khi thấy lỗi, dòng trùng, mâu thuẫn: chỉ báo trong chat. C
 
 <!-- DEVELOPER-ONLY: START — agent không sửa gì từ dòng này tới END -->
 
-- 
+- Bất kỳ skill nào được thêm vào đều chỉ nên màng tư tưởng, không quá cụ thể, tránh khiến agent triển khai cứng nhắc.
 
 <!-- DEVELOPER-ONLY: END -->
