@@ -80,17 +80,18 @@ namespace Horcrux.Editor.TmpToUniText
                 if (material == null || font == null || IsDefaultMaterial(material, font)) continue;
 
                 var path = PresetPath(folder, material, font);
-                if (AssetDatabase.LoadAssetAtPath<StylePreset>(path) != null)
-                {
-                    report.Append("keep ").Append(path).Append('\n');
-                    continue;
-                }
-                var preset = ScriptableObject.CreateInstance<StylePreset>();
+                var preset = AssetDatabase.LoadAssetAtPath<StylePreset>(path);
+                var created = preset == null;
+                if (created) preset = ScriptableObject.CreateInstance<StylePreset>();
+                // Dựng lại cả khi đã có: giữ GUID nên chữ đã gán vẫn trỏ đúng, chỉnh công thức rồi chạy lại là đủ.
+                preset.Styles.Clear();
                 var notes = new List<string>();
                 foreach (var style in ToStyles(material, font.faceInfo.pointSize, notes))
                     preset.Styles.Add(style);
-                AssetDatabase.CreateAsset(preset, path);
-                report.Append("create ").Append(path).Append(notes.Count > 0 ? " | " + string.Join("; ", notes) : "").Append('\n');
+                if (created) AssetDatabase.CreateAsset(preset, path);
+                else EditorUtility.SetDirty(preset);
+                report.Append(created ? "create " : "rebuild ").Append(path)
+                    .Append(notes.Count > 0 ? " | " + string.Join("; ", notes) : "").Append('\n');
             }
             AssetDatabase.SaveAssets();
             return report.ToString();
@@ -153,6 +154,9 @@ namespace Horcrux.Editor.TmpToUniText
             var ratioC = material.GetFloat("_ScaleRatioC");
             Func<float, float, float> toEm = (value, ratio) => value * ratio * gradientScale / pointSize;
 
+            // StrokeModifier align +1 vẽ ra ngoài mép một nửa Width (ParseExtra lấy width × 0.5): Width = 2 × độ dày cần.
+            Func<float, UnitValue> outsideStroke = thickness => UnitValue.Em(thickness * 2f);
+
             var faceDilate = material.GetFloat("_FaceDilate");
             var outlineWidth = material.GetFloat("_OutlineWidth");
             if (outlineWidth > 0f)
@@ -161,7 +165,7 @@ namespace Horcrux.Editor.TmpToUniText
                 var stroke = new StrokeModifier
                 {
                     Paint = PaintRef.Solid(material.GetColor("_OutlineColor")),
-                    Width = UnitValue.Em(toEm(faceDilate, ratioA) + toEm(outlineWidth, ratioA) * 0.5f),
+                    Width = outsideStroke(toEm(faceDilate, ratioA) + toEm(outlineWidth, ratioA) * 0.5f),
                     Align = 1f,
                     Softness = UnitValue.Em(toEm(material.GetFloat("_OutlineSoftness"), ratioA)),
                 };
@@ -182,7 +186,7 @@ namespace Horcrux.Editor.TmpToUniText
                     styles.Add(Style.WholeText(new StrokeModifier
                     {
                         Paint = PaintRef.Solid(color),
-                        Width = UnitValue.Em(dilate),
+                        Width = outsideStroke(dilate),
                         Align = 1f,
                         Softness = UnitValue.Em(softness),
                     }));
