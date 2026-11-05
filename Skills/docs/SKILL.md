@@ -1,6 +1,6 @@
 ---
 name: docs
-description: Dùng khi viết hoặc cập nhật tài liệu: .md cho agent, .html cho developer và designer, Plan cho developer tự gõ, Manual cho người dùng tool, skill, và kỷ luật viết áp cho mọi loại.
+description: Dùng khi viết hoặc cập nhật tài liệu: .md cho agent, .html cho developer và designer dùng hệ, Plan cho developer tự gõ, Manual cho người dùng tool, skill, và kỷ luật viết áp cho mọi loại.
 ---
 
 # docs — .md, .html, Plan, Manual, skill
@@ -9,25 +9,25 @@ Skill nền dưới `Skills/horcrux_skill.md` (NT, ba tầng, ký hiệu định
 
 Mỗi hệ và tool có tài liệu riêng, **không đặt cạnh code**, tên theo tên hệ, `.md` mở đầu bằng dòng `Code:` trỏ thư mục
 code tính từ gốc Horcrux; Plan ở `Plans/`. **Hệ Runtime có đủ cặp** trong thư mục riêng `docs/Runtime/<Hệ>/`: `<Hệ>.md`
-cho agent đọc rẻ token, `<Hệ>.html` cho developer đọc trực quan. **Tool Editor chỉ `.md`**, nằm phẳng ở `docs/Editor/`.
-**Thay đổi hệ thì cập nhật tài liệu trong cùng lần làm** — riêng `.html` theo mốc.
+cho agent đọc rẻ token, `<Hệ>.html` cho developer đọc để dùng hệ. **Tool Editor chỉ `.md`**, nằm phẳng ở `docs/Editor/`.
+**Thay đổi hệ thì cập nhật tài liệu trong cùng lần làm** — cả `.md` lẫn `.html`.
 
 | Loại | Người đọc, vai trò | Vòng đời |
 |---|---|---|
-| **`.md`** | **agent** — bản đặc, rẻ token; nguồn sinh `.html` | cùng lần làm với mỗi thay đổi |
-| **`.html`** | **developer, designer** — trực quan hoá 100% `.md`; agent không đọc khi đã có `.md`. Bắt buộc với hệ Runtime, Editor chưa cần | đồng bộ khi developer yêu cầu hoặc chốt một cụm thay đổi |
+| **`.md`** | **agent** — bản đặc, rẻ token, đủ mọi tầng tới code; nguồn sinh `.html` | cùng lần làm với mỗi thay đổi |
+| **`.html`** | **developer, designer** — dùng hệ không cần đọc code: kịch bản, cách dùng, flow, lưu ý; agent không đọc khi đã có `.md`. Bắt buộc với hệ Runtime, Editor chưa cần | cùng lần làm với `.md` |
 | **Plan** | developer **tự gõ** — khi được yêu cầu, và code runtime vào Horcrux đã duyệt | `.md` ở `Plans/`; hệ dựng xong có tài liệu module thì xoá Plan |
 | **Manual** | người dùng tool không phải developer, để **thao tác** | cạnh tài liệu của tool |
 | **Skill** | agent mọi dự án — luật chung cho game Unity | qua chưng cất (`workflow` › Chưng cất), theo ba tầng và ký hiệu của `horcrux_skill` |
 
 **Agent viết cả năm loại;** nghiệm thu là đối chiếu máy móc với code; developer chốt nội dung. Quy trình: phỏng vấn và đối
-chiếu (`workflow`) → đọc **tất cả** source, hiểu data flow, lifecycle, lý do mỗi quyết định → `.md` → `.html` từ `.md`.
+chiếu (`workflow`) → đọc **tất cả** source, hiểu data flow, lifecycle, lý do mỗi quyết định → `.md` → `.html` chọn từ `.md`.
 
 **Tài liệu Horcrux chung cho mọi dự án:** ví dụ tên trung tính (`Piece`, `IMySaveData`); không tên, class, đường dẫn của dự
 án; không kịch bản chơi thử; không preset số cho một game cụ thể.
 
 **Chuỗi sự thật một chiều `code → .md → .html`:** code là chuẩn; `.html` dựng được từ `.md` không mở source. Lệch thì sửa
-xuôi chuỗi. "100%" là không mất nội dung khi chuyển bản, không phải viết nhiều. **Sổ tay** — mỗi lần đồng bộ soát "bản chết"
+xuôi chuỗi. `.html` là **tập con chọn lọc** của `.md`: không có gì ở `.html` mà `.md` không có. **Sổ tay** — mỗi lần đồng bộ soát "bản chết"
 và "thì hiện tại"; đổi tên hay xoá tài liệu thì grep **tham chiếu chết** trong comment, file hướng dẫn agent, tài liệu khác.
 
 ## `.md` — tài liệu cho agent
@@ -46,16 +46,29 @@ không nhảy section; mỗi so sánh thấy **tiêu chí** và **kết luận**
 > **Nền tảng — KaTeX:** lệnh có `\` phải nằm trong `$…$`/`$$…$$` (trong backtick hiện raw); mỗi `$$…$$` trên một dòng.
 > Quét: strip `$…$` và backtick, còn `\[a-zA-Z]` là lọt.
 
-## `.html` — tài liệu chính
+## `.html` — tài liệu dùng hệ cho developer
 
-Giữ **cấu trúc section của `.md`**; số trong demo cũng là "bản chết" nếu không đối chiếu code. Trực quan hoá theo loại nội
-dung: so sánh → bảng · luồng → diagram · định lượng → công thức · giá trị liên tục → Canvas · nhiều bước → step. Demo chỉ khi
-bảng và text không đủ. **Nghiệm thu:** đủ 100% nội dung · single file, không build · TOC khớp · đọc được trên màn hình nhỏ,
-khi in, tắt JavaScript, mất mạng · không tương tác thì không tiến trình nào chạy · không thư viện tô màu code.
+Người đọc muốn **dùng hệ đúng mà không mở code**. Bốn phần, đều lấy từ `.md`:
 
-**Đồng bộ là so lại cả `.md`, không chỉ phần vừa đổi:** `.html` đi theo mốc nên gom lệch của mọi lần làm trước. **Sổ tay**
-— quét máy: bỏ thẻ, giải entity, mọi chuỗi trong backtick và mọi dòng khối code của `.md` có trong text `.html` · tiêu đề
-`##` khớp `<h2>` · mục lục khớp `id` section.
+| Phần | Trả lời | Lấy từ `.md` |
+|---|---|---|
+| **Kịch bản** | tình huống X xảy ra thì hệ làm gì, người chơi thấy gì | luật, lifecycle — chuỗi tình huống → kết quả, tên trung tính |
+| **Cách dùng** | dựng hệ từ 0, gọi gì, đọc gì | "Trước khi chạy" nguyên vẹn · chỉ API consumer gọi, kèm khi nào gọi |
+| **Flow** | dữ liệu đi qua những bước nào | luồng ASCII → diagram |
+| **Lưu ý** | chỗ dễ dùng sai | bẫy · Safety · Platform · quyết định trái trực giác chạm tới consumer |
+
+**Không mang sang:** chữ ký API đầy đủ · cấu trúc file · test · thuật toán bên trong · performance · quyết định chỉ người sửa
+hệ cần — cần thì mở `.md`. Kịch bản ở đây là **kịch bản dùng**, không phải kịch bản chơi thử của một game.
+
+Trực quan hoá theo loại nội dung: so sánh → bảng · luồng → diagram · định lượng → công thức · giá trị liên tục → Canvas ·
+nhiều bước → step; số trong demo cũng là "bản chết" nếu không đối chiếu `.md`. Demo chỉ khi bảng và text không đủ.
+**Nghiệm thu:** người mới đọc xong dựng và dùng được hệ không mở code · single file, không build · TOC khớp · đọc được trên
+màn hình nhỏ, khi in, tắt JavaScript, mất mạng · không tương tác thì không tiến trình nào chạy · không thư viện tô màu code.
+
+**Đồng bộ cùng lần làm với `.md`, soát lại cả trang, không chỉ phần vừa đổi:** `.md` đổi ở luật, "Trước khi chạy", luồng,
+bẫy hay API consumer gọi thì `.html` đổi theo. **Sổ tay** — quét máy: bỏ thẻ, giải entity; mọi chuỗi trong `<code>` của
+`.html` có trong `.md` (không bịa, không bản chết) · mọi dòng "Trước khi chạy" của `.md` có trong `.html` · mục lục khớp `id`
+section.
 
 **Trang là chương trình chạy trên máy người đọc** — NT2 áp nguyên:
 - **Nội dung không phụ thuộc trang trí:** hiệu ứng chỉ bật khi script xác nhận chạy (class trên `<html>` ở đầu `<head>`);
