@@ -79,4 +79,5 @@ Chất liệu quyết *cái gì được biến dạng*; phần vui đến từ 
 
 > **Nền tảng** — autosize TextMeshPro chỉ co khi tràn **chiều cao**; từ rộng hơn bề ngang bị ngắt giữa từ. "Tối đa n dòng"
 > = khung cao n dòng + test quét dữ liệu thật (`ForceMeshUpdate(true)` rồi `textInfo`). `SpriteMask` không bật Custom Range
-> ghi stencil cho **mọi** tầng dưới nó — giới hạn dải về đúng tầng nó phục vụ.
+> ghi stencil cho **mọi** tầng dưới nó — giới hạn dải về đúng tầng nó phục vụ. `SpriteRenderer` Sliced, Tiled vẽ theo
+> `size`; `sprite.bounds` vẫn là cỡ gốc của ảnh — đo phần nhìn thấy theo `drawMode`, đổi art sang Sliced là đổi số đo.

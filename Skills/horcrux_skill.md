@@ -31,6 +31,7 @@ từ gốc Horcrux: skill `Skills/`, Plan `Plans/`, tài liệu hệ `docs/Runti
 | `build-size` | build nặng vì sao, giảm, so trước–sau |
 | `compile-check` | kiểm sau mỗi task sửa code bằng một lệnh |
 | `ui-reskin` | dựng, reskin UI theo demo: tổ chức prefab, chia atlas, làm việc qua Editor tool, bẫy UGUI |
+| `merge-audit` | merge nhánh Unity theo bậc khi có commit dời thư mục, kiểm trước–sau, merge người khác đẩy lên |
 
 ## Bảng chỉ dẫn
 
@@ -46,6 +47,7 @@ từ gốc Horcrux: skill `Skills/`, Plan `Plans/`, tài liệu hệ `docs/Runti
 | Dựng, reskin UI theo demo; prefab UI; thêm art UI, atlas | `ui-reskin`, `editor-first` | `code-design` khi viết script UI, `build-size` khi đo byte trên build |
 | Build nặng, giảm size | `build-size` | |
 | Kết thúc task sửa code C#, trước khi báo xong hay commit | `compile-check` | |
+| Merge nhánh, giải conflict, soát merge commit người khác đẩy lên | `merge-audit`, `compile-check` | `editor-first` khi ghép prefab, scene |
 | Orchestrator bơm ngữ cảnh cho subagent | hàng của việc được giao (`workflow` › Subagent) | |
 
 ## Ba tầng ràng buộc
