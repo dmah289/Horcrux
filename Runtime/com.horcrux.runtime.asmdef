@@ -12,7 +12,8 @@
         "UnityEngine.UI",
         "Unity.TextMeshPro",
         "PrimeTween.Runtime",
-        "Lofelt.NiceVibrations"
+        "Lofelt.NiceVibrations",
+        "LightSide.UniText"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

@@ -1,4 +1,4 @@
-﻿using TMPro;
+using LightSide;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -8,7 +8,7 @@ namespace Horcrux.Runtime.Utilities.UI
     {
         [Splitter("References")]
         [SerializeField] private Image icon;
-        [SerializeField] private TextMeshProUGUI amountLabel;
+        [SerializeField] private UniText amountLabel;
 
         #region API
 

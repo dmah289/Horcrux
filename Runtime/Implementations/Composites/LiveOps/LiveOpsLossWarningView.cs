@@ -1,8 +1,8 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using Horcrux.Runtime.Abstractions.LiveOps;
 using Horcrux.Runtime.Utilities;
 using Sisus.Init;
-using TMPro;
+using LightSide;
 using UnityEngine;
 
 namespace Horcrux.Runtime.Implementations.LiveOps
@@ -15,7 +15,7 @@ namespace Horcrux.Runtime.Implementations.LiveOps
         [SerializeField] private GameObject content;
         [SerializeField] private GameObject[] rows;
         [SerializeField] private LiveOpsLossWarningSlot[] slots;
-        [SerializeField] private TextMeshProUGUI warningDescTxt;
+        [SerializeField] private UniText warningDescTxt;
 
         [Splitter("Configs")]
         [SerializeField, TextArea]

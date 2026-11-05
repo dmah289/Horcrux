@@ -1,6 +1,6 @@
 using System.Globalization;
 using System.Text;
-using TMPro;
+using LightSide;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.Rendering;
@@ -57,7 +57,7 @@ namespace Horcrux.Editor.Probe
             var first = true;
             foreach (var c in t.GetComponents<Component>())
             {
-                if (c is Transform || c is SpriteRenderer || c is SortingGroup || c is CanvasRenderer || c is Image || c is TMP_Text ||
+                if (c is Transform || c is SpriteRenderer || c is SortingGroup || c is CanvasRenderer || c is Image || c is UniTextBase ||
                     c is LayoutGroup || c is ContentSizeFitter || c is LayoutElement)
                     continue;
                 sb.Append(first ? " | " : ",").Append(c == null ? "Missing" : c.GetType().Name);
@@ -103,13 +103,13 @@ namespace Horcrux.Editor.Probe
                     sb.Append(" ray");
             }
 
-            if (t.TryGetComponent<TMP_Text>(out var text))
+            if (t.TryGetComponent<UniTextBase>(out var text))
             {
-                var value = text.text ?? "";
-                sb.Append(" | tmp ").Append(text.enabled ? "" : "OFF ").Append('"')
-                    .Append(value.Length > 24 ? value.Substring(0, 24) + "…" : value).Append("\" ").Append(Num(text.fontSize))
-                    .Append(text.enableAutoSizing ? " auto" : "").Append(' ')
-                    .Append(text.fontSharedMaterial != null ? text.fontSharedMaterial.name : "null");
+                var value = text.Text ?? "";
+                sb.Append(" | ut ").Append(text.enabled ? "" : "OFF ").Append('"')
+                    .Append(value.Length > 24 ? value.Substring(0, 24) + "…" : value).Append("\" ").Append(Num(text.FontSize))
+                    .Append(text.AutoSize ? " auto" : "").Append(' ')
+                    .Append(StylePresetNames(text));
                 if (text.color != Color.white)
                     sb.Append(" c=").Append(Rgba(text.color));
             }
@@ -162,6 +162,17 @@ namespace Horcrux.Editor.Probe
                     if (!PrefabUtility.IsDefaultOverride(modification))
                         overrides++;
             sb.Append(" ov=").Append(overrides);
+        }
+
+        /// <summary>Tên các StylePreset gắn trên chữ (kiểu viền, bóng), <c>-</c> khi không có.</summary>
+        private static string StylePresetNames(UniTextBase text)
+        {
+            var presets = text.StylePresets;
+            if (presets.Count == 0) return "-";
+            var names = new string[presets.Count];
+            for (var i = 0; i < presets.Count; i++)
+                names[i] = presets[i] != null ? presets[i].name : "null";
+            return string.Join("+", names);
         }
 
         private static string Rgba(Color c) => Num(c.r) + "," + Num(c.g) + "," + Num(c.b) + "," + Num(c.a);

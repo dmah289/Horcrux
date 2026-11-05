@@ -1,7 +1,7 @@
-﻿using System;
+using System;
 using Horcrux.Runtime.Abstractions.LiveOps;
 using Horcrux.Runtime.Utilities.ExtensionMethods;
-using TMPro;
+using LightSide;
 using UnityEngine;
 using UnityEngine.Serialization;
 using UnityEngine.UI;
@@ -12,7 +12,7 @@ namespace Horcrux.Runtime.Implementations.LiveOps
     { 
         [SerializeField] private GameObject root;
         [SerializeField] private Image icon;
-        [SerializeField] private TextMeshProUGUI badgeLabel;
+        [SerializeField] private UniText badgeLabel;
         
         public GameObject Root => root;
         
@@ -22,7 +22,7 @@ namespace Horcrux.Runtime.Implementations.LiveOps
             
             icon.sprite = warning.Icon;
             badgeLabel.SetActive(!string.IsNullOrEmpty(warning.Badge));
-            badgeLabel.text = warning.Badge;
+            badgeLabel.Text = warning.Badge;
         }
     }
 }

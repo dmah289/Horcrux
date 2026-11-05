@@ -1,6 +1,6 @@
-﻿using System.Text;
+using System.Text;
 using Horcrux.Runtime.Utilities.Common;
-using TMPro;
+using LightSide;
 using UnityEngine;
 
 namespace Horcrux.Runtime.Utilities.UI
@@ -8,7 +8,7 @@ namespace Horcrux.Runtime.Utilities.UI
     public abstract class ACountdownLabel : MonoBehaviour
     {
         [Splitter("References")]
-        [SerializeField] protected TMP_Text label;
+        [SerializeField] protected UniTextBase label;
         
         protected readonly StringBuilder _sb = new(16);
         

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections;
 using System.Reflection;
 using System.Text.RegularExpressions;
@@ -7,7 +7,7 @@ using Cysharp.Threading.Tasks;
 using Horcrux.Runtime.Utilities.UI;
 using NUnit.Framework;
 using PrimeTween;
-using TMPro;
+
 using UnityEngine;
 using UnityEngine.TestTools;
 using UnityEngine.UI;
@@ -24,7 +24,7 @@ namespace Horcrux.Tests
         private GameObject _root;
         private ProgressBar _bar;
         private RectTransform _fill;
-        private TextMeshProUGUI _label;
+        private LightSide.UniText _label;
 
         [SetUp]
         public void SetUp()
@@ -34,7 +34,7 @@ namespace Horcrux.Tests
             _fill.SetParent(_root.transform, false);
             _fill.anchorMin = _fill.anchorMax = new Vector2(0f, 0.5f);
 
-            _label = new GameObject("label", typeof(RectTransform)).AddComponent<TextMeshProUGUI>();
+            _label = new GameObject("label", typeof(RectTransform)).AddComponent<LightSide.UniText>();
             _label.transform.SetParent(_root.transform, false);
 
             _bar = _root.AddComponent<ProgressBar>();
@@ -60,7 +60,7 @@ namespace Horcrux.Tests
             _bar.Set(1.5f, 3f, "Combo x3");
 
             Assert.That(_fill.rect.width, Is.EqualTo(150f).Within(Tolerance));
-            Assert.That(_label.text, Is.EqualTo("Combo x3"));
+            Assert.That(_label.Text, Is.EqualTo("Combo x3"));
         }
 
         [TestCase(0f, 0f)]
@@ -89,7 +89,7 @@ namespace Horcrux.Tests
             _bar.Set(3f, 3f, null);
 
             Assert.That(_fill.rect.width, Is.EqualTo(FullWidth).Within(Tolerance));
-            Assert.That(_label.text, Is.EqualTo("before"));
+            Assert.That(_label.Text, Is.EqualTo("before"));
         }
 
         [UnityTest]
@@ -101,7 +101,7 @@ namespace Horcrux.Tests
             await _bar.PlayAsync(1f, 0f, 1f, null, CancellationToken.None);
 
             Assert.That(_fill.rect.width, Is.EqualTo(0f).Within(Tolerance));
-            Assert.That(_label.text, Is.EqualTo("before"));
+            Assert.That(_label.Text, Is.EqualTo("before"));
         });
 
         [Test]
@@ -113,7 +113,7 @@ namespace Horcrux.Tests
             _bar.Set(1f, 0f, "after");
 
             Assert.That(_fill.rect.width, Is.EqualTo(150f).Within(Tolerance));
-            Assert.That(_label.text, Is.EqualTo("before"));
+            Assert.That(_label.Text, Is.EqualTo("before"));
         }
 
         [UnityTest]
@@ -124,7 +124,7 @@ namespace Horcrux.Tests
             await _bar.PlayAsync(1f, 0f, 1f, "Combo x2", CancellationToken.None);
 
             Assert.That(_fill.rect.width, Is.EqualTo(0f).Within(Tolerance));
-            Assert.That(_label.text, Is.EqualTo("Combo x2"));
+            Assert.That(_label.Text, Is.EqualTo("Combo x2"));
         });
 
         [Test]
@@ -245,7 +245,7 @@ namespace Horcrux.Tests
 
             _bar.SetLabel("after");
 
-            Assert.That(_label.text, Is.EqualTo("after"));
+            Assert.That(_label.Text, Is.EqualTo("after"));
             Assert.That(_fill.rect.width, Is.EqualTo(150f).Within(Tolerance));
         }
 
@@ -257,7 +257,7 @@ namespace Horcrux.Tests
             _bar.SetLabelActive(false);
 
             Assert.That(_label.gameObject.activeSelf, Is.False);
-            Assert.That(_label.text, Is.EqualTo("before"));
+            Assert.That(_label.Text, Is.EqualTo("before"));
             Assert.That(_fill.rect.width, Is.EqualTo(150f).Within(Tolerance));
 
             _bar.SetLabelActive(true);

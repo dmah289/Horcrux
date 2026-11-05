@@ -1,7 +1,7 @@
-﻿using System.Threading;
+using System.Threading;
 using Cysharp.Threading.Tasks;
 using PrimeTween;
-using TMPro;
+
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -19,7 +19,7 @@ namespace Horcrux.Runtime.Utilities.UI
 
         [Splitter("References")]
         [SerializeField] private RectTransform fill;
-        [SerializeField] private TextMeshProUGUI label;
+        [SerializeField] private LightSide.UniText label;
 
         [Splitter("Configs")]
         [SerializeField] private bool useUnscaledTime = true;
