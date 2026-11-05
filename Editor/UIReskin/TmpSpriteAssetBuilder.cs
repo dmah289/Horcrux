@@ -58,7 +58,10 @@ namespace Horcrux.Editor.UIReskin
                 descentLine = ascent - pointSize,
             };
 
-            var material = new Material(Shader.Find("TextMeshPro/Sprite")) { name = texture.name + " Material" };
+            var shader = Shader.Find("TextMeshPro/Sprite");
+            if (shader == null)
+                throw new InvalidOperationException("Shader TextMeshPro/Sprite missing: import TMP Essential Resources first.");
+            var material = new Material(shader) { name = texture.name + " Material" };
             material.mainTexture = texture;
             asset.material = material;
 

@@ -111,7 +111,7 @@ Kết quả viết thành **bản tóm tắt** (vài dòng số đã tính), kh�
 
 ```
 sprite_offset/box_anim/lid OFF p=0,0.762,0 s=1,1,1 r=0 | sr target_1_0 Default#30 a=1 root c=0,0.762 size=2.26,2.05
-header/txt_title on p=20,-105,0 s=1,1,1 r=0 | rt a=20,8 sd=660,130 anc=0.5,0.5-0.5,0.5 pv=0.5,0.5 | tmp "Title" 92 auto Font SDF Outline
+header/txt_title on p=20,-105,0 s=1,1,1 r=0 | rt a=20,8 sd=660,130 anc=0.5,0.5-0.5,0.5 pv=0.5,0.5 | ut "Title" 92 auto Text Outline-Blue
 ```
 
 | Phần | Nghĩa |
@@ -123,7 +123,7 @@ header/txt_title on p=20,-105,0 s=1,1,1 r=0 | rt a=20,8 sd=660,130 anc=0.5,0.5-0
 | `sr` | SpriteRenderer: `OFF` khi tắt, tên sprite, `sortingLayer#order`, alpha, `drawMode size` khi không Simple, `root c size` là tâm và cỡ khung bao trong hệ toạ độ root |
 | `sg` | SortingGroup `layer#order` |
 | `img` | Image: `OFF` khi tắt, sprite, kiểu, `ppum` khi khác 1, `c` khi khác trắng, `ray` khi nhận raycast |
-| `tmp` | chữ TMP: nội dung (24 ký tự đầu), cỡ, `auto` khi auto size, material, `c` khi khác trắng |
+| `ut` | chữ UniText: nội dung (24 ký tự đầu), cỡ, `auto` khi auto size, tên StylePreset nối bằng `+` (`-` khi không có), `c` khi khác trắng |
 | `hlg` `vlg` `grid` | LayoutGroup: spacing, `ctrl` trục điều khiển cỡ con (grid: cell, constraint), `pad` trái, phải, trên, dưới, căn |
 | `csf` `le` | ContentSizeFitter ngang, dọc · LayoutElement `ignore`, `pref`, `min` |
 | `prefab` | root của prefab instance: prefab nguồn trực tiếp; `ov` số override trừ override bắt buộc, chỉ ở instance ngoài cùng |

@@ -78,6 +78,8 @@ Chất liệu quyết *cái gì được biến dạng*; phần vui đến từ 
 - **Sprite giữ tỉ lệ hoạ sĩ vẽ;** cỡ và vị trí đo pixel trên ảnh đích, quy về phần đặc của sprite.
 
 > **Nền tảng** — autosize TextMeshPro chỉ co khi tràn **chiều cao**; từ rộng hơn bề ngang bị ngắt giữa từ. "Tối đa n dòng"
-> = khung cao n dòng + test quét dữ liệu thật (`ForceMeshUpdate(true)` rồi `textInfo`). `SpriteMask` không bật Custom Range
+> = khung cao n dòng + test quét dữ liệu thật (`ForceMeshUpdate(true)` rồi `textInfo`). Autosize UniText co theo **cả hai**
+> chiều; đo chữ ngay sau khi đặt bằng `MeasureText` truyền `maxWidth` và `maxHeight` của khung — thiếu `maxWidth` là đo
+> không wrap, `GetRangeBounds` ngoài vòng render chưa có vị trí dòng. `SpriteMask` không bật Custom Range
 > ghi stencil cho **mọi** tầng dưới nó — giới hạn dải về đúng tầng nó phục vụ. `SpriteRenderer` Sliced, Tiled vẽ theo
 > `size`; `sprite.bounds` vẫn là cỡ gốc của ảnh — đo phần nhìn thấy theo `drawMode`, đổi art sang Sliced là đổi số đo.

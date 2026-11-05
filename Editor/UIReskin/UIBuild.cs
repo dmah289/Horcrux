@@ -1,4 +1,4 @@
-using TMPro;
+using LightSide;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -34,18 +34,19 @@ namespace Horcrux.Editor.UIReskin
             return image;
         }
 
-        /// <summary>Chữ một dòng, căn giữa, không xuống dòng. material null giữ material mặc định của font.</summary>
-        public static TextMeshProUGUI Text(Transform parent, string name, string text, float fontSize, TMP_FontAsset font,
-            Material material = null, Vector2 size = default, Vector2 anchoredPosition = default)
+        /// <summary>Chữ UniText một dòng, căn giữa, không xuống dòng. look là preset kiểu chữ (viền, bóng); null là chữ trơn.</summary>
+        public static UniText Text(Transform parent, string name, string text, float fontSize, UniTextFontStack fontStack,
+            StylePreset look = null, Vector2 size = default, Vector2 anchoredPosition = default)
         {
-            var label = Node(parent, name, size, anchoredPosition).gameObject.AddComponent<TextMeshProUGUI>();
-            label.font = font;
-            if (material != null)
-                label.fontSharedMaterial = material;
-            label.text = text;
-            label.fontSize = fontSize;
-            label.alignment = TextAlignmentOptions.Center;
-            label.textWrappingMode = TextWrappingModes.NoWrap;
+            var label = Node(parent, name, size, anchoredPosition).gameObject.AddComponent<UniText>();
+            label.FontStack = fontStack;
+            if (look != null)
+                label.StylePresets.Add(look);
+            label.Text = text;
+            label.FontSize = fontSize;
+            label.HorizontalAlignment = LightSide.HorizontalAlignment.Center;
+            label.VerticalAlignment = LightSide.VerticalAlignment.Middle;
+            label.WordWrap = false;
             label.raycastTarget = false;
             return label;
         }

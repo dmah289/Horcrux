@@ -17,7 +17,7 @@ Cách dùng chúng trong một task reskin ở `Skills/ui-reskin/SKILL.md`. Đ�
 | Người dùng | agent, qua eval; developer review code |
 | Ranh giới | Horcrux giữ thao tác chung của UGUI, prefab, ảnh. Dự án giữ đường tới màn cần chụp (mở popup, đổi tab) |
 | Chỗ đặt | `Editor/UIReskin/`, assembly `com.horcrux.editor`, namespace `Horcrux.Editor.UIReskin` |
-| Phụ thuộc | TMP (`Unity.TextMeshPro`). `SpriteSlicing.SetBorder` cần package `com.unity.2d.sprite`: thiếu package thì hàm không compile (define `HORCRUX_SPRITE_EDITOR`), phần còn lại vẫn chạy |
+| Phụ thuộc | UniText (`LightSide.UniText`) cho chữ; TMP (`Unity.TextMeshPro`) chỉ cho `TmpSpriteAssetBuilder`, dự án còn dùng TMP mới cần. `SpriteSlicing.SetBorder` cần package `com.unity.2d.sprite`: thiếu package thì hàm không compile (define `HORCRUX_SPRITE_EDITOR`), phần còn lại vẫn chạy |
 
 **Cố ý KHÔNG làm**
 
@@ -55,7 +55,7 @@ Cách dùng chúng trong một task reskin ở `Skills/ui-reskin/SKILL.md`. Đ�
 |---|---|
 | `Node(Transform parent, string name, Vector2 size = default, Vector2 anchoredPosition = default)` | `RectTransform` neo giữa, pivot giữa, layer UI |
 | `Image(parent, name, Sprite sprite, size = default, anchoredPosition = default)` | Sliced khi sprite có border, không thì Simple; `size` zero lấy cỡ gốc; `raycastTarget` tắt |
-| `Text(parent, name, string text, float fontSize, TMP_FontAsset font, Material material = null, size, anchoredPosition)` | một dòng, căn giữa, không xuống dòng, `raycastTarget` tắt; `material` là preset viền của font |
+| `Text(parent, name, string text, float fontSize, UniTextFontStack fontStack, StylePreset look = null, size, anchoredPosition)` | `UniText` một dòng, căn giữa, không xuống dòng, `raycastTarget` tắt; `look` là preset kiểu chữ (viền, bóng) gắn vào Style Presets |
 | `Stretch(RectTransform rect)` | anchor 0–1, offset 0 |
 
 ### `PrefabAudit`
@@ -107,7 +107,7 @@ theo tay. Prefab gốc của variant còn giữ art; build nướng variant thà
 
 | Member | Hợp đồng |
 |---|---|
-| `Create(string texturePath, string assetPath)` | mỗi mảnh một glyph theo thứ tự (`<sprite=i>`); face info: point size bằng mảnh cao nhất, ascent 80%, descent −20%; glyph cách hai bên 3.5% chiều cao, mảnh thấp hơn căn giữa dọc; material `TextMeshPro/Sprite`. Đã có file thì ném |
+| `Create(string texturePath, string assetPath)` | mỗi mảnh một glyph theo thứ tự (`<sprite=i>`); face info: point size bằng mảnh cao nhất, ascent 80%, descent −20%; glyph cách hai bên 3.5% chiều cao, mảnh thấp hơn căn giữa dọc; material `TextMeshPro/Sprite`; thiếu shader (dự án không có TMP Essential Resources) thì ném. Đã có file thì ném. Chữ UniText dùng catalog `UniTextSprites` + `SpriteModifier`, không dùng tool này |
 
 ### `UICapture`
 

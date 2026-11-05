@@ -10,7 +10,6 @@
         "UniTask.Addressables",
         "Unity.Mathematics",
         "UnityEngine.UI",
-        "Unity.TextMeshPro",
         "PrimeTween.Runtime",
         "Lofelt.NiceVibrations",
         "LightSide.UniText"

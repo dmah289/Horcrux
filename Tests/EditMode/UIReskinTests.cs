@@ -116,6 +116,8 @@ namespace Horcrux.Tests
         [Test]
         public void TmpSpriteAsset_HasFaceInfoMetricsAndVersion()
         {
+            if (Shader.Find("TextMeshPro/Sprite") == null)
+                Assert.Ignore("Dự án không có TMP Essential Resources: sprite asset TMP không dựng được.");
             var texture = ImportSprite("coin.png", 111, 115);
             var asset = TmpSpriteAssetBuilder.Create(texture, Folder + "/coin_sprite.asset");
             Assert.AreEqual(115f, asset.faceInfo.pointSize);

@@ -6,7 +6,7 @@ caller `await` được (chuyển ngầm sang `UniTask`) hoặc giữ handle đ�
 `await` mà token bị huỷ thì ném `OperationCanceledException`, caller tự bắt nếu cần. Nảy scale dùng thẳng `Tween.PunchScale`
 của PrimeTween, không còn `CharmPunchScale`.
 
-Code trong `Runtime/Utilities/`: `ExtensionMethods/Transform/TransformExtensions.CharmTween.cs` · `ExtensionMethods/TextMeshProExtensionMethods.CharmTween.cs` · `ExtensionMethods/Transform/ArcFlightSpec.cs` ·
+Code trong `Runtime/Utilities/`: `ExtensionMethods/Transform/TransformExtensions.CharmTween.cs` · `ExtensionMethods/UniTextExtensionMethods.cs` · `ExtensionMethods/Transform/ArcFlightSpec.cs` ·
 `ExtensionMethods/Transform/SquashStretchSpec.cs` · `PhysXHelper/BezierCurveHelper.cs` · `PhysXHelper/SquashStretch.cs`.
 
 ---
@@ -58,18 +58,19 @@ await tr.CharmSquashStretch(spec, ct);
 
 ---
 
-## §3. `CharmCount` — đếm số trên TMP
+## §3. `CharmCount` — đếm số trên chữ UniText
 
 ```csharp
 await label.CharmCount(start, end, "{0}", duration, startDelay, ct);
 ```
 
-Mỗi frame `SetText(format, round(lerp(start, end, t)))`, `t` tuyến tính. `startDelay` là `startDelay` của PrimeTween.
+Mỗi frame ghi `format` với `{0}` thay bằng `round(lerp(start, end, t))`, `t` tuyến tính. `startDelay` là `startDelay` của PrimeTween.
 Huỷ (hoặc object huỷ) thì dừng ở số đang hiện, không nhảy tới `end`.
 
 | Quyết định | Vì |
 |---|---|
-| `SetText(format, int)` | overload không cấp phát chuỗi; `format` là mẫu `{0}` của TMP, ví dụ `"x{0}"` |
+| Tách `format` quanh `{0}` một lần, số ghi bằng `TryFormat` vào `stackalloc`, `SetText(StringBuilder)` | không cấp phát mỗi frame; `format` chứa đúng một `{0}`, ví dụ `"x{0}"` |
+| `SetNumber(int)` cùng file | ghi một số nguyên không cấp phát, cho số đếm ghi mỗi lần đổi (tiền, lượt) |
 | `Mathf.Lerp` (kẹp) | không đếm quá `end` |
 | Ease cố định `Linear` | đếm số cần nhịp đều |
 
