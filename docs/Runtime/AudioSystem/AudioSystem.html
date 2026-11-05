@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Audio System</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#0d1117;--bg2:#161b22;--bg3:#1c2333;--bg4:#242d3a;--tx:#e6edf3;--tx2:#8b949e;--tx3:#484f58;--ac:#58a6ff;--ac2:#bc8cff;--gr:#3fb950;--or:#d29922;--rd:#f85149;--bd:#30363d;--r:10px;--mono:'JetBrains Mono','Fira Code',Consolas,monospace;--sans:'Inter','Segoe UI',system-ui,sans-serif}
+html{scroll-behavior:smooth;background:var(--bg);color:var(--tx);font:16px/1.65 var(--sans)}
+body{background:var(--bg);overflow-x:hidden}
+a{color:var(--ac);text-decoration:none}a:hover{text-decoration:underline}
+#header{max-width:960px;margin:0 auto;padding:3.5rem 1rem 1.5rem;border-bottom:1px solid var(--bd)}
+#header h1{font-size:clamp(2rem,5vw,2.8rem);font-weight:800;letter-spacing:-.03em;color:var(--ac)}
+#header .sub{color:var(--tx2);margin-top:.4rem}
+.badge{display:inline-block;margin:.8rem .4rem 0 0;padding:.25em .8em;border:1px solid var(--bd);border-radius:99px;font-family:var(--mono);font-size:.75rem;color:var(--tx2)}
+#toc{max-width:960px;margin:2rem auto 0;padding:0 1rem}
+#toc h2{font-size:1.15rem;border:none;margin-bottom:.6rem}
+#toc ol{columns:3;column-gap:2rem;padding-left:1.4em}
+#toc li{font-size:.9rem;margin-bottom:.25rem;break-inside:avoid}
+@media(max-width:760px){#toc ol{columns:2}}
+@media(max-width:480px){#toc ol{columns:1}}
+main{max-width:960px;margin:0 auto;padding:0 1rem 5rem}
+section{padding-top:3.2rem}
+h2{font-size:1.65rem;font-weight:700;letter-spacing:-.02em;margin-bottom:1.1rem;padding-bottom:.45rem;border-bottom:1px solid var(--bd)}
+h3{font-size:1.15rem;font-weight:600;margin:2rem 0 .8rem;color:var(--ac)}
+p,ul,ol{margin-bottom:.9rem}ul,ol{padding-left:1.3em}li{margin-bottom:.25rem}
+strong{color:var(--tx);font-weight:600}
+em{color:var(--ac2);font-style:normal}
+code{font-family:var(--mono);font-size:.86em;background:var(--bg3);padding:.1em .35em;border-radius:4px;overflow-wrap:anywhere}
+pre{background:var(--bg3);border:1px solid var(--bd);border-radius:var(--r);padding:1rem 1.1rem;margin:1rem 0;overflow-x:auto}
+pre code{background:none;padding:0;font-size:.83rem;line-height:1.6;overflow-wrap:normal}
+.tw{overflow-x:auto;margin:1rem 0}
+table{width:100%;border-collapse:collapse;font-size:.88rem}
+th{text-align:left;padding:.55rem .7rem;border-bottom:2px solid var(--bd);color:var(--ac);font-weight:600;vertical-align:bottom}
+td{padding:.5rem .7rem;border-bottom:1px solid var(--bd);vertical-align:top}
+tr:last-child td{border-bottom:none}
+.note{border-left:3px solid var(--ac);background:var(--bg2);padding:.85rem 1.1rem;border-radius:0 var(--r) var(--r) 0;margin:1.2rem 0;font-size:.92rem;color:var(--tx2)}
+.note strong{color:var(--ac)}
+.note.good{border-left-color:var(--gr)}.note.good strong{color:var(--gr)}
+.note.bad{border-left-color:var(--rd)}.note.bad strong{color:var(--rd)}
+.hero{border:1px solid var(--gr);background:var(--bg2);border-radius:var(--r);padding:1.1rem 1.3rem;margin:1.5rem 0}
+.hero .big{font-size:1.25rem;font-weight:700;color:var(--gr)}
+.fig{background:var(--bg2);border:1px solid var(--bd);border-radius:var(--r);padding:1rem;margin:1.3rem 0;overflow-x:auto}
+.fig svg{display:block;width:100%;min-width:680px;height:auto}
+.fig .cap{font-family:var(--mono);font-size:.75rem;color:var(--ac2);text-transform:uppercase;letter-spacing:.07em;margin-bottom:.7rem}
+.arch{font-family:var(--mono);font-size:.8rem;line-height:1.7;white-space:pre;overflow-x:auto;padding:1rem;background:var(--bg3);border-radius:var(--r);color:var(--tx2);margin:1rem 0}
+.steps{counter-reset:s;list-style:none;padding:0}
+.steps>li{counter-increment:s;position:relative;padding:0 0 1.2rem 2.6rem;border-left:2px solid var(--bd);margin-left:.9rem}
+.steps>li:last-child{border-left-color:transparent}
+.steps>li::before{content:counter(s);position:absolute;left:-.95rem;top:0;width:1.8rem;height:1.8rem;border-radius:50%;background:var(--ac);color:var(--bg);font-weight:700;font-size:.85rem;display:flex;align-items:center;justify-content:center}
+.steps>li>strong:first-child{display:block;margin-bottom:.4rem;color:var(--ac)}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:.9rem;margin:1.2rem 0}
+.cell{background:var(--bg3);border-radius:var(--r);padding:1rem;text-align:center}
+.cell .v{font-size:1.35rem;font-weight:800;color:var(--ac);font-family:var(--mono)}
+.cell .l{font-size:.8rem;color:var(--tx2);margin-top:.2rem}
+.tag{display:inline-block;font-family:var(--mono);font-size:.72rem;padding:.05em .5em;border-radius:4px;border:1px solid currentColor}
+.t-ok{color:var(--gr)}.t-warn{color:var(--or)}.t-bad{color:var(--rd)}.t-info{color:var(--ac)}
+/* SVG */
+.sv-box{fill:var(--bg3);stroke:var(--bd);stroke-width:1.5}
+.sv-sdk{fill:var(--bg3);stroke:var(--ac);stroke-width:1.5}
+.sv-prj{fill:var(--bg3);stroke:var(--ac2);stroke-width:1.5}
+.sv-ok{fill:var(--bg3);stroke:var(--gr);stroke-width:1.5}
+.sv-warn{fill:var(--bg3);stroke:var(--or);stroke-width:1.5}
+.sv-bad{fill:var(--bg3);stroke:var(--rd);stroke-width:1.5}
+.sv-disk{fill:var(--bg4);stroke:var(--gr);stroke-width:2}
+.sv-t{fill:var(--tx);font:13px var(--sans)}
+.sv-tb{fill:var(--tx);font:600 13px var(--sans)}
+.sv-m{fill:var(--tx2);font:11.5px var(--mono)}
+.sv-s{fill:var(--tx2);font:11.5px var(--sans)}
+.sv-ac{fill:var(--ac)}.sv-ac2{fill:var(--ac2)}.sv-gr{fill:var(--gr)}.sv-or{fill:var(--or)}.sv-rd{fill:var(--rd)}
+.sv-ln{stroke:var(--tx2);stroke-width:1.5;fill:none}
+.sv-lnac{stroke:var(--ac);stroke-width:1.8;fill:none}
+.sv-lngr{stroke:var(--gr);stroke-width:1.8;fill:none}
+.sv-lnrd{stroke:var(--rd);stroke-width:1.8;fill:none;stroke-dasharray:5 4}
+.sv-lnor{stroke:var(--or);stroke-width:1.8;fill:none}
+.sv-axis{stroke:var(--tx3);stroke-width:1.5}
+.sv-loss{fill:var(--rd);opacity:.18}
+footer{text-align:center;padding:2.5rem 1rem;color:var(--tx3);font-size:.82rem;border-top:1px solid var(--bd)}
+@media print{
+  :root{--bg:#fff;--bg2:#f6f8fa;--bg3:#f0f2f5;--bg4:#e6e9ee;--tx:#111;--tx2:#444;--tx3:#888;--bd:#ccc;--ac:#0b5cc2;--ac2:#7a3fc4;--gr:#1a7f37;--or:#9a6700;--rd:#c62828}
+  #toc{display:none}section{padding-top:1.5rem;break-inside:auto}.fig,table,pre{break-inside:avoid}
+}
+</style>
+<body>
+<header id="header">
+  <h1>Audio System</h1>
+  <p class="sub">Phát SFX 2D và một bài nhạc nền theo id enum của dự án; dữ liệu clip nằm trong một asset catalog do game điền.</p>
+  <span class="badge">Horcrux.Runtime.Abstractions.Audio</span>
+  <span class="badge">Horcrux.Runtime.Implementations.Audio</span>
+  <span class="badge">Code: Runtime/Abstractions/Foundations/Audio/ · Runtime/Implementations/Foundations/Audio/</span>
+</header>
+
+<nav id="toc"><h2>Mục lục</h2><ol>
+  <li><a href="#tong-quan">Tổng quan</a></li>
+  <li><a href="#kich-ban">Kịch bản</a></li>
+  <li><a href="#cach-dung">Cách dùng</a></li>
+  <li><a href="#flow">Flow</a></li>
+  <li><a href="#luu-y">Lưu ý</a></li>
+</ol></nav>
+
+<main>
+
+<!-- ============ TỔNG QUAN ============ -->
+<section id="tong-quan">
+  <h2>Tổng quan</h2>
+  <p>Phát <strong>SFX 2D</strong> và <strong>một bài nhạc nền</strong> theo id enum của dự án. Game gọi <code>_audio.PlaySfx(GameSfx.Click)</code>; dữ liệu clip nằm trong một asset catalog do game điền, SDK không biết clip nào.</p>
+  <ul>
+    <li><strong>SFX:</strong> nhiều tiếng cùng lúc, mỗi lần phát lệch cao độ ±5%, một tiếng bị gọi dồn trong cùng frame chỉ phát một lần, <strong>0 B cấp phát</strong> ở đường phát.</li>
+    <li><strong>Music:</strong> một bài loop, đổi bài là cắt rồi phát bài mới, bật/tắt độc lập với SFX.</li>
+    <li>Không UniTask, không Addressables, không phụ thuộc hệ Horcrux nào khác (<strong>Foundation</strong>).</li>
+  </ul>
+  <div class="hero"><div class="big">Thêm tiếng là thêm số enum và một entry catalog.</div>
+  <p style="margin:.5rem 0 0">Id là enum của dự án: compiler chặn <code>GameMusic.Level</code> truyền vào <code>PlaySfx</code>, Inspector vẽ dropdown tên.</p></div>
+</section>
+
+<!-- ============ KỊCH BẢN ============ -->
+<section id="kich-ban">
+  <h2>Kịch bản</h2>
+  <div class="tw"><table>
+    <thead><tr><th>Tình huống</th><th>Hệ làm gì</th></tr></thead>
+    <tbody>
+      <tr><td>Một tiếng bị gọi 20 lần trong cùng frame</td><td>Phát <strong>1</strong> lần (throttle theo entry); cách lần trước <code>≥ minInterval</code> thì phát (biên đóng)</td></tr>
+      <tr><td>Hai tiếng khác id cùng frame</td><td>Cả hai phát</td></tr>
+      <tr><td>Hết voice</td><td>Cướp voice có <code>busyUntil</code> nhỏ nhất — tiếng mới là phản hồi người chơi vừa gây ra</td></tr>
+      <tr><td>SFX hết voice lúc nhạc đang phát</td><td>Không bao giờ cắt nhạc (<code>musicSource</code> nằm ngoài mảng voice)</td></tr>
+      <tr><td>Popup pause đặt <code>timeScale = 0</code></td><td>Throttle vẫn chạy đúng: đồng hồ là <code>Time.unscaledTime</code></td></tr>
+      <tr><td>Người chơi tắt Sound (<code>IsSfxOn = false</code>)</td><td>Dừng mọi voice ngay, tiếng sau im; <strong>không</strong> ảnh hưởng nhạc</td></tr>
+      <tr><td>Người chơi tắt Music (<code>IsMusicOn = false</code>)</td><td>Nhạc dừng ngay; <code>PlayMusic</code> lúc tắt chỉ <strong>nhớ</strong> bài; bật lại thì bài đó phát lại <strong>từ đầu</strong></td></tr>
+      <tr><td>Vào màn, gọi <code>PlayMusic</code> đúng bài đang phát</td><td>Không restart, volume giữ theo lần phát đầu</td></tr>
+      <tr><td><code>StopMusic()</code>, rồi người chơi bật/tắt Music</td><td>Không phát lại: bài đã bị bỏ chọn</td></tr>
+      <tr><td><code>PlaySfx</code> một id chưa có trong catalog</td><td><code>LogError</code>, không phát</td></tr>
+      <tr><td><code>PlayMusic</code> một id chưa có trong catalog</td><td><code>LogError</code>, giữ bài hiện tại</td></tr>
+      <tr><td><code>PlaySfx(sfx, pitchScale)</code></td><td>Pitch dùng nguyên, không jitter, không kẹp</td></tr>
+      <tr><td><code>PlaySfx(sfx, 0)</code></td><td>Ra cao độ ngẫu nhiên như <code>PlaySfx(sfx)</code></td></tr>
+      <tr><td>Cầu nối Setting ghi cờ trước <code>Awake</code> của host</td><td>An toàn</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<!-- ============ CÁCH DÙNG ============ -->
+<section id="cach-dung">
+  <h2>Cách dùng</h2>
+
+  <h3>SDK và dự án</h3>
+  <p>Phụ thuộc một chiều: dự án tham chiếu SDK, SDK không biết gì về dự án.</p>
+  <div class="tw"><table>
+    <thead><tr><th>SDK — com.horcrux.runtime</th><th>Dự án viết</th></tr></thead>
+    <tbody>
+      <tr><td><code>IAudioSetting</code>: <code>IsSfxOn</code> · <code>IsMusicOn</code></td><td>enum <code>GameSfx</code> · <code>GameMusic</code> (số tường minh, từ 1)</td></tr>
+      <tr><td><code>IAudioService&lt;TSfx,TMusic&gt;</code>: <code>PlaySfx</code> · <code>PlayMusic</code> · <code>StopMusic</code></td><td><code>GameAudioCatalog : AudioCatalog&lt;GameSfx,GameMusic&gt;</code> — class rỗng</td></tr>
+      <tr><td><code>AudioCatalog&lt;TSfx,TMusic&gt;</code> · <code>AudioEntry&lt;TSfx&gt;</code> · <code>MusicTrack&lt;TMusic&gt;</code></td><td>Asset catalog</td></tr>
+      <tr><td><code>AudioService&lt;TSfx,TMusic&gt;</code></td><td><code>GameAudioService : AudioService&lt;GameSfx,GameMusic&gt;</code> — class rỗng · GameObject <code>audio</code> trong scene</td></tr>
+    </tbody>
+  </table></div>
+  <p>Hai class con rỗng là bắt buộc: generic <code>MonoBehaviour</code>/<code>ScriptableObject</code> không add/create được, và <code>[Service]</code> / <code>[CreateAssetMenu]</code> không dùng được trên generic.</p>
+
+  <h3>Trước khi chạy</h3>
+  <p>Dựng từ 0 theo thứ tự; mỗi bước kèm chỗ hỏng nếu thiếu.</p>
+  <ol class="steps">
+    <li><strong>Khai id và hai class con (một lần cho dự án)</strong>
+<pre><code>// enum: gán số TƯỜNG MINH, bắt đầu từ 1 — 0 là "chưa gán"
+public enum GameSfx   { Click = 1, Win = 2 /* … */ }
+public enum GameMusic { Level = 1 }
+
+[CreateAssetMenu(fileName = "AudioCatalog", menuName = "Game/Audio Catalog")]
+public sealed class GameAudioCatalog : AudioCatalog&lt;GameSfx, GameMusic&gt; { }
+
+[Service(typeof(IAudioService&lt;GameSfx, GameMusic&gt;), typeof(IAudioSetting), FindFromScene = true)]
+public class GameAudioService : AudioService&lt;GameSfx, GameMusic&gt; { }</code></pre>
+      <p>Số trong enum là wire format của asset: <strong>không đánh số lại</strong>, chỉ thêm số mới. Thiếu <code>[Service]</code> trên <code>GameAudioService</code>: không ai resolve được <code>IAudioService&lt;…&gt;</code>, consumer không nhận được service.</p></li>
+
+    <li><strong>Dựng catalog</strong>
+      <ol>
+        <li><code>Create → Game → Audio Catalog</code> (tên menu do <code>[CreateAssetMenu]</code> của bạn khai).</li>
+        <li><strong>Entries</strong>: mỗi tiếng một phần tử — chọn <code>Id</code> từ dropdown <code>GameSfx</code>, kéo <code>Clip</code>, chỉnh <code>Volume</code> (mặc định 1) và <code>Min Interval Seconds</code> (mặc định 0.03).</li>
+        <li><strong>Tracks</strong>: mỗi bài nhạc một phần tử — <code>Id</code> từ dropdown <code>GameMusic</code>, <code>Clip</code>, <code>Volume</code>.</li>
+        <li>Bấm <strong>Validate Entries</strong>: Console phải có <strong>một dòng log</strong>, không error.</li>
+      </ol>
+      <div class="tw"><table>
+        <thead><tr><th>Thiếu</th><th>Hỏng ở đâu</th></tr></thead>
+        <tbody>
+          <tr><td>Entry của một id</td><td><code>PlaySfx</code> log <code>[AudioService]: Sfx X is not in the catalog</code>, không phát</td></tr>
+          <tr><td>Track của một id</td><td><code>PlayMusic</code> log <code>[AudioService]: Music X is not in the catalog</code>, giữ bài hiện tại</td></tr>
+          <tr><td>Hai entry cùng id</td><td><code>BuildTables</code> ném <code>ArgumentException</code> ở <code>Awake</code> của host</td></tr>
+          <tr><td><code>Clip</code> của entry</td><td>NRE ở lần <code>PlaySfx</code> đầu tiên của id đó</td></tr>
+        </tbody>
+      </table></div></li>
+
+    <li><strong>Dựng host trong scene</strong>
+      <ol>
+        <li>Scene sống suốt phiên chơi (scene persistent / bootstrap của game): tạo GameObject <code>audio</code>, Add Component <code>GameAudioService</code>.</li>
+        <li>Kéo catalog vào ô <strong>Catalog</strong>.</li>
+        <li>Bấm <strong>Setup Audio Sources</strong>: tạo 8 GameObject con <code>sfx_voice_0..7</code> + <code>music_source</code>, điền vào <strong>Voices</strong> / <strong>Music Source</strong>, ép cờ (<code>Play On Awake</code> tắt, <code>Spatial Blend = 0</code>, <code>Loop</code> tắt; riêng music <code>Loop</code> bật). Bấm lại chỉ bù ô thiếu. Muốn nhiều voice hơn: thêm ô vào mảng rồi bấm lại.</li>
+        <li>Bấm <strong>Validate References</strong>: một dòng log, không error. Lưu scene.</li>
+      </ol>
+      <div class="tw"><table>
+        <thead><tr><th>Thiếu</th><th>Hỏng ở đâu</th></tr></thead>
+        <tbody>
+          <tr><td>Ô <strong>Catalog</strong></td><td>NRE ở <code>Awake</code> của host</td></tr>
+          <tr><td><strong>Music Source</strong></td><td>NRE ở lần <code>PlayMusic</code> hay set <code>IsMusicOn</code> đầu tiên</td></tr>
+          <tr><td><strong>Voices</strong> rỗng</td><td><code>IndexOutOfRange</code> ở lần <code>PlaySfx</code> đầu tiên</td></tr>
+          <tr><td>Một ô voice <code>None</code></td><td><strong>Nổ trễ</strong>: chỉ chạm khi các voice trước đã bận — đúng lúc combo dồn</td></tr>
+          <tr><td>Host ở scene bị unload</td><td>Host bị destroy cùng scene; host không <code>DontDestroyOnLoad</code></td></tr>
+        </tbody>
+      </table></div></li>
+
+    <li><strong>Nối Setting (bật/tắt Sound, Music)</strong>
+      <p>Service không biết hệ lưu của game: game tự ghi hai cờ từ save của nó. Consumer chỉ cần hai cờ nên lấy <code>IAudioSetting</code> (không generic, không phải gọi tên enum của dự án):</p>
+<pre><code>public class AudioSettingBridge : MonoBehaviour&lt;IMySaveData, IAudioSetting&gt;
+{
+    private IMySaveData _save;
+    private IAudioSetting _audio;
+
+    protected override void Init(IMySaveData save, IAudioSetting audio)
+    {
+        _save = save;
+        _audio = audio;
+
+        _audio.IsSfxOn = _save.SoundOn;                  // áp giá trị đã lưu ngay lúc khởi động
+        _audio.IsMusicOn = _save.MusicOn;
+        _save.OnSoundChanged += SetSfx;                  // rồi bám theo mỗi lần người chơi đổi
+        _save.OnMusicChanged += SetMusic;
+    }
+
+    private void OnDestroy()
+    {
+        _save.OnSoundChanged -= SetSfx;
+        _save.OnMusicChanged -= SetMusic;
+    }
+
+    private void SetSfx(bool on) =&gt; _audio.IsSfxOn = on;
+    private void SetMusic(bool on) =&gt; _audio.IsMusicOn = on;
+}</code></pre>
+      <p>Đặt component trên GameObject <code>audio</code>. Cờ có thể được ghi trước <code>Awake</code> của host: an toàn. Thiếu cầu nối: hai cờ giữ mặc định bật, người chơi tắt tiếng trong Setting không có tác dụng.</p></li>
+  </ol>
+
+  <h3>Nhận service</h3>
+  <p>Nhận qua InitArgs, không static. <code>Initializer</code> thêm trên prefab; để ô argument trống thì lấy từ service.</p>
+<pre><code>// class đã có base riêng: IInitializable + gắn Initializer (component ẩn) trên prefab
+public class Button : BaseWidget, IInitializable&lt;IAudioService&lt;GameSfx, GameMusic&gt;&gt;
+{
+    private IAudioService&lt;GameSfx, GameMusic&gt; _audio;
+    public void Init(IAudioService&lt;GameSfx, GameMusic&gt; audio) =&gt; _audio = audio;
+}
+
+// class MonoBehaviour thuần: MonoBehaviour&lt;T&gt;, tự nhận, không cần Initializer
+public class Player : MonoBehaviour&lt;IAudioService&lt;GameSfx, GameMusic&gt;&gt;
+{
+    private IAudioService&lt;GameSfx, GameMusic&gt; _audio;
+    protected override void Init(IAudioService&lt;GameSfx, GameMusic&gt; audio) =&gt; _audio = audio;
+}</code></pre>
+
+  <h3>Phát tiếng, phát nhạc</h3>
+<pre><code>_audio.PlaySfx(GameSfx.Click);            // cao độ ngẫu nhiên ±5%
+_audio.PlaySfx(GameSfx.Jump, 1.26f);      // cao độ chỉ định, không jitter
+_audio.PlayMusic(GameMusic.Level);        // vào màn; gọi lại cùng bài thì không restart
+_audio.StopMusic();</code></pre>
+
+  <h3>Một tiếng nhiều bậc (combo, chuỗi)</h3>
+  <p>Cách chính: <strong>mỗi bậc một entry</strong> với clip thu sẵn, rồi chọn entry theo bậc và kẹp ở bậc cuối. Clip thu sẵn nghe hay hơn một clip bị đẩy pitch cao (ngắn lại, mỏng đi).</p>
+<pre><code>private static readonly GameSfx[] ComboSfxs = { GameSfx.Combo2, GameSfx.Combo3, GameSfx.Combo4 };
+
+_audio.PlaySfx(ComboSfxs[Mathf.Min(combo, ComboSfxs.Length + 1) - 2]);   // combo ≥ 2; từ bậc cuối trở đi lặp tiếng cuối</code></pre>
+  <p>Khi chỉ có một clip và muốn tăng dần bằng cao độ, dùng <code>PlaySfx(sfx, pitchScale)</code>; công thức do call site giữ, ví dụ nửa cung mỗi bậc:</p>
+<pre><code>float pitchScale = Mathf.Pow(2f, Mathf.Min(step, maxStep) * semitonesPerStep / 12f);
+_audio.PlaySfx(GameSfx.Combo, pitchScale);</code></pre>
+
+  <h3>Thêm một tiếng mới</h3>
+  <ol>
+    <li>Thêm giá trị vào <code>GameSfx</code> với <strong>số mới</strong> (không dùng lại số đã xoá).</li>
+    <li>Thêm entry vào catalog, <strong>Validate Entries</strong>.</li>
+    <li>Gọi <code>_audio.PlaySfx(GameSfx.X)</code>.</li>
+  </ol>
+
+  <h3>Số chỉnh bằng tai</h3>
+  <div class="tw"><table>
+    <thead><tr><th>Số</th><th>Mặc định</th><th>Chỉnh ở đâu</th></tr></thead>
+    <tbody>
+      <tr><td><code>PitchSpread</code></td><td>0.05</td><td>hằng <code>const</code> trong <code>AudioService</code>, không có ô Inspector</td></tr>
+      <tr><td><code>minIntervalSeconds</code></td><td>0.03</td><td>catalog, từng entry</td></tr>
+      <tr><td><code>volume</code></td><td>1</td><td>catalog, từng entry / track</td></tr>
+      <tr><td>Số voice</td><td>8</td><td>mảng <strong>Voices</strong> trên host</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>Nút Editor</h3>
+  <div class="tw"><table>
+    <thead><tr><th>Nút</th><th>Ở đâu</th><th>Làm gì</th></tr></thead>
+    <tbody>
+      <tr><td><code>Validate Entries</code></td><td>catalog</td><td>id chưa gán / không thuộc enum / trùng, clip null — kiểm <strong>riêng</strong> từng bảng (SFX và music được trùng số với nhau)</td></tr>
+      <tr><td><code>Setup Audio Sources</code></td><td>host</td><td>dựng voice + music source còn thiếu, rồi ép cờ</td></tr>
+      <tr><td><code>Configure All Sources</code></td><td>host</td><td>ép lại cờ cho mọi source (sau khi tự kéo hoặc đổi tay); không tạo mới</td></tr>
+      <tr><td><code>Validate References</code></td><td>host</td><td>thiếu catalog, music source, voice, hoặc ô <code>None</code></td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<!-- ============ FLOW ============ -->
+<section id="flow">
+  <h2>Flow</h2>
+
+  <div class="fig"><div class="cap">Phát một tiếng</div>
+  <svg viewBox="0 0 860 220" role="img" aria-label="Luồng PlaySfx qua ba cổng rồi thuê voice">
+    <rect x="10" y="30" width="120" height="64" rx="8" class="sv-box"/>
+    <text x="70" y="58" class="sv-tb" text-anchor="middle">PlaySfx(id)</text>
+    <text x="70" y="78" class="sv-s" text-anchor="middle">từ consumer</text>
+    <path d="M130 62 L146 62" class="sv-ln"/><path d="M150 62 l-8 -5 v10 z" class="sv-ac"/>
+
+    <rect x="150" y="30" width="120" height="64" rx="8" class="sv-sdk"/>
+    <text x="210" y="58" class="sv-tb" text-anchor="middle">IsSfxOn?</text>
+    <text x="210" y="78" class="sv-s" text-anchor="middle">cờ Setting</text>
+    <path d="M270 62 L286 62" class="sv-ln"/><path d="M290 62 l-8 -5 v10 z" class="sv-ac"/>
+
+    <rect x="290" y="30" width="120" height="64" rx="8" class="sv-sdk"/>
+    <text x="350" y="58" class="sv-tb" text-anchor="middle">có trong</text>
+    <text x="350" y="78" class="sv-tb" text-anchor="middle">catalog?</text>
+    <path d="M410 62 L426 62" class="sv-ln"/><path d="M430 62 l-8 -5 v10 z" class="sv-ac"/>
+
+    <rect x="430" y="30" width="120" height="64" rx="8" class="sv-sdk"/>
+    <text x="490" y="58" class="sv-tb" text-anchor="middle">throttle</text>
+    <text x="490" y="78" class="sv-s" text-anchor="middle">≥ minInterval?</text>
+    <path d="M550 62 L566 62" class="sv-ln"/><path d="M570 62 l-8 -5 v10 z" class="sv-ac"/>
+
+    <rect x="570" y="30" width="120" height="64" rx="8" class="sv-prj"/>
+    <text x="630" y="58" class="sv-tb" text-anchor="middle">pitch</text>
+    <text x="630" y="78" class="sv-s" text-anchor="middle">±5% hoặc chỉ định</text>
+    <path d="M690 62 L706 62" class="sv-ln"/><path d="M710 62 l-8 -5 v10 z" class="sv-ac"/>
+
+    <rect x="710" y="30" width="140" height="64" rx="8" class="sv-ok"/>
+    <text x="780" y="58" class="sv-tb" text-anchor="middle">thuê voice</text>
+    <text x="780" y="78" class="sv-s" text-anchor="middle">Play()</text>
+
+    <path d="M210 94 L210 136" class="sv-lnrd"/>
+    <text x="210" y="154" class="sv-s" text-anchor="middle">tắt: im lặng</text>
+    <path d="M350 94 L350 136" class="sv-lnrd"/>
+    <text x="350" y="154" class="sv-s sv-rd" text-anchor="middle">không: LogError</text>
+    <path d="M490 94 L490 136" class="sv-lnrd"/>
+    <text x="490" y="154" class="sv-s" text-anchor="middle">gần quá: bỏ</text>
+
+    <path d="M780 94 L780 136" class="sv-lngr"/>
+    <text x="780" y="154" class="sv-s" text-anchor="middle">rảnh đầu tiên;</text>
+    <text x="780" y="170" class="sv-s" text-anchor="middle">hết thì cướp voice</text>
+    <text x="780" y="186" class="sv-s" text-anchor="middle">sắp xong nhất</text>
+  </svg></div>
+
+<div class="arch">_audio.PlaySfx(GameSfx.Click)
+   ├─ IsSfxOn = false ─────────────────────────&gt; im lặng (hợp lệ)
+   ├─ id không có trong catalog ───────────────&gt; LogError, bỏ
+   ├─ now − lần phát trước của entry &lt; minInterval ─&gt; bỏ (throttle, hợp lệ)
+   ├─ pitch = random [0.95, 1.05]   (hoặc pitchScale nếu dùng PlaySfx(sfx, pitchScale))
+   ├─ voice = rảnh đầu tiên, hết thì cướp voice sắp xong nhất
+   └─ voice.clip/volume/pitch ← entry ; Play()
+      busyUntil[voice] = now + clip.length / pitch</div>
+  <p>Voice rảnh khi <code>now ≥ busyUntil</code> <strong>và</strong> <code>!isPlaying</code>.</p>
+
+  <h3>Nhạc</h3>
+<div class="arch">PlayMusic(id) ── id không có trong catalog ──&gt; LogError, giữ bài hiện tại
+              └─ nhớ bài ──────────────────┐
+StopMusic() ──── bỏ chọn bài ──────────────┤
+IsMusicOn = x ─────────────────────────────┴─&gt; áp trạng thái nhạc
+     tắt, hoặc chưa chọn bài ──&gt; musicSource.Stop()
+     đang phát đúng clip ──────&gt; giữ nguyên: không restart, volume cũ
+     còn lại ──────────────────&gt; volume, clip ← track ; Play() từ đầu</div>
+</section>
+
+<!-- ============ LƯU Ý ============ -->
+<section id="luu-y">
+  <h2>Lưu ý</h2>
+  <div class="note bad"><strong><code>[Service]</code> không di truyền.</strong> <code>Inherited = false</code>: khai ở <code>AudioService</code> base không tới class con. Phải đặt trên <code>GameAudioService</code>.</div>
+  <div class="note bad"><strong>Override <code>Awake</code> hay <code>ConfigureAllSources</code> thì phải gọi <code>base</code>.</strong> Class con đặt trùng tên sẽ che hẳn bản base: bảng tra không dựng, mốc throttle không điền, cờ voice không ép — im lặng. <code>ConfigureAllSources</code> chỉ có trong Editor: override phải nằm trong <code>#if UNITY_EDITOR</code>, không thì build player lỗi compile.</div>
+  <div class="note bad"><strong>Enum phải gán số tường minh từ 1, không đánh số lại.</strong> <code>0</code> là "chưa gán"; số là wire format của asset. Enum <code>long</code> không hỗ trợ (Unity lưu enum thành <code>int</code>).</div>
+  <div class="note bad"><strong>Ô voice <code>None</code> nổ trễ.</strong> Chỉ chạm khi các voice trước đã bận, đúng lúc combo dồn. Bắt bằng <code>Validate References</code> từ lúc authoring.</div>
+  <div class="note"><strong>Không guard runtime cho catalog / music source / voice / clip null.</strong> Mỗi cái nổ thật ở lần chạm đầu; nút Validate báo sớm hơn. Validate chỉ chạy khi bấm: không <code>OnValidate</code>, không chạy ở <code>Awake</code>.</div>
+  <div class="note"><strong>Không <code>DontDestroyOnLoad</code>.</strong> Host là component trong scene; đời sống do scene quyết. Đặt nó ở scene sống suốt phiên chơi.</div>
+  <div class="note"><strong>Hợp đồng <code>pitchScale &gt; 0</code> do caller giữ.</strong> <code>pitchScale</code> rất gần 0 cũng ra cao độ ngẫu nhiên.</div>
+  <div class="note"><strong>Throttle khoá theo entry.</strong> Cùng một clip ở hai entry thì throttle riêng.</div>
+  <div class="note"><strong>SFX và music được trùng số với nhau:</strong> hai bảng độc lập; compiler chặn <code>GameMusic.Level</code> truyền vào <code>PlaySfx</code>.</div>
+</section>
+
+</main>
+<footer>Horcrux · Audio System · Horcrux.Runtime.Implementations.Audio · nguồn: AudioSystem.md</footer>
+</body>
+</html>
