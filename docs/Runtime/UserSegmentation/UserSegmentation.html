@@ -100,6 +100,7 @@ footer{text-align:center;padding:2.5rem 1rem;color:var(--tx3);font-size:.82rem;b
   <li><a href="#luat">Luật</a></li>
   <li><a href="#truoc-khi-chay">Trước khi chạy</a></li>
   <li><a href="#consumer">Consumer</a></li>
+  <li><a href="#debug">Debug</a></li>
   <li><a href="#quyet-dinh">Quyết định trái trực giác</a></li>
   <li><a href="#khong-lam">Cố ý không làm</a></li>
   <li><a href="#bay">Bẫy</a></li>
@@ -261,17 +262,29 @@ Commit   entry.Value = state                     luôn: SessionCount, LastCampai
     <thead><tr><th>Sự kiện</th><th>Điều kiện</th><th>Kết quả</th></tr></thead>
     <tbody>
       <tr><td><code>OnBoot</code></td><td><code>CurrSegmentId == 0</code></td><td><code>curr = default</code>, thay đổi <code>Initial</code></td></tr>
-      <tr><td><code>OnBoot</code></td><td><code>!IsCampaignLocked &amp;&amp; SessionCount &gt;= max(1, resegmentMaxSessions)</code></td><td><code>IsCampaignLocked = true</code>, giữ tập</td></tr>
+      <tr><td><code>OnBoot</code></td><td><code>!IsCampaignLocked &amp;&amp; SessionCount &gt;= max(1, resegmentMaxSessions)</code></td><td>khoá <code>SessionWindow</code>, giữ tập</td></tr>
       <tr><td><code>OnBoot</code></td><td>luôn, sau hai dòng trên</td><td><code>SessionCount++</code></td></tr>
       <tr><td><code>OnCampaign(camp)</code></td><td>luôn, trước mọi dòng dưới</td><td><code>LastCampaign = camp</code></td></tr>
       <tr><td><code>OnCampaign(camp)</code></td><td><code>IsCampaignLocked</code></td><td>không đổi</td></tr>
-      <tr><td><code>OnCampaign(camp)</code></td><td><code>curr == purchased</code></td><td><code>IsCampaignLocked = true</code>, không đổi</td></tr>
+      <tr><td><code>OnCampaign(camp)</code></td><td><code>curr == purchased</code></td><td>khoá <code>Attribution</code>, không đổi</td></tr>
       <tr><td><code>OnCampaign(camp)</code></td><td>tập khớp <code>== purchased</code></td><td>coi như không khớp rồi áp dòng dưới</td></tr>
-      <tr><td><code>OnCampaign(camp)</code></td><td>còn lại</td><td><code>IsCampaignLocked = true</code>; đích = tập khớp, không khớp hay camp rỗng thì <code>default</code>; đích khác <code>curr</code> thì <code>curr = đích</code>, thay đổi <code>CampaignResolved</code> kèm keyword và cờ <code>IsAmbiguous</code></td></tr>
+      <tr><td><code>OnCampaign(camp)</code></td><td>còn lại</td><td>khoá <code>Attribution</code>; đích = tập khớp, không khớp hay camp rỗng thì <code>default</code>; đích khác <code>curr</code> thì <code>curr = đích</code>, thay đổi <code>CampaignResolved</code> kèm keyword và cờ <code>IsAmbiguous</code></td></tr>
       <tr><td><code>OnPurchase</code></td><td><code>curr == purchased</code></td><td>không đổi</td></tr>
-      <tr><td><code>OnPurchase</code></td><td>còn lại</td><td><code>prev = curr</code> (<code>curr</code> là 0 thì <code>prev = default</code>), <code>curr = purchased</code>, <code>IsCampaignLocked = true</code>, thay đổi <code>Purchase</code></td></tr>
+      <tr><td><code>OnPurchase</code></td><td>còn lại</td><td><code>prev = curr</code> (<code>curr</code> là 0 thì <code>prev = default</code>), <code>curr = purchased</code>, khoá <code>Purchase</code>, thay đổi <code>Purchase</code></td></tr>
+      <tr><td>khoá <code>X</code></td><td><code>LockReason == None</code></td><td><code>LockReason = X</code>; đã khoá thì giữ lý do cũ</td></tr>
       <tr><td>đọc config</td><td><code>curr != purchased</code></td><td>hàng của <code>curr</code></td></tr>
       <tr><td>đọc config</td><td><code>curr == purchased</code></td><td><code>hàng purchased.InheritFrom(hàng prev)</code>; <code>prev == 0</code> thì hàng <code>default</code></td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>Khoá</h3>
+  <p><code>IsCampaignLocked</code> là <code>LockReason != None</code>, không lưu riêng. <code>LockReason</code> là lý do <strong>đầu tiên</strong> cửa sổ phân lại đóng:</p>
+  <div class="tw"><table>
+    <thead><tr><th><code>LockReason</code></th><th>Đóng khi</th></tr></thead>
+    <tbody>
+      <tr><td><code>Attribution</code></td><td>Adjust trả lời, kể cả camp rỗng</td></tr>
+      <tr><td><code>Purchase</code></td><td>mua thật</td></tr>
+      <tr><td><code>SessionWindow</code></td><td>hết N phiên chưa có attribution</td></tr>
     </tbody>
   </table></div>
 
@@ -389,7 +402,7 @@ internal sealed class MySegmentationHostInitializer : Initializer&lt;MySegmentat
         </tbody>
       </table></div></li>
   </ol>
-  <div class="note"><strong>Reset để thử lại từ chưa quyết:</strong> menu <strong>Horcrux → Player Prefs Editor</strong>, xoá key <code>persistence_</code> + <code>Key</code> của entry.</div>
+  <div class="note"><strong>Reset để thử lại từ chưa quyết:</strong> ngoài Play, <strong>Horcrux → User Segmentation → Simulator</strong> → <strong>Xoá save phân tập</strong>; hoặc menu <strong>Horcrux → Player Prefs Editor</strong>, xoá key <code>persistence_</code> + <code>Key</code> của entry.</div>
 </section>
 
 <!-- ============ CONSUMER ============ -->
@@ -399,12 +412,25 @@ internal sealed class MySegmentationHostInitializer : Initializer&lt;MySegmentat
     <thead><tr><th>Đọc</th><th>Nghĩa</th></tr></thead>
     <tbody>
       <tr><td><code>CurrConfig</code></td><td>hàng đã giải của tập hiện tại; <code>null</code> khi host chưa chạy hoặc setup thiếu. Consumer không tự đỡ <code>null</code>: setup thiếu phải nổ ở lần Play đầu</td></tr>
-      <tr><td><code>IsReady</code> · <code>CurrSegmentId</code> · <code>PrevSegmentId</code> · <code>IsCampaignLocked</code> · <code>IsFirstSession</code> · <code>LastCampaign</code></td><td>đọc thẳng từ state; trước khi host chạy trả 0, false, <code>null</code></td></tr>
+      <tr><td><code>IsReady</code> · <code>CurrSegmentId</code> · <code>PrevSegmentId</code> · <code>IsCampaignLocked</code> · <code>LockReason</code> · <code>SessionCount</code> · <code>IsFirstSession</code> · <code>LastCampaign</code></td><td>đọc thẳng từ state; trước khi host chạy trả 0, false, <code>None</code>, <code>null</code></td></tr>
       <tr><td><code>EventBus&lt;UserSegmentChanged&gt;</code></td><td>phát đồng bộ sau khi state đã ghi vào entry, chỉ khi tập đổi. Field: <code>PrevSegmentId</code> · <code>CurrentSegmentId</code> · <code>Reason</code> · <code>MatchedKeyword</code> (null với <code>Initial</code>, <code>Purchase</code>) · <code>IsAmbiguous</code></td></tr>
     </tbody>
   </table></div>
   <p>Log mỗi lần đổi tập, một dòng:</p>
   <pre><code>[UserSegmentation]: CampaignResolved: segment 1 -&gt; 2 by keyword 'X', another segment's keyword also matched</code></pre>
+</section>
+
+<!-- ============ DEBUG ============ -->
+<section id="debug">
+  <h2>Debug</h2>
+  <p>Panel cheat do dự án dựng; host phơi cho nó các cửa đọc ở mục Consumer và một lệnh chạm state <code>private</code>:</p>
+  <div class="tw"><table>
+    <thead><tr><th>Lệnh</th><th>Làm</th><th>Caller phải</th></tr></thead>
+    <tbody>
+      <tr><td><code>IUserSegmentationDebug.ResetState()</code> (cài explicit, cast host sang interface)</td><td><code>IsReady</code> false thì <code>LogError</code> rồi thoát. Còn lại: state mới (chưa quyết), ghi vào entry, <code>FlushNow</code>, log một dòng. Không publish <code>UserSegmentChanged</code></td><td>thoát app ngay: <code>CurrConfig</code> giữ hàng cũ, việc chỉ chạy lúc boot (grant của dự án) không chạy lại</td></tr>
+    </tbody>
+  </table></div>
+  <p>Hai lệnh còn lại của cheat là cửa ghi thật: <code>ReportCampaign(camp)</code> (camp giả cho Editor, nơi Adjust không trả lời) và <code>ReportPurchase()</code>.</p>
 </section>
 
 <!-- ============ QUYẾT ĐỊNH ============ -->
@@ -420,6 +446,9 @@ internal sealed class MySegmentationHostInitializer : Initializer&lt;MySegmentat
       <tr><td>Thiếu cả hàng <code>default</code> thì ném, không trả hàng rỗng</td><td>hàng rỗng là kinh tế bằng 0 chạy im lặng; pool rỗng là lỗi authoring, phải nổ</td></tr>
       <tr><td>Field public của <code>UserSegmentState</code> viết PascalCase</td><td>tên field là khoá JSON của save, đã chốt từ save đầu tiên</td></tr>
       <tr><td><code>ResegmentMaxSessions &lt; 1</code> kẹp về 1, kèm <code>LogWarning</code></td><td>0 sẽ khoá ngay lúc boot đầu, trước khi Adjust kịp trả lời: mọi user thành <code>default</code> vĩnh viễn</td></tr>
+      <tr><td>Lý do khoá lưu trong save, lý do đầu thắng; <code>IsCampaignLocked</code> suy từ nó</td><td>suy từ <code>LastCampaign</code> sai khi khoá vì hết cửa sổ rồi camp về muộn (hay cheat báo camp): <code>OnCampaign</code> vẫn ghi <code>LastCampaign</code>. Mua sau khi Adjust trả lời vẫn là <code>Attribution</code>: tập <code>purchased</code> đã nói việc mua</td></tr>
+      <tr><td><code>ResetState</code> thay cả <code>_state</code> lẫn giá trị entry</td><td>Commit muộn (poll Adjust nền) ghi <code>_entry.Value = _state</code>; giữ <code>_state</code> cũ thì bản cũ đè bản reset</td></tr>
+      <tr><td><code>ResetState</code> là explicit interface</td><td>gọi nhầm là mất save im lặng</td></tr>
       <tr><td>Base không generic giữ toàn bộ cơ chế, lớp generic chỉ tra config</td><td>bước Adjust và tool Editor cần một kiểu kéo thả được; bảng keyword không mang kiểu dự án</td></tr>
       <tr><td>Boot luôn gọi <code>OnStateApplied</code>, kể cả khi không có thay đổi</td><td><code>CurrConfig</code> bắt đầu <code>null</code> mỗi lần mở app, phải dựng ở mọi phiên</td></tr>
       <tr><td>Một hàng keyword mang <strong>mảng</strong> keyword</td><td>bảng trên console đọc một dòng một tập. Giá: CSV importer của RemoteConfigSystem chỉ nhận ô phẳng, nên bảng keyword nhập bằng Inspector hoặc nút <strong>Import Json</strong> trên asset remote config; pool vẫn đi CSV</td></tr>
@@ -467,7 +496,7 @@ internal sealed class MySegmentationHostInitializer : Initializer&lt;MySegmentat
       <tr><td><code>UserSegmentKeywordMatcherTests</code></td><td>guard <code>null</code>, rỗng · hoa thường · keyword thứ ba của hàng · thứ tự mảng thắng thứ tự camp · hai hàng cùng tập không ambiguous · hai tập khớp: thứ tự bảng thắng, ambiguous · keyword và hàng rỗng bị bỏ · keyword ngắn trên camp chứa <code>Android</code></td></tr>
       <tr><td><code>UserSegmentInheritanceTests</code></td><td><code>Pick</code> với <code>-1</code>, giá trị thường, <code>-1</code> ở cả hai, <code>0</code></td></tr>
       <tr><td><code>UserSegmentConfigTableTests</code></td><td><code>Find</code>: có, trùng id, vắng, <code>null</code> · <code>Validate</code>: từng dòng kiểm ở mục Luật, mỗi lỗi đúng một dòng, không ném với input <code>null</code></td></tr>
-      <tr><td><code>UserSegmentDeciderTests</code></td><td>mọi dòng bảng Luật, kể cả kẹp <code>max 0</code>, khớp vào <code>purchased</code>, mua rồi camp mới về</td></tr>
+      <tr><td><code>UserSegmentDeciderTests</code></td><td>mọi dòng bảng Luật, kể cả kẹp <code>max 0</code>, khớp vào <code>purchased</code>, mua rồi camp mới về · lý do khoá từng đường, lý do đầu thắng · wire format qua <code>PersistenceDataEntry</code>: có <code>LockReason</code>, không có <code>IsCampaignLocked</code>, save cũ đọc ra chưa khoá</td></tr>
     </tbody>
   </table></div>
   <p><code>InheritFrom</code> là code dự án: test ở dự án, bằng reflection trên mọi field <code>int</code> public để bắt cột mới thiếu dòng <code>Pick</code>. Host và bước Adjust không có test tự động (MonoBehaviour gắn chuỗi boot và SDK); kiểm bằng biên dịch.</p>
@@ -480,11 +509,13 @@ internal sealed class MySegmentationHostInitializer : Initializer&lt;MySegmentat
   <div class="tw"><table>
     <thead><tr><th>Type</th><th>Thành viên</th></tr></thead>
     <tbody>
-      <tr><td><code>AUserSegmentationHost</code></td><td><code>abstract</code>, <code>ABootStep</code>, <code>IInitializable&lt;BasePersistenceDataCollection&gt;</code> · <code>bool IsReady</code> · <code>int CurrSegmentId</code> · <code>int PrevSegmentId</code> · <code>bool IsCampaignLocked</code> · <code>bool IsFirstSession</code> · <code>string LastCampaign</code> · <code>void ReportCampaign(string)</code> · <code>void ReportPurchase()</code> · abstract <code>DefaultSegmentId</code> · <code>PurchasedSegmentId</code> · <code>IReadOnlyList&lt;IUserSegmentKeywordRule&gt; KeywordRules</code> · virtual <code>int ResegmentMaxSessions</code> (mặc định 3)</td></tr>
+      <tr><td><code>AUserSegmentationHost</code></td><td><code>abstract partial</code>, <code>ABootStep</code>, <code>IInitializable&lt;BasePersistenceDataCollection&gt;</code>, <code>IUserSegmentationDebug</code> (explicit) · <code>bool IsReady</code> · <code>int CurrSegmentId</code> · <code>int PrevSegmentId</code> · <code>bool IsCampaignLocked</code> · <code>UserSegmentLockReason LockReason</code> · <code>int SessionCount</code> · <code>bool IsFirstSession</code> · <code>string LastCampaign</code> · <code>void ReportCampaign(string)</code> · <code>void ReportPurchase()</code> · abstract <code>DefaultSegmentId</code> · <code>PurchasedSegmentId</code> · <code>IReadOnlyList&lt;IUserSegmentKeywordRule&gt; KeywordRules</code> · virtual <code>int ResegmentMaxSessions</code> (mặc định 3)</td></tr>
       <tr><td><code>AUserSegmentationHost&lt;TConfig&gt;</code></td><td><code>where TConfig : class, IUserSegmentConfig&lt;TConfig&gt;</code> · <code>TConfig CurrConfig</code> · abstract <code>IReadOnlyList&lt;TConfig&gt; Configs</code></td></tr>
       <tr><td><code>IUserSegmentConfig</code> · <code>IUserSegmentConfig&lt;TSelf&gt;</code></td><td><code>int Id</code> · <code>TSelf InheritFrom(TSelf prev)</code></td></tr>
       <tr><td><code>IUserSegmentKeywordRule</code></td><td><code>int SegmentId</code> · <code>IReadOnlyList&lt;string&gt; Keywords</code></td></tr>
-      <tr><td><code>UserSegmentState</code></td><td><code>[Serializable]</code> · <code>int CurrSegmentId</code> · <code>int PrevSegmentId</code> · <code>bool IsCampaignLocked</code> · <code>int SessionCount</code> · <code>string LastCampaign</code></td></tr>
+      <tr><td><code>UserSegmentState</code></td><td><code>[Serializable]</code> · <code>int CurrSegmentId</code> · <code>int PrevSegmentId</code> · <code>UserSegmentLockReason LockReason</code> · <code>int SessionCount</code> · <code>string LastCampaign</code> · <code>[JsonIgnore] bool IsCampaignLocked</code> (suy từ <code>LockReason</code>, không lưu)</td></tr>
+      <tr><td><code>UserSegmentLockReason</code></td><td><code>None = 0</code>, <code>Attribution = 1</code>, <code>Purchase = 2</code>, <code>SessionWindow = 3</code>; số là wire format của save</td></tr>
+      <tr><td><code>IUserSegmentationDebug</code></td><td><code>void ResetState()</code></td></tr>
       <tr><td><code>UserSegmentDecider</code></td><td><code>Change OnBoot(state, defaultId, maxSessions)</code> · <code>Change OnCampaign(state, campaign, matchedId, keyword, isAmbiguous, defaultId, purchasedId)</code> · <code>Change OnPurchase(state, defaultId, purchasedId)</code> · <code>readonly struct Change { HasChange, PrevSegmentId, CurrSegmentId, Reason, MatchedKeyword, IsAmbiguous; static None }</code></td></tr>
       <tr><td><code>UserSegmentKeywordMatcher</code></td><td><code>bool TryMatch(string campaign, IReadOnlyList&lt;IUserSegmentKeywordRule&gt;, out int segmentId, out string keyword, out bool isAmbiguous)</code></td></tr>
       <tr><td><code>UserSegmentInheritance</code></td><td><code>const int InheritValue = -1</code> · <code>int Pick(int target, int prev)</code></td></tr>
@@ -500,13 +531,15 @@ internal sealed class MySegmentationHostInitializer : Initializer&lt;MySegmentat
   <h2>Cấu trúc file</h2>
 <div class="arch">Runtime/Abstractions/Composites/UserSegmentation/
 ├── AUserSegmentationHost.cs · AUserSegmentationHost.Generic.cs   <em>cơ chế · tra và cache config</em>
+├── AUserSegmentationHost.Debug.cs                                 <em>IUserSegmentationDebug: reset cho cheat</em>
 ├── IUserSegmentConfig.cs · IUserSegmentKeywordRule.cs             <em>contract hai DTO</em>
 ├── UserSegmentDecider.cs · UserSegmentKeywordMatcher.cs           <em>luật · khớp keyword</em>
 ├── UserSegmentInheritance.cs · UserSegmentConfigTable.cs          <em>kế thừa · tra và guard dữ liệu</em>
 ├── UserSegmentState.cs · UserSegmentChanged.cs                    <em>save model · event</em>
 └── BasePersistenceDataCollection.UserSegmentation.cs              <em>entry save</em>
 Vendors/Adjust/com.horcrux.adjust.asmdef · AdjustCampaignBootStep.cs
-Tests/EditMode/UserSegment*Tests.cs</div>
+Editor/UserSegmentation/UserSegmentationSimulatorWindow.cs · UserSegmentationSimulatorCore.cs   <em>tool Editor</em>
+Tests/EditMode/UserSegment*Tests.cs · UserSegmentationSimulatorTests.cs</div>
 </section>
 
 <!-- ============ MỞ RỘNG SAU ============ -->
@@ -514,9 +547,7 @@ Tests/EditMode/UserSegment*Tests.cs</div>
   <h2>Mở rộng sau</h2>
   <ul>
     <li>Tính lại config khi remote về giữa phiên: một <code>public void RefreshConfigs()</code> trên lớp generic, dự án nối vào sự kiện fetch xong của remote config.</li>
-    <li>Ô CSV dạng <code>a|b|c</code> cho field <code>List&lt;string&gt;</code> trong <code>RemoteConfigCsvImporter</code>, khi bảng keyword cần đi đường sheet.</li>
-    <li>Cheat khi dự án dùng SRDebugger: một category đọc <code>CurrSegmentId</code>, <code>IsCampaignLocked</code>, <code>LastCampaign</code>, số phiên, và hai lệnh <code>ReportPurchase()</code>, <code>ReportCampaign(camp)</code> (camp giả cho Editor đi qua lệnh này).</li>
-  </ul>
+    <li>Ô CSV dạng <code>a|b|c</code> cho field <code>List&lt;string&gt;</code> trong <code>RemoteConfigCsvImporter</code>, khi bảng keyword cần đi đường sheet.</li>  </ul>
 </section>
 
 </main>
