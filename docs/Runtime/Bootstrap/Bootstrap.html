@@ -105,12 +105,16 @@ footer{text-align:center;padding:2.5rem 1rem;color:var(--tx3);font-size:.82rem;b
 <!-- ============ TỔNG QUAN ============ -->
 <section id="tong-quan">
   <h2>Tổng quan</h2>
-  <p><code>BootstrapService</code> sắp các <code>ABootStep</code> theo <code>Order</code>, await <strong>tuần tự</strong>, và một bước ném exception thì <strong>vẫn vào được game</strong>. Mỗi nhịp cấp một <code>CancellationToken</code> vòng đời: load level mới là mọi loop async của level trước bị huỷ trước khi bước nào của level mới chạy.</p>
-  <ul>
-    <li><strong>Hai nhịp async:</strong> <code>InitializeAsync()</code> — cold start, đúng một lần cả đời app · <code>ReinitializeAsync()</code> — mỗi lần load level.</li>
-    <li><strong>Hai hook sync của app:</strong> <code>OnGoToBackground</code> (xuống nền / trở lại) và <code>OnAppQuit</code>.</li>
-    <li><strong>Hệ ngoài</strong> chỉ hỏi "xong chưa / chờ xong" qua <code>IBootstrapService</code>.</li>
-  </ul>
+  <div class="tw"><table>
+    <thead><tr><th>Cửa</th><th>Khi nào</th><th>Chạy thế nào</th></tr></thead>
+    <tbody>
+      <tr><td><code>InitializeAsync()</code></td><td>Cold start, đúng một lần cả đời app</td><td>async, await <strong>tuần tự</strong> theo <code>Order</code>; bước ném exception thì <strong>vẫn vào được game</strong></td></tr>
+      <tr><td><code>ReinitializeAsync()</code></td><td>Mỗi lần load level</td><td>async; mọi loop async của level trước bị huỷ trước khi bước nào của level mới chạy</td></tr>
+      <tr><td><code>OnGoToBackground</code></td><td>Xuống nền / trở lại</td><td>sync, đúng một lần mỗi lượt</td></tr>
+      <tr><td><code>OnAppQuit</code></td><td>App quit</td><td>sync</td></tr>
+      <tr><td><code>IBootstrapService</code></td><td>Hệ ngoài</td><td>Chỉ hỏi "xong chưa / chờ xong"</td></tr>
+    </tbody>
+  </table></div>
   <div class="hero"><div class="big">Danh sách bước và giá trị <code>Order</code> là cấu hình trong Inspector, không phải code.</div>
   <p style="margin:.5rem 0 0">Lúc Play, ô <strong>Steps</strong> hiện danh sách <strong>đã sort</strong> — đó là thứ tự chạy thật.</p></div>
 </section>
@@ -230,21 +234,21 @@ private void OnDestroy() =&gt; bootstrap.ProgressChanged -= OnProgress;</code></
       <tr><td>Có state phải dựng lại mỗi level</td><td>+ <code>ReinitializeAsync</code></td></tr>
       <tr><td>Cần <strong>đọc state của bước khác</strong></td><td>+ <code>AfterReinitialize</code> — chạy sau khi <strong>mọi</strong> bước đã reinit xong</td></tr>
       <tr><td>Phải flush khi app xuống nền hoặc thoát</td><td>+ <code>OnGoToBackground</code> / <code>OnAppQuit</code></td></tr>
+      <tr><td>Không có việc init thật — chỉ cần tồn tại để <code>FindFromScene</code> thấy</td><td><strong>Không phải bước</strong>: <code>MonoBehaviour</code> thường. Vào chuỗi chỉ khi <code>InitializeAsync</code> có việc thật: await, đọc save, hay cần thứ tự với bước khác</td></tr>
     </tbody>
   </table></div>
-  <p><strong>Hệ không có việc init thì không phải bước.</strong> Vào chuỗi chỉ khi <code>InitializeAsync</code> có việc thật: await, đọc save, hay cần thứ tự với bước khác. Hệ chỉ cần tồn tại để <code>FindFromScene</code> thấy là <code>MonoBehaviour</code> thường.</p>
 
   <h3>Hệ ngoài chờ cold boot</h3>
 <pre><code>if (IBootstrapService.TryGet(out IBootstrapService bootstrap))
     await bootstrap.UntilInitializedAsync(ct);</code></pre>
-  <p><code>TryGet</code> khi thiếu service là hợp lệ. <code>ct</code> của consumer chỉ huỷ việc chờ, boot vẫn chạy.</p>
 
   <h3>Thứ consumer đọc và gọi</h3>
   <div class="tw"><table>
     <thead><tr><th>Thành viên</th><th>Ở đâu</th><th>Dùng khi</th></tr></thead>
     <tbody>
       <tr><td><code>IsInitialized</code></td><td><code>IBootstrapService</code></td><td>Hỏi "cold boot đã xong chưa". Không reset khi reinit</td></tr>
-      <tr><td><code>UntilInitializedAsync</code></td><td><code>IBootstrapService</code></td><td>Chờ cold boot; await được nhiều lần, bởi nhiều consumer</td></tr>
+      <tr><td><code>UntilInitializedAsync</code></td><td><code>IBootstrapService</code></td><td>Chờ cold boot; await được nhiều lần, bởi nhiều consumer. <code>ct</code> của consumer chỉ huỷ việc chờ, boot vẫn chạy</td></tr>
+      <tr><td><code>TryGet</code></td><td><code>IBootstrapService</code></td><td>Lấy service; thiếu service là hợp lệ</td></tr>
       <tr><td><code>InitializeAsync()</code></td><td><code>IBootstrapService</code></td><td>Scene flow gọi đúng một lần</td></tr>
       <tr><td><code>ReinitializeAsync()</code></td><td><code>IBootstrapService</code></td><td>Scene flow gọi mỗi lần load level</td></tr>
       <tr><td><code>ProgressChanged</code></td><td><code>BootstrapService</code></td><td>Splash: trước <strong>mỗi</strong> bước, cộng một nhịp đóng</td></tr>
@@ -319,7 +323,15 @@ private void OnDestroy() =&gt; bootstrap.ProgressChanged -= OnProgress;</code></
     <text x="485" y="276" class="sv-s" text-anchor="middle">log, đi tiếp bước sau</text>
   </svg>
   </div>
-  <p>Nhịp mới huỷ token cũ <strong>trước</strong> khi chờ nhịp cũ thoát. Nhịp cũ thoát ở <strong>await kế tiếp của chính nó</strong>, nên bước đang chạy mà không truyền <code>ct</code> xuống thì vẫn chạy hết bước hiện tại. Nhịp dừng êm thì không có nhịp đóng, không <code>AfterReinitialize</code>, không bật latch.</p>
+  <div class="tw"><table>
+    <thead><tr><th>Khi</th><th>Kết quả</th></tr></thead>
+    <tbody>
+      <tr><td>Nhịp mới tới</td><td>Huỷ token cũ <strong>trước</strong> khi chờ nhịp cũ thoát</td></tr>
+      <tr><td>Nhịp cũ bị huỷ</td><td>Thoát ở <strong>await kế tiếp của chính nó</strong></td></tr>
+      <tr><td>Bước đang chạy không truyền <code>ct</code> xuống</td><td>Vẫn chạy hết bước hiện tại</td></tr>
+      <tr><td>Nhịp dừng êm</td><td>Không có nhịp đóng, không <code>AfterReinitialize</code>, không bật latch</td></tr>
+    </tbody>
+  </table></div>
 
   <h3>Chiều chạy qua danh sách bước</h3>
 <div class="arch">cold boot   ──&gt; InitializeAsync(ct)        async   0 ──────&gt; n-1
@@ -328,24 +340,36 @@ level load  ──&gt; ReinitializeAsync(ct)      async   0 ──────&g
 xuống nền   ──&gt; OnGoToBackground(true)     sync  n-1 ──────&gt;   0   NGƯỢC   Pause(true)  ∪ Focus(false)
 trở lại     ──&gt; OnGoToBackground(false)    sync    0 ──────&gt; n-1           Pause(false) ∪ Focus(true)
 app quit    ──&gt; OnAppQuit()                sync  n-1 ──────&gt;   0   NGƯỢC</div>
-  <p>Hai tín hiệu của Unity gom về một trạng thái: tín hiệu tới trước lật trạng thái và gọi các bước, tín hiệu tới sau là no-op. Mọi hook sync bọc try/catch từng bước: một bước ném thì log, bước sau vẫn được gọi.</p>
+  <div class="tw"><table>
+    <thead><tr><th>Khi</th><th>Kết quả</th></tr></thead>
+    <tbody>
+      <tr><td>Tín hiệu Unity tới trước (Pause hoặc Focus)</td><td>Lật trạng thái nền, gọi các bước</td></tr>
+      <tr><td>Tín hiệu tới sau, cùng lượt</td><td>No-op</td></tr>
+      <tr><td>Một bước ném trong hook sync</td><td>Log, bước sau vẫn được gọi</td></tr>
+    </tbody>
+  </table></div>
 </section>
 
 <!-- ============ LƯU Ý ============ -->
 <section id="luu-y">
   <h2>Lưu ý</h2>
-  <div class="note bad"><strong><code>BootstrapService</code> không tự chạy.</strong> Không ai gọi <code>InitializeAsync()</code> thì <code>UntilInitializedAsync</code> treo vĩnh viễn.</div>
-  <div class="note bad"><strong>Reinit trước khi init xong.</strong> Nhịp reinit huỷ token của nhịp init ⇒ init dừng êm, latch không bao giờ bật: <code>UntilInitializedAsync</code> treo, hook nền và quit tắt vĩnh viễn. Luôn <code>await</code> trước <code>ReinitializeAsync()</code>.</div>
-  <div class="note bad"><strong>Thiết kế cho MỘT call site.</strong> Ba lời gọi xếp hàng thì lời ở giữa không bị loại: nó chạy bằng token mới nhất, và lời sau nó <strong>dùng lại</strong> đúng token đó — loop mà lời giữa khởi chạy sống qua lời sau. Người gọi phải là một — scene flow của game.</div>
-  <div class="note bad"><strong><code>ct</code> truyền xuống mọi await và mọi loop bên trong.</strong> Đường duy nhất để reinit huỷ được việc của level trước. Bước không nhận <code>ct</code> thì loop của nó sống qua mọi lần load level.</div>
-  <div class="note bad"><strong><code>.Forget()</code> thì tự bọc try/catch trong thân loop.</strong> <code>.Forget()</code> không có ai bắt exception cho nó. Fail-open của service chỉ phủ phần <strong>await được</strong> của bước.</div>
-  <div class="note bad"><strong>Không khai method tên <code>OnApplicationPause</code> / <code>OnApplicationFocus</code> / <code>OnApplicationQuit</code> trên bước.</strong> Unity gọi thẳng magic method đó, cộng fan-out của service ⇒ việc chạy <strong>hai lần</strong>. Dùng <code>OnGoToBackground</code> / <code>OnAppQuit</code>.</div>
-  <div class="note"><strong>Nhịp bị huỷ không có nhịp đóng.</strong> Splash đứng ở giữa, rồi nhịp mới bắn lại từ index 0 nên tỉ lệ tụt về sau — splash phải chịu được điều đó.</div>
-  <div class="note"><strong>Hook pause/quit im lặng trước khi init xong.</strong> Quit giữa lúc đang boot: không bước nào được flush. Xuống nền giữa lúc boot: lúc trở lại cũng không có <code>OnGoToBackground(false)</code> — không có resume mồ côi.</div>
-  <div class="note"><strong>Mất focus không xuống nền cũng là "xuống nền".</strong> Bước flush sớm hơn cần; bước cần phân biệt hai ca thì không có cửa.</div>
-  <div class="note"><strong>Không timeout, không retry.</strong> Thứ retry được là tri thức riêng của từng bước; bước treo thì treo cả chuỗi và treo cả splash.</div>
-  <div class="note"><strong>Không có <code>UntilReinitializedAsync</code>.</strong> "Level sẵn sàng" là cạnh lặp lại; chỗ biết chắc là nơi gọi: <code>await ReinitializeAsync()</code>. Bước trong chuỗi thì dùng <code>AfterReinitialize</code>.</div>
-  <div class="note good"><strong>Đọc state của bước khác lúc reinit thì ở <code>AfterReinitialize</code>.</strong> Đọc trong <code>ReinitializeAsync</code> có thể ra giá trị cũ.</div>
+  <div class="tw"><table>
+    <thead><tr><th></th><th>Chỗ</th><th>Sự thật</th></tr></thead>
+    <tbody>
+      <tr><td><span class="tag t-bad">bẫy</span></td><td><strong><code>BootstrapService</code> không tự chạy</strong></td><td>Không ai gọi <code>InitializeAsync()</code> thì <code>UntilInitializedAsync</code> treo vĩnh viễn.</td></tr>
+      <tr><td><span class="tag t-bad">bẫy</span></td><td><strong>Reinit trước khi init xong</strong></td><td>Nhịp reinit huỷ token của nhịp init ⇒ init dừng êm, latch không bao giờ bật: <code>UntilInitializedAsync</code> treo, hook nền và quit tắt vĩnh viễn. Luôn <code>await</code> trước <code>ReinitializeAsync()</code>.</td></tr>
+      <tr><td><span class="tag t-bad">bẫy</span></td><td><strong>Thiết kế cho MỘT call site</strong></td><td>Ba lời gọi xếp hàng thì lời ở giữa không bị loại: nó chạy bằng token mới nhất, và lời sau nó <strong>dùng lại</strong> đúng token đó — loop mà lời giữa khởi chạy sống qua lời sau. Người gọi phải là một — scene flow của game.</td></tr>
+      <tr><td><span class="tag t-bad">bẫy</span></td><td><strong><code>ct</code> truyền xuống mọi await và mọi loop bên trong</strong></td><td>Đường duy nhất để reinit huỷ được việc của level trước. Bước không nhận <code>ct</code> thì loop của nó sống qua mọi lần load level.</td></tr>
+      <tr><td><span class="tag t-bad">bẫy</span></td><td><strong><code>.Forget()</code> thì tự bọc try/catch trong thân loop</strong></td><td><code>.Forget()</code> không có ai bắt exception cho nó. Fail-open của service chỉ phủ phần <strong>await được</strong> của bước.</td></tr>
+      <tr><td><span class="tag t-bad">bẫy</span></td><td><strong>Không khai method tên <code>OnApplicationPause</code> / <code>OnApplicationFocus</code> / <code>OnApplicationQuit</code> trên bước</strong></td><td>Unity gọi thẳng magic method đó, cộng fan-out của service ⇒ việc chạy <strong>hai lần</strong>. Dùng <code>OnGoToBackground</code> / <code>OnAppQuit</code>.</td></tr>
+      <tr><td><span class="tag t-info">biết</span></td><td><strong>Nhịp bị huỷ không có nhịp đóng</strong></td><td>Splash đứng ở giữa, rồi nhịp mới bắn lại từ index 0 nên tỉ lệ tụt về sau — splash phải chịu được điều đó.</td></tr>
+      <tr><td><span class="tag t-info">biết</span></td><td><strong>Hook pause/quit im lặng trước khi init xong</strong></td><td>Quit giữa lúc đang boot: không bước nào được flush. Xuống nền giữa lúc boot: lúc trở lại cũng không có <code>OnGoToBackground(false)</code> — không có resume mồ côi.</td></tr>
+      <tr><td><span class="tag t-info">biết</span></td><td><strong>Mất focus không xuống nền cũng là "xuống nền"</strong></td><td>Bước flush sớm hơn cần; bước cần phân biệt hai ca thì không có cửa.</td></tr>
+      <tr><td><span class="tag t-info">biết</span></td><td><strong>Không timeout, không retry</strong></td><td>Thứ retry được là tri thức riêng của từng bước; bước treo thì treo cả chuỗi và treo cả splash.</td></tr>
+      <tr><td><span class="tag t-info">biết</span></td><td><strong>Không có <code>UntilReinitializedAsync</code></strong></td><td>"Level sẵn sàng" là cạnh lặp lại; chỗ biết chắc là nơi gọi: <code>await ReinitializeAsync()</code>. Bước trong chuỗi thì dùng <code>AfterReinitialize</code>.</td></tr>
+      <tr><td><span class="tag t-ok">nên</span></td><td><strong>Đọc state của bước khác lúc reinit thì ở <code>AfterReinitialize</code></strong></td><td>Đọc trong <code>ReinitializeAsync</code> có thể ra giá trị cũ.</td></tr>
+    </tbody>
+  </table></div>
 </section>
 
 </main>

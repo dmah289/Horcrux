@@ -103,7 +103,16 @@ footer{text-align:center;padding:2.5rem 1rem;color:var(--tx3);font-size:.82rem;b
 <!-- ============ TỔNG QUAN ============ -->
 <section id="tong-quan">
   <h2>Tổng quan</h2>
-  <p>Gửi event tới listener <strong>tức thì</strong>, theo <strong>thứ tự đăng ký</strong>, không cấp phát heap khi publish. Danh sách listener sửa được ngay giữa lúc đang dispatch mà không ai bị bỏ sót hay bị gọi hai lần. Mỗi kiểu event là một bus độc lập: <code>EventBus&lt;ToastRequest&gt;</code> và <code>EventBus&lt;PlayerDied&gt;</code> không dùng chung state.</p>
+  <div class="tw"><table>
+    <thead><tr><th>Bảo đảm</th><th>Nghĩa là</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Tức thì</strong></td><td>Listener chạy ngay trong lời gọi <code>Publish</code></td></tr>
+      <tr><td><strong>Thứ tự đăng ký</strong></td><td>Listener đăng ký trước được gọi trước</td></tr>
+      <tr><td>Không cấp phát heap khi publish</td><td>Gọi trong luồng game không sinh rác</td></tr>
+      <tr><td>Sửa danh sách giữa lúc dispatch</td><td>Không ai bị bỏ sót hay bị gọi hai lần</td></tr>
+      <tr><td>Mỗi kiểu event một bus độc lập</td><td><code>EventBus&lt;ToastRequest&gt;</code> và <code>EventBus&lt;PlayerDied&gt;</code> không dùng chung state</td></tr>
+    </tbody>
+  </table></div>
 
   <div class="hero"><div class="big">Không cần wire.</div>
   <p style="margin:.5rem 0 0">Không scene, không asset, không bước boot. Bus là static theo type, dùng được ngay từ code.</p></div>
@@ -256,23 +265,34 @@ public sealed class FirstMatchHint : MonoBehaviour
   depth--
   depth == 0                                ─► dồn danh sách, bỏ ô rỗng</div>
 
-  <div class="note"><strong>Publish lồng nhau.</strong> Listener publish thêm event ngay trong callback là hợp lệ, không sót không lặp. Lồng khác kiểu thì không có tương tác gì.</div>
+  <div class="tw"><table>
+    <thead><tr><th>Publish lồng nhau</th><th>Kết quả</th></tr></thead>
+    <tbody>
+      <tr><td>Listener publish thêm event ngay trong callback</td><td>Hợp lệ, không sót không lặp</td></tr>
+      <tr><td>Lồng khác kiểu</td><td>Không có tương tác gì</td></tr>
+    </tbody>
+  </table></div>
 </section>
 
 <!-- ============ LƯU Ý ============ -->
 <section id="luu-y">
   <h2>Lưu ý</h2>
-  <div class="note bad"><strong>Bẫy đáng nhớ nhất:</strong> <code>Subscribe</code> ở <code>OnEnable</code> mà quên <code>Dispose</code> ở <code>OnDisable</code> — object đang tắt vẫn nhận event, và lần bật lại bị chặn vì trùng đăng ký. Dòng <code>LogError</code> trong Editor là tín hiệu của đúng lỗi này; sửa call site, đừng tắt log.</div>
-  <div class="note bad"><strong>Tự rụng phủ đúng một ca:</strong> <code>callback.Target</code> là <code>UnityEngine.Object</code> đã destroy. Disable, method <code>static</code>, object thường không rụng; lambda rụng hay không tuỳ cách compiler sinh code, nên coi mọi lambda là phải <code>Dispose</code>.</div>
-  <div class="note bad"><strong>Main-thread only.</strong> Không lock: <code>Publish</code> hoặc <code>Subscribe</code> từ thread khác làm hỏng danh sách listener.</div>
-  <div class="note bad"><strong>Publish lồng cùng kiểu cần điều kiện dừng.</strong> Thường không do ai cố ý viết ra: listener gọi một service, service gọi service khác, mắt cuối publish lại chính kiểu đó. Điều kiện dừng là trách nhiệm của call site — thường là huỷ đăng ký của chính mình, hoặc một cờ trạng thái, trước khi publish lồng.</div>
-  <div class="note"><strong>Exception không chặn được listener sau.</strong> Muốn chặn thì dùng cờ trong payload hoặc một event khác.</div>
-  <div class="note"><strong>Thứ tự đăng ký là bảo đảm duy nhất về thứ tự.</strong> Hai listener mà kết quả phụ thuộc thứ tự giữa chúng là thiết kế dễ vỡ: thứ tự đó theo <code>Awake</code>/<code>OnEnable</code>, tức thứ tự component trong scene.</div>
-  <div class="note"><strong>Cần listener mới xử lý ngay event đang chạy</strong> thì gọi thẳng nó một lần; bus chỉ đưa nó vào lượt sau.</div>
-  <div class="note"><strong>Đăng ký trùng so theo cặp <em>object chủ</em> + <em>method</em>.</strong> Đừng <code>Subscribe</code> lại để "refresh" đăng ký — không có tác dụng gì ngoài một dòng log. Hai lambda viết giống nhau <strong>không</strong> trùng: chạy hai lần.</div>
-  <div class="note"><strong>Dọn danh sách chỉ xảy ra trong <code>Publish</code>.</strong> Bus hiếm bắn event mà call site <code>Subscribe</code>/<code>Dispose</code> liên tục thì danh sách nội bộ phình dần; một lần <code>Publish</code> là dọn sạch. Event không bao giờ bắn nữa thì ô chết nằm lại.</div>
-  <div class="note"><strong>Không có <code>Clear()</code>.</strong> Domain reload tự reset static mỗi lần vào Play Mode. Tick <em>Disable Domain Reload</em> thì listener <code>static</code> và lambda sống sót qua các lần chạy.</div>
-  <div class="note"><strong>Ngân sách ~10–50 dispatch/giây:</strong> UI và luồng game, <strong>không</strong> phải hot path.</div>
+  <div class="tw"><table>
+    <thead><tr><th></th><th>Chỗ</th><th>Sự thật</th></tr></thead>
+    <tbody>
+      <tr><td><span class="tag t-bad">bẫy</span></td><td><strong>Bẫy đáng nhớ nhất</strong></td><td><code>Subscribe</code> ở <code>OnEnable</code> mà quên <code>Dispose</code> ở <code>OnDisable</code> — object đang tắt vẫn nhận event, và lần bật lại bị chặn vì trùng đăng ký. Dòng <code>LogError</code> trong Editor là tín hiệu của đúng lỗi này; sửa call site, đừng tắt log.</td></tr>
+      <tr><td><span class="tag t-bad">bẫy</span></td><td><strong>Tự rụng phủ đúng một ca</strong></td><td><code>callback.Target</code> là <code>UnityEngine.Object</code> đã destroy. Disable, method <code>static</code>, object thường không rụng; lambda rụng hay không tuỳ cách compiler sinh code, nên coi mọi lambda là phải <code>Dispose</code>.</td></tr>
+      <tr><td><span class="tag t-bad">bẫy</span></td><td><strong>Main-thread only</strong></td><td>Không lock: <code>Publish</code> hoặc <code>Subscribe</code> từ thread khác làm hỏng danh sách listener.</td></tr>
+      <tr><td><span class="tag t-bad">bẫy</span></td><td><strong>Publish lồng cùng kiểu cần điều kiện dừng</strong></td><td>Thường không do ai cố ý viết ra: listener gọi một service, service gọi service khác, mắt cuối publish lại chính kiểu đó. Điều kiện dừng là trách nhiệm của call site — thường là huỷ đăng ký của chính mình, hoặc một cờ trạng thái, trước khi publish lồng.</td></tr>
+      <tr><td><span class="tag t-info">biết</span></td><td><strong>Exception không chặn được listener sau</strong></td><td>Muốn chặn thì dùng cờ trong payload hoặc một event khác.</td></tr>
+      <tr><td><span class="tag t-info">biết</span></td><td><strong>Thứ tự đăng ký là bảo đảm duy nhất về thứ tự</strong></td><td>Hai listener mà kết quả phụ thuộc thứ tự giữa chúng là thiết kế dễ vỡ: thứ tự đó theo <code>Awake</code>/<code>OnEnable</code>, tức thứ tự component trong scene.</td></tr>
+      <tr><td><span class="tag t-info">biết</span></td><td><strong>Cần listener mới xử lý ngay event đang chạy</strong></td><td>thì gọi thẳng nó một lần; bus chỉ đưa nó vào lượt sau.</td></tr>
+      <tr><td><span class="tag t-info">biết</span></td><td><strong>Đăng ký trùng so theo cặp <em>object chủ</em> + <em>method</em></strong></td><td>Đừng <code>Subscribe</code> lại để "refresh" đăng ký — không có tác dụng gì ngoài một dòng log. Hai lambda viết giống nhau <strong>không</strong> trùng: chạy hai lần.</td></tr>
+      <tr><td><span class="tag t-info">biết</span></td><td><strong>Dọn danh sách chỉ xảy ra trong <code>Publish</code></strong></td><td>Bus hiếm bắn event mà call site <code>Subscribe</code>/<code>Dispose</code> liên tục thì danh sách nội bộ phình dần; một lần <code>Publish</code> là dọn sạch. Event không bao giờ bắn nữa thì ô chết nằm lại.</td></tr>
+      <tr><td><span class="tag t-info">biết</span></td><td><strong>Không có <code>Clear()</code></strong></td><td>Domain reload tự reset static mỗi lần vào Play Mode. Tick <em>Disable Domain Reload</em> thì listener <code>static</code> và lambda sống sót qua các lần chạy.</td></tr>
+      <tr><td><span class="tag t-info">biết</span></td><td><strong>Ngân sách ~10–50 dispatch/giây</strong></td><td>UI và luồng game, <strong>không</strong> phải hot path.</td></tr>
+    </tbody>
+  </table></div>
 
   <h3>Chẩn đoán</h3>
   <div class="tw"><table>
