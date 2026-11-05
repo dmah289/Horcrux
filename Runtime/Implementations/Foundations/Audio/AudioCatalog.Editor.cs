@@ -51,7 +51,7 @@ namespace Horcrux.Runtime.Implementations.Audio
             {
                 if (EqualityComparer<TMusic>.Default.Equals(tracks[j].Id, track.Id))
                 {
-                    Debug.LogError($"[AudioCatalog]: {label} repeats Id {track.Id} of Music track #{j}. Only the first one plays.", this);
+                    Debug.LogError($"[AudioCatalog]: {label} repeats Id {track.Id} of Music track #{j}. BuildTables throws at the host's Awake.", this);
                     return false;
                 }
             }
@@ -86,7 +86,7 @@ namespace Horcrux.Runtime.Implementations.Audio
             {
                 if (EqualityComparer<TSfx>.Default.Equals(entries[j].Id, entry.Id))
                 {
-                    Debug.LogError($"[AudioCatalog]: {label} repeats Id {entry.Id} of Sfx entry #{j}. Only the first one plays.", this);
+                    Debug.LogError($"[AudioCatalog]: {label} repeats Id {entry.Id} of Sfx entry #{j}. BuildTables throws at the host's Awake.", this);
                     return false;
                 }
             }
