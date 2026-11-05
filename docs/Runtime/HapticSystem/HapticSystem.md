@@ -9,6 +9,8 @@ Rung theo **preset** dựng sẵn của Nice Vibrations v4, gọi theo id enum c
 - Phụ thuộc: Nice Vibrations v4 (`Lofelt.NiceVibrations`), tham chiếu thẳng từ `com.horcrux.runtime` — cùng hàng PrimeTween, UniTask.
   Không phụ thuộc hệ Horcrux nào khác (**Foundation**).
 
+Code: `Runtime/Abstractions/Foundations/Haptics/`.
+
 ## Hai phía
 
 Phụ thuộc một chiều: dự án tham chiếu SDK, SDK không biết gì về dự án.
@@ -31,21 +33,9 @@ Class con rỗng là bắt buộc: generic `MonoBehaviour` không add được, 
 Interface (`IHapticService`, `IHapticSetting`) không lộ kiểu nào của Nice Vibrations; chỉ host và `HapticEntry` biết lib.
 Call site của dự án không chạm `HapticPatterns` — chỉ Inspector của host hiện dropdown `PresetType`.
 
-## Luồng một lần rung
+## Trước khi chạy
 
-```
-_haptic.Play(GameHaptic.Tap)
-   ├─ IsHapticEnabled = false ──────────────────> im (hợp lệ), không tra bảng
-   ├─ id không có trong entries ────────────────> LogError, bỏ
-   └─ HapticPatterns.PlayPreset(preset)
-        ├─ HapticController.hapticsEnabled = false ─> im (cổng của lib)
-        ├─ preset = None ───────────────────────────> im
-        └─ thiết bị không hỗ trợ ───────────────────> lib tự bỏ qua, không ném
-```
-
-`Awake` của host gọi `HapticController.Init()` (lib nạp lười ở lần phát đầu ⇒ cú rung đầu khựng; nạp lúc boot thì không) rồi dựng bảng tra.
-
-## Cách dùng
+Dựng từ 0 theo thứ tự; mỗi bước kèm chỗ hỏng nếu thiếu.
 
 ### 1. Khai id và class con (một lần cho dự án)
 
@@ -61,12 +51,24 @@ Số trong enum là wire format của scene: **không đánh số lại**, chỉ
 
 Assembly của game **không** cần tham chiếu `Lofelt.NiceVibrations`: `PresetType` chỉ nằm trong field private của host.
 
+| Thiếu | Hỏng ở đâu |
+|---|---|
+| `[Service]` trên `GameHapticService` | Không ai resolve được `IHapticService<GameHaptic>`; client báo thiếu đối số lúc spawn |
+| Class con rỗng — không khai `Awake` | `Awake` của host là `private`: class con khai `Awake` thì Unity chỉ gọi bản của con, không gọi được `base.Awake()` ⇒ lib không nạp, bảng tra rỗng: cổng bật thì mọi `Play` log `is not in the entries` |
+
 ### 2. Dựng host trong scene
 
 1. Scene sống suốt phiên chơi (scene service / bootstrap của game): tạo GameObject, Add Component `GameHapticService`.
-2. Ô **Entries**: mỗi khoảnh khắc một dòng — `Id` từ dropdown `GameHaptic`, `Preset` từ dropdown `PresetType`.
+2. Ô **Entries** (dưới tiêu đề **Configs**): mỗi khoảnh khắc một dòng — `Id` từ dropdown `GameHaptic`, `Preset` từ dropdown `PresetType`.
    Dòng mới mặc định `Selection` (`PresetType.Selection = 0`): **đổi preset** sau khi thêm dòng.
 3. Lưu scene.
+
+| Thiếu | Hỏng ở đâu |
+|---|---|
+| Dòng của một id | `Play` log `[HapticService]: Haptic X is not in the entries.`, không rung |
+| Hai dòng cùng id | `ArgumentException` ở `Awake` của host |
+| Đổi preset sau khi thêm dòng | Rung `Selection` — không log |
+| Host ở scene sống suốt phiên | Host bị destroy cùng scene; host không `DontDestroyOnLoad` |
 
 ### 3. Nối Setting (bật/tắt Vibration)
 
@@ -94,9 +96,13 @@ public class HapticSettingBridge : MonoBehaviour<IMySaveData, IHapticSetting>
 }
 ```
 
-Đặt component trên cùng GameObject với host. **Bắt buộc**: cổng mặc định `false`, thiếu bridge là im cả phiên mà không có log.
+Đặt component trên cùng GameObject với host.
 
-### 4. Rung
+| Thiếu | Hỏng ở đâu |
+|---|---|
+| Bridge | Cổng mặc định `false`: im cả phiên, **không log** |
+
+## Nhận service và rung
 
 Nhận service qua InitArgs, không static:
 
@@ -124,13 +130,27 @@ public class Piece : BaseEntity, IInitializable<IAudioService<GameSfx, GameMusic
 
 `Initializer` trên prefab: để ô `haptic` trống thì lấy từ service.
 
-### 5. Thêm một khoảnh khắc rung mới
+## Thêm một khoảnh khắc rung mới
 
 1. Thêm giá trị vào `GameHaptic` với **số mới**.
 2. Thêm dòng vào **Entries** của host, chọn preset.
 3. Gọi `_haptic.Play(GameHaptic.X)` cạnh SFX của khoảnh khắc đó.
 
 Thiếu bước 2: `Play` log `[HapticService]: Haptic X is not in the entries.` và không rung.
+
+## Luồng một lần rung
+
+```
+_haptic.Play(GameHaptic.Tap)
+   ├─ IsHapticEnabled = false ──────────────────> im (hợp lệ), không tra bảng
+   ├─ id không có trong entries ────────────────> LogError, bỏ
+   └─ HapticPatterns.PlayPreset(preset)
+        ├─ HapticController.hapticsEnabled = false ─> im (cổng của lib)
+        ├─ preset = None ───────────────────────────> im
+        └─ thiết bị không hỗ trợ ───────────────────> lib tự bỏ qua, không ném
+```
+
+`Awake` của host gọi `HapticController.Init()` (lib nạp lười ở lần phát đầu ⇒ cú rung đầu khựng; nạp lúc boot thì không) rồi dựng bảng tra.
 
 ## Bảng preset
 
@@ -180,9 +200,9 @@ sang `IHapticService`.
 | **Gọi rung ngay cạnh dòng SFX, không qua event** | tiếng và rung là hai phản hồi của một khoảnh khắc — suy từ một chỗ. Event của khoảnh khắc thường bắn cả ở ca hàm phản hồi đã chặn (tương tác bị khoá, input của bot): nghe event là có lúc rung mà không có tiếng |
 | **Không gọi `HapticPatterns` thẳng từ gameplay** | bỏ qua cổng Setting và bảng tra; kiểu rung lại rải trong code, đổi phải compile |
 | **Id là khoảnh khắc, preset là kiểu rung** | đừng đặt id theo cường độ (`Heavy`): đổi cảm giác là đổi preset trong Inspector, không đổi tên id hay call site |
-| **Không có enum preset riêng của Horcrux** | entry lưu thẳng `PresetType`; bỏ được một enum chép lại và một `switch` dịch. Giá trị: không bắt được dòng "chưa gán" vì `Selection = 0` |
+| **Không có enum preset riêng của Horcrux** | entry lưu thẳng `PresetType`; bỏ được một enum chép lại và một `switch` dịch. Giá: không bắt được dòng "chưa gán" vì `Selection = 0` |
 | **Không lớp backend** | một lib, không kế hoạch đổi; lớp gián tiếp chỉ "phòng khi đổi lib" là dư. Hệ quả: test không đếm được lời phát |
-| **`HapticController.Init()` ở `Awake`** | lib cấm gọi từ static constructor hay luồng khác; `Awake` chạy trên main thread lúc scene nạp |
+| **`HapticController.Init()` ở `Awake`** | lib cấm gọi từ static constructor hay luồng khác; `Awake` chạy trên main thread lúc scene nạp. `Awake` là `private`: class con không khai `Awake` |
 | **Không rung trong `Update`** | rung là **sự kiện**, không phải trạng thái: rung mỗi frame nóng máy, hao pin, cảm giác nhoè |
 | **Không `DontDestroyOnLoad`** | host là component trong scene; đặt nó ở scene sống suốt phiên chơi |
 
@@ -210,8 +230,7 @@ Runtime/Abstractions/Foundations/Haptics/
 ├── IHapticSetting.cs
 ├── IHapticService.cs
 ├── HapticEntry.cs       một dòng id → preset
-├── HapticService.cs     host: nạp lib, bảng tra, cổng, phát
-└── HapticSystem.md      tài liệu này
+└── HapticService.cs     host: nạp lib, bảng tra, cổng, phát
 
 Tests/PlayMode/   HapticServiceTests · TestHapticService
 ```

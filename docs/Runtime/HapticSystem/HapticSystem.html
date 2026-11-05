@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Haptic System</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#0d1117;--bg2:#161b22;--bg3:#1c2333;--bg4:#242d3a;--tx:#e6edf3;--tx2:#8b949e;--tx3:#484f58;--ac:#58a6ff;--ac2:#bc8cff;--gr:#3fb950;--or:#d29922;--rd:#f85149;--bd:#30363d;--r:10px;--mono:'JetBrains Mono','Fira Code',Consolas,monospace;--sans:'Inter','Segoe UI',system-ui,sans-serif}
+html{scroll-behavior:smooth;background:var(--bg);color:var(--tx);font:16px/1.65 var(--sans)}
+body{background:var(--bg);overflow-x:hidden}
+a{color:var(--ac);text-decoration:none}a:hover{text-decoration:underline}
+#header{max-width:960px;margin:0 auto;padding:3.5rem 1rem 1.5rem;border-bottom:1px solid var(--bd)}
+#header h1{font-size:clamp(2rem,5vw,2.8rem);font-weight:800;letter-spacing:-.03em;color:var(--ac)}
+#header .sub{color:var(--tx2);margin-top:.4rem}
+.badge{display:inline-block;margin:.8rem .4rem 0 0;padding:.25em .8em;border:1px solid var(--bd);border-radius:99px;font-family:var(--mono);font-size:.75rem;color:var(--tx2)}
+#toc{max-width:960px;margin:2rem auto 0;padding:0 1rem}
+#toc h2{font-size:1.15rem;border:none;margin-bottom:.6rem}
+#toc ol{columns:3;column-gap:2rem;padding-left:1.4em}
+#toc li{font-size:.9rem;margin-bottom:.25rem;break-inside:avoid}
+@media(max-width:760px){#toc ol{columns:2}}
+@media(max-width:480px){#toc ol{columns:1}}
+main{max-width:960px;margin:0 auto;padding:0 1rem 5rem}
+section{padding-top:3.2rem}
+h2{font-size:1.65rem;font-weight:700;letter-spacing:-.02em;margin-bottom:1.1rem;padding-bottom:.45rem;border-bottom:1px solid var(--bd)}
+h3{font-size:1.15rem;font-weight:600;margin:2rem 0 .8rem;color:var(--ac)}
+p,ul,ol{margin-bottom:.9rem}ul,ol{padding-left:1.3em}li{margin-bottom:.25rem}
+strong{color:var(--tx);font-weight:600}
+em{color:var(--ac2);font-style:normal}
+code{font-family:var(--mono);font-size:.86em;background:var(--bg3);padding:.1em .35em;border-radius:4px;overflow-wrap:anywhere}
+pre{background:var(--bg3);border:1px solid var(--bd);border-radius:var(--r);padding:1rem 1.1rem;margin:1rem 0;overflow-x:auto}
+pre code{background:none;padding:0;font-size:.83rem;line-height:1.6;overflow-wrap:normal}
+.tw{overflow-x:auto;margin:1rem 0}
+table{width:100%;border-collapse:collapse;font-size:.88rem}
+th{text-align:left;padding:.55rem .7rem;border-bottom:2px solid var(--bd);color:var(--ac);font-weight:600;vertical-align:bottom}
+td{padding:.5rem .7rem;border-bottom:1px solid var(--bd);vertical-align:top}
+tr:last-child td{border-bottom:none}
+.note{border-left:3px solid var(--ac);background:var(--bg2);padding:.85rem 1.1rem;border-radius:0 var(--r) var(--r) 0;margin:1.2rem 0;font-size:.92rem;color:var(--tx2)}
+.note strong{color:var(--ac)}
+.note.good{border-left-color:var(--gr)}.note.good strong{color:var(--gr)}
+.note.bad{border-left-color:var(--rd)}.note.bad strong{color:var(--rd)}
+.hero{border:1px solid var(--gr);background:var(--bg2);border-radius:var(--r);padding:1.1rem 1.3rem;margin:1.5rem 0}
+.hero .big{font-size:1.25rem;font-weight:700;color:var(--gr)}
+.fig{background:var(--bg2);border:1px solid var(--bd);border-radius:var(--r);padding:1rem;margin:1.3rem 0;overflow-x:auto}
+.fig svg{display:block;width:100%;min-width:680px;height:auto}
+.fig .cap{font-family:var(--mono);font-size:.75rem;color:var(--ac2);text-transform:uppercase;letter-spacing:.07em;margin-bottom:.7rem}
+.arch{font-family:var(--mono);font-size:.8rem;line-height:1.7;white-space:pre;overflow-x:auto;padding:1rem;background:var(--bg3);border-radius:var(--r);color:var(--tx2);margin:1rem 0}
+.steps{counter-reset:s;list-style:none;padding:0}
+.steps>li{counter-increment:s;position:relative;padding:0 0 1.2rem 2.6rem;border-left:2px solid var(--bd);margin-left:.9rem}
+.steps>li:last-child{border-left-color:transparent}
+.steps>li::before{content:counter(s);position:absolute;left:-.95rem;top:0;width:1.8rem;height:1.8rem;border-radius:50%;background:var(--ac);color:var(--bg);font-weight:700;font-size:.85rem;display:flex;align-items:center;justify-content:center}
+.steps>li>strong:first-child{display:block;margin-bottom:.4rem;color:var(--ac)}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:.9rem;margin:1.2rem 0}
+.cell{background:var(--bg3);border-radius:var(--r);padding:1rem;text-align:center}
+.cell .v{font-size:1.35rem;font-weight:800;color:var(--ac);font-family:var(--mono)}
+.cell .l{font-size:.8rem;color:var(--tx2);margin-top:.2rem}
+.tag{display:inline-block;font-family:var(--mono);font-size:.72rem;padding:.05em .5em;border-radius:4px;border:1px solid currentColor}
+.t-ok{color:var(--gr)}.t-warn{color:var(--or)}.t-bad{color:var(--rd)}.t-info{color:var(--ac)}
+/* SVG */
+.sv-box{fill:var(--bg3);stroke:var(--bd);stroke-width:1.5}
+.sv-sdk{fill:var(--bg3);stroke:var(--ac);stroke-width:1.5}
+.sv-prj{fill:var(--bg3);stroke:var(--ac2);stroke-width:1.5}
+.sv-ok{fill:var(--bg3);stroke:var(--gr);stroke-width:1.5}
+.sv-warn{fill:var(--bg3);stroke:var(--or);stroke-width:1.5}
+.sv-bad{fill:var(--bg3);stroke:var(--rd);stroke-width:1.5}
+.sv-disk{fill:var(--bg4);stroke:var(--gr);stroke-width:2}
+.sv-t{fill:var(--tx);font:13px var(--sans)}
+.sv-tb{fill:var(--tx);font:600 13px var(--sans)}
+.sv-m{fill:var(--tx2);font:11.5px var(--mono)}
+.sv-s{fill:var(--tx2);font:11.5px var(--sans)}
+.sv-ac{fill:var(--ac)}.sv-ac2{fill:var(--ac2)}.sv-gr{fill:var(--gr)}.sv-or{fill:var(--or)}.sv-rd{fill:var(--rd)}
+.sv-ln{stroke:var(--tx2);stroke-width:1.5;fill:none}
+.sv-lnac{stroke:var(--ac);stroke-width:1.8;fill:none}
+.sv-lngr{stroke:var(--gr);stroke-width:1.8;fill:none}
+.sv-lnrd{stroke:var(--rd);stroke-width:1.8;fill:none;stroke-dasharray:5 4}
+.sv-lnor{stroke:var(--or);stroke-width:1.8;fill:none}
+.sv-axis{stroke:var(--tx3);stroke-width:1.5}
+.sv-loss{fill:var(--rd);opacity:.18}
+footer{text-align:center;padding:2.5rem 1rem;color:var(--tx3);font-size:.82rem;border-top:1px solid var(--bd)}
+@media print{
+  :root{--bg:#fff;--bg2:#f6f8fa;--bg3:#f0f2f5;--bg4:#e6e9ee;--tx:#111;--tx2:#444;--tx3:#888;--bd:#ccc;--ac:#0b5cc2;--ac2:#7a3fc4;--gr:#1a7f37;--or:#9a6700;--rd:#c62828}
+  #toc{display:none}section{padding-top:1.5rem;break-inside:auto}.fig,table,pre{break-inside:avoid}
+}
+</style>
+</head>
+<body>
+<header id="header">
+  <h1>Haptic System</h1>
+  <p class="sub">Rung theo preset dựng sẵn của Nice Vibrations v4, gọi theo id enum của dự án; preset của từng id chọn trong Inspector của host.</p>
+  <span class="badge">Horcrux.Runtime.Abstractions.Haptics</span>
+  <span class="badge">Code: Runtime/Abstractions/Foundations/Haptics/</span>
+</header>
+
+<nav id="toc"><h2>Mục lục</h2><ol>
+  <li><a href="#tong-quan">Tổng quan</a></li>
+  <li><a href="#kich-ban">Kịch bản</a></li>
+  <li><a href="#cach-dung">Cách dùng</a></li>
+  <li><a href="#flow">Flow</a></li>
+  <li><a href="#luu-y">Lưu ý</a></li>
+</ol></nav>
+
+<main>
+
+<!-- ============ TỔNG QUAN ============ -->
+<section id="tong-quan">
+  <h2>Tổng quan</h2>
+  <div class="tw"><table>
+    <thead><tr><th>Có</th><th>Không có</th></tr></thead>
+    <tbody>
+      <tr><td>Preset dựng sẵn (<code>LightImpact</code>, <code>SoftImpact</code>, …)</td><td>Biên độ tự chỉnh, rung liên tục, clip <code>.haptic</code></td></tr>
+      <tr><td>Một cổng bật/tắt (<code>IsHapticEnabled</code>) do game đẩy vào từ Setting của nó</td><td>Hệ lưu riêng</td></tr>
+      <tr><td>Bảng tra id → preset dựng một lần ở <code>Awake</code>: đường phát không cấp phát</td><td>Throttle</td></tr>
+      <tr><td>Phụ thuộc Nice Vibrations v4 (<code>Lofelt.NiceVibrations</code>)</td><td>Phụ thuộc hệ Horcrux nào khác (<strong>Foundation</strong>)</td></tr>
+    </tbody>
+  </table></div>
+  <div class="hero"><div class="big">Id là khoảnh khắc, preset là kiểu rung.</div>
+  <p style="margin:.5rem 0 0">Game gọi <code>_haptic.Play(GameHaptic.Tap)</code>; đổi cảm giác là đổi preset trong Inspector, không đổi tên id hay call site.</p></div>
+
+  <div class="fig">
+  <div class="cap">Hai phía — phụ thuộc một chiều</div>
+  <svg viewBox="0 0 860 210" role="img" aria-label="SDK và dự án: dự án tham chiếu SDK">
+    <text x="210" y="20" class="sv-tb sv-ac" text-anchor="middle">SDK — com.horcrux.runtime</text>
+    <text x="650" y="20" class="sv-tb sv-ac2" text-anchor="middle">Dự án — assembly của game</text>
+
+    <rect x="20" y="34" width="380" height="36" rx="8" class="sv-sdk"/>
+    <text x="34" y="57" class="sv-m">IHapticSetting · IsHapticEnabled</text>
+    <rect x="20" y="78" width="380" height="36" rx="8" class="sv-sdk"/>
+    <text x="34" y="101" class="sv-m">IHapticService&lt;THaptic&gt; · Play(id)</text>
+    <rect x="20" y="122" width="380" height="36" rx="8" class="sv-sdk"/>
+    <text x="34" y="145" class="sv-m">HapticEntry&lt;THaptic&gt;   id → PresetType</text>
+    <rect x="20" y="166" width="380" height="36" rx="8" class="sv-sdk"/>
+    <text x="34" y="189" class="sv-m">HapticService&lt;THaptic&gt; (abstract host)</text>
+
+    <rect x="460" y="34" width="380" height="36" rx="8" class="sv-prj"/>
+    <text x="474" y="57" class="sv-m">enum GameHaptic</text>
+    <rect x="460" y="78" width="380" height="80" rx="8" class="sv-prj"/>
+    <text x="474" y="101" class="sv-m">GameHapticService : HapticService&lt;GameHaptic&gt;</text>
+    <text x="474" y="123" class="sv-s">[Service] trên class con</text>
+    <text x="474" y="143" class="sv-s">class rỗng</text>
+    <rect x="460" y="166" width="380" height="36" rx="8" class="sv-prj"/>
+    <text x="474" y="189" class="sv-m">Bridge Setting → IHapticSetting</text>
+
+    <defs><marker id="hp-ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10 z" class="sv-ac"/></marker></defs>
+    <path d="M460 150 L404 182" class="sv-lnac" marker-end="url(#hp-ar)"/>
+    <text x="432" y="160" class="sv-s" text-anchor="middle">kế thừa</text>
+    <path d="M460 184 L404 56" class="sv-lnac" marker-end="url(#hp-ar)"/>
+  </svg>
+  </div>
+</section>
+
+<!-- ============ KỊCH BẢN ============ -->
+<section id="kich-ban">
+  <h2>Kịch bản</h2>
+  <div class="tw"><table>
+    <thead><tr><th>Tình huống</th><th>Hệ làm gì</th></tr></thead>
+    <tbody>
+      <tr><td><code>IsHapticEnabled</code> chưa ai ghi</td><td><code>false</code>: im. Bridge Setting phải ghi lúc khởi động</td></tr>
+      <tr><td>Người chơi tắt Vibration (<code>IsHapticEnabled = false</code>)</td><td><code>Play</code> thoát trước khi tra bảng: id thiếu cũng không log</td></tr>
+      <tr><td><code>IsHapticEnabled</code> ghi trước <code>Awake</code></td><td>Giữ nguyên — <code>Awake</code> không chạm cổng</td></tr>
+      <tr><td>Id không có trong entries</td><td><code>LogError</code>, không rung, không ném</td></tr>
+      <tr><td>Hai dòng cùng id</td><td><code>ArgumentException</code> ở <code>Awake</code> của host</td></tr>
+      <tr><td>Nhiều <code>Play</code> dồn cùng frame</td><td>Mỗi lần đều gọi lib — không throttle; lib phát chồng/cắt theo nền tảng</td></tr>
+      <tr><td><code>HapticController.hapticsEnabled = false</code></td><td>Im — cổng thứ hai, của lib</td></tr>
+      <tr><td>Preset <code>None</code></td><td>Im</td></tr>
+      <tr><td>Thiết bị không hỗ trợ</td><td>Lib bỏ qua, không ném</td></tr>
+      <tr><td>Cú rung đầu tiên của phiên</td><td>Không khựng: <code>Awake</code> của host đã gọi <code>HapticController.Init()</code></td></tr>
+      <tr><td>Android không chỉnh biên độ</td><td>Phát <strong>mọi</strong> preset ở mức tối đa trong đúng thời lượng của nó: preset dài là preset mạnh nhất</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<!-- ============ CÁCH DÙNG ============ -->
+<section id="cach-dung">
+  <h2>Cách dùng</h2>
+
+  <h3>Trước khi chạy</h3>
+  <p>Dựng từ 0 theo thứ tự; mỗi bước kèm chỗ hỏng nếu thiếu.</p>
+  <ol class="steps">
+    <li><strong>Khai id và class con (một lần cho dự án)</strong>
+<pre><code>// enum: gán số TƯỜNG MINH, bắt đầu từ 1 — mỗi id là một KHOẢNH KHẮC gameplay, không phải một kiểu rung
+public enum GameHaptic { Tap = 1, Complete = 2 }
+
+[Service(typeof(IHapticService&lt;GameHaptic&gt;), typeof(IHapticSetting), FindFromScene = true)]
+public class GameHapticService : HapticService&lt;GameHaptic&gt; { }</code></pre>
+      <p>Số trong enum là wire format của scene: <strong>không đánh số lại</strong>, chỉ thêm số mới.</p>
+      <p>Assembly của game <strong>không</strong> cần tham chiếu <code>Lofelt.NiceVibrations</code>: <code>PresetType</code> chỉ nằm trong field private của host.</p>
+      <div class="tw"><table>
+        <thead><tr><th>Thiếu</th><th>Hỏng ở đâu</th></tr></thead>
+        <tbody>
+          <tr><td><code>[Service]</code> trên <code>GameHapticService</code></td><td>Không ai resolve được <code>IHapticService&lt;GameHaptic&gt;</code>; client báo thiếu đối số lúc spawn</td></tr>
+          <tr><td>Class con rỗng — không khai <code>Awake</code></td><td><code>Awake</code> của host là <code>private</code>: class con khai <code>Awake</code> thì Unity chỉ gọi bản của con, không gọi được <code>base.Awake()</code> ⇒ lib không nạp, bảng tra rỗng: cổng bật thì mọi <code>Play</code> log <code>is not in the entries</code></td></tr>
+        </tbody>
+      </table></div>
+    </li>
+    <li><strong>Dựng host trong scene</strong>
+      <ol>
+        <li>Scene sống suốt phiên chơi (scene service / bootstrap của game): tạo GameObject, Add Component <code>GameHapticService</code>.</li>
+        <li>Ô <strong>Entries</strong> (dưới tiêu đề <strong>Configs</strong>): mỗi khoảnh khắc một dòng — <code>Id</code> từ dropdown <code>GameHaptic</code>, <code>Preset</code> từ dropdown <code>PresetType</code>. Dòng mới mặc định <code>Selection</code> (<code>PresetType.Selection = 0</code>): <strong>đổi preset</strong> sau khi thêm dòng.</li>
+        <li>Lưu scene.</li>
+      </ol>
+      <div class="tw"><table>
+        <thead><tr><th>Thiếu</th><th>Hỏng ở đâu</th></tr></thead>
+        <tbody>
+          <tr><td>Dòng của một id</td><td><code>Play</code> log <code>[HapticService]: Haptic X is not in the entries.</code>, không rung</td></tr>
+          <tr><td>Hai dòng cùng id</td><td><code>ArgumentException</code> ở <code>Awake</code> của host</td></tr>
+          <tr><td>Đổi preset sau khi thêm dòng</td><td>Rung <code>Selection</code> — không log</td></tr>
+          <tr><td>Host ở scene sống suốt phiên</td><td>Host bị destroy cùng scene; host không <code>DontDestroyOnLoad</code></td></tr>
+        </tbody>
+      </table></div>
+    </li>
+    <li><strong>Nối Setting (bật/tắt Vibration)</strong>
+      <p>Service không biết hệ lưu của game: game tự ghi cổng từ save của nó. Consumer chỉ cần cổng nên lấy <code>IHapticSetting</code> (không generic, không phải gọi tên enum của dự án):</p>
+<pre><code>public class HapticSettingBridge : MonoBehaviour&lt;IMySaveData, IHapticSetting&gt;
+{
+    private IMySaveData _save;
+    private IHapticSetting _haptic;
+
+    protected override void Init(IMySaveData save, IHapticSetting haptic)
+    {
+        _save = save;
+        _haptic = haptic;
+
+        _haptic.IsHapticEnabled = _save.VibrationOn;     // áp giá trị đã lưu ngay lúc khởi động
+        _save.OnVibrationChanged += SetEnabled;          // rồi bám theo mỗi lần người chơi đổi
+    }
+
+    private void OnDestroy() =&gt; _save.OnVibrationChanged -= SetEnabled;
+
+    private void SetEnabled(bool on) =&gt; _haptic.IsHapticEnabled = on;
+}</code></pre>
+      <p>Đặt component trên cùng GameObject với host.</p>
+      <div class="tw"><table>
+        <thead><tr><th>Thiếu</th><th>Hỏng ở đâu</th></tr></thead>
+        <tbody>
+          <tr><td>Bridge</td><td>Cổng mặc định <code>false</code>: im cả phiên, <strong>không log</strong></td></tr>
+        </tbody>
+      </table></div>
+    </li>
+  </ol>
+
+  <h3>Nhận service và rung</h3>
+  <p>Nhận service qua InitArgs, không static. Gọi rung <strong>ngay cạnh dòng SFX</strong> của cùng khoảnh khắc:</p>
+<pre><code>// class đã có base riêng: IInitializable + gắn Initializer trên prefab
+public class Piece : BaseEntity, IInitializable&lt;IAudioService&lt;GameSfx, GameMusic&gt;, IHapticService&lt;GameHaptic&gt;&gt;
+{
+    private IAudioService&lt;GameSfx, GameMusic&gt; _audio;
+    private IHapticService&lt;GameHaptic&gt; _haptic;
+
+    public void Init(IAudioService&lt;GameSfx, GameMusic&gt; audio, IHapticService&lt;GameHaptic&gt; haptic)
+    {
+        _audio = audio;
+        _haptic = haptic;
+    }
+
+    public void PlayPressFeedback()
+    {
+        _audio.PlaySfx(GameSfx.Tap);
+        _haptic.Play(GameHaptic.Tap);       // ngay cạnh SFX của cùng khoảnh khắc
+        PlayPressTween();
+    }
+}</code></pre>
+  <p><code>Initializer</code> trên prefab: để ô <code>haptic</code> trống thì lấy từ service.</p>
+
+  <h3>Thêm một khoảnh khắc rung mới</h3>
+  <div class="tw"><table>
+    <thead><tr><th>Bước</th><th>Làm gì</th><th>Thiếu thì</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>Thêm giá trị vào <code>GameHaptic</code> với <strong>số mới</strong></td><td>—</td></tr>
+      <tr><td>2</td><td>Thêm dòng vào <strong>Entries</strong> của host, chọn preset</td><td><code>Play</code> log <code>[HapticService]: Haptic X is not in the entries.</code> và không rung</td></tr>
+      <tr><td>3</td><td>Gọi <code>_haptic.Play(GameHaptic.X)</code> cạnh SFX của khoảnh khắc đó</td><td>—</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>Chọn preset</h3>
+  <p>Chọn theo <strong>độ dài</strong> trước, độ mạnh sau — trên máy rẻ độ mạnh có thể không còn.</p>
+  <div class="fig">
+  <div class="cap">Preset một nhịp — Android có chỉnh biên độ: dài = thời lượng, cao = biên độ</div>
+  <svg viewBox="0 0 860 300" role="img" aria-label="Biểu đồ thời lượng và biên độ của sáu preset một nhịp">
+    <line x1="150" y1="20" x2="150" y2="262" class="sv-axis"/>
+    <line x1="150" y1="262" x2="790" y2="262" class="sv-axis"/>
+    <text x="150" y="282" class="sv-m" text-anchor="middle">0</text>
+    <text x="310" y="282" class="sv-m" text-anchor="middle">40 ms</text>
+    <text x="470" y="282" class="sv-m" text-anchor="middle">80 ms</text>
+    <text x="790" y="282" class="sv-m" text-anchor="middle">160 ms</text>
+    <line x1="310" y1="20" x2="310" y2="262" class="sv-axis" stroke-dasharray="3 5"/>
+    <line x1="470" y1="20" x2="470" y2="262" class="sv-axis" stroke-dasharray="3 5"/>
+
+    <text x="140" y="44" class="sv-m" text-anchor="end">LightImpact</text>
+    <rect x="150" y="36.3" width="160" height="5.6" class="sv-ac"/>
+    <text x="320" y="44" class="sv-s">0.156 × 40 ms</text>
+
+    <text x="140" y="84" class="sv-m" text-anchor="end">Selection</text>
+    <rect x="150" y="71.5" width="160" height="17" class="sv-ac"/>
+    <text x="320" y="84" class="sv-s">0.471 × 40 ms</text>
+
+    <text x="140" y="124" class="sv-m" text-anchor="end">RigidImpact</text>
+    <rect x="150" y="102" width="160" height="36" class="sv-ac"/>
+    <text x="320" y="124" class="sv-s">1.0 × 40 ms</text>
+
+    <text x="140" y="164" class="sv-m" text-anchor="end">MediumImpact</text>
+    <rect x="150" y="151.5" width="320" height="17" class="sv-ac2"/>
+    <text x="480" y="164" class="sv-s">0.471 × 80 ms</text>
+
+    <text x="140" y="204" class="sv-m" text-anchor="end">SoftImpact</text>
+    <rect x="150" y="196.3" width="640" height="5.6" class="sv-or"/>
+    <text x="640" y="190" class="sv-s">0.156 × 160 ms</text>
+
+    <text x="140" y="244" class="sv-m" text-anchor="end">HeavyImpact</text>
+    <rect x="150" y="222" width="640" height="36" class="sv-or"/>
+    <text x="470" y="244" class="sv-s" style="fill:var(--bg)">1.0 × 160 ms</text>
+  </svg>
+  </div>
+  <div class="tw"><table>
+    <thead><tr><th>Preset</th><th>Android có chỉnh biên độ</th><th>Android không chỉnh biên độ</th><th>iOS</th></tr></thead>
+    <tbody>
+      <tr><td><code>LightImpact</code></td><td>0.156 × 40 ms</td><td>40 ms mức tối đa</td><td>Impact light</td></tr>
+      <tr><td><code>SoftImpact</code></td><td>0.156 × 160 ms</td><td>160 ms mức tối đa</td><td>Impact soft</td></tr>
+      <tr><td><code>Selection</code></td><td>0.471 × 40 ms</td><td>40 ms mức tối đa</td><td>Selection</td></tr>
+      <tr><td><code>MediumImpact</code></td><td>0.471 × 80 ms</td><td>80 ms mức tối đa</td><td>Impact medium</td></tr>
+      <tr><td><code>RigidImpact</code></td><td>1.0 × 40 ms</td><td>40 ms mức tối đa</td><td>Impact rigid</td></tr>
+      <tr><td><code>HeavyImpact</code></td><td>1.0 × 160 ms</td><td>160 ms mức tối đa</td><td>Impact heavy</td></tr>
+      <tr><td><code>Success</code> · <code>Warning</code> · <code>Failure</code></td><td>chuỗi nhiều nhịp</td><td>chuỗi nhiều nhịp, mức tối đa</td><td>Notification</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<!-- ============ FLOW ============ -->
+<section id="flow">
+  <h2>Flow</h2>
+  <h3>Một lần rung</h3>
+  <div class="fig">
+  <div class="cap">_haptic.Play(GameHaptic.Tap) — hai cổng, bảng tra, lib</div>
+  <svg viewBox="0 0 860 250" role="img" aria-label="Luồng Play qua cổng host, bảng tra, cổng lib rồi phát preset">
+    <rect x="10" y="30" width="140" height="64" rx="8" class="sv-box"/>
+    <text x="80" y="58" class="sv-tb" text-anchor="middle">Play(id)</text>
+    <text x="80" y="78" class="sv-s" text-anchor="middle">từ consumer</text>
+    <path d="M150 62 L166 62" class="sv-ln"/><path d="M170 62 l-8 -5 v10 z" class="sv-ac"/>
+
+    <rect x="170" y="30" width="150" height="64" rx="8" class="sv-sdk"/>
+    <text x="245" y="58" class="sv-tb" text-anchor="middle">IsHapticEnabled?</text>
+    <text x="245" y="78" class="sv-s" text-anchor="middle">cổng của host</text>
+    <path d="M320 62 L336 62" class="sv-ln"/><path d="M340 62 l-8 -5 v10 z" class="sv-ac"/>
+
+    <rect x="340" y="30" width="150" height="64" rx="8" class="sv-sdk"/>
+    <text x="415" y="58" class="sv-tb" text-anchor="middle">id có trong</text>
+    <text x="415" y="78" class="sv-tb" text-anchor="middle">entries?</text>
+    <path d="M490 62 L506 62" class="sv-ln"/><path d="M510 62 l-8 -5 v10 z" class="sv-ac"/>
+
+    <rect x="510" y="30" width="160" height="64" rx="8" class="sv-prj"/>
+    <text x="590" y="58" class="sv-tb" text-anchor="middle">hapticsEnabled?</text>
+    <text x="590" y="78" class="sv-s" text-anchor="middle">cổng của lib · preset ≠ None</text>
+    <path d="M670 62 L686 62" class="sv-ln"/><path d="M690 62 l-8 -5 v10 z" class="sv-ac"/>
+
+    <rect x="690" y="30" width="160" height="64" rx="8" class="sv-ok"/>
+    <text x="770" y="58" class="sv-tb" text-anchor="middle">PlayPreset</text>
+    <text x="770" y="78" class="sv-s" text-anchor="middle">không hỗ trợ ⇒ lib bỏ qua</text>
+
+    <path d="M245 94 L245 150" class="sv-lnrd"/><path d="M245 156 l-5 -8 h10 z" class="sv-rd"/>
+    <rect x="170" y="156" width="150" height="64" rx="8" class="sv-bad"/>
+    <text x="245" y="184" class="sv-tb" text-anchor="middle">false ⇒ im</text>
+    <text x="245" y="204" class="sv-s" text-anchor="middle">không tra bảng</text>
+
+    <path d="M415 94 L415 150" class="sv-lnrd"/><path d="M415 156 l-5 -8 h10 z" class="sv-rd"/>
+    <rect x="340" y="156" width="150" height="64" rx="8" class="sv-bad"/>
+    <text x="415" y="184" class="sv-tb" text-anchor="middle">LogError, bỏ</text>
+    <text x="415" y="204" class="sv-s" text-anchor="middle">không ném</text>
+
+    <path d="M590 94 L590 150" class="sv-lnrd"/><path d="M590 156 l-5 -8 h10 z" class="sv-rd"/>
+    <rect x="510" y="156" width="160" height="64" rx="8" class="sv-bad"/>
+    <text x="590" y="184" class="sv-tb" text-anchor="middle">im</text>
+    <text x="590" y="204" class="sv-s" text-anchor="middle">cổng của lib</text>
+  </svg>
+  </div>
+  <h3>Một lần khởi động</h3>
+  <div class="tw"><table>
+    <thead><tr><th>Lúc</th><th>Ai</th><th>Làm gì</th></tr></thead>
+    <tbody>
+      <tr><td><code>Awake</code> của host</td><td><code>HapticService</code></td><td>Gọi <code>HapticController.Init()</code> (lib nạp lười ở lần phát đầu ⇒ cú rung đầu khựng; nạp lúc boot thì không) rồi dựng bảng tra</td></tr>
+      <tr><td>Lúc khởi động</td><td>Bridge Setting</td><td><code>_haptic.IsHapticEnabled = _save.VibrationOn;</code></td></tr>
+      <tr><td>Mỗi lần người chơi đổi</td><td>Bridge Setting</td><td><code>SetEnabled</code> ghi lại cổng</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<!-- ============ LƯU Ý ============ -->
+<section id="luu-y">
+  <h2>Lưu ý</h2>
+  <div class="tw"><table>
+    <thead><tr><th></th><th>Chỗ</th><th>Sự thật</th></tr></thead>
+    <tbody>
+      <tr><td><span class="tag t-bad">bẫy</span></td><td><strong>Cổng mặc định <code>false</code></strong></td><td>Cố ý: không rung khi chưa biết Setting của người chơi. Bridge Setting là bắt buộc, thiếu là im cả phiên <strong>không log</strong>. Đừng đổi sang <code>true</code> để "chạy được ngay"</td></tr>
+      <tr><td><span class="tag t-bad">bẫy</span></td><td><strong><code>[Service]</code> không di truyền</strong></td><td>Thiếu <code>[Service]</code> trên class con thì không ai resolve được <code>IHapticService&lt;…&gt;</code></td></tr>
+      <tr><td><span class="tag t-bad">bẫy</span></td><td><strong>Class con không khai <code>Awake</code></strong></td><td><code>Awake</code> của host là <code>private</code>, không gọi được <code>base.Awake()</code></td></tr>
+      <tr><td><span class="tag t-bad">bẫy</span></td><td><strong>Dòng mới mặc định <code>Selection</code></strong></td><td>Không bắt được dòng "chưa gán" vì <code>Selection = 0</code>: <strong>đổi preset</strong> sau khi thêm dòng</td></tr>
+      <tr><td><span class="tag t-warn">luật</span></td><td><strong>Gọi rung ngay cạnh dòng SFX, không qua event</strong></td><td>Event của khoảnh khắc thường bắn cả ở ca hàm phản hồi đã chặn (tương tác bị khoá, input của bot): nghe event là có lúc rung mà không có tiếng</td></tr>
+      <tr><td><span class="tag t-warn">luật</span></td><td><strong>Không gọi <code>HapticPatterns</code> thẳng từ gameplay</strong></td><td>Bỏ qua cổng Setting và bảng tra; kiểu rung lại rải trong code, đổi phải compile</td></tr>
+      <tr><td><span class="tag t-warn">luật</span></td><td><strong>Id là khoảnh khắc, preset là kiểu rung</strong></td><td>Đừng đặt id theo cường độ (<code>Heavy</code>)</td></tr>
+      <tr><td><span class="tag t-warn">luật</span></td><td><strong>Không rung trong <code>Update</code></strong></td><td>Rung là <strong>sự kiện</strong>, không phải trạng thái: rung mỗi frame nóng máy, hao pin, cảm giác nhoè</td></tr>
+      <tr><td><span class="tag t-info">biết</span></td><td><strong>Hai cổng rung</strong></td><td><code>HapticController.hapticsEnabled</code> là trạng thái static của lib, <code>IsHapticEnabled</code> là cổng của host; Horcrux <strong>không</strong> ghi cổng của lib. Dự án còn code khác ghi cổng của lib thì cho cả hai bridge đọc <strong>cùng một</strong> cờ trong save</td></tr>
+      <tr><td><span class="tag t-info">biết</span></td><td><strong>Không <code>DontDestroyOnLoad</code></strong></td><td>Host là component trong scene; đặt nó ở scene sống suốt phiên chơi</td></tr>
+      <tr><td><span class="tag t-info">biết</span></td><td><strong>Không throttle</strong></td><td>Nhiều <code>Play</code> dồn cùng frame: mỗi lần đều gọi lib</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+</main>
+<footer>Horcrux · Haptic System · Horcrux.Runtime.Abstractions.Haptics · nguồn: HapticSystem.md</footer>
+</body>
+</html>
