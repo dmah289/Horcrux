@@ -53,6 +53,10 @@ dung: so sánh → bảng · luồng → diagram · định lượng → công t
 bảng và text không đủ. **Nghiệm thu:** đủ 100% nội dung · single file, không build · TOC khớp · đọc được trên màn hình nhỏ,
 khi in, tắt JavaScript, mất mạng · không tương tác thì không tiến trình nào chạy · không thư viện tô màu code.
 
+**Đồng bộ là so lại cả `.md`, không chỉ phần vừa đổi:** `.html` đi theo mốc nên gom lệch của mọi lần làm trước. **Sổ tay**
+— quét máy: bỏ thẻ, giải entity, mọi chuỗi trong backtick và mọi dòng khối code của `.md` có trong text `.html` · tiêu đề
+`##` khớp `<h2>` · mục lục khớp `id` section.
+
 **Trang là chương trình chạy trên máy người đọc** — NT2 áp nguyên:
 - **Nội dung không phụ thuộc trang trí:** hiệu ứng chỉ bật khi script xác nhận chạy (class trên `<html>` ở đầu `<head>`);
   thiếu script, mạng, khi in, `prefers-reduced-motion` vẫn đủ nội dung. Công thức render một lần; lỗi thì hiện nguyên TeX.
