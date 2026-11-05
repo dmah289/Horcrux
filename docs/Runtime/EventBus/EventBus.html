@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EventBus</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#0d1117;--bg2:#161b22;--bg3:#1c2333;--bg4:#242d3a;--tx:#e6edf3;--tx2:#8b949e;--tx3:#484f58;--ac:#58a6ff;--ac2:#bc8cff;--gr:#3fb950;--or:#d29922;--rd:#f85149;--bd:#30363d;--r:10px;--mono:'JetBrains Mono','Fira Code',Consolas,monospace;--sans:'Inter','Segoe UI',system-ui,sans-serif}
+html{scroll-behavior:smooth;background:var(--bg);color:var(--tx);font:16px/1.65 var(--sans)}
+body{background:var(--bg);overflow-x:hidden}
+a{color:var(--ac);text-decoration:none}a:hover{text-decoration:underline}
+#header{max-width:960px;margin:0 auto;padding:3.5rem 1rem 1.5rem;border-bottom:1px solid var(--bd)}
+#header h1{font-size:clamp(2rem,5vw,2.8rem);font-weight:800;letter-spacing:-.03em;color:var(--ac)}
+#header .sub{color:var(--tx2);margin-top:.4rem}
+.badge{display:inline-block;margin:.8rem .4rem 0 0;padding:.25em .8em;border:1px solid var(--bd);border-radius:99px;font-family:var(--mono);font-size:.75rem;color:var(--tx2)}
+#toc{max-width:960px;margin:2rem auto 0;padding:0 1rem}
+#toc h2{font-size:1.15rem;border:none;margin-bottom:.6rem}
+#toc ol{columns:3;column-gap:2rem;padding-left:1.4em}
+#toc li{font-size:.9rem;margin-bottom:.25rem;break-inside:avoid}
+@media(max-width:760px){#toc ol{columns:2}}
+@media(max-width:480px){#toc ol{columns:1}}
+main{max-width:960px;margin:0 auto;padding:0 1rem 5rem}
+section{padding-top:3.2rem}
+h2{font-size:1.65rem;font-weight:700;letter-spacing:-.02em;margin-bottom:1.1rem;padding-bottom:.45rem;border-bottom:1px solid var(--bd)}
+h3{font-size:1.15rem;font-weight:600;margin:2rem 0 .8rem;color:var(--ac)}
+p,ul,ol{margin-bottom:.9rem}ul,ol{padding-left:1.3em}li{margin-bottom:.25rem}
+strong{color:var(--tx);font-weight:600}
+em{color:var(--ac2);font-style:normal}
+code{font-family:var(--mono);font-size:.86em;background:var(--bg3);padding:.1em .35em;border-radius:4px;overflow-wrap:anywhere}
+pre{background:var(--bg3);border:1px solid var(--bd);border-radius:var(--r);padding:1rem 1.1rem;margin:1rem 0;overflow-x:auto}
+pre code{background:none;padding:0;font-size:.83rem;line-height:1.6;overflow-wrap:normal}
+.tw{overflow-x:auto;margin:1rem 0}
+table{width:100%;border-collapse:collapse;font-size:.88rem}
+th{text-align:left;padding:.55rem .7rem;border-bottom:2px solid var(--bd);color:var(--ac);font-weight:600;vertical-align:bottom}
+td{padding:.5rem .7rem;border-bottom:1px solid var(--bd);vertical-align:top}
+tr:last-child td{border-bottom:none}
+.note{border-left:3px solid var(--ac);background:var(--bg2);padding:.85rem 1.1rem;border-radius:0 var(--r) var(--r) 0;margin:1.2rem 0;font-size:.92rem;color:var(--tx2)}
+.note strong{color:var(--ac)}
+.note.good{border-left-color:var(--gr)}.note.good strong{color:var(--gr)}
+.note.bad{border-left-color:var(--rd)}.note.bad strong{color:var(--rd)}
+.hero{border:1px solid var(--gr);background:var(--bg2);border-radius:var(--r);padding:1.1rem 1.3rem;margin:1.5rem 0}
+.hero .big{font-size:1.25rem;font-weight:700;color:var(--gr)}
+.fig{background:var(--bg2);border:1px solid var(--bd);border-radius:var(--r);padding:1rem;margin:1.3rem 0;overflow-x:auto}
+.fig svg{display:block;width:100%;min-width:680px;height:auto}
+.fig .cap{font-family:var(--mono);font-size:.75rem;color:var(--ac2);text-transform:uppercase;letter-spacing:.07em;margin-bottom:.7rem}
+.arch{font-family:var(--mono);font-size:.8rem;line-height:1.7;white-space:pre;overflow-x:auto;padding:1rem;background:var(--bg3);border-radius:var(--r);color:var(--tx2);margin:1rem 0}
+.steps{counter-reset:s;list-style:none;padding:0}
+.steps>li{counter-increment:s;position:relative;padding:0 0 1.2rem 2.6rem;border-left:2px solid var(--bd);margin-left:.9rem}
+.steps>li:last-child{border-left-color:transparent}
+.steps>li::before{content:counter(s);position:absolute;left:-.95rem;top:0;width:1.8rem;height:1.8rem;border-radius:50%;background:var(--ac);color:var(--bg);font-weight:700;font-size:.85rem;display:flex;align-items:center;justify-content:center}
+.steps>li>strong:first-child{display:block;margin-bottom:.4rem;color:var(--ac)}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:.9rem;margin:1.2rem 0}
+.cell{background:var(--bg3);border-radius:var(--r);padding:1rem;text-align:center}
+.cell .v{font-size:1.35rem;font-weight:800;color:var(--ac);font-family:var(--mono)}
+.cell .l{font-size:.8rem;color:var(--tx2);margin-top:.2rem}
+.tag{display:inline-block;font-family:var(--mono);font-size:.72rem;padding:.05em .5em;border-radius:4px;border:1px solid currentColor}
+.t-ok{color:var(--gr)}.t-warn{color:var(--or)}.t-bad{color:var(--rd)}.t-info{color:var(--ac)}
+/* SVG */
+.sv-box{fill:var(--bg3);stroke:var(--bd);stroke-width:1.5}
+.sv-sdk{fill:var(--bg3);stroke:var(--ac);stroke-width:1.5}
+.sv-prj{fill:var(--bg3);stroke:var(--ac2);stroke-width:1.5}
+.sv-ok{fill:var(--bg3);stroke:var(--gr);stroke-width:1.5}
+.sv-warn{fill:var(--bg3);stroke:var(--or);stroke-width:1.5}
+.sv-bad{fill:var(--bg3);stroke:var(--rd);stroke-width:1.5}
+.sv-disk{fill:var(--bg4);stroke:var(--gr);stroke-width:2}
+.sv-t{fill:var(--tx);font:13px var(--sans)}
+.sv-tb{fill:var(--tx);font:600 13px var(--sans)}
+.sv-m{fill:var(--tx2);font:11.5px var(--mono)}
+.sv-s{fill:var(--tx2);font:11.5px var(--sans)}
+.sv-ac{fill:var(--ac)}.sv-ac2{fill:var(--ac2)}.sv-gr{fill:var(--gr)}.sv-or{fill:var(--or)}.sv-rd{fill:var(--rd)}
+.sv-ln{stroke:var(--tx2);stroke-width:1.5;fill:none}
+.sv-lnac{stroke:var(--ac);stroke-width:1.8;fill:none}
+.sv-lngr{stroke:var(--gr);stroke-width:1.8;fill:none}
+.sv-lnrd{stroke:var(--rd);stroke-width:1.8;fill:none;stroke-dasharray:5 4}
+.sv-lnor{stroke:var(--or);stroke-width:1.8;fill:none}
+.sv-axis{stroke:var(--tx3);stroke-width:1.5}
+.sv-loss{fill:var(--rd);opacity:.18}
+footer{text-align:center;padding:2.5rem 1rem;color:var(--tx3);font-size:.82rem;border-top:1px solid var(--bd)}
+@media print{
+  :root{--bg:#fff;--bg2:#f6f8fa;--bg3:#f0f2f5;--bg4:#e6e9ee;--tx:#111;--tx2:#444;--tx3:#888;--bd:#ccc;--ac:#0b5cc2;--ac2:#7a3fc4;--gr:#1a7f37;--or:#9a6700;--rd:#c62828}
+  #toc{display:none}section{padding-top:1.5rem;break-inside:auto}.fig,table,pre{break-inside:avoid}
+}
+</style>
+<body>
+<header id="header">
+  <h1>EventBus</h1>
+  <p class="sub">Publish/subscribe theo type: gửi event tới listener tức thì, theo thứ tự đăng ký, không cấp phát heap khi publish.</p>
+  <span class="badge">Horcrux.Runtime.Utilities.EventBus</span>
+  <span class="badge">Code: Runtime/Utilities/EventBus/</span>
+</header>
+
+<nav id="toc"><h2>Mục lục</h2><ol>
+  <li><a href="#tong-quan">Tổng quan</a></li>
+  <li><a href="#kich-ban">Kịch bản</a></li>
+  <li><a href="#cach-dung">Cách dùng</a></li>
+  <li><a href="#flow">Flow</a></li>
+  <li><a href="#luu-y">Lưu ý</a></li>
+</ol></nav>
+
+<main>
+
+<!-- ============ TỔNG QUAN ============ -->
+<section id="tong-quan">
+  <h2>Tổng quan</h2>
+  <p>Gửi event tới listener <strong>tức thì</strong>, theo <strong>thứ tự đăng ký</strong>, không cấp phát heap khi publish. Danh sách listener sửa được ngay giữa lúc đang dispatch mà không ai bị bỏ sót hay bị gọi hai lần. Mỗi kiểu event là một bus độc lập: <code>EventBus&lt;ToastRequest&gt;</code> và <code>EventBus&lt;PlayerDied&gt;</code> không dùng chung state.</p>
+
+  <div class="hero"><div class="big">Không cần wire.</div>
+  <p style="margin:.5rem 0 0">Không scene, không asset, không bước boot. Bus là static theo type, dùng được ngay từ code.</p></div>
+</section>
+
+<!-- ============ KỊCH BẢN ============ -->
+<section id="kich-ban">
+  <h2>Kịch bản</h2>
+  <div class="tw"><table>
+    <thead><tr><th>Tình huống</th><th>Bus làm gì</th></tr></thead>
+    <tbody>
+      <tr><td>Bắn event khi có ba listener</td><td>Gọi cả ba theo thứ tự <code>Subscribe</code>; <code>Publish</code> trả về sau khi listener cuối chạy xong. Không hàng đợi, không hoãn frame</td></tr>
+      <tr><td>Listener huỷ chính mình trong callback</td><td>Hợp lệ, không ai bị bỏ sót</td></tr>
+      <tr><td>Listener huỷ một listener khác</td><td>Listener chưa tới lượt bị bỏ qua ngay lượt đó; đã chạy rồi thì vẫn đã chạy</td></tr>
+      <tr><td>Listener đăng ký listener mới trong callback</td><td>Listener mới chờ <code>Publish</code> kế. Hành vi cố định, không phải điều kiện đua</td></tr>
+      <tr><td>Listener ném exception</td><td>Bị log, không thoát ra <code>Publish</code>. Các listener khác chạy đủ</td></tr>
+      <tr><td>Object chủ bị destroy mà chưa <code>Dispose</code></td><td>Rụng ở <code>Publish</code> kế. Callback không bị gọi lần nào, không exception nào</td></tr>
+      <tr><td>Object chủ bị disable</td><td><strong>Vẫn nhận event</strong>: tự rụng không phủ disable</td></tr>
+      <tr><td>Lambda, method <code>static</code>, object thường đã hết dùng mà chưa <code>Dispose</code></td><td>Vẫn được gọi. Đây là nguồn leak duy nhất của bus</td></tr>
+      <tr><td><code>Subscribe</code> hai lần cùng method của cùng object</td><td>Lần hai bị bỏ qua, <code>LogError</code> (chỉ Editor), trả handle rỗng; callback vẫn chạy đúng một lần mỗi <code>Publish</code></td></tr>
+      <tr><td><code>Dispose</code> handle rỗng</td><td>Không làm gì, không huỷ bản đã đăng ký</td></tr>
+      <tr><td><code>Publish()</code> không tham số</td><td>Gửi struct zero-init: số về 0, field kiểu ref về <code>null</code></td></tr>
+      <tr><td>Listener publish lại cùng kiểu, có điều kiện dừng</td><td>Hợp lệ, không sót không lặp</td></tr>
+      <tr><td>… không có điều kiện dừng</td><td><code>StackOverflowException</code>. Bus cố ý không đỡ</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<!-- ============ CÁCH DÙNG ============ -->
+<section id="cach-dung">
+  <h2>Cách dùng</h2>
+
+  <h3>Khai báo event</h3>
+  <div class="tw"><table>
+    <thead><tr><th>Luật</th><th>Lý do</th></tr></thead>
+    <tbody>
+      <tr><td><strong><code>readonly struct</code></strong>, implement <code>IEvent</code></td><td>Listener nhận một bản copy. Field mutable tạo ảo giác sửa được payload cho listener sau — thực tế không, và sai im lặng</td></tr>
+      <tr><td>Không dùng class</td><td>Constraint chặn ở compile time; call site không thể <code>new</code> một event object mỗi lần bắn</td></tr>
+      <tr><td>Chịu được payload rỗng</td><td>Listener không chịu được <code>null</code> thì call site không publish rỗng event đó</td></tr>
+    </tbody>
+  </table></div>
+<pre><code>public readonly struct PieceMatched : IEvent
+{
+    public readonly int Count;
+    public PieceMatched(int count) =&gt; Count = count;
+}
+
+EventBus&lt;PieceMatched&gt;.Publish(new PieceMatched(3));</code></pre>
+
+  <h3>Chọn cách nghe</h3>
+  <div class="tw"><table>
+    <thead><tr><th>Nhu cầu</th><th>Cách làm</th><th>Giữ handle?</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Nghe suốt đời object</strong> — thường gặp nhất</td><td><code>Subscribe</code> ở <code>Awake</code></td><td><span class="tag t-ok">Không</span> tự rụng khi object bị destroy</td></tr>
+      <tr><td><strong>Nghe theo bật/tắt</strong> — object pool, popup</td><td><code>Subscribe</code> ở <code>OnEnable</code>, <code>Dispose</code> ở <code>OnDisable</code></td><td><span class="tag t-warn">Có</span></td></tr>
+      <tr><td><strong>Nghe một lần rồi thôi</strong></td><td><code>Dispose</code> handle ngay trong callback</td><td><span class="tag t-warn">Có</span></td></tr>
+      <tr><td>Lambda · method <code>static</code> · method của object không phải <code>UnityEngine.Object</code></td><td><code>Dispose</code> khi hết cần</td><td><span class="tag t-bad">Có, bắt buộc</span></td></tr>
+    </tbody>
+  </table></div>
+<pre><code>// Nghe suốt đời object
+public sealed class ScoreLabel : MonoBehaviour
+{
+    private void Awake() =&gt; EventBus&lt;PieceMatched&gt;.Subscribe(OnMatched);
+    private void OnMatched(PieceMatched e) { }
+}
+
+// Nghe theo bật/tắt
+public sealed class ComboPopup : MonoBehaviour
+{
+    private Subscription&lt;PieceMatched&gt; subscription;
+    private void OnEnable() =&gt; subscription = EventBus&lt;PieceMatched&gt;.Subscribe(OnMatched);
+    private void OnDisable() =&gt; subscription.Dispose();
+    private void OnMatched(PieceMatched e) { }
+}
+
+// Nghe một lần
+public sealed class FirstMatchHint : MonoBehaviour
+{
+    private Subscription&lt;PieceMatched&gt; subscription;
+    private void Awake() =&gt; subscription = EventBus&lt;PieceMatched&gt;.Subscribe(OnFirstMatch);
+    private void OnFirstMatch(PieceMatched e) =&gt; subscription.Dispose();
+}</code></pre>
+
+  <h3>API gọi từ code</h3>
+  <div class="tw"><table>
+    <thead><tr><th>Gọi</th><th>Khi nào</th></tr></thead>
+    <tbody>
+      <tr><td><code>EventBus&lt;T&gt;.Publish</code></td><td>Bắn event; gọi hết listener ngay trong lời gọi này</td></tr>
+      <tr><td><code>EventBus&lt;T&gt;.Subscribe</code></td><td>Đăng ký, trả handle <code>Subscription&lt;T&gt;</code> để huỷ</td></tr>
+      <tr><td><code>Subscription&lt;T&gt;.Dispose</code></td><td>Huỷ đăng ký. <strong>Đường huỷ duy nhất</strong>; không cần kiểm gì trước khi gọi</td></tr>
+      <tr><td><code>EventBus&lt;T&gt;.ActiveListenerCount</code></td><td>Số listener sống, đã trừ ô chờ dọn</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<!-- ============ FLOW ============ -->
+<section id="flow">
+  <h2>Flow</h2>
+
+  <div class="fig"><div class="cap">Một lượt Publish: B huỷ D và đăng ký E giữa lượt</div>
+  <svg viewBox="0 0 860 260" role="img" aria-label="Một lượt Publish qua năm ô listener">
+    <path d="M20 26 L676 26" class="sv-lnac"/><path d="M680 26 l-10 -6 v12 z" class="sv-ac"/>
+    <text x="350" y="18" class="sv-s" text-anchor="middle">thứ tự Subscribe</text>
+
+    <rect x="20" y="44" width="150" height="76" rx="8" class="sv-ok"/>
+    <text x="95" y="70" class="sv-tb" text-anchor="middle">A</text>
+    <text x="95" y="92" class="sv-s" text-anchor="middle">chạy</text>
+
+    <rect x="190" y="44" width="150" height="76" rx="8" class="sv-ok"/>
+    <text x="265" y="70" class="sv-tb" text-anchor="middle">B</text>
+    <text x="265" y="92" class="sv-s" text-anchor="middle">chạy; trong callback</text>
+    <text x="265" y="108" class="sv-m" text-anchor="middle">D.Dispose · Sub E</text>
+
+    <rect x="360" y="44" width="150" height="76" rx="8" class="sv-bad"/>
+    <text x="435" y="70" class="sv-tb" text-anchor="middle">C</text>
+    <text x="435" y="92" class="sv-s" text-anchor="middle">owner đã destroy</text>
+    <text x="435" y="108" class="sv-s" text-anchor="middle">đánh dấu rỗng, bỏ qua</text>
+
+    <rect x="530" y="44" width="150" height="76" rx="8" class="sv-box"/>
+    <text x="605" y="70" class="sv-tb" text-anchor="middle">D</text>
+    <text x="605" y="92" class="sv-s" text-anchor="middle">rỗng (B vừa huỷ)</text>
+    <text x="605" y="108" class="sv-s" text-anchor="middle">bỏ qua</text>
+
+    <line x1="690" y1="36" x2="690" y2="132" class="sv-lnrd"/>
+    <text x="690" y="148" class="sv-s sv-rd" text-anchor="middle">n lúc vào</text>
+
+    <rect x="700" y="44" width="150" height="76" rx="8" class="sv-warn"/>
+    <text x="775" y="70" class="sv-tb" text-anchor="middle">E</text>
+    <text x="775" y="92" class="sv-s" text-anchor="middle">thêm giữa lượt</text>
+    <text x="775" y="108" class="sv-s" text-anchor="middle">chờ Publish kế</text>
+
+    <path d="M430 160 L430 186" class="sv-ln"/><path d="M430 190 l-6 -10 h12 z" class="sv-ac"/>
+    <text x="440" y="178" class="sv-m">depth == 0: dồn danh sách, bỏ ô rỗng</text>
+
+    <rect x="255" y="198" width="100" height="44" rx="8" class="sv-ok"/>
+    <text x="305" y="225" class="sv-tb" text-anchor="middle">A</text>
+    <rect x="380" y="198" width="100" height="44" rx="8" class="sv-ok"/>
+    <text x="430" y="225" class="sv-tb" text-anchor="middle">B</text>
+    <rect x="505" y="198" width="100" height="44" rx="8" class="sv-warn"/>
+    <text x="555" y="225" class="sv-tb" text-anchor="middle">E</text>
+  </svg></div>
+
+<div class="arch">Publish(e)
+  depth++
+  n = số ô lúc vào                          ô thêm giữa lượt nằm sau n ─► chờ Publish kế
+  mỗi ô 0…n-1, theo thứ tự Subscribe:
+     ô rỗng (đã Dispose)                    ─► bỏ qua
+     owner UnityEngine.Object đã destroy    ─► đánh dấu ô rỗng, bỏ qua
+     còn lại                                ─► callback(e); exception ─► LogException, đi tiếp
+  depth--
+  depth == 0                                ─► dồn danh sách, bỏ ô rỗng</div>
+
+  <div class="note"><strong>Publish lồng nhau.</strong> Listener publish thêm event ngay trong callback là hợp lệ, không sót không lặp. Lồng khác kiểu thì không có tương tác gì.</div>
+</section>
+
+<!-- ============ LƯU Ý ============ -->
+<section id="luu-y">
+  <h2>Lưu ý</h2>
+  <div class="note bad"><strong>Bẫy đáng nhớ nhất:</strong> <code>Subscribe</code> ở <code>OnEnable</code> mà quên <code>Dispose</code> ở <code>OnDisable</code> — object đang tắt vẫn nhận event, và lần bật lại bị chặn vì trùng đăng ký. Dòng <code>LogError</code> trong Editor là tín hiệu của đúng lỗi này; sửa call site, đừng tắt log.</div>
+  <div class="note bad"><strong>Tự rụng phủ đúng một ca:</strong> <code>callback.Target</code> là <code>UnityEngine.Object</code> đã destroy. Disable, method <code>static</code>, object thường không rụng; lambda rụng hay không tuỳ cách compiler sinh code, nên coi mọi lambda là phải <code>Dispose</code>.</div>
+  <div class="note bad"><strong>Main-thread only.</strong> Không lock: <code>Publish</code> hoặc <code>Subscribe</code> từ thread khác làm hỏng danh sách listener.</div>
+  <div class="note bad"><strong>Publish lồng cùng kiểu cần điều kiện dừng.</strong> Thường không do ai cố ý viết ra: listener gọi một service, service gọi service khác, mắt cuối publish lại chính kiểu đó. Điều kiện dừng là trách nhiệm của call site — thường là huỷ đăng ký của chính mình, hoặc một cờ trạng thái, trước khi publish lồng.</div>
+  <div class="note"><strong>Exception không chặn được listener sau.</strong> Muốn chặn thì dùng cờ trong payload hoặc một event khác.</div>
+  <div class="note"><strong>Thứ tự đăng ký là bảo đảm duy nhất về thứ tự.</strong> Hai listener mà kết quả phụ thuộc thứ tự giữa chúng là thiết kế dễ vỡ: thứ tự đó theo <code>Awake</code>/<code>OnEnable</code>, tức thứ tự component trong scene.</div>
+  <div class="note"><strong>Cần listener mới xử lý ngay event đang chạy</strong> thì gọi thẳng nó một lần; bus chỉ đưa nó vào lượt sau.</div>
+  <div class="note"><strong>Đăng ký trùng so theo cặp <em>object chủ</em> + <em>method</em>.</strong> Đừng <code>Subscribe</code> lại để "refresh" đăng ký — không có tác dụng gì ngoài một dòng log. Hai lambda viết giống nhau <strong>không</strong> trùng: chạy hai lần.</div>
+  <div class="note"><strong>Dọn danh sách chỉ xảy ra trong <code>Publish</code>.</strong> Bus hiếm bắn event mà call site <code>Subscribe</code>/<code>Dispose</code> liên tục thì danh sách nội bộ phình dần; một lần <code>Publish</code> là dọn sạch. Event không bao giờ bắn nữa thì ô chết nằm lại.</div>
+  <div class="note"><strong>Không có <code>Clear()</code>.</strong> Domain reload tự reset static mỗi lần vào Play Mode. Tick <em>Disable Domain Reload</em> thì listener <code>static</code> và lambda sống sót qua các lần chạy.</div>
+  <div class="note"><strong>Ngân sách ~10–50 dispatch/giây:</strong> UI và luồng game, <strong>không</strong> phải hot path.</div>
+
+  <h3>Chẩn đoán</h3>
+  <div class="tw"><table>
+    <thead><tr><th>Triệu chứng</th><th>Nguyên nhân thường gặp</th></tr></thead>
+    <tbody>
+      <tr><td>Listener không nhận event dù đã <code>Subscribe</code></td><td>Đăng ký xảy ra <strong>trong</strong> một callback của cùng bus ⇒ hoãn một nhịp · hoặc bị chặn vì trùng ⇒ có <code>LogError</code> trong Console · hoặc owner đã bị destroy</td></tr>
+      <tr><td>Callback chạy hai lần mỗi <code>Publish</code></td><td>Hai <code>Subscribe</code> từ hai object khác nhau, hoặc hai lambda khác nhau trỏ cùng một hàm</td></tr>
+      <tr><td><code>LogError</code> trùng đăng ký lặp lại mỗi lần bật object</td><td><code>Subscribe</code> ở <code>OnEnable</code> mà thiếu <code>Dispose</code> ở <code>OnDisable</code></td></tr>
+      <tr><td>Object đã tắt vẫn phản ứng với event</td><td>Cùng nguyên nhân trên — tự rụng không phủ disable</td></tr>
+      <tr><td>Lambda vẫn chạy sau khi object chủ bị destroy</td><td>Lambda không chắc tự rụng, phải giữ handle</td></tr>
+      <tr><td><code>ActiveListenerCount</code> khác số <code>Subscribe</code> đã gọi</td><td>Có lần đăng ký bị chặn vì trùng, hoặc có ô đã bị dọn</td></tr>
+      <tr><td><code>StackOverflowException</code> trong <code>Publish</code></td><td>Đệ quy publish cùng kiểu không có điều kiện dừng</td></tr>
+      <tr><td>Listener khác im lặng không chạy sau khi một listener lỗi</td><td>Không phải hành vi của bus — exception được log và bỏ qua. Tìm nguyên nhân ở chính listener đó</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+</main>
+<footer>Horcrux · EventBus · Horcrux.Runtime.Utilities.EventBus · nguồn: EventBus.md</footer>
+</body>
+</html>
