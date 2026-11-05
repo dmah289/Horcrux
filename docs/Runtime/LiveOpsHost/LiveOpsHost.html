@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LiveOps Host</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#0d1117;--bg2:#161b22;--bg3:#1c2333;--bg4:#242d3a;--tx:#e6edf3;--tx2:#8b949e;--tx3:#484f58;--ac:#58a6ff;--ac2:#bc8cff;--gr:#3fb950;--or:#d29922;--rd:#f85149;--bd:#30363d;--r:10px;--mono:'JetBrains Mono','Fira Code',Consolas,monospace;--sans:'Inter','Segoe UI',system-ui,sans-serif}
+html{scroll-behavior:smooth;background:var(--bg);color:var(--tx);font:16px/1.65 var(--sans)}
+body{background:var(--bg);overflow-x:hidden}
+a{color:var(--ac);text-decoration:none}a:hover{text-decoration:underline}
+#header{max-width:960px;margin:0 auto;padding:3.5rem 1rem 1.5rem;border-bottom:1px solid var(--bd)}
+#header h1{font-size:clamp(2rem,5vw,2.8rem);font-weight:800;letter-spacing:-.03em;color:var(--ac)}
+#header .sub{color:var(--tx2);margin-top:.4rem}
+.badge{display:inline-block;margin:.8rem .4rem 0 0;padding:.25em .8em;border:1px solid var(--bd);border-radius:99px;font-family:var(--mono);font-size:.75rem;color:var(--tx2)}
+#toc{max-width:960px;margin:2rem auto 0;padding:0 1rem}
+#toc h2{font-size:1.15rem;border:none;margin-bottom:.6rem}
+#toc ol{columns:3;column-gap:2rem;padding-left:1.4em}
+#toc li{font-size:.9rem;margin-bottom:.25rem;break-inside:avoid}
+@media(max-width:760px){#toc ol{columns:2}}
+@media(max-width:480px){#toc ol{columns:1}}
+main{max-width:960px;margin:0 auto;padding:0 1rem 5rem}
+section{padding-top:3.2rem}
+h2{font-size:1.65rem;font-weight:700;letter-spacing:-.02em;margin-bottom:1.1rem;padding-bottom:.45rem;border-bottom:1px solid var(--bd)}
+h3{font-size:1.15rem;font-weight:600;margin:2rem 0 .8rem;color:var(--ac)}
+h4{font-size:1rem;font-weight:600;margin:1.6rem 0 .7rem}
+p,ul,ol{margin-bottom:.9rem}ul,ol{padding-left:1.3em}li{margin-bottom:.25rem}
+strong{color:var(--tx);font-weight:600}
+em{color:var(--ac2);font-style:normal}
+code{font-family:var(--mono);font-size:.86em;background:var(--bg3);padding:.1em .35em;border-radius:4px;overflow-wrap:anywhere}
+pre{background:var(--bg3);border:1px solid var(--bd);border-radius:var(--r);padding:1rem 1.1rem;margin:1rem 0;overflow-x:auto}
+pre code{background:none;padding:0;font-size:.83rem;line-height:1.6;overflow-wrap:normal}
+.tw{overflow-x:auto;margin:1rem 0}
+table{width:100%;border-collapse:collapse;font-size:.88rem}
+th{text-align:left;padding:.55rem .7rem;border-bottom:2px solid var(--bd);color:var(--ac);font-weight:600;vertical-align:bottom}
+td{padding:.5rem .7rem;border-bottom:1px solid var(--bd);vertical-align:top}
+tr:last-child td{border-bottom:none}
+.note{border-left:3px solid var(--ac);background:var(--bg2);padding:.85rem 1.1rem;border-radius:0 var(--r) var(--r) 0;margin:1.2rem 0;font-size:.92rem;color:var(--tx2)}
+.note strong{color:var(--ac)}
+.note.good{border-left-color:var(--gr)}.note.good strong{color:var(--gr)}
+.note.bad{border-left-color:var(--rd)}.note.bad strong{color:var(--rd)}
+.hero{border:1px solid var(--gr);background:var(--bg2);border-radius:var(--r);padding:1.1rem 1.3rem;margin:1.5rem 0}
+.hero .big{font-size:1.25rem;font-weight:700;color:var(--gr)}
+.fig{background:var(--bg2);border:1px solid var(--bd);border-radius:var(--r);padding:1rem;margin:1.3rem 0;overflow-x:auto}
+.fig svg{display:block;width:100%;min-width:680px;height:auto}
+.fig .cap{font-family:var(--mono);font-size:.75rem;color:var(--ac2);text-transform:uppercase;letter-spacing:.07em;margin-bottom:.7rem}
+.arch{font-family:var(--mono);font-size:.8rem;line-height:1.7;white-space:pre;overflow-x:auto;padding:1rem;background:var(--bg3);border-radius:var(--r);color:var(--tx2);margin:1rem 0}
+.steps{counter-reset:s;list-style:none;padding:0}
+.steps>li{counter-increment:s;position:relative;padding:0 0 1.2rem 2.6rem;border-left:2px solid var(--bd);margin-left:.9rem}
+.steps>li:last-child{border-left-color:transparent}
+.steps>li::before{content:counter(s);position:absolute;left:-.95rem;top:0;width:1.8rem;height:1.8rem;border-radius:50%;background:var(--ac);color:var(--bg);font-weight:700;font-size:.85rem;display:flex;align-items:center;justify-content:center}
+.steps>li>strong:first-child{display:block;margin-bottom:.4rem;color:var(--ac)}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:.9rem;margin:1.2rem 0}
+.cell{background:var(--bg3);border-radius:var(--r);padding:1rem;text-align:center}
+.cell .v{font-size:1.35rem;font-weight:800;color:var(--ac);font-family:var(--mono)}
+.cell .l{font-size:.8rem;color:var(--tx2);margin-top:.2rem}
+.tag{display:inline-block;font-family:var(--mono);font-size:.72rem;padding:.05em .5em;border-radius:4px;border:1px solid currentColor}
+.t-ok{color:var(--gr)}.t-warn{color:var(--or)}.t-bad{color:var(--rd)}.t-info{color:var(--ac)}
+/* SVG */
+.sv-box{fill:var(--bg3);stroke:var(--bd);stroke-width:1.5}
+.sv-sdk{fill:var(--bg3);stroke:var(--ac);stroke-width:1.5}
+.sv-prj{fill:var(--bg3);stroke:var(--ac2);stroke-width:1.5}
+.sv-ok{fill:var(--bg3);stroke:var(--gr);stroke-width:1.5}
+.sv-warn{fill:var(--bg3);stroke:var(--or);stroke-width:1.5}
+.sv-bad{fill:var(--bg3);stroke:var(--rd);stroke-width:1.5}
+.sv-disk{fill:var(--bg4);stroke:var(--gr);stroke-width:2}
+.sv-t{fill:var(--tx);font:13px var(--sans)}
+.sv-tb{fill:var(--tx);font:600 13px var(--sans)}
+.sv-m{fill:var(--tx2);font:11.5px var(--mono)}
+.sv-s{fill:var(--tx2);font:11.5px var(--sans)}
+.sv-ac{fill:var(--ac)}.sv-ac2{fill:var(--ac2)}.sv-gr{fill:var(--gr)}.sv-or{fill:var(--or)}.sv-rd{fill:var(--rd)}
+.sv-ln{stroke:var(--tx2);stroke-width:1.5;fill:none}
+.sv-lnac{stroke:var(--ac);stroke-width:1.8;fill:none}
+.sv-lngr{stroke:var(--gr);stroke-width:1.8;fill:none}
+.sv-lnrd{stroke:var(--rd);stroke-width:1.8;fill:none;stroke-dasharray:5 4}
+.sv-lnor{stroke:var(--or);stroke-width:1.8;fill:none}
+.sv-axis{stroke:var(--tx3);stroke-width:1.5}
+.sv-loss{fill:var(--rd);opacity:.18}
+footer{text-align:center;padding:2.5rem 1rem;color:var(--tx3);font-size:.82rem;border-top:1px solid var(--bd)}
+@media print{
+  :root{--bg:#fff;--bg2:#f6f8fa;--bg3:#f0f2f5;--bg4:#e6e9ee;--tx:#111;--tx2:#444;--tx3:#888;--bd:#ccc;--ac:#0b5cc2;--ac2:#7a3fc4;--gr:#1a7f37;--or:#9a6700;--rd:#c62828}
+  #toc{display:none}section{padding-top:1.5rem;break-inside:auto}.fig,table,pre{break-inside:avoid}
+}
+</style>
+</head>
+<body>
+<header id="header">
+  <h1>LiveOps Host</h1>
+  <p class="sub">Nhịp 1 Hz và vòng đời module live-ops, kèm luồng mất tiến độ khi thua.</p>
+  <span class="badge">Horcrux.Runtime.Abstractions.LiveOps</span>
+  <span class="badge">Horcrux.Runtime.Implementations.LiveOps</span>
+  <span class="badge">Code: Runtime/Abstractions/Composites/LiveOps/ · Runtime/Implementations/Composites/LiveOps/</span>
+</header>
+
+<nav id="toc"><h2>Mục lục</h2><ol>
+  <li><a href="#tong-quan">Tổng quan</a></li>
+  <li><a href="#kich-ban">Kịch bản</a></li>
+  <li><a href="#cach-dung">Cách dùng</a></li>
+  <li><a href="#flow">Flow</a></li>
+  <li><a href="#luu-y">Lưu ý</a></li>
+</ol></nav>
+
+<main>
+
+<!-- ============ TỔNG QUAN ============ -->
+<section id="tong-quan">
+  <h2>Tổng quan</h2>
+  <div class="tw"><table>
+    <thead><tr><th>Thành phần</th><th>Việc</th><th>Ai viết</th></tr></thead>
+    <tbody>
+      <tr><td><code>LiveOpsHost</code></td><td>Boot step: gọi <code>Initialize</code> mỗi module một lần, rồi <code>Tick</code> mỗi giây với cùng một <code>now</code>, rồi bắn <code>LiveOpsSecondTick</code></td><td>Horcrux</td></tr>
+      <tr><td><code>ALiveOpsModule</code></td><td>Khung module: <code>Window</code>, <code>State</code>, <code>SecondsLeft</code>, <code>IsInitialized</code>; tự <code>Register</code> ở <code>Start</code></td><td>khung Horcrux · module con do dự án</td></tr>
+      <tr><td><code>WeeklySchedule.Resolve</code></td><td>Cửa sổ chu kỳ tuần, neo theo giờ UTC</td><td>Horcrux</td></tr>
+      <tr><td><code>ALiveOpsLoseFlow</code> · <code>LiveOpsLossHelper</code></td><td>Cờ mất treo, áp mất khi thua hoặc khi boot lại</td><td>khung Horcrux · lose flow và cầu nối do dự án</td></tr>
+      <tr><td><code>LiveOpsLossWarningView</code></td><td>Cảnh báo live-ops nào sắp mất tiến độ, trên popup hồi sinh</td><td>Horcrux · dự án dựng UI</td></tr>
+    </tbody>
+  </table></div>
+  <div class="tw"><table>
+    <thead><tr><th>Mục</th><th>Chốt</th></tr></thead>
+    <tbody>
+      <tr><td>Trạng thái</td><td><code>Inactive · Running · Finished</code>; nghĩa của <code>Finished</code> do module định</td></tr>
+      <tr><td>Nhịp</td><td>1 Hz, Realtime; module không có <code>Update</code></td></tr>
+      <tr><td>Thời gian</td><td>chỉ <code>ITimeService.UtcNowUnix</code>; không <code>DateTime.Now</code></td></tr>
+      <tr><td>Save, config</td><td>module tự giữ; host không đọc save, không biết remote config</td></tr>
+    </tbody>
+  </table></div>
+  <div class="hero"><div class="big">Mọi module nhận cùng một <code>now</code> mỗi giây.</div>
+  <p style="margin:.5rem 0 0"><code>Initialize</code> và <code>Tick</code> cùng một thân <code>Evaluate</code>: rollover lúc mở app và lúc app đang mở là một luật.</p></div>
+</section>
+
+<!-- ============ KỊCH BẢN ============ -->
+<section id="kich-ban">
+  <h2>Kịch bản</h2>
+  <h3>Nhịp và vòng đời</h3>
+  <div class="tw"><table>
+    <thead><tr><th>Tình huống</th><th>Hệ làm gì</th></tr></thead>
+    <tbody>
+      <tr><td>Chuỗi boot tới lượt host</td><td>Mọi module đã đăng ký <code>Initialize</code> với cùng một <code>now</code>; <code>State</code> có ngay</td></tr>
+      <tr><td>Module đăng ký trước khi host chạy</td><td>Chờ vòng <code>Initialize</code>; tới lúc đó <code>IsInitialized</code> là <code>false</code>, <code>State</code> là <code>Inactive</code></td></tr>
+      <tr><td>Module ở scene nạp sau boot</td><td><code>Initialize</code> ngay trong <code>Start</code>, không chờ tick kế</td></tr>
+      <tr><td>Mỗi giây</td><td>Mọi module <code>Tick</code> cùng <code>now</code>, rồi bắn <code>LiveOpsSecondTick</code></td></tr>
+      <tr><td>Game pause, <code>timeScale = 0</code></td><td>Vẫn tick — <code>Realtime</code></td></tr>
+      <tr><td>Load level mới (<code>ReinitializeAsync</code>)</td><td>Vẫn tick — loop dùng <code>destroyCancellationToken</code> của host</td></tr>
+      <tr><td>App vào nền rồi quay lại</td><td>Không tick lúc nền; tick kế đọc <code>now</code> mới, rollover như mọi tick</td></tr>
+      <tr><td>Mở app sau nhiều ngày</td><td><code>Initialize</code> rollover đúng luật của <code>Tick</code></td></tr>
+      <tr><td>Qua <code>EndUnix</code>, chưa tới mốc neo kế</td><td><code>Window</code> vẫn là chu kỳ vừa qua, <code>Contains</code> là <code>false</code>; <code>SecondsLeft</code> = 0, không số âm</td></tr>
+      <tr><td>Module đổi trạng thái</td><td><code>OnStateChanged</code>, rồi <code>LiveOpsHomeFlowRequested</code></td></tr>
+      <tr><td>Một module ném trong <code>Tick</code></td><td>Vòng chết tới hết phiên: mọi countdown đứng, <code>LiveOpsSecondTick</code> im</td></tr>
+    </tbody>
+  </table></div>
+  <h3>Mất tiến độ khi thua</h3>
+  <div class="tw"><table>
+    <thead><tr><th>Tình huống</th><th>Hệ làm gì</th></tr></thead>
+    <tbody>
+      <tr><td>Popup hồi sinh hiện, module có tiến độ</td><td><code>BeginPendingLoss</code> dựng cờ, ghi xuống đĩa ngay</td></tr>
+      <tr><td>Hồi sinh</td><td><code>CancelPendingLoss</code> xoá cờ; không mất gì</td></tr>
+      <tr><td>Thua chốt</td><td><code>CommitLoss</code> xoá cờ, rồi áp mất</td></tr>
+      <tr><td>Thua khi không có gì để mất</td><td>Không dựng cờ, không áp mất, không để cờ lại cho lần boot sau</td></tr>
+      <tr><td>Kill app khi cờ đang treo</td><td>Lần boot sau, <code>Initialize</code> gọi <code>RecoverPendingLoss</code>: xoá cờ, áp mất</td></tr>
+      <tr><td>Cờ treo, nhưng mở lại khi đã sang chu kỳ mới</td><td><code>Refresh</code> xoá cờ trước; <code>RecoverPendingLoss</code> không làm gì</td></tr>
+      <tr><td><code>LoseFlow</code> của một module ném</td><td>Log kèm <code>ModuleId</code>; module khác vẫn chạy bước đó</td></tr>
+      <tr><td>Module không có <code>LoseFlow</code></td><td>Bị bỏ qua — không mất gì khi thua</td></tr>
+    </tbody>
+  </table></div>
+  <h3>Cảnh báo trên popup hồi sinh</h3>
+  <div class="tw"><table>
+    <thead><tr><th>Số live-ops có <code>IsProgressAtStake</code></th><th>View hiện</th></tr></thead>
+    <tbody>
+      <tr><td>0</td><td>Tắt <strong>Content</strong>; <code>IsShown</code> là <code>false</code></td></tr>
+      <tr><td>1</td><td>Một ô; mô tả là <code>SingleWarningDesc</code> của live-ops đó</td></tr>
+      <tr><td>≥ 2</td><td>Các ô theo <code>Priority</code>; mô tả là <strong>Shared Multiple Warning Desc</strong></td></tr>
+      <tr><td>Nhiều hơn số <strong>Slots</strong></td><td><code>LogError</code>; live-ops priority thấp nhất không hiện</td></tr>
+      <tr><td><code>Badge</code> rỗng</td><td>Ẩn nhãn badge của ô</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<!-- ============ CÁCH DÙNG ============ -->
+<section id="cach-dung">
+  <h2>Cách dùng</h2>
+
+  <h3>Trước khi chạy</h3>
+  <p>Dựng từ 0 theo thứ tự; mỗi bước kèm chỗ hỏng nếu thiếu. <code>BootstrapService</code> dựng theo <code>Bootstrap.md</code>, <code>TimeService</code> theo <code>TimeSystem.md</code>.</p>
+
+  <h4>1. Host</h4>
+  <ol class="steps">
+    <li>Tạo GameObject <strong>con của GameObject <code>BootstrapService</code></strong>, Add Component <code>LiveOpsHost</code> và <code>LiveOpsHostInitializer</code>.</li>
+    <li>Trên <code>LiveOpsHostInitializer</code>, ô <strong>Time Service</strong> để <strong>Service</strong>.</li>
+    <li>Ô <strong>Order</strong> của <code>LiveOpsHost</code> lớn hơn <strong>Order</strong> của <code>SaveBootstep</code>.</li>
+    <li>Kéo <code>LiveOpsHost</code> vào ô <strong>Steps</strong> của <code>BootstrapService</code>.</li>
+  </ol>
+  <div class="tw"><table>
+    <thead><tr><th>Thiếu</th><th>Hỏng ở đâu</th></tr></thead>
+    <tbody>
+      <tr><td><code>LiveOpsHostInitializer</code></td><td><code>Init</code> không được gọi, <code>timeService</code> là <code>null</code>: NRE ở dòng <code>now</code> đầu tiên của <code>RunAsync</code>, trong chuỗi boot, nơi <code>.Forget()</code> chỉ để lại một dòng đỏ. Chuỗi boot vẫn chạy tiếp; host chết cả phiên</td></tr>
+      <tr><td><code>TimeService</code> trong scene</td><td>như trên — ô <strong>Time Service</strong> không có gì để nhận</td></tr>
+      <tr><td><code>LiveOpsHost</code> trong <strong>Steps</strong></td><td><code>InitializeAsync</code> không chạy → không module nào <code>Initialize</code>, không tick, widget im lặng không hiện</td></tr>
+      <tr><td><strong>Order</strong> sau <code>SaveBootstep</code></td><td>module <code>Initialize</code> trên save chưa load: <code>Refresh</code> đọc giá trị mặc định — rollover và <code>State</code> sai</td></tr>
+      <tr><td><strong><code>FindFromScene</code> thấy được scene chứa host</strong> — scene nạp bằng Addressables là nạp <strong>sau</strong> khi InitArgs khởi tạo</td><td><code>ServiceInjector</code> chỉ <code>LogWarning "Service Not Found"</code> rồi trả <code>null</code>; <code>ILiveOpsHost.Service</code> và ô Init để Service ném NRE ở caller đầu</td></tr>
+      <tr><td><code>BootstrapService</code> được game gọi <code>InitializeAsync()</code> (<code>Bootstrap.md</code> › Trước khi chạy)</td><td>không step nào chạy: save không load, host không <code>Initialize</code>, không tick</td></tr>
+    </tbody>
+  </table></div>
+
+  <h4>2. Module</h4>
+  <ol class="steps">
+    <li>Viết class kế thừa <code>ALiveOpsModule</code> (mẫu bên dưới) và một <code>*Initializer</code> cho nó, trong đó có ô <code>ILiveOpsHost</code>.</li>
+    <li>Add Component module vào GameObject <strong>đang active</strong> trong scene sống suốt phiên, cùng <strong>đúng một</strong> Initializer của module; ô <strong>Target</strong> trỏ vào module, ô <code>ILiveOpsHost</code> để <strong>Service</strong>.</li>
+  </ol>
+  <div class="tw"><table>
+    <thead><tr><th>Thiếu</th><th>Hỏng ở đâu</th></tr></thead>
+    <tbody>
+      <tr><td>Initializer, hoặc ô <code>ILiveOpsHost</code> trống</td><td><code>LiveOpsHost</code> của module <code>null</code> → NRE ở <code>Start</code>, không một dòng log trước đó</td></tr>
+      <tr><td>GameObject active</td><td><code>Start</code> chưa chạy → chưa <code>Register</code> → module không bao giờ <code>Initialize</code>, <code>State</code> mãi <code>Inactive</code></td></tr>
+      <tr><td><strong>Initializer thừa</strong> với <strong>Target</strong> trống</td><td>InitArgs <code>AddComponent</code> một module thứ hai lúc <code>Awake</code>; nó đăng ký host trước bản trong scene và không ai cấu hình nó. <em>Đã sai một lần:</em> lộ bằng NRE trong <code>Refresh</code> của module có <code>GetInstanceID()</code> âm</td></tr>
+      <tr><td><code>base.Start()</code> / <code>base.OnDestroy()</code> khi override</td><td>thiếu <code>base.Start()</code> → không <code>Register</code>, như GameObject inactive · thiếu <code>base.OnDestroy()</code> → <code>Modules</code> giữ module đã destroy; host vẫn tick nó, <code>Refresh</code> chạm API Unity thì <code>MissingReferenceException</code> mỗi giây</td></tr>
+    </tbody>
+  </table></div>
+
+  <h4>3. Mất tiến độ khi thua (tuỳ chọn)</h4>
+  <ol class="steps">
+    <li>Module có tiến độ mất được khi thua: viết class kế thừa <code>ALiveOpsLoseFlow</code> (mẫu bên dưới), tạo nó trong <code>Init</code> của module và trả về qua <code>LoseFlow</code>.</li>
+    <li>Cờ <code>HasPendingLoss</code> nằm trong save của module và <strong>ghi xuống đĩa ngay</strong> trong setter.</li>
+    <li><code>Refresh</code> xoá cờ khi sang chu kỳ mới.</li>
+    <li>Một cầu nối của dự án báo sự kiện level vào <code>LiveOpsLossHelper</code>:</li>
+  </ol>
+<pre><code>public sealed class LoseFlowBridge : MonoBehaviour
+{
+    [SerializeField] private LiveOpsHost liveOpsHost;
+
+    // Gọi từ luồng level của game.
+    public void OnReviveOffered() =&gt; LiveOpsLossHelper.BeginPendingLoss(liveOpsHost.Modules);
+    public void OnRevived() =&gt; LiveOpsLossHelper.CancelPendingLoss(liveOpsHost.Modules);
+    public void OnLevelLost() =&gt; LiveOpsLossHelper.CommitLoss(liveOpsHost.Modules);
+    // Bỏ level giữa chừng có tính là thua không là luật của game.
+    public void OnLevelAbandoned() =&gt; LiveOpsLossHelper.CommitLoss(liveOpsHost.Modules);
+}</code></pre>
+  <div class="tw"><table>
+    <thead><tr><th>Thiếu</th><th>Hỏng ở đâu</th></tr></thead>
+    <tbody>
+      <tr><td><code>LoseFlow</code> tạo trước <code>Start</code> của module</td><td><code>LoseFlow</code> còn <code>null</code> lúc <code>Initialize</code> → <code>RecoverPendingLoss</code> bỏ qua module, im lặng: mất treo từ phiên trước không bao giờ áp</td></tr>
+      <tr><td>Ghi cờ ngay</td><td>kill app khi popup hồi sinh đang mở → cờ chưa xuống đĩa → lần boot sau không áp mất: người chơi thoát app để né thua</td></tr>
+      <tr><td>Xoá cờ khi sang chu kỳ</td><td>cờ cũ sống qua chu kỳ mới → <code>Initialize</code> áp mất lên tiến độ chu kỳ mới</td></tr>
+      <tr><td>Cầu nối gọi <code>CommitLoss</code></td><td>thua mà không mất gì; cờ treo tới lần boot sau mới áp</td></tr>
+    </tbody>
+  </table></div>
+
+  <h4>4. Cảnh báo mất tiến độ (tuỳ chọn)</h4>
+  <ol class="steps">
+    <li>Trên popup hiện lúc sắp thua (popup hồi sinh): Add Component <code>LiveOpsLossWarningView</code>. Ô <code>ILiveOpsHost</code> trong khối Init để <strong>Service</strong>.</li>
+    <li>Nhóm <strong>References</strong>: <strong>Content</strong> — gốc khối cảnh báo · <strong>Rows</strong> — các hàng ô · <strong>Slots</strong> — các ô, xếp theo hàng (hàng 1 trước) · <strong>Warning Desc Txt</strong> — dòng mô tả.</li>
+    <li>Mỗi ô: GameObject có <code>LiveOpsLossWarningSlot</code>, điền <strong>Root</strong>, <strong>Icon</strong>, <strong>Badge Label</strong>.</li>
+    <li>Nhóm <strong>Configs</strong>: <strong>Shared Multiple Warning Desc</strong> — mô tả khi từ hai live-ops trở lên đang bị đe doạ.</li>
+  </ol>
+  <div class="tw"><table>
+    <thead><tr><th>Thiếu</th><th>Hỏng ở đâu</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Rows</strong> rỗng</td><td><code>DivideByZeroException</code> ở <code>OnEnable</code></td></tr>
+      <tr><td>Số <strong>Slots</strong> chia hết cho số <strong>Rows</strong></td><td>hàng bật theo <code>slots.Length / rows.Length</code> ô mỗi hàng: hàng hiện lệch với ô dùng</td></tr>
+      <tr><td>Đủ <strong>Slots</strong></td><td><code>LogError</code> "…only N slots, so the lowest priorities are left out. Add slots." — live-ops priority thấp nhất không hiện</td></tr>
+      <tr><td>View được <strong>bật lại</strong> mỗi lần popup hiện</td><td>view chỉ đọc lúc <code>OnEnable</code>: object luôn active thì hiện danh sách cũ</td></tr>
+      <tr><td>View bật <strong>trước</strong> <code>CommitLoss</code></td><td>sau khi áp mất, <code>IsProgressAtStake</code> là <code>false</code> → <code>IsShown</code> <code>false</code>, khối cảnh báo tắt</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>Viết một module</h3>
+<pre><code>public sealed class MyEventModule : ALiveOpsModule, IInitializable&lt;ILiveOpsHost, IMySaveData&gt;
+{
+    [SerializeField] private string moduleId = "my_event";
+    [SerializeField] private Sprite lossIcon;
+
+    private ILiveOpsHost liveOpsHost;
+    private PersistenceDataEntry&lt;MyEventSave&gt; entry;
+    private MyLoseFlow loseFlow;
+
+    protected override ILiveOpsHost LiveOpsHost =&gt; liveOpsHost;
+    public override string ModuleId =&gt; moduleId;
+    public override ALiveOpsLoseFlow LoseFlow =&gt; loseFlow;
+
+    public void Init(ILiveOpsHost host, IMySaveData save)
+    {
+        liveOpsHost = host;
+        entry = save.MyEvent;                                // PersistenceDataEntry&lt;MyEventSave&gt;
+        loseFlow = new MyLoseFlow(this, entry, lossIcon);    // trước Start: Initialize cần nó
+    }
+
+    protected override LiveOpsWindow ResolveWindow(long nowUnix)
+        =&gt; WeeklySchedule.Resolve(nowUnix, 1, 8, 1, 604740); // Thứ Hai 08:01 UTC, 7 ngày − 60 s
+
+    protected override void Refresh(long nowUnix)
+    {
+        if (entry.Value.cycleStartUnix != Window.StartUnix)  // chu kỳ mới
+        {
+            entry.Value.cycleStartUnix = Window.StartUnix;
+            entry.Value.progress = 0;
+            entry.Value.hasPendingLoss = false;
+        }
+
+        SetState(Window.Contains(nowUnix) ? LiveOpsModuleState.Running : LiveOpsModuleState.Inactive);
+    }
+}</code></pre>
+  <p><code>anchorDayOfWeek</code> theo <code>System.DayOfWeek</code>: Sunday 0 … Saturday 6. Monday 08:01 là <code>(1, 8, 1)</code>.</p>
+
+  <h3>Viết lose flow</h3>
+<pre><code>public sealed class MyLoseFlow : ALiveOpsLoseFlow
+{
+    private readonly MyEventModule module;
+    private readonly PersistenceDataEntry&lt;MyEventSave&gt; entry;
+    private readonly Sprite icon;
+
+    public MyLoseFlow(MyEventModule module, PersistenceDataEntry&lt;MyEventSave&gt; entry, Sprite icon)
+    {
+        this.module = module;
+        this.entry = entry;
+        this.icon = icon;
+    }
+
+    public override bool IsProgressAtStake =&gt; module.State == LiveOpsModuleState.Running &amp;&amp; entry.Value.progress &gt; 0;
+    public override LiveOpsLossWarning Warning =&gt; new(icon, $"x{entry.Value.progress}", "You will lose your event progress!");
+
+    protected override bool HasPendingLoss
+    {
+        get =&gt; entry.Value.hasPendingLoss;
+        set
+        {
+            entry.Value.hasPendingLoss = value;
+            entry.FlushNow();                                  // ghi ngay: kill app không được mất cờ
+        }
+    }
+
+    protected override void ApplyLoss() =&gt; entry.Value.progress = 0;   // phải để IsProgressAtStake = false
+}</code></pre>
+  <p><code>LiveOpsLossWarning(Icon, Badge, SingleWarningDesc)</code>: <code>Badge</code> rỗng thì ẩn nhãn badge; <code>SingleWarningDesc</code> dùng khi chỉ một live-ops bị đe doạ.</p>
+
+  <h3>Muốn → override hoặc gọi</h3>
+  <div class="tw"><table>
+    <thead><tr><th>Muốn</th><th>Override hoặc gọi</th></tr></thead>
+    <tbody>
+      <tr><td>Cửa sổ chu kỳ</td><td><code>ResolveWindow</code> — base gán vào <code>Window</code></td></tr>
+      <tr><td>Áp luật mỗi lần đánh giá: rollover, trạng thái</td><td><code>Refresh</code>, gọi <code>SetState</code></td></tr>
+      <tr><td>Phản ứng khi trạng thái đổi</td><td><code>OnStateChanged</code>; tên event riêng của module publish ở đây</td></tr>
+      <tr><td>Countdown</td><td>đọc <code>SecondsLeft</code> — <code>0</code> khi không <code>Running</code></td></tr>
+      <tr><td>Mỗi giây</td><td>nghe <code>LiveOpsSecondTick</code>, đọc <code>NowUnix</code></td></tr>
+      <tr><td>Thứ tự giữa các live-ops</td><td><code>Priority</code> — số lớn trước; xem <code>LiveOpsHomeFlow.md</code></td></tr>
+      <tr><td>Trình diễn lúc về Home</td><td><code>HomeFlow</code> — xem <code>LiveOpsHomeFlow.md</code></td></tr>
+      <tr><td>Mất tiến độ khi thua</td><td><code>LoseFlow</code></td></tr>
+      <tr><td>Duyệt module đã đăng ký</td><td><code>ILiveOpsHost</code>.<code>Modules</code> — <strong>chưa sắp</strong>; cần thứ tự thì sắp bằng <code>LiveOpsModulePriority.ByPriority</code></td></tr>
+      <tr><td>Hỏi có gì để mất</td><td><code>IsAnyProgressAtStake(modules)</code> · <code>CollectProgressAtStake(modules, atStake)</code> — bản <code>Collect</code> sắp theo <code>Priority</code></td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>Hợp đồng của module</h3>
+  <div class="tw"><table>
+    <thead><tr><th>Luật</th><th>Vì</th></tr></thead>
+    <tbody>
+      <tr><td><code>Refresh</code> không tự tính cửa sổ — <code>ResolveWindow</code> trả, base gán <code>Window</code></td><td><code>SecondsLeft</code> đọc <code>Window</code>; <code>Refresh</code> quên gán thì countdown đứng <code>0m 0s</code> cả phiên, không lỗi nào nổ. Tách ra thì không trả về là không biên dịch được</td></tr>
+      <tr><td>Rollover so <code>Window.StartUnix</code> với mốc chu kỳ đã lưu</td><td><code>Initialize</code> (mở app sau nhiều ngày) và <code>Tick</code> (app đang mở qua mốc) cùng đi qua đây; vùng chết vẫn là chu kỳ cũ nên không reset hai lần</td></tr>
+      <tr><td>Lệnh từ game tới trước <code>Initialize</code> thì kiểm <code>IsInitialized</code></td><td><code>Start</code> của module chạy lúc scene nạp, chuỗi boot chạy sau; lệnh từ game có thể tới sớm hơn cả hai. Chưa init thì <code>Window</code>, <code>State</code> là mặc định</td></tr>
+      <tr><td>Lệnh làm đổi trạng thái giữa hai tick thì gọi <code>Tick(now)</code></td><td><code>State</code> mới có ngay, không chờ tối đa 1 s</td></tr>
+      <tr><td>Không <code>Unregister</code> hay <code>DestroyImmediate</code> một module trong <code>Tick</code></td><td>host lặp theo index: bỏ phần tử giữa vòng thì module kế bị bỏ qua tick đó. <code>Destroy</code> thường chạy cuối frame, an toàn</td></tr>
+      <tr><td>Widget countdown đọc <code>SecondsLeft</code> lúc bật, rồi cập nhật theo <code>LiveOpsSecondTick</code></td><td>event không bắn lúc <code>Initialize</code>; chỉ nghe event thì widget trống tới tối đa 1 s sau khi bật</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<!-- ============ FLOW ============ -->
+<section id="flow">
+  <h2>Flow</h2>
+
+  <h3>Một nhịp</h3>
+  <div class="fig">
+  <div class="cap">LiveOpsHost.InitializeAsync ─► RunAsync(destroyCancellationToken).Forget()</div>
+  <svg viewBox="0 0 860 300" role="img" aria-label="Boot gọi host; host Initialize mọi module, bật isReady, rồi lặp: chờ 1 giây Realtime, Tick mọi module cùng now, bắn LiveOpsSecondTick">
+    <rect x="10" y="20" width="190" height="64" rx="8" class="sv-box"/>
+    <text x="105" y="47" class="sv-tb" text-anchor="middle">BootstrapService</text>
+    <text x="105" y="67" class="sv-s" text-anchor="middle">theo Order, sau SaveBootstep</text>
+    <path d="M200 52 L224 52" class="sv-ln"/><path d="M230 52 l-8 -5 v10 z" class="sv-ac"/>
+
+    <rect x="230" y="20" width="190" height="64" rx="8" class="sv-sdk"/>
+    <text x="325" y="47" class="sv-tb" text-anchor="middle">InitializeAsync</text>
+    <text x="325" y="67" class="sv-s" text-anchor="middle">trả CompletedTask ngay</text>
+    <path d="M420 52 L444 52" class="sv-ln"/><path d="M450 52 l-8 -5 v10 z" class="sv-ac"/>
+
+    <rect x="450" y="20" width="190" height="64" rx="8" class="sv-sdk"/>
+    <text x="545" y="47" class="sv-tb" text-anchor="middle">Initialize(now)</text>
+    <text x="545" y="67" class="sv-s" text-anchor="middle">mọi module đã Register</text>
+    <path d="M640 52 L664 52" class="sv-ln"/><path d="M670 52 l-8 -5 v10 z" class="sv-ac"/>
+
+    <rect x="670" y="20" width="180" height="64" rx="8" class="sv-ok"/>
+    <text x="760" y="47" class="sv-tb" text-anchor="middle">isReady = true</text>
+    <text x="760" y="67" class="sv-s" text-anchor="middle">từ đây Register → Initialize</text>
+
+    <path d="M760 84 L760 134" class="sv-ln"/><path d="M760 140 l-5 -8 h10 z" class="sv-ac"/>
+
+    <rect x="670" y="140" width="180" height="64" rx="8" class="sv-prj"/>
+    <text x="760" y="167" class="sv-tb" text-anchor="middle">Delay 1000 ms</text>
+    <text x="760" y="187" class="sv-s" text-anchor="middle">Realtime</text>
+    <path d="M670 172 L646 172" class="sv-ln"/><path d="M640 172 l8 -5 v10 z" class="sv-ac"/>
+
+    <rect x="450" y="140" width="190" height="64" rx="8" class="sv-prj"/>
+    <text x="545" y="167" class="sv-tb" text-anchor="middle">Tick(now)</text>
+    <text x="545" y="187" class="sv-s" text-anchor="middle">mọi module, cùng now</text>
+    <path d="M450 172 L426 172" class="sv-ln"/><path d="M420 172 l8 -5 v10 z" class="sv-ac"/>
+
+    <rect x="230" y="140" width="190" height="64" rx="8" class="sv-prj"/>
+    <text x="325" y="167" class="sv-tb" text-anchor="middle">LiveOpsSecondTick</text>
+    <text x="325" y="187" class="sv-s" text-anchor="middle">sau khi mọi module đã Tick</text>
+
+    <path d="M325 204 L325 240 L760 240 L760 210" class="sv-lnac"/><path d="M760 204 l-5 8 h10 z" class="sv-ac"/>
+    <text x="545" y="262" class="sv-s" text-anchor="middle">lặp tới khi host bị destroy</text>
+
+    <rect x="10" y="140" width="190" height="64" rx="8" class="sv-bad"/>
+    <text x="105" y="167" class="sv-tb" text-anchor="middle">module ném</text>
+    <text x="105" y="187" class="sv-s" text-anchor="middle">vòng chết tới hết phiên</text>
+    <path d="M470 140 L470 116 L105 116 L105 134" class="sv-lnrd"/><path d="M105 140 l-5 -8 h10 z" class="sv-rd"/>
+  </svg>
+  </div>
+  <div class="tw"><table>
+    <thead><tr><th>Bước</th><th>Bên trong</th></tr></thead>
+    <tbody>
+      <tr><td><code>Initialize(now)</code></td><td><code>IsInitialized = true</code> → <code>LastUnix</code>, <code>Window = ResolveWindow(now)</code>, <code>Refresh(now)</code> → <code>RecoverPendingLoss</code></td></tr>
+      <tr><td><code>Tick(now)</code></td><td><code>LastUnix</code>, <code>Window</code>, <code>Refresh</code> — cùng thân với <code>Initialize</code></td></tr>
+      <tr><td><code>SetState</code> trong <code>Refresh</code></td><td>cùng trạng thái thì không làm gì; khác thì <code>OnStateChanged</code> → <code>LiveOpsHomeFlowRequested</code></td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>Module đăng ký</h3>
+  <div class="fig">
+  <div class="cap">ALiveOpsModule.Start ─► LiveOpsHost.Register</div>
+  <svg viewBox="0 0 860 220" role="img" aria-label="Module Start gọi Register; host đã chạy loop thì Initialize ngay, chưa thì chờ vòng Initialize của host">
+    <rect x="10" y="20" width="170" height="64" rx="8" class="sv-box"/>
+    <text x="95" y="47" class="sv-tb" text-anchor="middle">Module.Start</text>
+    <text x="95" y="67" class="sv-s" text-anchor="middle">GameObject active</text>
+    <path d="M180 52 L204 52" class="sv-ln"/><path d="M210 52 l-8 -5 v10 z" class="sv-ac"/>
+
+    <rect x="210" y="20" width="170" height="64" rx="8" class="sv-sdk"/>
+    <text x="295" y="47" class="sv-tb" text-anchor="middle">Register</text>
+    <text x="295" y="67" class="sv-s" text-anchor="middle">thêm vào Modules</text>
+    <path d="M380 52 L404 52" class="sv-ln"/><path d="M410 52 l-8 -5 v10 z" class="sv-ac"/>
+
+    <rect x="410" y="20" width="170" height="64" rx="8" class="sv-sdk"/>
+    <text x="495" y="57" class="sv-tb" text-anchor="middle">isReady?</text>
+
+    <path d="M580 52 L644 52" class="sv-lngr"/><path d="M650 52 l-8 -5 v10 z" class="sv-gr"/>
+    <text x="615" y="44" class="sv-s" text-anchor="middle">có</text>
+    <rect x="650" y="20" width="200" height="64" rx="8" class="sv-ok"/>
+    <text x="750" y="47" class="sv-tb" text-anchor="middle">Initialize ngay</text>
+    <text x="750" y="67" class="sv-s" text-anchor="middle">trong Start, now mới</text>
+
+    <path d="M495 84 L495 130" class="sv-lnor"/><path d="M495 136 l-5 -8 h10 z" class="sv-or"/>
+    <text x="507" y="112" class="sv-s">chưa</text>
+    <rect x="410" y="136" width="170" height="64" rx="8" class="sv-warn"/>
+    <text x="495" y="163" class="sv-tb" text-anchor="middle">chờ host</text>
+    <text x="495" y="183" class="sv-s" text-anchor="middle">IsInitialized = false</text>
+
+    <rect x="10" y="136" width="370" height="64" rx="8" class="sv-box"/>
+    <text x="195" y="163" class="sv-tb" text-anchor="middle">Module.OnDestroy → Unregister</text>
+    <text x="195" y="183" class="sv-s" text-anchor="middle">cửa duy nhất bỏ khỏi Modules</text>
+  </svg>
+  </div>
+
+  <h3>Cửa sổ tuần</h3>
+  <div class="fig">
+  <div class="cap">WeeklySchedule.Resolve — anchor Monday 08:01 UTC, duration 604740</div>
+  <svg viewBox="0 0 860 230" role="img" aria-label="Cửa sổ nửa mở từ mốc neo; giữa EndUnix và mốc neo kế là vùng chết, cửa sổ vẫn là chu kỳ vừa qua">
+    <rect x="80" y="70" width="480" height="30" rx="4" class="sv-ok"/>
+    <text x="320" y="90" class="sv-t" text-anchor="middle">[StartUnix, EndUnix) · Contains = true</text>
+    <rect x="560" y="70" width="80" height="30" class="sv-bad"/>
+    <text x="600" y="62" class="sv-s" text-anchor="middle">vùng chết</text>
+    <rect x="640" y="70" width="200" height="30" rx="4" class="sv-ok"/>
+    <text x="740" y="90" class="sv-t" text-anchor="middle">chu kỳ kế</text>
+
+    <path d="M40 120 L840 120" class="sv-axis"/>
+    <path d="M80 112 L80 128" class="sv-axis"/><path d="M560 112 L560 128" class="sv-axis"/><path d="M640 112 L640 128" class="sv-axis"/>
+    <text x="80" y="145" class="sv-m" text-anchor="middle">Mon 08:01</text>
+    <text x="560" y="145" class="sv-m" text-anchor="middle">Mon 08:00</text>
+    <text x="645" y="145" class="sv-m" text-anchor="start">Mon 08:01</text>
+    <text x="80" y="40" class="sv-s" text-anchor="middle">mốc neo ≤ now</text>
+    <text x="560" y="40" class="sv-s" text-anchor="middle">EndUnix</text>
+
+    <path d="M320 195 L320 106" class="sv-lnac"/><path d="M320 100 l-5 8 h10 z" class="sv-ac"/>
+    <text x="320" y="214" class="sv-s" text-anchor="middle">now trong chu kỳ: SecondsLeft = EndUnix − now</text>
+    <path d="M600 165 L600 106" class="sv-lnrd"/><path d="M600 100 l-5 8 h10 z" class="sv-rd"/>
+    <text x="600" y="182" class="sv-s" text-anchor="middle">now ở vùng chết: Window = chu kỳ vừa qua,</text>
+    <text x="600" y="198" class="sv-s" text-anchor="middle">Contains = false, SecondsLeft = 0</text>
+  </svg>
+  </div>
+  <div class="tw"><table>
+    <thead><tr><th><code>nowUnix</code></th><th>Nghĩa</th><th><code>StartUnix</code></th><th><code>Contains</code></th></tr></thead>
+    <tbody>
+      <tr><td>1788771600</td><td>Mon 09:00:00</td><td>1788768060 (Mon 08:01)</td><td>true</td></tr>
+      <tr><td>1788768060</td><td>Mon 08:01:00</td><td>1788768060</td><td>true</td></tr>
+      <tr><td>1788768059</td><td>Mon 08:00:59</td><td>1788163260 (Mon tuần trước)</td><td>false — <code>End</code> = Mon 08:00:00</td></tr>
+      <tr><td>1788768000</td><td>Mon 08:00:00</td><td>1788163260</td><td>false</td></tr>
+      <tr><td>1788739200 − 60</td><td>Sun 23:59:00</td><td>1788163260</td><td>true, <code>SecondsLeft</code> = 28860</td></tr>
+      <tr><td>bất kỳ, <code>durationSeconds = 9e9</code></td><td>duration vượt tuần</td><td>—</td><td><code>End − Start</code> = 604800</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>Cờ mất treo</h3>
+  <div class="fig">
+  <div class="cap">ALiveOpsLoseFlow.HasPendingLoss — qua LiveOpsLossHelper</div>
+  <svg viewBox="0 0 860 370" role="img" aria-label="BeginPendingLoss dựng cờ khi có gì để mất; từ cờ treo: CancelPendingLoss xoá, CommitLoss xoá rồi áp mất, kill app thì RecoverPendingLoss áp ở lần boot sau, sang chu kỳ mới thì Refresh xoá">
+    <rect x="10" y="150" width="150" height="64" rx="8" class="sv-box"/>
+    <text x="85" y="177" class="sv-tb" text-anchor="middle">không cờ</text>
+    <text x="85" y="197" class="sv-s" text-anchor="middle">mặc định</text>
+
+    <path d="M160 182 L314 182" class="sv-ln"/><path d="M320 182 l-8 -5 v10 z" class="sv-ac"/>
+    <text x="240" y="164" class="sv-m" text-anchor="middle">BeginPendingLoss</text>
+    <text x="240" y="206" class="sv-s" text-anchor="middle">chỉ khi IsProgressAtStake</text>
+
+    <rect x="320" y="150" width="190" height="64" rx="8" class="sv-warn"/>
+    <text x="415" y="177" class="sv-tb" text-anchor="middle">cờ treo</text>
+    <text x="415" y="197" class="sv-s" text-anchor="middle">đã ghi xuống đĩa</text>
+
+    <path d="M510 170 L540 170 L540 52 L564 52" class="sv-lngr"/><path d="M570 52 l-8 -5 v10 z" class="sv-gr"/>
+    <path d="M510 182 L564 142" class="sv-lnrd"/><path d="M570 138 l-9 1 l5 8 z" class="sv-rd"/>
+    <path d="M510 194 L564 228" class="sv-lnor"/><path d="M570 232 l-5 -8 l-4 8 z" class="sv-or"/>
+    <path d="M510 206 L540 206 L540 318 L564 318" class="sv-lngr"/><path d="M570 318 l-8 -5 v10 z" class="sv-gr"/>
+
+    <rect x="570" y="20" width="280" height="64" rx="8" class="sv-ok"/>
+    <text x="710" y="47" class="sv-m" text-anchor="middle">CancelPendingLoss</text>
+    <text x="710" y="67" class="sv-s" text-anchor="middle">xoá cờ · không mất gì</text>
+
+    <rect x="570" y="105" width="280" height="64" rx="8" class="sv-bad"/>
+    <text x="710" y="132" class="sv-m" text-anchor="middle">CommitLoss</text>
+    <text x="710" y="152" class="sv-s" text-anchor="middle">xoá cờ, rồi ApplyLoss nếu còn gì để mất</text>
+
+    <rect x="570" y="200" width="280" height="64" rx="8" class="sv-warn"/>
+    <text x="710" y="227" class="sv-tb" text-anchor="middle">kill app → boot → Initialize</text>
+    <text x="710" y="247" class="sv-s" text-anchor="middle">RecoverPendingLoss: xoá cờ, ApplyLoss</text>
+
+    <rect x="570" y="286" width="280" height="64" rx="8" class="sv-ok"/>
+    <text x="710" y="313" class="sv-tb" text-anchor="middle">sang chu kỳ mới</text>
+    <text x="710" y="333" class="sv-s" text-anchor="middle">Refresh xoá cờ trước Recover</text>
+  </svg>
+  </div>
+  <div class="tw"><table>
+    <thead><tr><th>Bước</th><th>Luật</th></tr></thead>
+    <tbody>
+      <tr><td><code>BeginPendingLoss</code></td><td>dựng cờ chỉ khi có gì để mất và chưa có cờ</td></tr>
+      <tr><td><code>CancelPendingLoss</code></td><td>xoá cờ nếu có</td></tr>
+      <tr><td><code>CommitLoss</code></td><td>xoá cờ <strong>trước</strong>, rồi <code>ApplyLoss</code> nếu còn gì để mất — thua lúc không có gì để mất không để cờ lại cho lần boot sau</td></tr>
+      <tr><td><code>RecoverPendingLoss</code></td><td>có cờ thì xoá rồi <code>ApplyLoss</code>, <strong>không kiểm <code>State</code></strong>: lúc boot module chưa biết level, còn cờ cũ của chu kỳ trước đã bị <code>Refresh</code> xoá ngay trước đó</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<!-- ============ LƯU Ý ============ -->
+<section id="luu-y">
+  <h2>Lưu ý</h2>
+  <div class="tw"><table>
+    <thead><tr><th></th><th>Chỗ</th><th>Sự thật</th></tr></thead>
+    <tbody>
+      <tr><td><span class="tag t-bad">bẫy</span></td><td><strong>Một exception trong <code>Tick</code></strong></td><td>Không <code>try/catch</code> quanh <code>Tick</code>: vòng <code>while</code> chết, mất nhịp 1 Hz tới hết phiên. Dòng đỏ duy nhất là exception do <code>.Forget()</code> log</td></tr>
+      <tr><td><span class="tag t-bad">bẫy</span></td><td><strong>Initializer thừa với Target trống</strong></td><td>InitArgs <code>AddComponent</code> một module thứ hai lúc <code>Awake</code>, đăng ký host trước bản trong scene</td></tr>
+      <tr><td><span class="tag t-bad">bẫy</span></td><td><strong>Override <code>Start</code>/<code>OnDestroy</code></strong></td><td>Phải gọi <code>base.Start()</code> / <code>base.OnDestroy()</code> — đó là <code>Register</code> / <code>Unregister</code></td></tr>
+      <tr><td><span class="tag t-bad">bẫy</span></td><td><strong><code>LoseFlow</code> tạo muộn</strong></td><td>Còn <code>null</code> lúc <code>Initialize</code> thì <code>RecoverPendingLoss</code> bỏ qua module, im lặng</td></tr>
+      <tr><td><span class="tag t-bad">bẫy</span></td><td><strong>Cờ không ghi ngay</strong></td><td>Kill app khi popup hồi sinh mở → người chơi né được thua</td></tr>
+      <tr><td><span class="tag t-bad">bẫy</span></td><td><strong>View bật sau <code>CommitLoss</code></strong></td><td>Không còn gì <code>IsProgressAtStake</code> → khối cảnh báo tắt</td></tr>
+      <tr><td><span class="tag t-bad">bẫy</span></td><td><strong><code>Unregister</code> trong <code>Tick</code></strong></td><td>Module kế bị bỏ qua tick đó</td></tr>
+      <tr><td><span class="tag t-info">biết</span></td><td><strong><code>Modules</code> chưa sắp</strong></td><td>Theo thứ tự <code>Register</code>; sắp bằng <code>LiveOpsModulePriority.ByPriority</code></td></tr>
+      <tr><td><span class="tag t-info">biết</span></td><td><strong><code>LiveOpsSecondTick</code> không bắn lúc <code>Initialize</code></strong></td><td>Bắn sau khi mọi module đã <code>Tick</code>, với cùng <code>now</code></td></tr>
+      <tr><td><span class="tag t-info">biết</span></td><td><strong><code>SetState</code> bắn <code>LiveOpsHomeFlowRequested</code></strong></td><td>Sau <code>OnStateChanged</code>, mỗi lần trạng thái đổi; module không tự xin lượt Home flow</td></tr>
+      <tr><td><span class="tag t-info">biết</span></td><td><strong>App vào nền</strong></td><td>Player loop dừng, không tick; tick kế đọc <code>now</code> mới</td></tr>
+      <tr><td><span class="tag t-info">biết</span></td><td><strong><code>RecoverPendingLoss</code> không kiểm <code>State</code></strong></td><td>Cờ cũ của chu kỳ trước đã bị <code>Refresh</code> xoá ngay trước đó</td></tr>
+      <tr><td><span class="tag t-ok">nên</span></td><td><strong>Lệnh đổi trạng thái giữa hai tick</strong></td><td>Gọi <code>Tick(now)</code> để <code>State</code> mới có ngay</td></tr>
+      <tr><td><span class="tag t-ok">nên</span></td><td><strong>Event riêng của module</strong></td><td>Publish trong <code>OnStateChanged</code></td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>Chẩn đoán</h3>
+  <div class="tw"><table>
+    <thead><tr><th>Triệu chứng</th><th>Nguyên nhân</th></tr></thead>
+    <tbody>
+      <tr><td>Mọi countdown đứng, rollover không chạy, <code>LiveOpsSecondTick</code> im, từ một thời điểm</td><td>Một module ném trong <code>Tick</code> hoặc <code>Initialize</code>: vòng <code>while</code> chết tới hết phiên. Dòng đỏ duy nhất là exception do <code>.Forget()</code> log — tìm nó ở thời điểm countdown đứng</td></tr>
+      <tr><td>Không module nào có <code>State</code>, ngay từ đầu</td><td><code>LiveOpsHost</code> không trong <strong>Steps</strong>, hoặc NRE <code>timeService</code> (thiếu <code>LiveOpsHostInitializer</code>)</td></tr>
+      <tr><td>Một module <code>Inactive</code> mãi, module khác chạy</td><td>GameObject của module inactive nên chưa <code>Register</code>, hoặc override <code>Start</code> không gọi <code>base.Start()</code></td></tr>
+      <tr><td>Countdown <code>0</code> dù đang trong chu kỳ</td><td><code>State</code> không phải <code>Running</code> — <code>Refresh</code> chưa <code>SetState(Running)</code></td></tr>
+      <tr><td><code>[LiveOpsLossHelper]: {ModuleId} threw in {stepName}; the other modules still run.</code></td><td><code>LoseFlow</code> của module đó ném ở bước <code>stepName</code>; module khác vẫn chạy bước đó</td></tr>
+      <tr><td><code>[LiveOpsLossWarningView]: N live-ops are at stake but there are only M slots, so the lowest priorities are left out. Add slots.</code></td><td>Thêm ô vào <strong>Slots</strong></td></tr>
+      <tr><td>Thoát app khi popup hồi sinh mở, vào lại vẫn còn tiến độ</td><td>Setter <code>HasPendingLoss</code> không ghi ngay, hoặc <code>LoseFlow</code> còn <code>null</code> lúc <code>Initialize</code></td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+</main>
+<footer>Horcrux · LiveOps Host · Horcrux.Runtime.Implementations.LiveOps · nguồn: LiveOpsHost.md</footer>
+</body>
+</html>
