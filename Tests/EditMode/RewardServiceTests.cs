@@ -7,7 +7,7 @@ using UnityEngine.TestTools;
 
 namespace Horcrux.Tests
 {
-    /// <summary>Covers the four agent cases in RewardSystem.md "Kiểm": dispatch, missing handler, bad amount, duplicate register.</summary>
+    /// <summary>Covers the four agent cases in RewardSystem.md "Tests": dispatch, missing handler, bad amount, duplicate register.</summary>
     public sealed class RewardServiceTests
     {
         // Every log the service writes opens with its name; tests match that, never the sentence.
