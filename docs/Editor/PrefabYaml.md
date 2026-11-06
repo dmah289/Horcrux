@@ -11,7 +11,7 @@ sửa field theo dòng, rồi kiểm cây Transform còn khớp — không mở 
 | Mục | Chốt |
 |---|---|
 | Người dùng | agent, khi phải ghép prefab giữa hai bản mà kéo thả trong Editor không làm được (bản kia ở nhánh khác, hay phải lặp lại tất định) |
-| Đầu vào | file `.prefab` text (Force Text serialization); tên GameObject hoặc tên PrefabInstance lồng (override `m_Name`) |
+| Đầu vào | file `.prefab` hoặc `.unity` text (Force Text serialization); tên GameObject hoặc tên PrefabInstance lồng (override `m_Name`). Với scene, `graft` cần cha là một object có sẵn, không gắn vào gốc scene |
 | Ranh giới | tool chỉ làm việc cấu trúc: chép, xoá, đổi dòng, kiểm. Chép **giữ fileID và GUID** — asset tham chiếu phải có ở dự án đích. Field trỏ object đã xoá **không tự gỡ**: `check` báo, script quyết sửa |
 | Chỗ đặt | `Editor/PrefabYaml/Tools~/`, thư mục đuôi `~` Unity không import. Không có C#. Chỉ cần Python 3 |
 

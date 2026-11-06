@@ -20,7 +20,8 @@ Skill công cụ. `<horcrux>` là gốc Horcrux trong dự án. Chi tiết lện
    define symbol theo platform, scope registry, assembly reference của asmdef. Chọn một bên là gỡ package hay define bên kia
    đang dùng; lỗi chỉ lộ lúc compile ở máy khác.
 5. **Prefab, scene conflict không lấy nguyên một bên.** Lấy bản của phía đổi cấu trúc nhiều hơn rồi ghép khối object phía
-   kia thêm; kiểm fileID không trùng và cây Transform (`m_Children` ↔ `m_Father`) khớp, rồi mở trong Editor xem.
+   kia thêm; kiểm fileID không trùng và cây Transform (`m_Children` ↔ `m_Father`) khớp, rồi mở trong Editor xem. Ghép
+   và kiểm bằng PrefabYaml (`graft`, `check`; `docs/Editor/PrefabYaml.md`), không sửa YAML tay.
 6. **Conflict ngữ nghĩa là quyết định của developer** (NT5): hai bên đổi cùng hành vi khác hướng, một bên bỏ tính năng bên
    kia vừa sửa, hai số đo cho cùng thứ. Bày phương án *giữ gì · mất gì*, chốt một đề xuất, hỏi; không chọn hộ.
 7. **Mọi dòng `lines`, `assets` báo đều được phân loại** trong báo cáo: *chủ ý* (một cha sửa, xoá, gỡ có lý do — nêu lý do)
@@ -53,6 +54,7 @@ python -X utf8 -I "<horcrux>/Editor/MergeAudit/Tools~/merge_audit.py" plan <đí
 python -X utf8 -I "<horcrux>/Editor/MergeAudit/Tools~/merge_audit.py" lines  <merge>
 python -X utf8 -I "<horcrux>/Editor/MergeAudit/Tools~/merge_audit.py" assets <merge>
 python -X utf8 -I "<horcrux>/Editor/MergeAudit/Tools~/merge_audit.py" replay --range <mốc cũ>..<đích>
+python -X utf8 -I "<horcrux>/Editor/PrefabYaml/Tools~/prefab_yaml.py" graft <đích> <nguồn> <object> <cha> · check <file>...
 ```
 
 ## Ngân sách token
