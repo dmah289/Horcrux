@@ -74,6 +74,8 @@ Chất liệu quyết *cái gì được biến dạng*; phần vui đến từ 
   thân; reset thân là về nghỉ.
 - **Vật bay giữa hai chủ: một node mang toàn bộ cỡ nhìn thấy;** rời cha giữ cỡ thế giới, mỗi frame một hàm đường cong đặt
   cỡ, chủ mới chia lại cỡ ở một chỗ lúc đáp.
+- **Đích chuyến bay đọc lại mỗi frame, không chốt lúc cất cánh:** chủ mới có thể đang trượt, lún, căn lại; chốt thì vật đáp
+  chỗ cũ rồi giật. Giá là một lần đọc vị trí mỗi frame — rẻ hơn mọi cờ chọn vật nào được bám.
 - **Cú thu thập:** đích cỡ theo lòng vật chứa, nhỏ hơn đỉnh chuyến bay, cỡ về 0 tốc độ lúc chạm.
 - **Sprite giữ tỉ lệ hoạ sĩ vẽ;** cỡ và vị trí đo pixel trên ảnh đích, quy về phần đặc của sprite.
 
