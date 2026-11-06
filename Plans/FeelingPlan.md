@@ -5,7 +5,7 @@ Tất cả phải tuân thủ: **zero-GC** (thuần tính toán `float`/`struct`
 
 > **Tween = PrimeTween.** Mọi mục dưới đây có phần chuyển động theo thời gian (nảy, đếm, fade, flash, ramp `timeScale`) **chạy bằng PrimeTween** (`useUnscaledTime` khi cần chạy lúc `timeScale = 0`), không có runner tween tự viết. Phần còn lại ở đây là toán thuần (`Easer`, `Interpolator`, `SquashStretch`…) cấp **giá trị** cho tween qua `Tween.Custom`. `EaseType` giữ làm enum toán; tween dùng `PrimeTween.Ease`.
 >
-> **Item combo-exclusive đã chuyển đi:** `ComboMeter` · `ChainReaction` · `HapticPattern` (ramp) và 2 hộp công thức "Combo ASMR" → xem `Plans/Horcrux_ComboTracker_Plan.md` § *Nguyên liệu đã chuyển từ Pendings.md*. Các item **dùng chung** vẫn ở đây, chỉ thêm nhãn trỏ plan.
+> **Item combo-exclusive:** `Plans/Horcrux_ComboTracker_Plan.md` chỉ giữ bộ đếm với cửa sổ theo count; meter, bridge Feedback và công thức phản hồi cố ý ở lại dự án (Ngữ cảnh đã chốt › Cố ý KHÔNG làm). `ComboMeter` trong category-jam là `ComboPill` vẽ bằng `ProgressBar.PlayAsync`; `ChainReaction`, `HapticPattern` (ramp) và 2 hộp công thức "Combo ASMR" chưa có plan nào giữ.
 
 Đã có:
 - `HarmonicOscillator` (dao động điều hòa đơn giản, Sin/Cos).
@@ -15,7 +15,7 @@ Tất cả phải tuân thủ: **zero-GC** (thuần tính toán `float`/`struct`
 - `DampedOscillator` — ✅ **đã triển khai** (envelope · displacement · velocity · settling-time, bản `decay` và bản `halfLife`).
 - `GeometryHelper` — ⚠️ **một phần**: hiện chỉ có `RandomPointInAnnulus`/`RandomPointIn3DAnnulus`. Phần khoảng cách/closest-point (cần cho `StaggerHelper`) **chưa có**.
 - `Easing` — ✅ **đã triển khai** dưới dạng `Easer` ở namespace riêng `Horcrux.Runtime.Tweening.Easing` (10 họ Quad…Bounce × In/Out/InOut + Linear; entry point `Easer.Evaluate(EaseType, t)`). Mọi tham chiếu `← Easing` phía dưới trỏ tới class này — **không** làm lại trong `PhysXHelper`. `Easer` **không** làm easing cho tween (đó là việc của PrimeTween).
-- `InterpolationHelper` — ✅ **đã triển khai** dưới dạng `Interpolator` (`Horcrux.Runtime.Utilities.PhysXHelper`). Đã có: `InverseLerpUnclamped(+Precomputed)`, `Remap(+Precomputed)`, `SmootherStep` (quintic 6t⁵−15t⁴+10t³), `ExpDecay`/`DecayFactor` (`1−e^(−k·dt)`), `ExpDecayHalfLife(+Precomputed)`. `SmoothStep` cubic (3t²−2t³) và `OffsetFromCenter` (lệch từ tâm một dãy) 📄 đã có plan: `Plans/Horcrux_HopCurve_DipFlash_Plan.md` Task 1.1. Mọi tham chiếu `← InterpolationHelper` phía dưới trỏ tới class này.
+- `InterpolationHelper` — ✅ **đã triển khai** dưới dạng `Interpolator` (`Horcrux.Runtime.Utilities.PhysXHelper`). Đã có: `InverseLerpUnclamped(+Precomputed)`, `Remap(+Precomputed)`, `SmootherStep` (quintic 6t⁵−15t⁴+10t³), `ExpDecay`/`DecayFactor` (`1−e^(−k·dt)`), `ExpDecayHalfLife(+Precomputed)`. `SmoothStep` cubic (3t²−2t³) và `OffsetFromCenter` (lệch từ tâm một dãy) 📄 đã có plan: `Plans/Horcrux_HopCurve_DipFlash_Plan.md` giai đoạn 2 và 3. Mọi tham chiếu `← InterpolationHelper` phía dưới trỏ tới class này.
 
 ---
 
@@ -52,7 +52,7 @@ Tất cả phải tuân thủ: **zero-GC** (thuần tính toán `float`/`struct`
 
 ### ~~`InterpolationHelper`~~ — ✅ ĐÃ XONG (xem `Interpolator`)
 - `Remap(+Precomputed)`, `InverseLerpUnclamped(+Precomputed)`, `SmootherStep` (quintic), exp-decay lerp độc lập framerate `1 − e^(−k·dt)` (`ExpDecay`/`DecayFactor`/`ExpDecayHalfLife`).
-- `SmoothStep` cubic (`3t²−2t³`): 📄 plan `Plans/Horcrux_HopCurve_DipFlash_Plan.md` Task 1.1.
+- `SmoothStep` cubic (`3t²−2t³`): 📄 plan `Plans/Horcrux_HopCurve_DipFlash_Plan.md` giai đoạn 2.
 
 ---
 
@@ -82,14 +82,14 @@ Mục tiêu: tạo cảm giác "đã tay, đã mắt, đã tai" (satisfying feed
 #### ~~`SquashStretch`~~ — ✅ **ĐÃ XONG** (`PhysXHelper/SquashStretch.cs`)
 - Giữ nguyên thể tích: nén theo Y thì phình theo X (`scaleX = 1/√scaleY`).
 - Ứng dụng: nhân vật nhảy/đáp đất, nút bấm, item pickup. Bí quyết "sống động" như jelly.
-- Đang được dùng bởi: `ComboMeter` (cú nảy mỗi nhịp) — `Horcrux_ComboTracker_Plan.md` Task 8 · `FlyRewardItem` (quà bay, phồng 1.3 co về 0.8) · `CharmSquashStretch(SquashStretchSpec)` (chỉ đổi scale; ghép với `CharmFlyArc` do caller).
+- Đang được dùng bởi: `ComboPill` của category-jam (cú nảy mỗi nhịp; không trong plan Horcrux) · `FlyRewardItem` (quà bay, phồng 1.3 co về 0.8) · `CharmSquashStretch(SquashStretchSpec)` (chỉ đổi scale; ghép với `CharmFlyArc` do caller).
 
 #### `Wobble` / `Jelly` ⭐ ưu tiên cao — rung rinh như thạch
 - Kết hợp `DampedOscillator` tạo hiệu ứng lắc lư tắt dần sau khi chạm/thả. Rất ASMR. Chạy bằng `Tween.Custom` của PrimeTween, cấp giá trị từ `DampedOscillator`.
 
 #### `Overshoot` — vọt lố rồi ổn định
 - Animation chạy quá target một chút rồi bật về. Cảm giác "bén", có lực. **Dùng `Ease.OutBack` của PrimeTween**, không viết hàm riêng.
-- 📄 Hai hình dùng sẵn đã có plan (`Plans/Horcrux_HopCurve_DipFlash_Plan.md` Task 1.6–1.8): `CharmPop` (`PopSpec`, nảy trên scale nghỉ) và `CharmSinkLocalY` (`SinkSpec`, lún vị trí rồi bật về).
+- 📄 Hai hình dùng sẵn đã có plan (`Plans/Horcrux_HopCurve_DipFlash_Plan.md` giai đoạn 6–7): `CharmPop` (`PopSpec`, nảy trên scale nghỉ) và `CharmSinkLocalY` (`SinkSpec`, lún vị trí rồi bật về).
 
 #### `Pulse` / `Breathing` — nhịp thở
 - Scale/alpha dao động nhẹ liên tục. Làm UI/collectible "thở", hút mắt. Chạy bằng PrimeTween lặp vô hạn (`cycles: -1`, `CycleMode.Yoyo`); `HarmonicOscillator` chỉ khi cần dạng sóng PrimeTween không có.
@@ -109,7 +109,7 @@ Mục tiêu: tạo cảm giác "đã tay, đã mắt, đã tai" (satisfying feed
 
 #### `Anticipation` — lấy đà
 - Lùi nhẹ trước khi bung ra (co người trước khi nhảy). Tạo "trọng lượng".
-- 📄 Bản hình dạng cho cú nhảy thấp đã có plan: `HopCurve.LiftWithAnticipation` (`Plans/Horcrux_HopCurve_DipFlash_Plan.md` Task 1.2).
+- 📄 Bản hình dạng cho cú nhảy thấp đã có plan: `HopCurve.LiftWithAnticipation` (`Plans/Horcrux_HopCurve_DipFlash_Plan.md` giai đoạn 3).
 
 ### C. Juice thời gian
 
@@ -130,8 +130,8 @@ Mục tiêu: tạo cảm giác "đã tay, đã mắt, đã tai" (satisfying feed
 #### `AudioFeedback` — mapping cường độ va chạm → âm lượng/pitch.
 - Một phần đã có: `AudioCatalog` khai `VolumeRange`/`PitchSemitoneRange` per-entry → `docs/Runtime/AudioSystem/AudioSystem.md`.
 
-### ~~Combo "ASMR đã nhất"~~ — ✅ đã chuyển
-> Công thức **SquashStretch + Hitstop + pitch ramp** đã chuyển sang `Plans/Horcrux_ComboTracker_Plan.md` § *Nguyên liệu đã chuyển từ Pendings.md* — nơi nó được hiện thực bằng **một cue duy nhất** có mặt trong 3 bảng cue.
+### Combo "ASMR đã nhất" — chưa có plan
+> Công thức **SquashStretch + Hitstop + pitch ramp** chưa có plan nào giữ; `Plans/Horcrux_ComboTracker_Plan.md` cố ý không làm bridge Feedback — phản hồi nhiều kênh của một khoảnh khắc gọi cạnh nhau trong một hàm của dự án.
 
 ---
 
@@ -158,7 +158,7 @@ ASMR đặc thù cho game puzzle: đến từ **tactile (chạm), order (trật 
 #### `StaggerHelper` / `RippleDelay` ⭐ ưu tiên cao — làm trễ theo sóng
 - `delay = dist × factor` từ tâm. Hiệu ứng lan tỏa gợn sóng khi clear cụm. Xương sống của mọi cascade satisfying.
 
-#### ~~`ChainReaction`~~ — ✅ **đã chuyển sang `Horcrux_ComboTracker_Plan.md`** § *Giai đoạn 2*
+#### `ChainReaction` — chưa có plan (`Horcrux_ComboTracker_Plan.md` chỉ giữ bộ đếm)
 - Chuỗi kích hoạt liên tiếp + pitch ramp tăng dần. Cảm giác đổ domino gây nghiện.
 - Thiết kế đầy đủ (`IStaggerPolicy` + `ChainReactionSequencer`) và **3 lý do hoãn** đã ghi ở đó. Điều kiện bắt đầu: có `StaggerHelper` + một board thật làm caller.
 
@@ -183,7 +183,7 @@ ASMR đặc thù cho game puzzle: đến từ **tactile (chạm), order (trật 
 
 #### `ProgressPop` — nảy khi tiến triển
 - Thanh progress/counter nảy nhẹ (overshoot) mỗi bước. Cảm giác "đang tiến". Dùng `Tween.PunchScale` hoặc `Ease.OutBack` của PrimeTween.
-- 📄 Bản bật lên đỉnh rồi về một nhịp OutBack đã có plan: `CharmPop` (`Plans/Horcrux_HopCurve_DipFlash_Plan.md` Task 1.8), người dùng đầu là bộ đếm box của category-jam.
+- 📄 Bản bật lên đỉnh rồi về một nhịp OutBack đã có plan: `CharmPop` (`Plans/Horcrux_HopCurve_DipFlash_Plan.md` giai đoạn 7), người dùng đầu là bộ đếm box của category-jam.
 
 #### `SortSettle` — sắp xếp về đúng chỗ
 - Khi phân loại đúng, các phần tử trượt mượt về hàng ngay ngắn (stagger + ease). ASMR "gọn gàng". Ease/`startDelay` của PrimeTween, delay theo khoảng cách lấy từ `StaggerHelper`.
@@ -194,7 +194,7 @@ ASMR đặc thù cho game puzzle: đến từ **tactile (chạm), order (trật 
 ### Combo "ASMR puzzle đã nhất"
 > **MagneticSnap + GridSnapFeedback (tick) + StaggerHelper (clear chuỗi) + pitch ramp**
 >
-> *(Giữ ở đây vì trọng tâm là **snap/đặt piece**, không phải combo. Phần "clear chuỗi + pitch ramp" đi qua `Horcrux_ComboTracker_Plan.md` § Giai đoạn 2.)*
+> *(Giữ ở đây vì trọng tâm là **snap/đặt piece**, không phải combo. Phần "clear chuỗi + pitch ramp" chưa có plan; `Horcrux_ComboTracker_Plan.md` chỉ giữ bộ đếm, phản hồi ở lại dự án.)*
 
 Ví dụ đặt piece hoàn thành hàng: piece hút "khục" vào ô → tick → cả hàng pop lan sóng từ điểm đặt → pitch tăng dần → suck-in giải tỏa.
 
@@ -251,7 +251,7 @@ Các mảng bổ sung mở rộng cảm giác ra ngoài đối tượng: camera,
 #### `FloatingText` — số bay lên rồi tan
 - Damage/điểm bật lên với overshoot + fade. Feedback tức thì. `Sequence` PrimeTween: `Ease.OutBack` cho scale, fade cho alpha.
 
-#### ~~`ComboMeter`~~ — ✅ **đã chuyển sang `Horcrux_ComboTracker_Plan.md`** (Task 8)
+#### `ComboMeter` — không có plan Horcrux: category-jam vẽ bằng `ComboPill` + `ProgressBar.PlayAsync` (`Horcrux_ComboTracker_Plan.md` › Đã khảo sát)
 - Thanh combo phồng/co theo streak. Bản hiện thực: thanh co theo **cửa sổ combo còn lại** + nảy (`SquashStretch` + `EaseType.OutBack`) mỗi nhịp + đổi màu theo bậc.
 
 ### M. Môi trường sống động (ambient juice — nền ASMR)
@@ -265,8 +265,8 @@ Các mảng bổ sung mở rộng cảm giác ra ngoài đối tượng: camera,
 
 #### `AmbientDrift` — trôi lững lờ (mây, bụi, bong bóng) bằng noise 2D.
 
-### ~~Combo "đa giác quan hoàn hảo"~~ — ✅ đã chuyển
-> Công thức **CameraPunch + Haptic + Ripple + pitch ramp** đã chuyển sang `Horcrux_ComboTracker_Plan.md` § *Nguyên liệu đã chuyển từ Pendings.md* — nơi nó được hiện thực bằng **một cue duy nhất** có mặt trong 4 bảng cue của `FeedbackSystem.md`. Ngưỡng đồng thời ~50ms và lý do kiến trúc dẫn giải ở `FeedbackSystem.md` §0.1. (`RippleEffect` chưa có kênh — mở rộng sau của hệ Feedback.)
+### Combo "đa giác quan hoàn hảo" — chưa có plan
+> Công thức **CameraPunch + Haptic + Ripple + pitch ramp** chưa có plan nào giữ; `Horcrux_ComboTracker_Plan.md` cố ý không làm bridge Feedback — phản hồi gọi cạnh nhau trong một hàm của dự án. (`RippleEffect` chưa có kênh.)
 
 ---
 
@@ -324,14 +324,14 @@ Mỗi class ghép vài viên gạch tầng 2 thành một hành vi hoàn chỉnh
 37. **`ProceduralSway`** ⭐ ← noise nhiều tần số (Perlin).
 38. **`IdleBreathe`** ← `Pulse`.
 39. ~~`HapticPattern`~~ → **đổi tên `HapticRamp`**, đã chuyển: `HapticRampChannel` ở `FeedbackSystem.md` Task 5.
-40. Phụ trợ VFX/ambient: `TrailFeedback`, `DissolveFeedback`, `GradientCycle`, `FlowFeedback`, `PileGrowth`, `ParallaxHelper`, `AmbientDrift`, `Anticipation`, `DollyZoom`. *(`ComboMeter` đã chuyển sang `Horcrux_ComboTracker_Plan.md` Task 8.)*
+40. Phụ trợ VFX/ambient: `TrailFeedback`, `DissolveFeedback`, `GradientCycle`, `FlowFeedback`, `PileGrowth`, `ParallaxHelper`, `AmbientDrift`, `Anticipation`, `DollyZoom`. *(`ComboMeter`: xem mục cùng tên ở trên.)*
 
 ### Tầng 4 — Orchestrator (← mọi tầng dưới)
 Dàn dựng nhiều hiệu ứng thành "sequence" — làm cuối cùng vì cần tất cả nguyên liệu.
 
 > ⚠️ **Tầng này giờ có một nhà chung.** Việc "dàn dựng nhiều hiệu ứng cùng lúc" đã được SDK-hoá thành hệ **Feedback Orchestrator** (`Implementations/Composites/Feedback/FeedbackSystem.md`): một *cue* → fan-out 4 kênh (audio · haptic · hitstop · camera). Ba orchestrator dưới đây **không** nên tự gọi service trực tiếp nữa — chúng chỉ nên bắn cue. Hai bộ dàn dựng song song là anti-pattern #4 (Hai impl song song) — Phụ lục B của `SystemPlan.md`.
 
-41. ~~`ChainReaction`~~ — ✅ đã chuyển sang `Horcrux_ComboTracker_Plan.md` § *Giai đoạn 2* (chưa làm: chặn bởi `StaggerHelper` + chưa có board caller).
+41. `ChainReaction` — chưa có plan (chặn bởi `StaggerHelper` + chưa có board caller; `Horcrux_ComboTracker_Plan.md` chỉ giữ bộ đếm).
 42. **`SatisfyingClear`** ⭐ ← `ColorFlash` + `StaggerHelper` + suck-in (`Easing`) + burst. **Nên** bắn cue qua `IFeedbackDispatcher` thay vì gọi audio/haptic trực tiếp.
 43. **`CompletionSequence`** ← crescendo âm thanh + particle + camera + haptic. Cùng ghi chú với mục 42.
 
@@ -348,4 +348,4 @@ Không cần `SpringDamper`, chạy được ngay và cho ra thứ **cảm đư�
 2. `HapticSystem.md` — rung theo preset. Haptic ramp theo **biên độ** chưa có nền (hệ cố ý không làm biên độ); tới lúc làm thì ramp bằng nhiều id, mỗi bậc một preset, hoặc thêm rung theo biên độ (`HapticPatterns.PlayConstant`) vào `IHapticService`
 3. `docs/Runtime/AudioSystem/AudioSystem.md` — SFX + **pitch** (điều kiện của pitch ramp)
 4. `Implementations/Composites/Feedback/FeedbackSystem.md` — cue → 4 kênh; **kèm** hiện thực `TraumaShake` + `TimeScaleHelper`
-5. `Plans/Horcrux_ComboTracker_Plan.md` — lõi combo + `ComboMeter` + demo nghiệm thu
+5. `Plans/Horcrux_ComboTracker_Plan.md` — lõi combo: bộ đếm, cửa sổ theo count; meter và phản hồi ở lại dự án
