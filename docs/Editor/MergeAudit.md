@@ -14,7 +14,7 @@ sửa tay. Git chỉ báo conflict text; ghép nhầm file, đổ thay đổi sa
 | Mục | Chốt |
 |---|---|
 | Người dùng | agent: trước khi merge nhánh, sau mỗi lần giải conflict, và khi nhận merge commit người khác đã đẩy lên; skill `merge-audit` trỏ về đây |
-| Đầu vào | repo git, hai rev (`plan`), một merge commit hai cha (`lines`, `assets`), merge commit hoặc khoảng rev (`replay`). Tất cả đọc từ object git; không đọc working tree, trừ `Library/PackageCache` để nhận GUID của package |
+| Đầu vào | repo git, hai rev (`plan`), một merge commit hai cha (`lines`, `assets`), merge commit hoặc khoảng rev (`replay`). Tất cả đọc từ object git, kể cả submodule ở đúng commit mỗi rev trỏ tới (submodule phải có commit đó cục bộ, thiếu thì cảnh báo và tham chiếu sang nó bị báo gãy); không đọc working tree, trừ `Library/PackageCache` để nhận GUID của package |
 | Ranh giới | tool **chỉ kiểm**, không merge, không sửa. Kết quả là danh sách để agent phân loại: *chủ ý* (một cha sửa hay xoá có lý do) hay *rơi* (merge làm mất) |
 | Chỗ đặt | `Editor/MergeAudit/Tools~/merge_audit.py`; cần `git` 2.40+ trên PATH (`merge-tree --write-tree -X`); thư mục đuôi `~` Unity không import. Không có C# |
 
@@ -35,7 +35,7 @@ sửa tay. Git chỉ báo conflict text; ghép nhầm file, đổ thay đổi sa
 | `plan` báo asset mà `.meta` rename 100% nhưng chính asset bị git coi là xoá + thêm | asset sửa nhiều khi dời (prefab dựng lại) rớt ngưỡng 50%; thay đổi của phía kia trên file cũ thành conflict modify/delete hoặc đổ sang file giống nhất |
 | `lines` bỏ dòng đã có trong bản base của cùng file | file dời mà không ghép rename thì cả file hiện là "thêm"; dòng base bị phía kia sửa không phải dòng mất |
 | `lines` tìm file đích trong merge theo GUID của `.meta` | file một cha sửa có thể đã bị cha kia dời; tra theo đường dẫn thì báo "không còn" sai |
-| `assets` chỉ đếm lỗi **mới do merge** | dự án lớn luôn có tham chiếu gãy có sẵn; lỗi có sẵn ở một cha in số đếm, `--all` mới liệt kê |
+| `assets` chỉ đếm lỗi **mới do merge** | dự án lớn luôn có tham chiếu gãy có sẵn; lỗi có sẵn ở một cha in số đếm, `--all` mới liệt kê, mỗi dòng gắn `[cha 1]`, `[cha 2]` hay `[cả hai]` — lỗi chỉ ở cha nhánh nguồn là mới với nhánh đích dù không do merge sinh ra |
 | Tham chiếu gãy tính là có sẵn khi GUID đó đã gãy ở một cha, kể cả ở file khác | file dời giữa hai cha mang theo tham chiếu gãy cũ |
 | `replay` mặc định dựng lại như `git merge` thường | merge commit người khác đẩy lên được tạo bằng ngưỡng rename mặc định; `--find-renames 100` khi merge đó làm theo bậc |
 

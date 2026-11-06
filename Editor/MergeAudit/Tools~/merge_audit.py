@@ -118,13 +118,25 @@ def tree_entries(repo, rev):
 
 
 def guid_paths(repo, rev):
-    """GUID → các đường dẫn asset (bỏ đuôi .meta) ở rev."""
+    """GUID → các đường dẫn asset (bỏ đuôi .meta) ở rev, kể cả submodule ở đúng commit rev trỏ tới."""
     out = git(repo, "grep", "-I", "-e", "^guid: ", rev, "--", "*.meta", ok=(0, 1))
     res, prefix = collections.defaultdict(list), rev + ":"
     for line in out.splitlines():
         if line.startswith(prefix):
             path, _, g = line[len(prefix):].rpartition(":guid: ")
             res[g.strip()].append(path[:-5])
+    # Asset dự án trỏ script của submodule (framework) suốt; bỏ submodule thì mọi tham chiếu đó thành "gãy" giả.
+    for line in git(repo, "ls-tree", "-r", rev).splitlines():
+        meta, _, path = line.partition("\t")
+        mode, kind, sha = meta.split()
+        if kind != "commit":
+            continue
+        sub = os.path.join(repo, path)
+        if git_rc(sub, "cat-file", "-e", f"{sha}^{{commit}}")[0] != 0:
+            print(f"[merge_audit]: submodule {path} không có commit {sha[:8]}; tham chiếu sang nó bị báo gãy", file=sys.stderr)
+            continue
+        for g, paths in guid_paths(sub, sha).items():
+            res[g].extend(f"{path}/{p}" for p in paths)
     return res
 
 
@@ -364,6 +376,10 @@ def cmd_assets(a):
     extra = package_guids(a.repo)
     findings = 0
 
+    def owner(in1, in2):
+        """Nhãn cha mang sẵn lỗi: lỗi chỉ ở cha 2 là mới với nhánh đích dù không mới do merge."""
+        return "[cả hai]" if in1 and in2 else "[cha 1]" if in1 else "[cha 2]"
+
     def section(title, new, old):
         nonlocal findings
         print(f"\n=== {title}: {len(new)} mới do merge · {len(old)} có sẵn ở một cha")
@@ -375,12 +391,13 @@ def cmd_assets(a):
 
     dup = {k: {g for g, ps in G[k].items() if len(ps) > 1} for k in ("merge", "cha 1", "cha 2")}
     rows_new = [f"{g} {G['merge'][g]}" for g in dup["merge"] - dup["cha 1"] - dup["cha 2"]]
-    rows_old = [f"{g} {G['merge'][g]}" for g in dup["merge"] & (dup["cha 1"] | dup["cha 2"])]
+    rows_old = [f"{owner(g in dup['cha 1'], g in dup['cha 2'])} {g} {G['merge'][g]}"
+                for g in dup["merge"] & (dup["cha 1"] | dup["cha 2"])]
     section("GUID trùng", rows_new, rows_old)
 
     mi = {k: meta_issues(*T[k]) for k in ("merge", "cha 1", "cha 2")}
     section(".meta mồ côi, asset thiếu .meta", mi["merge"] - mi["cha 1"] - mi["cha 2"],
-            mi["merge"] & (mi["cha 1"] | mi["cha 2"]))
+            {f"{owner(x in mi['cha 1'], x in mi['cha 2'])} {x}" for x in mi["merge"] & (mi["cha 1"] | mi["cha 2"])})
 
     dang = {k: dangling_refs(a.repo, revs[k], G[k], extra) for k in ("merge", "cha 1", "cha 2")}
     parent_pairs = dang["cha 1"] | dang["cha 2"]
@@ -389,7 +406,12 @@ def cmd_assets(a):
     for path, g in dang["merge"]:
         was = next((f" (từng là {G[k][g][0]} ở {k})" for k in ("cha 1", "cha 2", "base") if g in G[k]), "")
         row = f"{path} -> {g}{was}"
-        (old if (path, g) in parent_pairs or g in parent_guids else new).append(row)
+        if (path, g) in parent_pairs or g in parent_guids:
+            in1 = (path, g) in dang["cha 1"] or g in {x for _, x in dang["cha 1"]}
+            in2 = (path, g) in dang["cha 2"] or g in {x for _, x in dang["cha 2"]}
+            old.append(f"{owner(in1, in2)} {row}")
+        else:
+            new.append(row)
     section("tham chiếu GUID gãy trong YAML", new, old)
 
     _, merge_dirs = T["merge"]
