@@ -1,6 +1,6 @@
 ---
 name: reuse-gate
-description: Dùng trước khi sinh bất kỳ code hay Plan nào: khảo sát có sẵn chưa trong hệ đang chạm, Horcrux, dự án, package; có cần không theo nhu cầu thật; đặt ở dự án hay Horcrux — đề xuất phần mang đi được kèm lý do, ưu nhược và use case, developer duyệt rồi mới viết Plan.
+description: Dùng ở mọi câu trả lời để săn chức năng gói lại hay mang sang Horcrux được, và trước khi sinh bất kỳ code hay Plan nào: khảo sát có sẵn chưa trong hệ đang chạm, Horcrux, dự án, package; có cần không theo nhu cầu thật; đặt ở dự án hay Horcrux — đề xuất phần mang đi được kèm lý do, ưu nhược và use case, developer duyệt rồi mới viết Plan.
 ---
 
 # reuse-gate — có sẵn chưa → có cần không → đặt ở đâu
@@ -46,9 +46,11 @@ caller, đập cấu trúc, đảo chiều phụ thuộc) → làm ngay.
 
 ## Đặt ở đâu — dự án hay Horcrux (NT3)
 
-**Săn chức năng cho Horcrux suốt task.** Với **mỗi chức năng — hay phần logic trong nó** — sắp viết, đang sửa, đọc ngang
-qua, hỏi: *bê sang dự án khác dùng nguyên được không?* Có thì **đề xuất ngay lượt đó**; im lặng viết vào dự án thứ mang đi
-được là vi phạm, vì dời chỗ đặt sau là đập cả cây phụ thuộc.
+**Săn chức năng cho Horcrux ở mọi câu trả lời** — viết code, review, giải thích, trả lời câu hỏi đều tính. Với **mỗi chức
+năng — hay phần logic trong nó** — sắp viết, đang sửa, đọc ngang qua, hỏi: *gói được thành hàm, class hay service để gọi
+lại không?* · *bê sang dự án khác dùng nguyên được không?* Có thì **đề xuất ngay lượt đó**; im lặng viết vào dự án thứ mang
+đi được là vi phạm, vì dời chỗ đặt sau là đập cả cây phụ thuộc. Đề xuất chưa phải quyết: gói hay để lặp vẫn theo NT7 và bậc
+cấu trúc (`code-design` › Hình dạng) — đề xuất nói người gọi thứ hai đã có thật chưa, developer chốt.
 
 **Đề xuất gồm:** phần mang đi được và phần nối dự án · **tại sao** chung (không gọi type dự án; dự án sau cần ở đâu) · **ưu
 và nhược** khi vào Horcrux so với ở dự án (công, độ trễ tiến độ, ràng buộc API) · **use case** — ít nhất hai kịch bản ở loại
@@ -57,7 +59,8 @@ game hay hệ khác nhau. **Chưa viết Plan khi developer chưa duyệt.** Kh�
 Nơi đặt: không gọi type dự án → Horcrux `Foundations/` (hệ) hoặc `Utilities/` (helper thuần) · dựng trên nhiều hệ Horcrux,
 không mang domain → `Composites/` · gọi domain dự án → dự án · lõi chung + lớp nối → **tách**.
 
-**Developer duyệt thì đi bốn bước — tiến độ trước, Horcrux sau** (code runtime):
+**Developer duyệt thì chọn đường theo tiến độ** (code runtime). Không gấp: Plan → developer gõ vào Horcrux → dự án dùng
+bản Horcrux. **Ưu tiên tiến độ thì dự án trước, Horcrux sau**, bốn bước:
 1. Agent viết **bản tạm** trong dự án, gom một chỗ, chữ ký theo Plan.
 2. Agent viết **Plan** (`docs` › Plan) vào `Plans/`; bản tạm ghi ở "Mở rộng sau" kèm đường dẫn Plan.
 3. **Developer tự gõ** vào Horcrux.

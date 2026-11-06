@@ -37,7 +37,7 @@ từ gốc Horcrux: skill `Skills/`, Plan `Plans/`, tài liệu hệ `docs/Runti
 
 | Loại việc | Bắt buộc | Thêm khi chạm |
 |---|---|---|
-| Mọi tác vụ — đầu và cuối chat | `workflow` | |
+| Mọi tác vụ — đầu và cuối chat | `workflow`, `reuse-gate` › Đặt ở đâu (săn chức năng) | |
 | Sinh code mới, hệ mới, tính năng mới | `reuse-gate` → `code-design` | `async-presentation` khi có async, tween, vòng đời · `editor-first` khi có cấu hình, wire, tool |
 | Sửa lỗi, refactor code runtime | `code-design` | `async-presentation` |
 | Tool Editor, import/export, cấu hình nội dung, setup scene và prefab | `editor-first` | `code-design` |
