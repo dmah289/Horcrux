@@ -105,7 +105,7 @@ Mục tiêu: tạo cảm giác "đã tay, đã mắt, đã tai" (satisfying feed
 #### `Shake` ⭐ ưu tiên cao — rung màn hình / vật thể
 - Rung theo **Perlin noise** (mượt, không giật cục), biên độ tắt dần.
 - **Trauma-based shake** (biên độ = trauma²) — kỹ thuật kinh điển của game feel.
-- 📄 **Đã có plan:** toán ở `TraumaShake.cs`, driver ở `CameraPunchChannel` → `Implementations/Composites/Feedback/FeedbackSystem.md` (Task 1, Task 6).
+- 📄 Thuộc hệ Feedback (`SystemPlan.md` §22), chưa có plan chi tiết: toán ở `TraumaShake.cs`, driver ở `CameraPunchChannel`.
 
 #### `Anticipation` — lấy đà
 - Lùi nhẹ trước khi bung ra (co người trước khi nhảy). Tạo "trọng lượng".
@@ -115,7 +115,7 @@ Mục tiêu: tạo cảm giác "đã tay, đã mắt, đã tai" (satisfying feed
 
 #### `Hitstop` / `FreezeFrame` ⭐ ưu tiên cao — khựng thời gian khi va chạm
 - Dừng/làm chậm cực ngắn (vài chục ms) lúc đòn trúng. Tạo cảm giác "nặng đô" nhất trong combat.
-- 📄 **Đã có plan:** `HitstopChannel` → `FeedbackSystem.md` Task 5. Lịch `timeScale` 2 pha **inline trong kênh** (chưa tách file — chưa có user thứ hai).
+- 📄 Thuộc hệ Feedback (`SystemPlan.md` §22), chưa có plan chi tiết: `HitstopChannel`. Lịch `timeScale` 2 pha **inline trong kênh** (chưa tách file — chưa có user thứ hai).
 
 #### `TimeScaleHelper` — slow-mo / ramp
 - Ease timeScale mượt vào/ra slow motion bằng `Tween.Custom` của PrimeTween trên `Time.timeScale` (`useUnscaledTime: true`).
@@ -208,7 +208,7 @@ Các mảng bổ sung mở rộng cảm giác ra ngoài đối tượng: camera,
 
 #### `CameraPunch` / `ZoomPunch` ⭐ ưu tiên cao — giật zoom
 - Zoom vào/ra nhanh rồi spring về khi impact. "Đấm" vào cảm giác cực mạnh.
-- 📄 **Phần shake đã có plan:** `CameraShakeChannel` (← `TraumaShake`) + `IFeedbackCamera`/`FeedbackCameraRig` → `FeedbackSystem.md` Task 6.
+- 📄 Phần shake thuộc hệ Feedback (`SystemPlan.md` §22), chưa có plan chi tiết: `CameraShakeChannel` (← `TraumaShake`) + `IFeedbackCamera`/`FeedbackCameraRig`.
 - ⏳ **Phần zoom punch chưa làm** (cố ý cắt khỏi bản đầu — shake đã đủ trục thị giác). Nhưng `IFeedbackCamera.ApplyZoom` **đã có sẵn** trong interface, nên thêm driver về sau chỉ là thêm code trong một class, không breaking. Dùng `DampedOscillator` với `WaveStyle.Cos` (biên độ đầy ngay tại `t=0` = cú đấm tức thì).
 
 #### `LookAhead` / `CameraLead` — nhìn trước hướng di chuyển
@@ -228,7 +228,7 @@ Các mảng bổ sung mở rộng cảm giác ra ngoài đối tượng: camera,
 
 #### ~~`HapticPattern`~~ — ✅ **đã chuyển**, và **đổi tên** thành `HapticRamp`
 - Pitch ramp phiên bản xúc giác: combo rung tăng dần cường độ.
-- Hiện thực: `HapticRampChannel` → `FeedbackSystem.md` Task 5.
+- Hiện thực dự kiến: `HapticRampChannel` của hệ Feedback (`SystemPlan.md` §22), chưa có plan chi tiết.
 - ⚠️ **Vì sao đổi tên:** `SystemPlan.md` #9 (Haptics) đã dùng tên `HapticPattern` cho *struct mô tả MỘT cú rung*. Hai thứ khác nhau — một cú rung ≠ một chuỗi rung tăng dần.
 
 ### K. VFX động (thuần toán, feed cho shader/particle)
@@ -296,18 +296,18 @@ Hiệu ứng đơn lẻ, là "viên gạch" cho các combo tầng trên.
 12. **`Overshoot`** ← PrimeTween `Ease.OutBack`. Dùng cho pop/progress/floating text.
 13. **`Wobble` / `Jelly`** ← `DampedOscillator` + PrimeTween `Tween.Custom`.
 14. **`Pulse` / `Breathing`** ← PrimeTween (lặp Yoyo).
-15. **`Shake`** ⭐ (trauma-based) — 📄 plan: `TraumaShake.cs` ở `FeedbackSystem.md` Task 1. Dùng `noise.cnoise`, **không** cần `RandomHelper`.
+15. **`Shake`** ⭐ (trauma-based) — 📄 `TraumaShake.cs` của hệ Feedback (`SystemPlan.md` §22), chưa có plan chi tiết. Dùng `noise.cnoise`, **không** cần `RandomHelper`.
 16. **`ColorFlash`** ← PrimeTween `Tween.Color`.
-17. **`TimeScaleHelper`** ← PrimeTween — 📄 plan (phần hitstop): `FeedbackSystem.md` Task 2.
+17. **`TimeScaleHelper`** ← PrimeTween — 📄 phần hitstop thuộc hệ Feedback (`SystemPlan.md` §22), chưa có plan chi tiết.
 18. ~~`AudioPitchHelper`~~ — ❌ **không làm**: pitch ramp là công thức ở call site (`AudioSystem.md` §6).
 19. **`HapticHelper`** ⭐ — ✅ đã dựng: `HapticSystem.md` (`IHapticService<THaptic>` theo preset, gọi thẳng Nice Vibrations).
 20. **`StaggerHelper` / `RippleDelay`** ⭐ ← `GeometryHelper` (delay theo khoảng cách).
 
 ### Tầng 3 — Hành vi tổng hợp (← Tầng 0–2)
 Mỗi class ghép vài viên gạch tầng 2 thành một hành vi hoàn chỉnh.
-21. **`Hitstop` / `FreezeFrame`** ⭐ ← `TimeScaleHelper` — 📄 plan: `HitstopChannel` ở `FeedbackSystem.md` Task 6.
+21. **`Hitstop` / `FreezeFrame`** ⭐ ← `TimeScaleHelper` — 📄 `HitstopChannel` của hệ Feedback (`SystemPlan.md` §22), chưa có plan chi tiết.
 22. **`CameraFollowSmooth`** ← `SpringDamper` (+ deadzone).
-23. **`CameraPunch` / `ZoomPunch`** ⭐ — 📄 plan: `CameraPunchChannel` ở `FeedbackSystem.md` Task 6. Dùng `DampedOscillator` (đã có) thay `SpringDamper`/`Overshoot` (chưa có).
+23. **`CameraPunch` / `ZoomPunch`** ⭐ — 📄 `CameraPunchChannel` của hệ Feedback (`SystemPlan.md` §22), chưa có plan chi tiết. Dùng `DampedOscillator` (đã có) thay `SpringDamper`/`Overshoot` (chưa có).
 24. **`LookAhead`** ← `SpringDamper`.
 25. **`MagneticSnap`** ⭐ ← `SpringDamper` + `Easing`.
 26. **`GridSnapFeedback`** ← `SquashStretch` + `Shake` + `HapticHelper` (tick); pitch tick tính ở call site.
@@ -323,13 +323,13 @@ Mỗi class ghép vài viên gạch tầng 2 thành một hành vi hoàn chỉnh
 36. **`SortSettle`** ← `StaggerHelper` + PrimeTween.
 37. **`ProceduralSway`** ⭐ ← noise nhiều tần số (Perlin).
 38. **`IdleBreathe`** ← `Pulse`.
-39. ~~`HapticPattern`~~ → **đổi tên `HapticRamp`**, đã chuyển: `HapticRampChannel` ở `FeedbackSystem.md` Task 5.
+39. `HapticPattern` → **đổi tên `HapticRamp`**, dự kiến là `HapticRampChannel` của hệ Feedback (`SystemPlan.md` §22), chưa có plan chi tiết.
 40. Phụ trợ VFX/ambient: `TrailFeedback`, `DissolveFeedback`, `GradientCycle`, `FlowFeedback`, `PileGrowth`, `ParallaxHelper`, `AmbientDrift`, `Anticipation`, `DollyZoom`. *(`ComboMeter`: xem mục cùng tên ở trên.)*
 
 ### Tầng 4 — Orchestrator (← mọi tầng dưới)
 Dàn dựng nhiều hiệu ứng thành "sequence" — làm cuối cùng vì cần tất cả nguyên liệu.
 
-> ⚠️ **Tầng này giờ có một nhà chung.** Việc "dàn dựng nhiều hiệu ứng cùng lúc" đã được SDK-hoá thành hệ **Feedback Orchestrator** (`Implementations/Composites/Feedback/FeedbackSystem.md`): một *cue* → fan-out 4 kênh (audio · haptic · hitstop · camera). Ba orchestrator dưới đây **không** nên tự gọi service trực tiếp nữa — chúng chỉ nên bắn cue. Hai bộ dàn dựng song song là anti-pattern #4 (Hai impl song song) — Phụ lục B của `SystemPlan.md`.
+> ⚠️ **Tầng này giờ có một nhà chung.** Việc "dàn dựng nhiều hiệu ứng cùng lúc" là của hệ **Feedback Orchestrator** (`SystemPlan.md` §22; chưa có plan chi tiết, chưa có code): một *cue* → fan-out 4 kênh (audio · haptic · hitstop · camera). Ba orchestrator dưới đây **không** nên tự gọi service trực tiếp nữa — chúng chỉ nên bắn cue. Hai bộ dàn dựng song song là anti-pattern #4 (Hai impl song song) — Phụ lục B của `SystemPlan.md`.
 
 41. `ChainReaction` — chưa có plan (chặn bởi `StaggerHelper` + chưa có board caller; `Horcrux_ComboTracker_Plan.md` chỉ giữ bộ đếm).
 42. **`SatisfyingClear`** ⭐ ← `ColorFlash` + `StaggerHelper` + suck-in (`Easing`) + burst. **Nên** bắn cue qua `IFeedbackDispatcher` thay vì gọi audio/haptic trực tiếp.
@@ -347,5 +347,5 @@ Không cần `SpringDamper`, chạy được ngay và cho ra thứ **cảm đư�
 1. `Implementations/Foundations/Ticker/TickerSystem.md` — 1 nguồn tick + `IOptionalService` + `DeferredSet`
 2. `HapticSystem.md` — rung theo preset. Haptic ramp theo **biên độ** chưa có nền (hệ cố ý không làm biên độ); tới lúc làm thì ramp bằng nhiều id, mỗi bậc một preset, hoặc thêm rung theo biên độ (`HapticPatterns.PlayConstant`) vào `IHapticService`
 3. `docs/Runtime/AudioSystem/AudioSystem.md` — SFX + **pitch** (điều kiện của pitch ramp)
-4. `Implementations/Composites/Feedback/FeedbackSystem.md` — cue → 4 kênh; **kèm** hiện thực `TraumaShake` + `TimeScaleHelper`
+4. `SystemPlan.md` §22 Feedback — cue → 4 kênh, kèm `TraumaShake` + `TimeScaleHelper`; plan chi tiết chưa có, bản cũ khôi phục từ git khi làm
 5. `Plans/Horcrux_ComboTracker_Plan.md` — lõi combo: bộ đếm, cửa sổ theo count; meter và phản hồi ở lại dự án
