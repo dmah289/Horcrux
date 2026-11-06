@@ -58,10 +58,14 @@ field serialize kèm property. Ngoài ba ca, class phải chia file mới đọc
 > `[InitAfter]`. Editor và tooling không bắt buộc InitArgs. Đổi resolve lười sang sớm là dịch cửa sổ thất bại — hỏi *lúc
 > đó thứ cần đã tồn tại chưa?*
 
-> **Nền tảng** — region cố định: `Properties` · `Unity Callbacks` · `API` · `Class Methods` · `DI`. **Callback Unity là cửa
-> mỏng, thân nằm trong hàm có tên.** Thứ tự `Awake`/`OnEnable` giữa object do engine chọn, Script Execution Order là cấu
-> hình ẩn — thứ tự giữa nhiều việc do **một chủ gọi** xếp tường minh. Engine bảo đảm: trong cây object vừa bật, `Awake` cả
-> cây xong trước `Start`.
+> **Nền tảng** — region cố định: `Properties` · `Unity Callbacks` · `API` · `Class Methods` · `DI`. Thứ tự
+> `Awake`/`OnEnable` giữa object do engine chọn, Script Execution Order là cấu hình ẩn. Engine bảo đảm: trong cây object
+> vừa bật, `Awake` cả cây xong trước `Start`.
+
+**Gọi tường minh, không giao thứ tự cho callback Unity.** Callback Unity là cửa mỏng: **một** callback của **một chủ** gọi
+lần lượt các hàm có tên — thứ tự nằm ở một chỗ, đọc từ trên xuống là biết, không phụ thuộc engine chọn ai trước. Rải việc
+vào callback riêng của từng object chỉ khi gọi tường minh **đắt hơn hẳn** (kéo reference xuyên hệ, đảo chiều phụ thuộc) —
+nói giá tại chỗ.
 
 **Sổ tay** — `*.Editor.cs` partial bọc `#if UNITY_EDITOR` · `IInitializable<T>` khi base không phải `MonoBehaviour<T>` ·
 không service locator trong hệ; object sinh lúc chạy tự nhận service qua `Init`, không truyền qua nơi `Instantiate` ·
