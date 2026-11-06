@@ -1,14 +1,20 @@
 # Plan — `BandFit` lên Horcrux
 
-Ngày 2026-11-02. Nguồn: category-jam, `Assets/_CategoryJam/Scripts/Director/LevelBoundsFitter.cs` (`FitScale`, `ContainerPosition`)
-và test `Tests/EditMode/LevelBoundsFitterTests.cs` (ba case vị trí). Hai hàm thuần tính scale đồng nhất để một `Bounds` lọt bề rộng
-màn và một dải cao tuỳ chọn, chừa lề, kẹp dưới, rồi treo đỉnh bounds lên đỉnh dải. Phần tính bounds từ data level
-(`TryGetLevelLocalBounds`, hai cỡ kệ) bám schema dự án, ở lại.
+Ngày 2026-11-06. Nguồn: category-jam, `Assets/_CategoryJam/Scripts/Director/LevelBoundsFitter.cs` (`FitScale`, `ContainerPosition`,
+bản 2026-11-06) và `Tests/EditMode/LevelBoundsFitterTests.cs` (một case scale, ba case vị trí), gọi từ `LevelLoader.AdjustContainerScale`
+và `LevelLoader.PositionShelfContainer`. Hai hàm thuần: scale đồng nhất để một `Bounds` lọt bề rộng màn và một dải cao tuỳ chọn, chừa lề,
+kẹp dưới; và vị trí container đặt tâm bounds vào giữa dải. Phần tính bounds từ data level (`TryGetLevelLocalBounds`, cỡ ô kệ, nén hàng)
+bám schema dự án, ở lại.
 
-**Phân công:** Task 1 (Horcrux, code runtime) developer gõ · Task 2 (tài liệu) và Task 3 (test EditMode) agent viết sau khi code có.
-Dự án chuyển `LevelBoundsFitter` sang gọi `BandFit` là việc riêng khi developer yêu cầu.
+**Phân công:** giai đoạn 1–2 (Horcrux, code runtime) developer gõ, sau mỗi giai đoạn agent viết test của giai đoạn đó theo bảng case rồi
+compile · giai đoạn 3 (tài liệu) và giai đoạn 4 (dự án chuyển sang bản Horcrux) agent làm.
 
-Horcrux là submodule: Task 1–3 commit **trong `Assets/Horcrux`**.
+**Chạy được, thấy được ở giai đoạn 1–2** = `com.horcrux.runtime` compile sạch và bảng case của giai đoạn xanh trong
+`Tests/EditMode/BandFitTests.cs`, không dựng object nào; Horcrux không có host nên "thấy trong game" là giai đoạn 4. Horcrux là
+submodule: giai đoạn 1–3 commit **trong `Assets/Horcrux`**, giai đoạn 4 commit ở repo dự án kèm con trỏ submodule.
+
+Không phụ thuộc Plan nào. Thư mục `Runtime/Utilities/Layout/` chưa có; Plan `Horcrux_ViewportAnchor_Plan.md` cũng đặt file ở đó, plan
+nào gõ trước thì tạo thư mục. Có lõi toán: `§0`.
 
 ---
 
@@ -16,11 +22,12 @@ Horcrux là submodule: Task 1–3 commit **trong `Assets/Horcrux`**.
 
 | Mục | Chốt |
 |---|---|
-| Người dùng | mọi game đặt bàn chơi world vào dải giữa HUD trên và HUD dưới, bề rộng màn cố định theo `ViewportCamera` |
+| Người dùng | mọi game đặt bàn chơi world vào dải giữa HUD trên và HUD dưới, trên camera ortho giữ cố định bề rộng world; bàn chơi là một container scale đồng nhất, bounds của nó tính ở scale 1 |
 | Mục tiêu | hai hàm thuần, không chạm Unity object ngoài `Bounds`, `Vector2`: test không dựng gì |
-| Chỗ đặt | `Runtime/Utilities/Layout/BandFit.cs`, namespace `Horcrux.Runtime.Utilities.Layout` |
+| Chỗ đặt | `Runtime/Utilities/Layout/BandFit.cs`, namespace `Horcrux.Runtime.Utilities.Layout`; không gọi tên type dự án |
 | Tên | `BandFit` (fit vào một dải). `FitScale`, `ContainerPosition` giữ. Developer đổi tuỳ ý trước khi gõ |
-| Tham số | ba hằng của dự án (`0.743`, `0.37`, `0.4`) thành tham số: `preferredScale`, `minScale`, `margin` — mỗi game một bộ, không có mặc định đúng cho mọi game |
+| Tham số | ba hằng của dự án (`0.743`, `0.37`, `0.4`) thành tham số `preferredScale`, `minScale`, `margin` — mỗi game một bộ, không có mặc định đúng cho mọi game |
+| Đơn vị | bounds, bề rộng màn, dải, lề cùng một đơn vị world; scale trả về áp cho cả x và y |
 
 **Cố ý KHÔNG làm**
 
@@ -28,17 +35,23 @@ Horcrux là submodule: Task 1–3 commit **trong `Assets/Horcrux`**.
 |---|---|
 | Struct `BandFitSpec` gom tham số | hai hàm, ba số; call site đọc được theo tên tham số. Có game thứ hai truyền từ Inspector thì gom thành struct `[Serializable]` lúc đó, overload thêm, hàm cũ giữ |
 | Lề riêng cho ngang và dọc | một lề là đủ ở người dùng đầu; thêm là tham số tuỳ chọn |
-| Căn giữa dải thay vì treo đỉnh | luật "vùng co cho vừa một dải kề một vật ở mép dải: neo theo mép kề vật" — bàn chơi kề thanh khay ở đỉnh dải |
+| Treo đỉnh bounds lên đỉnh dải | dự án nguồn đã chơi thử cả hai và chọn căn giữa dải (`Giả định (cần xác nhận):` lý do là cảm giác chơi, commit dự án `e35e7cb5` chỉ ghi "quay lại căn giữa"). Game nào cần treo đỉnh thì thêm hàm riêng, `ContainerPosition` giữ |
 | Tính bounds từ renderer | bounds của người dùng đầu tính từ data level trước khi spawn; game khác có cách khác, đưa `Bounds` vào là ranh giới đúng |
 
 **Quyết định trái trực giác**
 
 | Chỗ | Vì |
 |---|---|
-| `bandHeight` là `float?` | không giới hạn chiều cao là ca thật (màn không có HUD dưới); `null` nói đúng "không có dải" thay vì số lớn giả |
+| `bandHeight` là `float?` | không giới hạn chiều cao là ca thật (màn không có HUD dưới, hay chủ thiếu một anchor); `null` nói đúng "không có dải" thay vì số lớn giả |
 | Ngưỡng `bounds.size > 0.01f` | bounds một điểm (level một ô, hay data rỗng) không được chia cho 0 ra vô cực |
 | Kẹp `minScale` **sau** cả hai chiều | level quá to vẫn giữ cỡ tối thiểu đọc được, chấp nhận tràn: tràn nhìn thấy, tile tí hon thì không chơi được |
-| Vị trí y treo đỉnh bounds một lề dưới `bandTopY` | level thấp hơn dải đứng sát vật ở đỉnh dải; level cao đúng dải (co theo chiều cao) tự động cách đáy một lề |
+| `ContainerPosition` không có tham số lề | lề đã vào scale ở `FitScale`; tâm bounds đặt giữa dải nên level cao đúng dải tự cách hai đầu đúng một lề, level thấp hơn hở đều hai đầu, lớn hơn lề |
+
+**Mở rộng sau**
+
+- Treo đỉnh bounds một lề dưới đỉnh dải (bàn chơi kề thanh khay ở đỉnh): hàm riêng, công thức `y = bandTopY − m − B_max,y·s`; bản tạm ở
+  commit dự án `9a8f3a92`.
+- Game thứ hai nhận ba tham số từ Inspector: struct `[Serializable]` và overload, hàm cũ giữ.
 
 ---
 
@@ -46,35 +59,101 @@ Horcrux là submodule: Task 1–3 commit **trong `Assets/Horcrux`**.
 
 | Nguồn | Lấy gì | Không lấy, vì sao |
 |---|---|---|
-| `LevelBoundsFitter.cs` | `FitScale`, `ContainerPosition` | `TryGetLevelLocalBounds`, hai `*_CELL_EXTENTS`, `IsConveyorCell`: schema level |
-| Horcrux `ViewportAnchor` plan | cùng thư mục, cùng đơn vị world | không có hàm fit |
+| `LevelBoundsFitter.cs` (bản 2026-11-06) | `FitScale`, `ContainerPosition` nguyên văn thứ tự phép tính | `TryGetLevelLocalBounds`, `CellExtents`, hai `*_CELL_EXTENTS`, `LocalY`, `PosY`, `ROW_SPACING_SCALE`, `IsConveyorCell`: schema level |
+| `LevelBoundsFitterTests.cs` | dòng `FitScale` trong `SingleAtEdge_FitsByItsBody`; ba test `ContainerPosition_*` và hai mốc dải `3.42`, `−7.23` | sáu test bounds từ data |
+| `LevelLoader.cs` › `AdjustContainerScale`, `PositionShelfContainer` | cách chủ gọi: `screenWidth = orthographicSize × aspect × 2`, `bandHeight` là `Mathf.Abs` hiệu y hai anchor hoặc `null` khi thiếu anchor, gọi **cùng frame dựng kệ** trước lần vẽ đầu | — |
+| Horcrux `Runtime/Utilities/` | chưa có `Layout/`; Plan ViewportAnchor đặt cùng thư mục, cùng đơn vị world | không có hàm fit |
+| Plan `Horcrux_UIFitters_Plan.md` | — | `DesignWidthFitter`, `UICoverFitter` làm việc trên `RectTransform` của UI |
 | Unity `AspectRatioFitter` | — | chỉ `RectTransform` |
+
+---
+
+## Luồng mô tả — một bàn chơi vào dải
+
+```
+chủ có Bounds bàn chơi (scale 1), bề rộng màn, dải giữa hai HUD (hoặc không có dải)
+                              │
+                              ▼
+      scale đồng nhất: lọt bề rộng trừ hai lề · lọt dải trừ hai lề · không quá
+      scale ưa thích · không dưới scale tối thiểu                                   GĐ1
+                              │
+                              ▼
+      vị trí container: tâm bounds về giữa ngang và giữa dải                         GĐ2
+                              │
+                              ▼
+      tài liệu module (GĐ3) · dự án gọi bản Horcrux, xoá bản tạm (GĐ4)
+```
+
+## Bản đồ hệ cuối
+
+```
+  chủ bàn chơi (cùng frame dựng, trước lần vẽ đầu)
+     │ bounds, screenWidth, bandHeight?, margin, preferredScale, minScale
+     ▼
+  BandFit.FitScale ───────────► scale ───────► chủ gán localScale (s, s, 1)
+     │
+     │ bounds, scale, bandTopY, bandBottomY
+     ▼
+  BandFit.ContainerPosition ──► (x, y) ──────► chủ gán position
+```
+
+Ai sở hữu gì: chủ giữ bounds, ba tham số và hai mốc dải; `BandFit` là `static`, không giữ gì, gọi bao nhiêu lần cũng cùng kết quả.
 
 ---
 
 ## §0 — Công thức
 
-Bounds `B` (đơn vị container ở scale 1), bề rộng màn `W`, dải cao `H` (tuỳ chọn), lề `m`, scale ưa thích `s₀`, scale tối thiểu `s_min`:
+**Hiện tượng.** Bàn chơi vẽ ở scale 1 có cỡ tuỳ level. Màn có bề rộng world cố định `W`; HUD trên và HUD dưới chừa một dải cao `H`.
+Cần một scale `s` để bàn lọt cả bề rộng lẫn dải, mỗi bên chừa lề `m`; không to quá `s₀` (cỡ art đã chốt) và không nhỏ dưới `s_min`
+(còn đọc được, chấp nhận tràn).
+
+| Ký hiệu | Là gì |
+|---|---|
+| `B_w`, `B_h`, `B_cx`, `B_cy` | bề rộng, chiều cao, tâm của bounds ở scale 1 |
+| `W` | bề rộng màn world (`orthographicSize × aspect × 2` với camera ortho) |
+| `H` | chiều cao dải; không có dải thì bỏ số hạng của nó |
+| `m` | lề mỗi bên, cùng đơn vị |
+| `s₀`, `s_min` | scale ưa thích, scale tối thiểu |
+
+**Scale** — ràng buộc "lọt" là `B_w·s ≤ W − 2m` và `B_h·s ≤ H − 2m`, mỗi cái cho một trần; lấy trần thấp nhất rồi kẹp:
 
 $$s = \max\big(s_{min},\ \min(s_0,\ \tfrac{W - 2m}{B_w},\ \tfrac{H - 2m}{B_h})\big)$$
 
-(bỏ số hạng của chiều không giới hạn, có `B` ≈ 0, hoặc có `W − 2m` / `H − 2m` ≤ 0 — lề nuốt hết màn hay dải). Vị trí container để tâm ngang về 0 và đỉnh bounds cách `bandTopY` một lề:
+Bỏ số hạng khi: không có dải · chiều đó của `B` ≤ 0.01 (bounds một điểm) · `W − 2m` hay `H − 2m` ≤ 0 (lề nuốt hết màn hay dải, không
+còn gì để lọt).
 
-$$x = -B_{cx}\,s,\qquad y = \text{bandTopY} - m - B_{max,y}\,s$$
+**Vị trí** — tâm bounds sau scale nằm ở `B_c·s` so với container; container đặt tại đích trừ đi đó, đích là `x = 0` và giữa dải:
+
+$$x = -B_{cx}\,s,\qquad y = \tfrac{\text{bandTopY} + \text{bandBottomY}}{2} - B_{cy}\,s$$
+
+Từ phương trình ra code: ① `s = s₀` → ② `s = min(s, (W − 2m)/B_w)` nếu `B_w > 0.01` và `W − 2m > 0` → ③ `s = min(s, (H − 2m)/B_h)`
+nếu có `H`, `B_h > 0.01` và `H − 2m > 0` → ④ `s = max(s, s_min)` → ⑤ `(x, y)` theo công thức trên.
+
+Hệ quả kiểm được: level ràng theo chiều cao có `B_h·s = H − 2m`, tâm ở giữa dải nên mép trên cách đỉnh dải đúng `m`, mép dưới cách đáy
+đúng `m`. Level thấp hơn dải hở hai đầu bằng nhau, mỗi đầu `(H − B_h·s)/2 > m`.
+
+Mốc với `W` 10.5, dải `3.42 → −7.23` (`H` 10.65), `m` 0.4, `s₀` 0.743, `s_min` 0.37:
 
 | Mốc | Kỳ vọng | ✓ |
 |---|---|---|
-| `B` 18.4×13.6 tâm (−1, 0), `W` 10.5, `H` 10.65, `m` 0.4, `s₀` 0.743 | `s` = min(0.743, 9.7/18.4, 9.85/13.6) = 0.527 | co theo bề rộng |
+| `B` 18.4×13.6 tâm (−1, 0.6) | `s` = min(0.743, 9.7/18.4, 9.85/13.6) = min(0.743, 0.527, 0.724) = 0.527 | co theo bề rộng |
 | cùng `B`, `H` null | `s` = min(0.743, 0.527) = 0.527 | chiều cao không ràng |
-| `B` 13.4×18.6, cùng dải | `s` = min(0.743, 0.724, 0.530) = 0.530 | co theo chiều cao; `y + B_min,y·s` = đáy dải + `m` |
-| `B` 100×100, `s_min` 0.37 | `s` = 0.37 | kẹp |
+| cùng `B`, vị trí | `y + 0.6·s` = −1.905 (giữa dải); hở trên = hở dưới = (10.65 − 13.6·0.527)/2 = 1.74 > `m` | level thấp hơn dải hở đều |
+| `B` 13.4×18.6 tâm (0, −1) | `s` = min(0.743, 0.724, 0.530) = 0.530; `y` = −1.905 + 0.530 = −1.375; mép trên `y + 8.3·s` = 3.02 = 3.42 − `m`; mép dưới `y + (−10.3)·s` = −6.83 = −7.23 + `m` | co theo chiều cao, chạm hai lề |
+| `B` 100×100 | min(…, 0.097) → kẹp 0.37 | kẹp dưới |
 | `B` cỡ 0 | `s` = `s₀` | không chia 0 |
+| `B` 6.4×3.6 (một kệ) | min(0.743, 1.52, 2.74) = 0.743 | không phóng to quá `s₀` |
 
 ---
 
-## Task 1 — Horcrux (developer gõ)
+## Giai đoạn 1 — Scale lọt bề rộng và dải
 
-### `Runtime/Utilities/Layout/BandFit.cs`
+**Mục tiêu:** chủ đưa bounds, bề rộng màn, dải (hoặc không) và ba tham số, nhận một scale đồng nhất. Xong giai đoạn này chủ gán được
+`localScale` cho container và bàn chơi không tràn màn.
+
+**Vì sao bây giờ:** scale là số đầu tiên chủ cần, trước cả vị trí: vị trí tính trên bounds đã scale.
+
+### `Runtime/Utilities/Layout/BandFit.cs` — file mới
 
 ```csharp
 using UnityEngine;
@@ -82,15 +161,20 @@ using UnityEngine;
 namespace Horcrux.Runtime.Utilities.Layout
 {
     /// <summary>
-    /// Scale đồng nhất để một bounds lọt bề rộng màn và một dải cao tuỳ chọn, chừa lề, kẹp dưới; và vị trí treo đỉnh bounds
-    /// lên đỉnh dải.
+    /// Đặt một bounds vào dải giữa hai HUD: scale đồng nhất để bounds lọt bề rộng màn và dải cao tuỳ chọn, chừa lề, kẹp dưới.
+    /// Toán thuần trên Bounds và số, không chạm Unity object.
     /// </summary>
     public static class BandFit
     {
-        /// <summary>Bounds mỏng hơn ngưỡng này ở một chiều thì chiều đó không ràng scale.</summary>
+        /// <summary>Bounds mỏng hơn ngưỡng này ở một chiều thì chiều đó không ràng scale: bounds một điểm không chia cho 0.</summary>
         private const float MinSize = 0.01f;
 
-        /// <param name="bandHeight">Chiều cao dải; null là không giới hạn chiều cao.</param>
+        /// <summary>
+        /// Scale để <paramref name="bounds"/> lọt bề rộng màn <paramref name="screenWidth"/> và dải cao
+        /// <paramref name="bandHeight"/> (null: không giới hạn chiều cao), mỗi chiều chừa lề hai bên; không quá
+        /// <paramref name="preferredScale"/>, không dưới <paramref name="minScale"/>. Kẹp dưới sau cả hai chiều: bounds quá
+        /// to vẫn giữ cỡ đọc được, chấp nhận tràn.
+        /// </summary>
         /// <param name="margin">Lề chừa mỗi bên, cùng đơn vị với bounds và màn.</param>
         public static float FitScale(Bounds bounds, float screenWidth, float? bandHeight, float margin, float preferredScale, float minScale)
         {
@@ -109,43 +193,200 @@ namespace Horcrux.Runtime.Utilities.Layout
 
             return Mathf.Max(scale, minScale);
         }
-
-        /// <summary>
-        /// Vị trí world của container (đã scale) để bounds căn giữa ngang và mép trên cách bandTopY một lề: bounds thấp hơn dải
-        /// đứng sát đỉnh dải thay vì trôi ra giữa.
-        /// </summary>
-        public static Vector2 ContainerPosition(Bounds bounds, float scale, float bandTopY, float margin)
-            => new(-bounds.center.x * scale, bandTopY - margin - bounds.max.y * scale);
     }
 }
 ```
 
-**Khác với bản dự án:** ba hằng thành tham số; `LEVEL_CONTAINER_SCALE`, `LEVEL_CONTAINER_MIN_SCALE`, `LEVEL_SCREEN_MARGIN` ở lại
-`LevelBoundsFitter` của dự án và truyền vào. Công thức và thứ tự phép tính giữ nguyên từng dòng.
+**Khác với bản dự án**
 
-### Nghiệm thu Task 1
+| Chỗ | Bản dự án | Bản Horcrux | Vì |
+|---|---|---|---|
+| ba hằng | `LEVEL_CONTAINER_SCALE`, `LEVEL_CONTAINER_MIN_SCALE`, `LEVEL_SCREEN_MARGIN` đọc trong thân | ba tham số cuối | mỗi game một bộ; hằng ở lại `LevelBoundsFitter` của dự án và truyền vào (GĐ4) |
+| ngưỡng `0.01f` | số trong thân | `MinSize` | hai chỗ dùng cùng một ngưỡng |
 
-`com.horcrux.runtime.csproj` build sạch.
+Thứ tự phép tính giữ nguyên từng dòng.
 
----
+**Quyết định** — `bandHeight` nhận `float?` thay vì chủ truyền `float.MaxValue`: `null` đọc được ở call site là "không có dải", và
+số lớn giả vẫn đi qua phép trừ lề và phép chia. Phương án bỏ: hai overload có và không có dải — hai thân gần trùng, một cờ `HasValue`
+rẻ hơn. — Lề nuốt hết màn (`availableWidth ≤ 0`) thì **bỏ ràng** thay vì trả `minScale`: không còn gì để lọt, scale ưa thích là câu trả
+lời ít sai nhất; ca này chỉ xảy ra khi chủ cấu hình lề sai, và tràn nhìn thấy ngay.
 
-## Task 2 — Tài liệu `Runtime/Utilities/Layout/BandFit.md` (agent)
+| Consumes | Produces |
+|---|---|
+| `UnityEngine.Bounds`, `Mathf` | `BandFit.FitScale` |
 
-Mục §0 ở trên (công thức, bảng mốc) · hình ASCII dải giữa hai HUD với lề · "Design decisions" là bảng trên · "Dùng trong dự án":
-cách người dùng đầu tính `bandTopY`, `bandHeight` từ hai `ViewportAnchor` và truyền ba hằng của nó.
+**Sơ đồ tương tác sau GĐ1** (`+` là phần mới)
 
-## Task 3 — Test EditMode (agent)
+```
+  chủ ──bounds, screenWidth, bandHeight?, margin, preferredScale, minScale──► BandFit.FitScale+ ──scale──► chủ gán localScale
+```
 
-`Tests/EditMode/BandFitTests.cs`, không dựng object; tham số `margin 0.4`, `preferredScale 0.743`, `minScale 0.37`, `W 10.5`,
-dải `3.42 → −7.23`.
+**Editor setup:** không — hàm thuần, chủ gọi bằng code với số của mình.
+
+**Kiểm:** compile sạch. Test khai hằng `W 10.5`, dải `3.42 → −7.23`, `m 0.4`, `s₀ 0.743`, `s_min 0.37`; sai số `1e-3`.
 
 | Case | Input | Kỳ vọng |
 |---|---|---|
-| co theo bề rộng | `B` 18.4×13.6 | `s` 0.527 (±1e-3) |
-| không ràng chiều cao | `bandHeight` null | cùng `s` |
-| co theo chiều cao | `B` 13.4×18.6 | `s` 0.530; `y + B.min.y·s` = −7.23 + 0.4 (±1e-3) |
+| co theo bề rộng | `B` 18.4×13.6 | 0.527 |
+| không có dải | `bandHeight` null | 0.527 |
+| co theo chiều cao | `B` 13.4×18.6 | 0.530 |
+| nhỏ hơn cỡ ưa thích | `B` 6.4×3.6 | `preferredScale`: không phóng to |
+| chạm đúng bề rộng | `B` rộng 9.7/0.743 | `preferredScale` (hai trần bằng nhau) |
 | kẹp dưới | `B` 100×100 | 0.37 |
-| bounds mỏng | `B` 0×0 | `preferredScale` |
-| lề lớn hơn màn | `B` 18.4×13.6, `W` 0.5, `m` 0.4, `bandHeight` null | `availableWidth` âm không ràng, không dải → `preferredScale` |
-| treo đỉnh | `B` tâm (−1, 0) 18.4×13.6, `s` từ FitScale | `y + B.max.y·s` = 3.42 − 0.4 |
-| căn giữa ngang | `s` 0.5 | `x + B.center.x·s` = 0 |
+| bounds rỗng | `B` 0×0 | `preferredScale` |
+| một chiều mỏng | `B` 0×18.6 | 0.530: chỉ chiều cao ràng |
+| lề nuốt màn | `W` 0.5, `bandHeight` null | `preferredScale`: `availableWidth` âm không ràng |
+| lề nuốt dải | `bandHeight` 0.6 | 0.527: chỉ bề rộng ràng |
+| `minScale` trên `preferredScale` | `s_min` 0.8 | 0.8 — kẹp thắng; ghi ở tài liệu là cấu hình lỗi của chủ |
+
+**Mốc commit:** `feat(layout): BandFit.FitScale`.
+
+---
+
+## Giai đoạn 2 — Vị trí container giữa dải
+
+**Mục tiêu:** với scale vừa có và hai mốc dải, chủ nhận vị trí world của container để tâm bounds nằm giữa ngang và giữa dải. Xong giai
+đoạn này một bàn chơi tâm lệch (kệ Single một bên) vẫn đứng giữa màn và giữa hai HUD.
+
+**Vì sao bây giờ:** scale đã có; vị trí là bước còn lại trước khi chủ gán transform. Hai mốc dải đi riêng (`bandTopY`, `bandBottomY`)
+thay vì `bandHeight` của GĐ1 vì vị trí cần biết dải nằm **ở đâu**, scale chỉ cần biết dải **cao bao nhiêu**.
+
+### `BandFit.cs` › thêm sau `FitScale`, trước dấu đóng class
+
+```csharp
+            return Mathf.Max(scale, minScale);
+        }
+
+        /// <summary>
+        /// Vị trí world của container (đã scale <paramref name="scale"/>) để <paramref name="bounds"/> căn giữa ngang và giữa dải
+        /// <paramref name="bandTopY"/>–<paramref name="bandBottomY"/>: bounds tâm lệch vẫn nằm giữa dải. Không có lề: lề đã
+        /// vào scale, bounds cao đúng dải tự cách hai đầu một lề.
+        /// </summary>
+        public static Vector2 ContainerPosition(Bounds bounds, float scale, float bandTopY, float bandBottomY)
+            => new(-bounds.center.x * scale, (bandTopY + bandBottomY) / 2f - bounds.center.y * scale);
+```
+
+**Khác với bản dự án:** không — chữ ký và thân giống nguyên văn; chỉ XML doc đổi.
+
+**Quyết định** — căn tâm bounds vào giữa dải. Phương án bỏ: treo mép trên bounds một lề dưới đỉnh dải — level thấp hơn dải đứng sát HUD
+trên, hở toàn bộ xuống đáy; dự án nguồn đã chơi thử và chọn căn giữa (bảng "Cố ý KHÔNG làm"). — Hai mốc dải truyền riêng, không truyền
+`bandCenterY`: chủ đang cầm hai anchor, phép cộng chia hai ở trong hàm thì call site không phải tính gì.
+
+| Consumes | Produces |
+|---|---|
+| GĐ1 (`scale` từ `FitScale`) | `BandFit.ContainerPosition` |
+
+**Sơ đồ tương tác sau GĐ2**
+
+```
+  chủ ──► BandFit.FitScale ──scale──► chủ ──bounds, scale, bandTopY, bandBottomY──► BandFit.ContainerPosition+ ──(x, y)──► chủ gán position
+```
+
+**Editor setup:** không.
+
+**Kiểm:** compile sạch; cùng hằng GĐ1.
+
+| Case | Input | Kỳ vọng |
+|---|---|---|
+| tâm giữa dải | `B` 18.4×13.6 tâm (−1, 0.6), `s` từ `FitScale` | `y + 0.6·s` = (3.42 − 7.23)/2 |
+| căn giữa ngang | cùng `B`, `s` 0.5 | `x + (−1)·0.5` = 0 |
+| level cao đúng dải chạm hai lề | `B` 13.4×18.6 tâm (0, −1), `s` từ `FitScale` | `y + B.max.y·s` = 3.42 − 0.4; `y + B.min.y·s` = −7.23 + 0.4 |
+| level thấp hơn dải hở đều | `B` 18.4×13.6, `s` từ `FitScale` | hở trên = hở dưới = (10.65 − 13.6·s)/2 |
+| dải đảo | `bandTopY` −7.23, `bandBottomY` 3.42 | cùng `y`: trung bình không phụ thuộc thứ tự |
+| bounds rỗng | `B` default, `s` 0.743 | (0, −1.905) |
+| scale 0 | `s` 0 | (0, −1.905): không ném, tâm container về giữa dải |
+
+**Mốc commit:** `feat(layout): BandFit.ContainerPosition`.
+
+---
+
+## Giai đoạn 3 — Tài liệu `docs/Runtime/BandFit/BandFit.md` và `BandFit.html` (agent)
+
+`.md` mở đầu `Code: Runtime/Utilities/Layout`. Mục: `§0` ở trên (hiện tượng, công thức, năm bước, bảng mốc) · hình ASCII dải giữa hai HUD với lề và hai ca level thấp hơn dải, level cao
+đúng dải · bảng API hai hàm · "Design decisions" gom bảng "Cố ý KHÔNG làm", "Quyết định trái trực giác" và các **Quyết định** của GĐ1–2 ·
+"Dùng trong dự án": chủ tính `screenWidth` từ camera ortho, `bandHeight` từ hai anchor (`null` khi thiếu), gọi cùng frame dựng bàn chơi,
+giữ ba tham số là hằng của mình · ca `minScale > preferredScale` và lề nuốt màn là cấu hình lỗi của chủ. Không có "Trước khi chạy": hàm
+thuần, không wire. `.html` chọn từ `.md`: kịch bản (ba cỡ level vào một dải), cách dùng (chủ tính gì, gọi lúc nào), flow, lưu ý
+(hai cấu hình lỗi).
+
+**Mốc commit:** `docs(layout): BandFit.md`.
+
+---
+
+## Giai đoạn 4 — Dự án gọi bản Horcrux, xoá bản tạm (agent)
+
+**Mục tiêu:** `LevelBoundsFitter` chỉ còn hằng và phần bounds từ data; `LevelLoader` gọi `BandFit` với ba hằng của `LevelBoundsFitter`;
+test vị trí chuyển về Horcrux. Hành vi quan sát được không đổi: cùng công thức, cùng hằng.
+
+### `Scripts/Director/LevelBoundsFitter.cs` › `API` — xoá
+
+Xoá `FitScale` và `ContainerPosition` cùng XML doc của chúng. Giữ `LEVEL_CONTAINER_SCALE`, `LEVEL_CONTAINER_MIN_SCALE`,
+`LEVEL_SCREEN_MARGIN` (doc của hằng không trỏ hàm nào). Sửa summary class: bỏ vế "scale đồng nhất… và vị trí container", còn "bounds của
+level tính từ data (đơn vị container, scale 1) và hằng fit bàn chơi".
+
+### `Scripts/Director/LevelLoader.cs` › `AdjustContainerScale` — đoạn cũ → đoạn mới
+
+Cũ:
+
+```csharp
+                    scale = LevelBoundsFitter.FitScale(bounds, cam.orthographicSize * cam.aspect * 2f, bandHeight);
+```
+
+Mới:
+
+```csharp
+                    scale = BandFit.FitScale(bounds, cam.orthographicSize * cam.aspect * 2f, bandHeight,
+                        LevelBoundsFitter.LEVEL_SCREEN_MARGIN, LevelBoundsFitter.LEVEL_CONTAINER_SCALE, LevelBoundsFitter.LEVEL_CONTAINER_MIN_SCALE);
+```
+
+### `LevelLoader.cs` › `PositionShelfContainer` — đoạn cũ → đoạn mới
+
+Cũ:
+
+```csharp
+            var position = LevelBoundsFitter.ContainerPosition(m_levelLocalBounds, shelfContainer.transform.localScale.x,
+                m_topAnchor.position.y, m_bottomAnchor.position.y);
+```
+
+Mới:
+
+```csharp
+            var position = BandFit.ContainerPosition(m_levelLocalBounds, shelfContainer.transform.localScale.x,
+                m_topAnchor.position.y, m_bottomAnchor.position.y);
+```
+
+Thêm `using Horcrux.Runtime.Utilities.Layout;` ở `LevelLoader.cs`; `CategoryJam.Gameplay.asmdef` đã tham chiếu `com.horcrux.runtime`.
+
+### `Tests/EditMode/LevelBoundsFitterTests.cs`
+
+| Chỗ | Cũ | Mới |
+|---|---|---|
+| `SingleAtEdge_FitsByItsBody` | `LevelBoundsFitter.FitScale(bounds, 10.5f, 8.73f)` | `BandFit.FitScale(bounds, 10.5f, 8.73f, LevelBoundsFitter.LEVEL_SCREEN_MARGIN, LevelBoundsFitter.LEVEL_CONTAINER_SCALE, LevelBoundsFitter.LEVEL_CONTAINER_MIN_SCALE)` — case này kiểm bề rộng 22.4 của bounds, giữ ở dự án |
+| `BandTopY`, `BandBottomY`, `ContainerPosition_CentresLevelInBand`, `ContainerPosition_CentresLevelHorizontally`, `ContainerPosition_HeightLimitedLevelTouchesBothMargins` | ba test vị trí | xoá — đã là ba hàng đầu bảng case GĐ2 trong `BandFitTests.cs` |
+
+Thêm `using Horcrux.Runtime.Utilities.Layout;`; `CategoryJam.EditModeTests.asmdef` đã tham chiếu `com.horcrux.runtime`.
+
+### `Scripts/Layout.md` › §1 — câu "fit vào dải giữa `mask_top` và `mask_bottom` bằng `LevelBoundsFitter` (…)"
+
+→ "bằng Horcrux `BandFit` với hằng của `LevelBoundsFitter` (…)"; phần trong ngoặc giữ nguyên.
+
+**Editor setup:** không — không prefab, scene nào trỏ hai hàm này.
+
+**Kiểm:** grep `LevelBoundsFitter.FitScale`, `LevelBoundsFitter.ContainerPosition` toàn repo trả 0 · compile dự án sạch · test dự án và
+Horcrux xanh · **cần chơi thử** (developer): Game view 1080×2340 rồi 1080×1920, vào một level 1 cột, một level 2 cột có kệ Single một bên
+(hình level 8), một level 4 hàng; nhìn bàn chơi đứng giữa `mask_top`–`mask_bottom` và giữa màn ngay từ frame đầu, không chạm thanh
+cache và booster bar; dấu hiệu hỏng: kệ hiện ở gốc rồi nhảy xuống · bàn chơi lệch ngang ở level tâm lệch · level 4 hàng tràn vào
+thanh cache.
+
+**Mốc commit:** repo dự án `refactor(layout): LevelLoader dùng BandFit của Horcrux` kèm con trỏ submodule.
+
+---
+
+## File → giai đoạn
+
+| File | GĐ1 | GĐ2 | GĐ3 | GĐ4 |
+|---|---|---|---|---|
+| `Runtime/Utilities/Layout/BandFit.cs` | tạo, `FitScale` | `ContainerPosition` | | |
+| `Tests/EditMode/BandFitTests.cs` (agent) | tạo | thêm case | | |
+| `docs/Runtime/BandFit/BandFit.md`, `.html` (agent) | | | tạo | |
+| dự án: `Director/LevelBoundsFitter.cs`, `Director/LevelLoader.cs`, `Tests/EditMode/LevelBoundsFitterTests.cs`, `Scripts/Layout.md` | | | | đổi |
