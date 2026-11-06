@@ -94,6 +94,10 @@ maintain. **Tự chứa:** code lại được từ đầu tới cuối không s
 giải theo `math-physics` › Cho hiểu sâu. **Editor setup đầy đủ** — bước tay thiếu không compile error nào bắt; câu
 developer hỏi lặp lại thì ghi ngược vào Plan.
 
+**Phần dẫn đủ hiểu, sức dồn vào code:** developer đọc lướt phần trước giai đoạn đầu để nắm ý, hiểu sâu khi gõ. Ngữ cảnh
+đã chốt, Đã khảo sát, luồng, bản đồ chỉ đủ để định hướng; lý giải sâu — vì sao, phương án bỏ — đặt cạnh đoạn code nó
+giải thích, không dồn lên đầu. Công viết đổ vào phần hướng dẫn code: neo đúng, đoạn mới đủ gõ, chú thích chỗ dễ gõ sai.
+
 **Dựng theo luồng, chia theo giai đoạn — không theo file.** Mở đầu bằng **luồng mô tả** (kịch bản dùng hệ từ đầu tới cuối,
 cắt thành chặng) và **bản đồ hệ cuối** (ai làm gì, ai gọi ai). Mỗi giai đoạn nối thêm một chặng, xuyên qua mọi file chặng
 đó cần, kết ở trạng thái **chạy được, thấy được**. Thứ tự theo luồng, không theo cây phụ thuộc type — lá trước gốc là gõ
@@ -122,7 +126,7 @@ sách cheat · mốc commit. Cuối Plan: bảng file → giai đoạn đã ch�
 là compile sạch và bảng case xanh, "thấy trong game" là giai đoạn cuối — dự án chuyển sang bản Horcrux, xoá bản tạm, kèm kịch
 bản chơi thử · code Editor không có test thì caller là nút của dự án: nối dự án ngay trong giai đoạn, xoá bản tạm cùng tên cùng
 lúc · nhiều utility độc lập trong một Plan: mỗi cơ chế một luồng, bản đồ và chuỗi giai đoạn riêng, chung Ngữ cảnh đã chốt, Đã
-khảo sát, tài liệu và chuyển dự án. **Nghiệm thu:** có "Ngữ cảnh đã chốt" · đọc giai đoạn
+khảo sát, tài liệu và chuyển dự án. **Nghiệm thu:** có "Ngữ cảnh đã chốt" · phần trước giai đoạn đầu đọc lướt được · đọc giai đoạn
 nào cũng trả lời được "code này ai gọi" · không member nào có trước giai đoạn có caller của nó · không đoạn nào chép lại
 cả file đã có · mọi neo trỏ member có thật · đúng công thức, đúng nhịp, self-document.
 
