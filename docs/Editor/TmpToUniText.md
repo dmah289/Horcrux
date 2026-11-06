@@ -76,6 +76,7 @@ Apply(json, folder) ── gán preset vào ô Style Presets của UniText cùng
 | 5 | Chạy **script stage trước** `Apply` | lưu prefab khi field còn kiểu TMP thì Unity xoá field trỏ chữ |
 | 6 | Gắn lại component bị gỡ vì `RequireComponent(TMP)` (ghi ở `ProjectSettings/UniText/MigrationLosses.json`) sau khi script đổi kiểu | timer, typewriter, nhãn số mất hành vi, không lỗi compile |
 | 7 | Khởi động lại Editor sau khi cài, cập nhật package UniText | plugin GPU tách: không chữ nào được vẽ |
+| 8 | Có `UniTextWorld` thì bật Project Settings → LightSide → Core → Rendering → **Include World Shaders** | build vẫn xanh nếu chữ world chỉ nằm trong prefab Addressables (bộ kiểm của LightSide chỉ quét scene); trên máy chữ world không hiện, log `Shader 'LightSide/World' is unavailable`. Editor vẫn vẽ nên không lộ |
 
 ## Bẫy
 
