@@ -9,7 +9,8 @@ Skill nền dưới `Skills/horcrux_skill.md` (NT, ba tầng, ký hiệu định
 
 Mỗi hệ và tool có tài liệu riêng, **không đặt cạnh code**, tên theo tên hệ, `.md` mở đầu bằng dòng `Code:` trỏ thư mục
 code tính từ gốc Horcrux; Plan ở `Plans/`. **Hệ Runtime có đủ cặp** trong thư mục riêng `docs/Runtime/<Hệ>/`: `<Hệ>.md`
-cho agent đọc rẻ token, `<Hệ>.html` cho developer đọc để dùng hệ. **Tool Editor chỉ `.md`**, nằm phẳng ở `docs/Editor/`.
+cho agent đọc rẻ token, `<Hệ>.html` cho developer đọc để dùng hệ — utility thuần cũng là hệ Runtime. **Tool Editor chỉ
+`.md`**, nằm phẳng ở `docs/Editor/`.
 **Thay đổi hệ thì cập nhật tài liệu trong cùng lần làm** — cả `.md` lẫn `.html`.
 
 | Loại | Người đọc, vai trò | Vòng đời |
@@ -117,7 +118,11 @@ riêng. Developer gõ lệch Plan là bình thường: sau mỗi giai đoạn ag
 Mỗi giai đoạn: mục tiêu (chặng nào, xong thì hệ làm thêm được gì) · vì sao bây giờ · sơ đồ tương tác · chỗ thêm theo neo
 (`File` › region › neo → đoạn mới) · Interfaces nó consumes, produces · "toán → code" · *quyết định, phương án bỏ, vì sao* ·
 Editor setup của giai đoạn · kiểm (compile, thấy gì, bảng case input → kỳ vọng, biên theo `workflow` › Nghiệm thu) · danh
-sách cheat · mốc commit. Cuối Plan: bảng file → giai đoạn đã chạm. **Nghiệm thu:** có "Ngữ cảnh đã chốt" · đọc giai đoạn
+sách cheat · mốc commit. Cuối Plan: bảng file → giai đoạn đã chạm. Plan chỉ có Horcrux: "chạy được, thấy được" mỗi giai đoạn
+là compile sạch và bảng case xanh, "thấy trong game" là giai đoạn cuối — dự án chuyển sang bản Horcrux, xoá bản tạm, kèm kịch
+bản chơi thử · code Editor không có test thì caller là nút của dự án: nối dự án ngay trong giai đoạn, xoá bản tạm cùng tên cùng
+lúc · nhiều utility độc lập trong một Plan: mỗi cơ chế một luồng, bản đồ và chuỗi giai đoạn riêng, chung Ngữ cảnh đã chốt, Đã
+khảo sát, tài liệu và chuyển dự án. **Nghiệm thu:** có "Ngữ cảnh đã chốt" · đọc giai đoạn
 nào cũng trả lời được "code này ai gọi" · không member nào có trước giai đoạn có caller của nó · không đoạn nào chép lại
 cả file đã có · mọi neo trỏ member có thật · đúng công thức, đúng nhịp, self-document.
 
