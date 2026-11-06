@@ -12,7 +12,7 @@ kiểm tĩnh trước: `PrefabDump` không cần vào Play.
 | Mục | Chốt |
 |---|---|
 | Người dùng | agent, khi chỉnh feeling, dò lỗi trình diễn, đo hiệu năng; quy trình chọn công cụ ở `Skills/feel-tune/SKILL.md` |
-| Ranh giới | Horcrux giữ runner, ghi kết quả, reflection, chờ scene, bấm nút, dump prefab, ghép ảnh, cỡ Game view, vào Play từ scene đầu. Dự án giữ **đường tắt vào trạng thái cần đo** (bấm menu, chờ level, chọn entity), một class Editor của dự án |
+| Ranh giới | Horcrux giữ runner, ghi kết quả, reflection, chờ scene, bấm nút, dump prefab, ghép ảnh, cỡ Game view, chạy lần lượt nhiều cỡ, đo khung object trên màn, vào Play từ scene đầu. Dự án giữ **đường tắt vào trạng thái cần đo** (bấm menu, chờ level, chọn entity), một class Editor của dự án |
 | Chỗ đặt | C# ở `Editor/Probe/` (assembly `com.horcrux.editor`). Shell ở `Editor/Probe/Tools~/`: Unity không import, không vào build |
 | Quan hệ với FeelTrace | `feeltrace.sh` chạy qua `playrun.sh`; `FeelTraceRecorder` dùng chung cờ `.done` |
 
@@ -35,6 +35,9 @@ kiểm tĩnh trước: `PrefabDump` không cần vào Play.
 | `GameViewSize` đi qua reflection | Unity CLI và API công khai không có lệnh đổi cỡ Game view; tên type, method nội bộ đã kiểm trên Unity 6, đổi version thì kiểm lại |
 | `PlayFrom` nhớ scene khởi động cũ bằng `SessionState` | vào Play có domain reload: biến static mất, `SessionState` còn tới khi đóng Editor |
 | `PlayProbe.Click` gửi thẳng tới object, không raycast | bấm theo tên object không phụ thuộc toạ độ màn và thứ che phía trên; kiểm nút có bị che thì nhìn ảnh chụp |
+| `ScreenBox` gốc trên trái, trục y đi xuống | trùng hệ toạ độ ảnh chụp và ảnh demo: số đo so thẳng với `DemoCompare` (`docs/Editor/UIReskin.md`). Tự đổi bằng `WorldToScreenPoint` hay quên lật trục y |
+| `ScreenBox` của object có RectTransform là rect của chính nó, không gộp con | chữ world có RectTransform mà không có Renderer; khung là ô chữ, không phải nét chữ. Cần cả cụm thì đo object cha không có RectTransform |
+| `SIZES` đặt cỡ trước khi vào Play, mỗi cỡ một lần Play | game đọc cỡ màn lúc khởi động; đổi giữa Play thì phần tính theo màn lúc boot vẫn theo cỡ cũ |
 
 ## Luồng dữ liệu
 
@@ -67,6 +70,7 @@ playrun.sh: thấy .done → playmode stop → chuyển file về <file ra> → 
 | `PlayProbe.Field<T>(object target, string fieldName)` · `Call(object target, string methodName, params object[] args)` | instance, public hay không, dò từ type thật lên base. Không có thì ném `MissingFieldException` / `MissingMethodException`; nhiều overload cùng tên thì `AmbiguousMatchException` |
 | `PrefabDump.Dump(GameObject root, string pathFilter = null)` | một dòng mỗi object (xem "Đọc PrefabDump"); `pathFilter` giữ dòng có đường dẫn chứa chuỗi đó. Soát override, reference gãy của prefab UI ở `docs/Editor/UIReskin.md` |
 | `PrefabDump.DumpAsset(string assetPath, string pathFilter = null)` | prefab nạp qua `AssetDatabase`, không instantiate, không cần Play |
+| `ScreenBox.Of(GameObject target)` | khung trên Game view theo pixel, gốc trên trái: `Left` `Top` `Right` `Bottom` `Width` `Height`, `ToString()` ra `y top-bottom x left-right`. RectTransform: rect của chính nó, canvas Overlay đọc thẳng, canvas Camera và World qua `worldCamera` (thiếu thì `Camera.main`), không canvas qua `Camera.main`. Còn lại: gộp bounds mọi Renderer con đang bật, chiếu tám góc qua `Camera.main`. Không có cả hai thì ném `InvalidOperationException`. Gọi trong Play, sau khi layout chạy |
 | `new FrameSheet(RectInt crop, int shrink = 2)` | `crop` theo pixel Game view, gốc dưới trái, `width` 0 là cả màn; `shrink` thu nhỏ nguyên lần |
 | `FrameSheet.CaptureAsync(CancellationToken ct)` | chờ cuối frame hiện tại rồi chụp Game view (gồm UI overlay). Gọi trong `Act` của FeelTrace là chụp đúng frame đó |
 | `FrameSheet.Save(string pngPath, int columns)` · `Count` · `Dispose()` | ghép lưới: ảnh 0 trên trái, đi theo hàng, khe 4 px xám; `Dispose` huỷ texture đã chụp |
@@ -87,6 +91,14 @@ bash "Assets/Horcrux/Editor/Probe/Tools~/playrun.sh" <script .cs> <file ra> [mar
 Chạy từ gốc project hoặc đặt `PROJECT_PATH`; `UNITY_CLI` đổi đường dẫn `unity.exe`; `PLAY_FROM_BUILD_SCENE=1` vào Play từ scene đầu Build
 Settings qua `PlayFrom.Arm`. Mã thoát khác 0 khi script lỗi compile (in đủ
 lỗi, dừng ngay), không chạy, hay timeout.
+
+`SIZES="1080x2340 1080x1920"` chạy cùng script một lần mỗi cỡ Game view, đặt cỡ trước khi vào Play. File ra thêm hậu tố cỡ trước đuôi
+(`out.txt` → `out_1080x2340.txt`), mọi `__SIZE__` trong script thành cỡ đó (đặt tên ảnh chụp), xong trả Game view về cỡ trước lần đặt
+đầu. Một cỡ hỏng thì vẫn chạy cỡ sau, mã thoát 1.
+
+```bash
+SIZES="1080x2340 1080x2220 1080x1920" PLAY_FROM_BUILD_SCENE=1 bash "Assets/Horcrux/Editor/Probe/Tools~/playrun.sh" probe.cs out.txt
+```
 
 ## Hợp đồng script
 
@@ -136,7 +148,7 @@ header/txt_title on p=20,-105,0 s=1,1,1 r=0 | rt a=20,8 sd=660,130 anc=0.5,0.5-0
 | 1 | Unity Editor mở project; Unity CLI và package `com.unity.pipeline` đã cài; `unity status --project-path <project>` báo `ready` | runner báo `pipeline not ready` |
 | 2 | Không có lỗi compile trong project | Editor vào Safe Mode, pipeline không nạp |
 | 3 | Scene khởi động của game đang mở, hoặc chạy với `PLAY_FROM_BUILD_SCENE=1`, nếu script vào level qua menu | script chờ mãi, runner báo timeout |
-| 4 | Game view giữ một độ phân giải cho mọi lần đo so với nhau, và cho mọi `crop` của `FrameSheet`: script gọi `GameViewSize.Set` trước khi đo | toạ độ, vùng cắt lệch |
+| 4 | Game view giữ một độ phân giải cho mọi lần đo so với nhau, và cho mọi `crop` của `FrameSheet`: chạy với `SIZES`, hoặc script gọi `GameViewSize.Set` trước khi đo | toạ độ, vùng cắt lệch |
 
 Run In Background và auto-tick runner tự bật, và trả lại khi thoát ở mọi đường ra (override ghi vào `ProjectSettings/Packages/com.unity.pipeline`).
 
@@ -146,7 +158,9 @@ Run In Background và auto-tick runner tự bật, và trả lại khi thoát �
   `PlayProbe.Run` (ghi file, đổi state) thì phải chịu được chạy hai lần.
 - **Lệnh Unity CLI đổi cài đặt Editor ghi vào file của project**: override Run In Background nằm trong
   `ProjectSettings/Packages/com.unity.pipeline/EditorPipelineConfig.json`. *Đã sai một lần:* runner bật mà không trả, file hiện trong
-  `git status` của dự án sau mỗi lần đo. Runner trả lại bằng `trap … EXIT`; thêm lệnh cài đặt mới thì trả lại cùng chỗ.
+  `git status` của dự án sau mỗi lần đo. Runner trả lại bằng `trap … EXIT`; thêm lệnh cài đặt mới thì trả lại cùng chỗ. Giá trị đã về
+  như cũ mà file vẫn hiện trong `git status`: Unity ghi lại nó với xuống dòng LF. Runner chép lại bản trước khi chạy khi hai bản chỉ khác
+  xuống dòng; khác giá trị thì giữ bản Unity ghi và in một dòng báo.
 - **Scene đang mở có thay đổi chưa lưu**: Editor hỏi lưu khi vào Play hay khi chạy test và đứng chờ hộp thoại; CLI chỉ thấy timeout,
   `unity status` báo `unreachable`. Lưu hoặc bỏ thay đổi trước khi chạy.
 - **`FindObjectsByType` mỗi frame cấp phát**: trong script đo GC, gom danh sách một lần lúc vào level.
@@ -159,7 +173,9 @@ Run In Background và auto-tick runner tự bật, và trả lại khi thoát �
 cắt; `Compose` đặt ảnh 0 trên trái theo hàng; `Dump` tính bounds trong hệ toạ độ root và đánh dấu object tắt.
 
 Runner kiểm bằng chạy thật: trace quay qua `playrun.sh` khớp 0 chênh với trace cùng chữ ký quay bằng runner trước nó; một probe vào
-level, tap, chụp bốn ảnh ghép một sheet, đọc field private, in kết quả ba dòng.
+level, tap, chụp bốn ảnh ghép một sheet, đọc field private, in kết quả ba dòng. `ScreenBox` và `SIZES` kiểm cùng một lần chạy hai cỡ:
+khung sprite và ô chữ world khớp số tự tính bằng `WorldToScreenPoint`, rect UI Overlay co theo cỡ màn, Game view về cỡ cũ, `git status`
+của dự án sạch.
 
 ## Mở rộng sau
 
