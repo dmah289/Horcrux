@@ -10,7 +10,7 @@ mẫu — code trong Plan là code developer gõ nguyên, thừa ở đó cũng 
 
 ## Có sẵn chưa (NT7)
 
-Khảo sát **toàn bộ**, theo thứ tự: **hệ đang chạm và module nó gọi** → **Horcrux** (`Foundations/`, `Utilities/`, `docs/`)
+Khảo sát **toàn bộ**, theo thứ tự: **hệ đang chạm và module nó gọi** → **Horcrux** (`Foundations/`, `Utilities/`, `docs/`, `Plans/`)
 → **phần còn lại của dự án** → **package đã cài**. Cả hai cùng có thì **dùng Horcrux**, bản dự án là bản thứ hai cần đề xuất
 gộp. Nói rõ đã khảo sát đâu; trong Plan là bảng **"Đã khảo sát"**: *nguồn · lấy gì · không lấy, vì sao*.
 
@@ -51,6 +51,10 @@ năng — hay phần logic trong nó** — sắp viết, đang sửa, đọc nga
 lại không?* · *bê sang dự án khác dùng nguyên được không?* Có thì **đề xuất ngay lượt đó**; im lặng viết vào dự án thứ mang
 đi được là vi phạm, vì dời chỗ đặt sau là đập cả cây phụ thuộc. Đề xuất chưa phải quyết: gói hay để lặp vẫn theo NT7 và bậc
 cấu trúc (`code-design` › Hình dạng) — đề xuất nói người gọi thứ hai đã có thật chưa, developer chốt.
+
+**Chức năng đã có code hay Plan thì soát và đề xuất tối ưu thêm trên bản đó**, không dựng bản song song. **Chức năng mới
+dựa trên chức năng còn nằm trong Plan chờ developer gõ** thì coi Plan đó đã triển khai — viết theo API trong Plan, ghi ở
+đầu Plan mới *phụ thuộc Plan nào* để developer biết thứ tự gõ.
 
 **Đề xuất gồm:** phần mang đi được và phần nối dự án · **tại sao** chung (không gọi type dự án; dự án sau cần ở đâu) · **ưu
 và nhược** khi vào Horcrux so với ở dự án (công, độ trễ tiến độ, ràng buộc API) · **use case** — ít nhất hai kịch bản ở loại
