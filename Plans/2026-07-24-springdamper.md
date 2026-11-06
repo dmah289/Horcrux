@@ -1,580 +1,321 @@
-# SpringDamper Implementation Plan
+# Plan — `SpringDamper`: lò xo–giảm chấn độc lập framerate lên Horcrux
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
->
-> **Plan này là artifact học tập + triển khai, tự chứa.** Người dùng tự code lại để rèn tư duy → §0 dẫn giải **đầy đủ toán học** (biến đổi + lý do dùng công thức), các task chứa **code hoàn chỉnh** kèm chú thích self-doc & lý do tối ưu. Không code test (theo lựa chọn ở spec §4) → mỗi task có **checklist kiểm chứng** (kiểm mốc toán học).
+Ngày 2026-11-06. Plan gốc Horcrux, không có bản tạm trong dự án. Một giá trị (`float`, `Vector2`, `Vector3`) đuổi theo đích có
+đà, có nảy, độc lập framerate: chủ giữ state (vị trí, vận tốc), mỗi frame gọi `Solve` tiến state về đích bằng **nghiệm đóng**
+của phương trình lò xo–giảm chấn (đúng với mọi `dt`), hoặc **semi-implicit Euler** khi cần rẻ. Hai núm: tần số `f` (Hz) và tỉ số
+giảm chấn `ζ`.
 
-**Goal:** `SpringDamper` — bộ giải lò xo-giảm chấn framerate-independent (analytic + semi-implicit Euler) cho float/Vector2/Vector3, dạng struct state + static solver zero-GC.
+**Phân công:** giai đoạn 1–4 (Horcrux, code runtime) developer gõ, sau mỗi giai đoạn agent viết test của giai đoạn đó theo bảng
+case rồi compile · giai đoạn 5 (tài liệu) agent làm.
 
-**Architecture:** 5 file trong `Spring/`. Lõi toán scalar viết **một lần** trong `SpringSolver`; `FloatSpring` bọc state 1 chiều; `Vector2/3Spring` gọi lõi scalar **per-axis** (không lặp toán). Tham số hóa `frequency + dampingRatio` + converter physical; precompute hệ số không-phụ-thuộc-dt trong `SpringConfig`.
+**Chạy được, thấy được ở giai đoạn 1–4** = `com.horcrux.runtime` compile sạch và bảng case của giai đoạn xanh trong
+`Tests/EditMode/SpringDamperTests.cs`. Horcrux không có host và dự án chưa có call site, nên không có giai đoạn "dự án chuyển
+sang"; mọi giai đoạn commit **trong `Assets/Horcrux`**. Không có bản dự án nên các giai đoạn không có mục "Khác với bản dự án".
 
-**Tech Stack:** C# (Unity), `Unity.Mathematics` (`math.exp/sin/cos/cosh/sinh`), `UnityEngine.Mathf` cho setup. Thuần toán — không Addressables/UniTask.
-
-## Global Constraints
-
-| Ràng buộc | Giá trị |
-|---|---|
-| Namespace | `Horcrux.Runtime.Utilities.PhysXHelper` (mọi file) |
-| Zero-GC hot path | toàn `struct`; `Solve` nhận `ref`/`in`; không `new` reference-type, LINQ, closure, string |
-| SOLID | 1 file = 1 trách nhiệm; toán viết 1 lần (SpringSolver); mở rộng qua `enum`, không sửa struct |
-| Self-doc | tên nói rõ mục đích; XML doc kèm công thức + "tại sao" ở API public |
-| Precompute | hệ số nặng phần không phụ thuộc dt (`ω₀, ζω₀, ω_d, mode`) tính 1 lần trong `SpringConfig` |
-| ODE chuẩn | `ÿ + 2ζω₀·ẏ + ω₀²·y = 0`, `y = x − target`, `ω₀ = 2π·f` |
-| Guard biên | `dt ≤ 0` → no-op; `f ≤ 0` → tắt; `ζ < 0` → clamp 0; `|ζ−1| ≤ 1e-4` → critical |
-| Spec nguồn | `docs/superpowers/specs/2026-07-24-springdamper-design.md` |
+Không phụ thuộc Plan nào. Có lõi toán: `§0`.
 
 ---
 
-## §0. Nền toán học (đọc trước khi code)
+## Ngữ cảnh đã chốt
 
-> Mục tiêu: hiểu **tại sao** từng công thức, không chỉ chép. Đọc xong bạn có thể tự dựng lại solver từ đầu.
-
-### 0.1. Bản chất vật lý — vì sao lò xo là mô hình đúng cho "bám mượt"
-
-Ta muốn một giá trị `x` (vị trí camera, scale nút bấm, giá trị UI…) **tự đuổi theo** `target` một cách sống động: có gia tốc, có đà, giảm tốc mượt khi tới nơi. Đúng là hành vi của một **vật gắn lò xo**.
-
-> **Ký hiệu chấm (dot notation) — đọc trước cho quen.** Dấu chấm trên đầu = đạo hàm theo **thời gian** `t`:
-> | Viết | Đọc là | Ý nghĩa vật lý | Đơn vị (nếu `x` là mét) |
-> |---|---|---|---|
-> | `x` | vị trí | đang ở đâu | m |
-> | `ẋ` (x-chấm) | `dx/dt` = **vận tốc** | đổi vị trí nhanh chậm | m/s |
-> | `ẍ` (x-hai-chấm) | `d²x/dt²` = **gia tốc** | đổi vận tốc nhanh chậm | m/s² |
->
-> Về sau dùng biến `y` thì `ẏ, ÿ` hiểu y hệt. Đây chỉ là cách viết gọn của đạo hàm, không có gì mới.
-
-Hình dung vật khối lượng `m` nối với `target` bằng lò xo, nhúng trong chất lỏng nhớt:
-
-| Thành phần | Vai trò trong game feel |
+| Mục | Chốt |
 |---|---|
-| **Lò xo** | càng xa target kéo càng mạnh → tạo lực đưa `x` về, sinh **đà** (overshoot nếu yếu cản) |
-| **Chất lỏng nhớt (damping)** | cản lại tỉ lệ tốc độ → **triệt đà**, quyết định nảy hay không nảy |
-| **Khối lượng** | quán tính → chuyển động liên tục, không giật cục |
+| Người dùng | mọi hệ có một giá trị phải **đuổi theo đích đổi liên tục** mà vẫn có đà và nảy: camera bám, snap nam châm, kéo có trở lực, giật lùi. `Plans/FeelingPlan.md` liệt kê `CameraFollowSmooth`, `LookAhead`, `MagneticSnap`, `DragResistance`, `RubberBandPull`, `Recoil`. **Dự án hiện tại chưa có caller** (bảng "Đã khảo sát") |
+| Mục tiêu | state `(Position, Velocity)` tiến về `target` một bước `dt` **đúng tuyệt đối** với mọi `dt` (1 bước `T` = `n` bước `T/n`); ba chế độ theo `ζ`: nảy, về nhanh nhất không nảy, bò về; Euler bán ẩn opt-in; `Vector2`/`Vector3` cùng config, từng trục độc lập |
+| Núm | `frequency` (Hz, số lần lắc mỗi giây khi không cản) và `dampingRatio` `ζ` (không thứ nguyên) — hai đại lượng người tune nhìn thấy; `m, k, c` không phơi ra |
+| Chỗ đặt | `Runtime/Utilities/PhysXHelper/Spring/` — `SpringConfig.cs`, `SpringSolver.cs`, `FloatSpring.cs`, `Vector2Spring.cs`, `Vector3Spring.cs`; namespace `Horcrux.Runtime.Utilities.PhysXHelper` (cùng `DampedOscillator`) |
+| Tên | `SpringConfig`, `SpringMode`, `SpringSolver`, `SpringMethod`, `FloatSpringState`/`FloatSpring`, `Vector2SpringState`/`Vector2Spring`, `Vector3SpringState`/`Vector3Spring`. Developer đổi tuỳ ý trước khi gõ |
+| Nhịp | mỗi frame, mỗi giá trị một `Solve`: một `exp` và một cặp `sin/cos` (hay `cosh/sinh`) mỗi trục; hệ số không phụ thuộc `dt` (`ω₀`, `ζω₀`, `ω_d`, chế độ) tính **một lần** lúc tạo config |
+| Zero-GC | toàn `struct`; state truyền `ref`, config truyền `in`; trả tuple value; không `new` reference-type |
+| Ranh giới | thuần toán: không `MonoBehaviour`, không UniTask, không PrimeTween; chủ giữ state và đích, quyết nhịp gọi (`Update`, `LateUpdate`, `FixedUpdate`); không gọi tên type dự án |
+| Guard biên | `dt ≤ 0` → trả nguyên state · `frequency ≤ 0` → config tắt, `Solve` trả nguyên · `ζ < 0` → clamp 0 · `|ζ − 1| ≤ 1e-4` → chế độ tới hạn |
 
-Hai lực tác dụng lên vật, theo đúng vật lý phổ thông:
+**Cố ý KHÔNG làm**
 
-| Lực | Biểu thức | Bản chất & vì sao có dấu `−` |
+| Không làm | Vì |
+|---|---|
+| Đích nằm trong state, API `SetTarget` | đích là tham số mỗi lần `Solve`: đổi đích giữa chừng chỉ là truyền số khác, vận tốc giữ nguyên nên chuyển động không gãy |
+| Spring là `MonoBehaviour`, tự chạy `Update` | chủ đã có vòng lặp và nhịp riêng; struct ghép vào mọi vòng lặp, pool, mảng |
+| Field `Zeta` trong config | không nhánh nào đọc `ζ` thô: nghiệm đóng dùng `ζω₀`, Euler dùng `2ζω₀ = 2·ZetaOmega` |
+| Giới hạn tốc độ theo **độ dài** vector | ghép trục, phi tuyến; lò xo tuyến tính tách trục được (§0.6) — vào khi có người dùng thật |
+| Ngủ khi đã tới đích (`IsSettled`, ngưỡng) | chưa chủ nào cần tắt update; chủ tự so `|Position − target|` và `|Velocity|` |
+
+**Quyết định trái trực giác** — lý do viết ở giai đoạn sinh ra nó: `default(SpringConfig)` là lò xo tắt (GĐ1) · trong dải tới hạn
+`ζ` coi là 1, `ZetaOmega = Omega0` (GĐ2) · nhánh cản mạnh viết bằng `cosh/sinh`, không bằng hai mũ (GĐ2) · Euler cập nhật vận tốc
+trước vị trí (GĐ3) · vector không có toán riêng, gọi lõi scalar từng trục (GĐ4).
+
+**Mở rộng sau**
+
+- `SpringConfig.FromPhysical(stiffness, damping, mass)` và `ToPhysical(mass)` khi có nguồn số vật lý thật (tool ngoài, tài liệu
+  vật lý): công thức đảo ở §0.2, không cần sửa solver.
+- Nhánh cản mạnh với `s·dt > 88`: `cosh` tràn `float` thành `+∞`, nhân với `E → 0` ra `NaN`. Cần `ζ` lớn **và** `dt` lớn cùng lúc
+  (ví dụ `f = 10, ζ = 10, dt = 2`). Khi gặp: viết lại nhánh over bằng hai mũ âm `e^(−(ζω₀−s)dt)`, `e^(−(ζω₀+s)dt)`, hoặc chặn `dt`.
+- Ghép trục phi tuyến (giới hạn tốc độ theo độ dài, lực kéo theo khoảng cách) — hệ riêng gọi `SpringSolver` sau khi tự tính.
+
+---
+
+## Đã khảo sát
+
+| Nguồn | Lấy gì | Không lấy, vì sao |
 |---|---|---|
-| **Lò xo (định luật Hooke)** | `F_s = −k·(x − target)` | Lực đàn hồi tỉ lệ **độ biến dạng** `(x−target)`. `x` ở **trên** target (độ lệch dương) → lò xo kéo **xuống** (lực âm) → luôn hướng **về** target. `k` (N/m) = độ cứng. |
-| **Cản nhớt (viscous damping)** | `F_d = −c·ẋ` | Lực cản của chất lỏng tỉ lệ **vận tốc** `ẋ`, luôn **ngược** hướng chuyển động → dấu `−`. `c` (N·s/m) = hệ số giảm chấn. |
+| Horcrux `Runtime/Utilities/PhysXHelper/DampedOscillator.cs` | namespace, kiểu `static class` thuần toán, `math.*` của `Unity.Mathematics`, `AggressiveInlining` ở wrapper mỏng; cùng họ ODE `ÿ + 2λẏ + ω₀²y = 0` với `λ = ζω₀` | là hàm **theo thời gian tuyệt đối** `x(t) = A·e^(−λt)·cos(ωt + φ)` quanh cân bằng cố định, `f` và `λ` tách rời (mô hình mô tả, không ràng buộc vật lý), không state, không đích, không đổi đích, chỉ một dạng cản yếu. `SpringDamper` **thêm**: state `(Position, Velocity)` bước theo `dt`, đích làm tham số đổi được mỗi frame, ba chế độ theo `ζ`, Euler, vector per-axis. Trùng **một phần** (toán nền §0.1–0.3), không trùng API |
+| Horcrux `HarmonicOscillator.cs`, `WaveStyle.cs` | mốc kiểm chéo: `ζ = 0` phải trùng `GetHarmonicDisplacement(Cos, f, t, A)` | dao động không tắt theo `t`, không bước thời gian |
+| Horcrux `docs/Runtime/DampedOscillator/DampedOscillator.html` | §3–4 dẫn Newton → ODE → phương trình đặc trưng → ba chế độ, cùng toán với §0.1–0.3; §5 đã viết "cần ràng buộc vật lý thì dùng `SpringDamper`" — tài liệu đó chờ hệ này | ký hiệu `λ` và demo; `§0` dùng `ζ`, `ω₀` theo chuẩn điều khiển học vì núm là `ζ` |
+| Horcrux `Interpolator.cs` › `ExpDecay`, `DecayFactor` | cùng nguyên lý "mũ cộng số mũ → độc lập framerate"; mốc so sánh: `ExpDecay` không overshoot | bậc một: không đà, không nảy |
+| Horcrux `Tests/EditMode/JumpArcTests.cs` | khuôn test: `namespace Horcrux.Tests`, hằng tolerance, `TestCase` theo mốc `§0` | — |
+| Horcrux `SquashStretch.cs`, `Interpolator.cs` phần còn lại | — | biến dạng bảo toàn thể tích, remap, smoothstep — không bước thời gian |
+| category-jam `Entities/TileSlot/CacheTileSlot.cs` › `SlotSpringTuning`, `PlaySpring`; `Tile.cs` › `PlaySmallSpring` | — | chuỗi PrimeTween `InSine` xuống rồi `OutBack` lên; "spring" chỉ ở tên, không giải số. `Plans/Horcrux_HopCurve_DipFlash_Plan.md` đưa nó về `CharmSinkLocalY`. **Không có caller lò xo giải số nào trong dự án** |
+| `Plans/FeelingPlan.md` | danh sách hệ sẽ dùng `SpringDamper` (mục "Người dùng") | — |
 
-Định luật II Newton nói **tổng lực = khối lượng × gia tốc** (`ΣF = m·ẍ`). Cộng hai lực trên lại rồi thay vào:
+---
 
-$$m\ddot{x} = \underbrace{-k(x - target)}_{\text{lò xo kéo về}} \;\underbrace{-\,c\dot{x}}_{\text{cản hãm đà}}$$
+## Luồng mô tả — một giá trị đuổi theo đích
 
-**Đọc phương trình này:** vế trái là gia tốc (×`m`), vế phải là hai lực. Nó nói *"tại mỗi thời điểm, gia tốc bị quyết định bởi vị trí hiện tại `x` và vận tốc hiện tại `ẋ`"*. Biết `x, ẋ` lúc này → tính được `ẍ` → biết sẽ tăng tốc thế nào ở khoảnh khắc kế → suy ra cả chuyển động. Đó chính là thứ solver làm.
+```
+chủ tạo SpringConfig.FromFrequency(f, ζ) một lần
+   ──► mỗi frame FloatSpring.Solve(ref state, target, cfg, dt) ──► đọc state.Position
+   ──► đổi target giữa chừng: truyền số khác, đà giữ                              GĐ1 (ζ < 1: có nảy)
+                       │
+                       ▼
+       vặn ζ tới 1 và hơn: về đích không nảy (tới hạn), bò về (cản mạnh)          GĐ2
+                       │
+                       ▼
+       nhiều vật, dt nhỏ và đều: chọn SpringMethod.SemiImplicit rẻ hơn             GĐ3
+                       │
+                       ▼
+       vị trí 2D, 3D: Vector2Spring / Vector3Spring, cùng config, từng trục         GĐ4
+                       │
+                       ▼
+       tài liệu module docs/Runtime/SpringDamper, xoá Plan                          GĐ5
+```
 
-> **Vì sao gọi là phương trình vi phân bậc 2:** ẩn cần tìm là cả một *hàm* `x(t)` (chứ không phải một con số), và ràng buộc lại đặt lên **đạo hàm** của nó (`ẍ, ẋ`). "Bậc 2" vì đạo hàm cấp cao nhất xuất hiện là `ẍ` (cấp 2). Giải nó = tìm công thức `x(t)` thỏa mãn ràng buộc — đó là việc của §0.3–0.4.
+## Bản đồ hệ cuối
 
-### 0.2. Chuẩn hóa: 3 tham số vật lý → 2 tham số trực quan
+```
+  chủ (vòng lặp của dự án: Update / LateUpdate / FixedUpdate)
+   │ FromFrequency(f, ζ) một lần      │ Solve(ref state, target, cfg, dt[, method]) mỗi frame     │ đọc state.Position
+   ▼                                  ▼                                                           │
+  SpringConfig ◄────── in ────── FloatSpring · Vector2Spring · Vector3Spring ◄────────────────────┘
+  Omega0, ZetaOmega, OmegaD,           │ từng trục
+  Mode, IsActive                       ▼
+                                 SpringSolver.Solve(pos, vel, target, cfg, method, dt)
+                                   ├── SolveAnalytic      nghiệm đóng ba chế độ (§0.4)
+                                   └── SolveSemiImplicit  Euler bán ẩn (§0.5)
+```
 
-**Vấn đề với `m, k, c`:** ba số vật lý thô, khó tune và **dư thừa** — hành vi lò xo thực chất chỉ phụ thuộc *hai* tỉ lệ, không phải ba số riêng lẻ. Ta rút gọn.
+Ai sở hữu gì: chủ giữ `*SpringState` (vị trí, vận tốc) và đích; config bất biến, một config dùng chung cho mọi state cùng cảm
+giác; solver không giữ gì.
 
-**Bước 1 — chia cho `m`** (đưa hệ số của `ẍ` về 1):
+---
+
+## §0 — Nền toán
+
+### §0.1 Hiện tượng: vật gắn lò xo trong chất lỏng nhớt
+
+Một giá trị `x` (vị trí camera, scale nút, giá trị UI) tự đuổi theo `target`: tăng tốc khi xa, có đà, giảm tốc khi tới nơi.
+Đây là chuyển động của một vật khối lượng `m` nối với `target` bằng lò xo, nhúng trong chất lỏng nhớt.
+
+| Thành phần | Vai trò trong cảm giác |
+|---|---|
+| lò xo | càng xa đích kéo càng mạnh → tạo đà, sinh overshoot khi cản yếu |
+| chất lỏng nhớt | cản tỉ lệ vận tốc → triệt đà, quyết định nảy hay không |
+| khối lượng | quán tính → chuyển động liên tục, không giật |
+
+Dấu chấm là đạo hàm theo thời gian: `ẋ = dx/dt` vận tốc, `ẍ = d²x/dt²` gia tốc; với biến `y` cũng vậy.
+
+| Lực | Biểu thức | Dấu `−` |
+|---|---|---|
+| đàn hồi (Hooke) | `F_s = −k·(x − target)` | lệch dương thì kéo âm: luôn hướng về đích; `k` (N/m) độ cứng |
+| cản nhớt | `F_d = −c·ẋ` | luôn ngược chiều chuyển động; `c` (N·s/m) hệ số cản |
+
+Định luật II Newton `ΣF = m·ẍ`:
+
+$$m\ddot{x} = -k\,(x - target) - c\,\dot{x}$$
+
+Gia tốc lúc này do vị trí và vận tốc lúc này quyết định; biết `(x, ẋ)` là biết cả chuyển động về sau — đó là việc của solver. Ẩn
+là hàm `x(t)`, đạo hàm cao nhất là `ẍ`: phương trình vi phân bậc hai.
+
+### §0.2 Chuẩn hoá: `(m, k, c)` → `(ω₀, ζ)`
+
+Ba số vật lý dư một bậc tự do: hành vi chỉ phụ thuộc hai tỉ lệ `k/m`, `c/m`.
+
+**① Chia cho `m`:**
+
 $$\ddot{x} + \tfrac{c}{m}\dot{x} + \tfrac{k}{m}(x - target) = 0$$
 
-**Bước 2 — đổi biến `y = x − target`** (chuyển gốc tọa độ về target). Vì `target` là **hằng số** nên đạo hàm không đổi: `ẏ = ẋ`, `ÿ = ẍ`. Bài toán "đuổi theo target" thành "đưa `y` về 0":
+**② Đổi biến `y = x − target`.** `target` là hằng trong một bước nên `ẏ = ẋ`, `ÿ = ẍ`; bài toán thành "đưa `y` về 0":
+
 $$\ddot{y} + \tfrac{c}{m}\dot{y} + \tfrac{k}{m}\,y = 0$$
 
-**Bước 3 — đặt tên cho 2 tỉ lệ** `k/m` và `c/m`. Thay vì dùng số thô, ta đặt tên cho chúng sao cho **mỗi tên nói lên một ý nghĩa vật lý**. Có hai định nghĩa, dẫn giải từng cái:
+**③ Đặt tên hai tỉ lệ.**
 
-**① `ω₀` — tần số tự nhiên**, định nghĩa `ω₀ ≡ √(k/m)`, tức `k/m = ω₀²`.
+| Đặt | Vì sao |
+|---|---|
+| `ω₀ ≡ √(k/m)`, tức `k/m = ω₀²` — **tần số tự nhiên** | bỏ cản (`c = 0`) còn `ÿ = −(k/m)·y`: gia tốc ngược dấu, tỉ lệ li độ; thử `y = cos(ωt)` được `ÿ = −ω²y`, khớp khi `ω² = k/m`. Vật lắc với tần số góc `√(k/m)` khi không ai cản |
+| `ω₀ = 2π·f` | `ω₀` là rad/s; designer nghĩ theo `f` Hz (số lần lắc trọn mỗi giây); một vòng là `2π` rad — đổi đơn vị |
+| `ζ ≡ c / (2√(km))`, tức `c/m = 2ζω₀` — **tỉ số giảm chấn** | `2√(km)` có cùng đơn vị với `c` (mức cản tới hạn) nên `ζ` không thứ nguyên; chọn mẫu này để `ζ = 1` rơi đúng ranh giới nảy/không nảy (§0.3) |
 
-*Vì sao chính là tần số dao động?* Tưởng tượng **bỏ cản** (`c=0`) — lò xo lý tưởng không ma sát. Phương trình còn:
-$$\ddot{y} + \tfrac{k}{m}\,y = 0 \quad\Longleftrightarrow\quad \ddot{y} = -\tfrac{k}{m}\,y$$
-Đọc lên: *"gia tốc luôn ngược dấu và tỉ lệ với li độ"*. Chỉ có `sin/cos` thỏa tính chất này — thử $y = \cos(\omega t)$ thì $\ddot{y} = -\omega^2\cos(\omega t) = -\omega^2 y$, khớp khi $\omega^2 = k/m$. Vậy vật dao động qua lại với **tần số góc** $\omega = \sqrt{k/m}$. Đó là nhịp lắc "bẩm sinh" khi không ai cản → gọi là *tần số tự nhiên* `ω₀`.
+Kiểm `c/m = 2ζω₀`:
 
-*Vì sao `ω₀ = 2π·f`?* `ω₀` là tần số **góc** (radian/giây); designer lại nghĩ theo tần số **thường** `f` (số lần lắc trọn vẹn mỗi giây, đơn vị Hz). Một vòng lắc trọn = `2π` radian, nên `ω₀ = 2π·f`. Đây chỉ là đổi đơn vị, giống "vòng/phút → radian/giây".
+$$2\zeta\omega_0 = 2\cdot\frac{c}{2\sqrt{km}}\cdot\sqrt{\frac{k}{m}} = \frac{c}{\sqrt{km}}\cdot\sqrt{\frac{k}{m}} = \frac{c}{m}\;\checkmark$$
 
-**② `ζ` — tỉ số giảm chấn (damping ratio)**, định nghĩa `ζ ≡ c / (2√(km))`, tức `c/m = 2ζω₀`.
-
-*Vì sao mẫu là `2√(km)`?* Ta muốn một con số **không thứ nguyên** (bỏ được đơn vị, chỉ còn "kiểu" chuyển động). `c` có đơn vị N·s/m; đại lượng `2√(km)` cũng có đúng đơn vị đó (gọi là *cản tới hạn* — mức cản vừa đủ để hết nảy), nên tỉ số `ζ` triệt đơn vị → thuần số. Chọn đúng mẫu này để mốc `ζ=1` rơi trúng ranh giới nảy/không-nảy (chứng minh ở §0.3). *Kiểm nhanh `c/m = 2ζω₀`:*
-$$2\zeta\omega_0 = 2\cdot\frac{c}{2\sqrt{km}}\cdot\sqrt{\frac{k}{m}} = \frac{c}{\sqrt{km}}\cdot\sqrt{\frac{k}{m}} = \frac{c}{m} \;\checkmark$$
-
-Thay `k/m = ω₀²` và `c/m = 2ζω₀` vào phương trình cuối Bước 2 → **dạng chuẩn** (mọi tài liệu điều khiển học đều dùng):
+Thay vào ② → **dạng chuẩn**:
 
 $$\boxed{\;\ddot{y} + 2\zeta\omega_0\,\dot{y} + \omega_0^2\,y = 0\;}$$
 
-> **Lý do chọn API `frequency + dampingRatio`:** designer chỉ cần vặn 2 núm có nghĩa — `f` = "nhanh/chậm & cứng", `ζ` = "nảy nhiều/ít". Không cần biết `m,k,c`. Ai có sẵn số vật lý thì dùng converter (`FromPhysical`, Task 1) đảo ngược 3 bước trên.
+API phơi `frequency` và `dampingRatio`: `f` là "nhanh, cứng", `ζ` là "nảy nhiều hay ít". Đảo ngược khi có số vật lý (Mở rộng
+sau): `ω₀ = √(k/m)`, `ζ = c/(2√(km))`, `f = ω₀/2π`; chiều ngược `k = ω₀²m`, `c = 2ζω₀m`.
 
-### 0.3. Giải ODE → phương trình đặc trưng → vì sao có đúng 3 chế độ
+### §0.3 Phương trình đặc trưng → ba chế độ
 
-**Ý tưởng giải:** ta cần hàm mà đạo hàm của nó lại ra chính nó (để các số hạng `ÿ, ẏ, y` triệt tiêu nhau). Hàm mũ `e^{rt}` là ứng viên **duy nhất** có tính chất đó. Thử `y = e^{rt}`:
-$$\dot{y} = r\,e^{rt},\qquad \ddot{y} = r^2 e^{rt}$$
+Cần hàm mà đạo hàm ra chính nó nhân hằng, để ba số hạng `ÿ, ẏ, y` triệt nhau: `y = e^{rt}`, `ẏ = r·e^{rt}`, `ÿ = r²·e^{rt}`. Thay
+vào dạng chuẩn, `e^{rt} ≠ 0` nên chia đi:
 
-Thay vào dạng chuẩn, đặt `e^{rt}` làm nhân tử chung (nó `≠ 0` nên chia được):
-$$e^{rt}\big(r^2 + 2\zeta\omega_0 r + \omega_0^2\big) = 0 \;\Rightarrow\; r^2 + 2\zeta\omega_0 r + \omega_0^2 = 0$$
+$$r^2 + 2\zeta\omega_0\,r + \omega_0^2 = 0$$
 
-Đây là **phương trình đặc trưng** — một pt bậc 2 theo `r`. Giải bằng công thức nghiệm (`ax²+bx+c` với `a=1, b=2ζω₀, c=ω₀²`):
-$$r = \frac{-2\zeta\omega_0 \pm \sqrt{(2\zeta\omega_0)^2 - 4\omega_0^2}}{2}$$
+Giải bậc hai (`a = 1`, `b = 2ζω₀`, `c = ω₀²`), rút `4ω₀²` khỏi căn:
 
-**Rút gọn phần dưới căn** (bước hay bị bỏ qua) — rút `4ω₀²` ra ngoài rồi lấy căn:
-$$\sqrt{4\zeta^2\omega_0^2 - 4\omega_0^2} = \sqrt{4\omega_0^2(\zeta^2-1)} = 2\omega_0\sqrt{\zeta^2-1}$$
+$$r = \frac{-2\zeta\omega_0 \pm \sqrt{4\omega_0^2(\zeta^2 - 1)}}{2} = -\zeta\omega_0 \pm \omega_0\sqrt{\zeta^2 - 1}$$
 
-Thay lại, `2` trên tử triệt với `2` dưới mẫu:
-$$r = -\zeta\omega_0 \pm \omega_0\sqrt{\zeta^2 - 1}$$
+Dấu của `ζ² − 1` chia ba chế độ:
 
-**Chìa khóa nằm ở `√(ζ² − 1)`** — biểu thức dưới căn đổi dấu quanh `ζ=1`, chia ra **3 trường hợp** khác nhau về bản chất nghiệm:
-
-| Chế độ | ĐK | `ζ²−1` | Nghiệm `r` | Đại lượng phụ | Hành vi vật lý |
+| Chế độ | `ζ` | `ζ² − 1` | Nghiệm `r` | Đại lượng phụ | Chuyển động |
 |---|---|---|---|---|---|
-| **Under-damped** | `ζ<1` | âm → căn ảo | phức `−ζω₀ ± iω_d` | `ω_d = ω₀√(1−ζ²)` | cản yếu → vật **vọt qua** target rồi nảy lui, biên độ tắt dần |
-| **Critically** | `ζ=1` | 0 → căn triệt | kép `−ω₀` | — | cản vừa đủ → về đích **nhanh nhất mà KHÔNG nảy** |
-| **Over-damped** | `ζ>1` | dương → căn thực | 2 thực âm | `s = ω₀√(ζ²−1)` | cản quá mạnh → vật **bò** về đích, ì, chậm |
+| cản yếu (under) | `< 1` | âm → căn ảo | phức `−ζω₀ ± i·ω_d` | `ω_d = ω₀√(1 − ζ²)` | vượt đích rồi nảy lui, biên độ tắt dần |
+| tới hạn (critical) | `= 1` | 0 | kép `−ω₀` | — | về đích nhanh nhất mà không nảy |
+| cản mạnh (over) | `> 1` | dương → căn thực | hai thực âm `−ζω₀ ± s` | `s = ω₀√(ζ² − 1)` | bò về đích, không nảy |
 
-> **Vì sao `ζ=1` là ranh giới nảy/không nảy:** `ζ<1` cho `r` **phức** → phần ảo `iω_d` sinh ra `sin/cos` → **dao động** (nảy). `ζ≥1` cho `r` **thực** → chỉ còn hàm mũ/hyperbolic → **không dao động**. Đúng chỗ căn đổi từ ảo sang thực. `ω_d` = "tần số dao động thực tế", luôn **nhỏ hơn** `ω₀` vì bị cản làm chậm.
+`ζ = 1` là ranh giới vì `r` phức sinh `sin/cos` (dao động), `r` thực chỉ còn mũ (không dao động). `ω_d < ω₀`: cản làm lắc chậm
+lại. Phần thực của `r` luôn là `−ζω₀`: mọi chế độ chung một **bao hình** `E = e^{−ζω₀t}`.
 
-### 0.4. Nghiệm đóng từng chế độ (lõi solver Analytic)
+### §0.4 Nghiệm đóng từng chế độ
 
-**Mục tiêu code:** viết hàm `(y₀, v₀) → (y, v) sau Δt`, tức bước tiến lò xo đúng một khoảng thời gian, **chính xác tuyệt đối** (không xấp xỉ).
+Cần hàm `(y₀, v₀) → (y, v)` sau `Δt`, chính xác, không xấp xỉ. Mỗi chế độ bốn bước: ① nghiệm tổng quát với hai hằng `A, B` ·
+② ghim `A, B` bằng `y(0) = y₀`, `ẏ(0) = v₀` · ③ đạo hàm ra `v` · ④ kiểm `Δt = 0` ra `(y₀, v₀)`, `Δt → ∞` ra `(0, 0)`. Ký hiệu
+`E = e^{−ζω₀Δt}`.
 
-**Quy trình chung cho cả 3 chế độ** (làm quen 1 lần, áp cho cả 3):
-1. **Nghiệm tổng quát** — từ dạng nghiệm `r`, viết `y(t)` với 2 hằng số tự do `A, B` (pt bậc 2 → 2 hằng số).
-2. **Ghim `A, B`** bằng 2 điều kiện đầu: `y(0) = y₀` và `ẏ(0) = v₀`.
-3. **Đạo hàm** `y(t)` ra `v(t) = ẏ(t)`.
-4. **Kiểm mốc** `Δt=0` (phải ra `(y₀,v₀)`) và `Δt→∞` (phải ra `(0,0)`).
+#### Cản yếu `ζ < 1`
 
-Ký hiệu dùng chung: `E = e^{−ζω₀Δt}`.
+**①** `√(ζ² − 1) = i√(1 − ζ²)`, đặt `ω_d = ω₀√(1 − ζ²)`; nghiệm tổng quát `C₁e^{r₁t} + C₂e^{r₂t}`, tách phần thực khỏi mũ:
 
-> **"Bao hình" (envelope) là gì:** nghiệm luôn có dạng `E(Δt) × [dao động/đa thức]`. Phần trong ngoặc lượn lên xuống (hoặc tăng), còn `E = e^{−ζω₀Δt}` là hàm mũ **giảm dần** bọc lấy nó, ép biên độ co về 0. Vẽ ra: `E` và `−E` là hai đường cong ôm trên–dưới, dao động nằm gọn giữa chúng → gọi là "đường bao". `ζω₀` càng lớn → bao co càng nhanh → tắt càng sớm. **Mọi chế độ đều share chung `E` này** (vì phần thực của `r` luôn là `−ζω₀`), nên ta tính `E` một lần rồi nhân vào.
-
-#### ● Under-damped (`ζ<1`) — trường hợp phổ biến nhất trong game
-
-**① Nghiệm tổng quát.** Với `ζ<1`, `ζ²−1 < 0` nên `√(ζ²−1) = √(−(1−ζ²)) = i√(1−ζ²)`. **Đặt tên** phần thực bên trong là `ω_d ≡ ω₀√(1−ζ²)` (tần số dao động thực). Hai nghiệm:
-$$r = -\zeta\omega_0 \pm i\,\omega_d$$
-
-Nghiệm tổng quát là `y = C₁e^{r₁t} + C₂e^{r₂t}`. Tách phần thực ra khỏi mũ (`e^{a+b}=e^a e^b`):
 $$y = e^{-\zeta\omega_0 t}\big(C_1 e^{i\omega_d t} + C_2 e^{-i\omega_d t}\big)$$
 
-**Vì sao mũ ảo → `cos/sin`:** công thức Euler $e^{i\theta}=\cos\theta + i\sin\theta$. Tổ hợp hai mũ ảo liên hợp (với `C₁,C₂` chọn sao cho `y` thực) rút gọn thành $A\cos(\omega_d t)+B\sin(\omega_d t)$. Đó là lý do cản yếu sinh **dao động** — phần ảo biến thành hàm lượng giác tuần hoàn:
-$$y(t) = \underbrace{e^{-\zeta\omega_0 t}}_{E:\text{ bao hình}}\big[A\cos(\omega_d t) + B\sin(\omega_d t)\big]$$
+Công thức Euler $e^{i\theta} = \cos\theta + i\sin\theta$ với `C₁, C₂` liên hợp để `y` thực:
 
-**② Ghim `A, B`** — thay `t=0`:
+$$y(t) = E\,\big[A\cos(\omega_d t) + B\sin(\omega_d t)\big]$$
 
-| Điều kiện | Phép tính | Kết quả |
+**②** `t = 0`: `E = 1, cos 0 = 1, sin 0 = 0` → `A = y₀`. Từ ③ tại `t = 0`: `v₀ = −ζω₀A + ω_d B` → `B = (v₀ + ζω₀y₀)/ω_d`.
+
+**③** `y = E·f`, `f = A·cos + B·sin`; quy tắc tích với `E' = −ζω₀E`, `f' = −Aω_d·sin + Bω_d·cos`:
+
+$$v = E\,(f' - \zeta\omega_0 f) = E\,\big[(B\omega_d - \zeta\omega_0 y_0)\cos(\omega_d t) - (y_0\omega_d + \zeta\omega_0 B)\sin(\omega_d t)\big]$$
+
+Kết quả với `C = cos(ω_dΔt)`, `S = sin(ω_dΔt)`, `B = (v₀ + ζω₀y₀)/ω_d`:
+
+$$\boxed{\;y = E\,(y_0 C + B S)\;}\qquad \boxed{\;v = E\,\big[(-\zeta\omega_0 y_0 + B\omega_d)\,C - (\zeta\omega_0 B + y_0\omega_d)\,S\big]\;}$$
+
+**④** `Δt = 0`: `y = y₀`; `v = −ζω₀y₀ + Bω_d = −ζω₀y₀ + v₀ + ζω₀y₀ = v₀` ✓ · `Δt → ∞`: `E → 0` → `(0, 0)` ✓ · `ζ = 0`: `E = 1`,
+`ω_d = ω₀`, `y = y₀cos(ω₀t) + (v₀/ω₀)sin(ω₀t)` — dao động điều hoà, trùng `HarmonicOscillator` ✓.
+
+#### Cản mạnh `ζ > 1`
+
+**①** căn thực, đặt `s = ω₀√(ζ² − 1)`; `r = −ζω₀ ± s`. Thay cơ sở `e^{±st}` bằng `cosh(st) = (e^{st} + e^{−st})/2`,
+`sinh(st) = (e^{st} − e^{−st})/2` — cùng không gian nghiệm, cùng khuôn với cản yếu qua phép thế `cos → cosh`, `sin → sinh`,
+`ω_d → s`:
+
+$$y(t) = E\,\big[y_0\cosh(st) + B\sinh(st)\big],\qquad B = \frac{v_0 + \zeta\omega_0 y_0}{s}$$
+
+Dạng tổng hai mũ `C₁e^{r₁t} + C₂e^{r₂t}` trừ nhau hai số chênh lệch lớn khi `ζ` lớn, mất chữ số; dạng hyperbolic gộp bao hình ra
+ngoài, ổn định hơn với `float`.
+
+**②③** `cosh' = s·sinh`, `sinh' = s·cosh`, cùng quy tắc tích; với `Ch = cosh(sΔt)`, `Sh = sinh(sΔt)`:
+
+$$\boxed{\;y = E\,(y_0\,Ch + B\,Sh)\;}\qquad \boxed{\;v = E\,\big[(-\zeta\omega_0 y_0 + B s)\,Ch + (y_0 s - \zeta\omega_0 B)\,Sh\big]\;}$$
+
+**④** `Δt = 0`: `Ch = 1, Sh = 0` → `y = y₀`, `v = −ζω₀y₀ + Bs = v₀` ✓. Không nổ dù `cosh/sinh` tăng theo `e^{sΔt}`: `ζ > √(ζ² − 1)`
+(bình phương: `ζ² > ζ² − 1`) nên `ζω₀ > s`, bao hình co nhanh hơn hyperbolic giãn, tích về 0 ✓. Giới hạn số học: `float` tràn khi
+`sΔt > 88` (Mở rộng sau).
+
+#### Tới hạn `ζ = 1`
+
+**①** `r = −ω₀` kép; nghiệm thứ hai phải nhân thêm `t` để đủ hai hằng:
+
+$$y(t) = e^{-\omega_0 t}\,(A + Bt)$$
+
+**②③** `A = y₀`. Đạo hàm với `E' = −ω₀E`:
+
+$$\dot{y} = e^{-\omega_0 t}\big(B - \omega_0(A + Bt)\big)$$
+
+`t = 0`: `v₀ = B − ω₀y₀` → `B = v₀ + ω₀y₀`. Đặt `coeff = v₀ + ω₀y₀`, rút gọn `v = E(v₀ + ω₀y₀ − ω₀y₀ − ω₀·coeff·Δt)`:
+
+$$\boxed{\;y = E\,(y_0 + coeff\cdot\Delta t)\;}\qquad \boxed{\;v = E\,(v_0 - \omega_0\,coeff\cdot\Delta t)\;}\qquad E = e^{-\omega_0\Delta t}$$
+
+**④** `Δt = 0`: `E = 1` → `(y₀, v₀)` ✓.
+
+**Vì sao nghiệm đóng ổn định vô điều kiện:** cả ba là (hàm bị chặn hoặc tăng chậm hơn bao) × `E` giảm khi `ζ > 0`; không có phép
+lặp tích luỹ sai số. `Δt` lớn (lag spike 2 giây) vẫn ra đúng điểm trên đường cong. Hàm mũ cộng số mũ: `E(a)·E(b) = E(a + b)` nên
+chia `T` thành bao nhiêu bước cũng về cùng một chỗ — **độc lập framerate**, cùng nguyên lý `Interpolator.ExpDecay`.
+
+### §0.5 Semi-implicit Euler
+
+Nghiệm đóng tốn `exp` và `sin/cos` mỗi bước. Khi `dt` nhỏ, đều và vật nhiều, mô phỏng từng bước theo định nghĩa đạo hàm rẻ hơn.
+Gia tốc rút từ dạng chuẩn:
+
+$$a = \ddot{y} = -\omega_0^2\,y - 2\zeta\omega_0\,v$$
+$$v_{new} = v + a\,\Delta t,\qquad y_{new} = y + v_{new}\,\Delta t$$
+
+| Kiểu | Thứ tự | Ổn định |
 |---|---|---|
-| `y(0) = y₀` | `E=1, cos0=1, sin0=0` → `y(0)=A` | `A = y₀` |
-| `ẏ(0) = v₀` | đạo hàm rồi cho `t=0` (xem ③) → `v₀ = −ζω₀A + ω_d B` | `B = (v₀ + ζω₀y₀)/ω_d` |
-
-**③ Đạo hàm ra `v = ẏ`.** Viết `y = E·f` với $E = e^{-\zeta\omega_0 t}$, $f = A\cos(\omega_d t)+B\sin(\omega_d t)$. Quy tắc tích $(E f)' = E'f + Ef'$:
-- $E' = -\zeta\omega_0\,E$ (đạo hàm hàm mũ)
-- $f' = -A\omega_d\sin(\omega_d t) + B\omega_d\cos(\omega_d t)$
-
-Gộp `E` ra chung:
-$$v = E\big(f' - \zeta\omega_0 f\big) = E\big[(-A\omega_d\sin + B\omega_d\cos) - \zeta\omega_0(A\cos + B\sin)\big]$$
-
-Nhóm lại theo `cos` và `sin`, rồi thay `A = y₀`:
-$$v = E\big[\underbrace{(B\omega_d - \zeta\omega_0 y_0)}_{\text{hệ số }\cos}\cos(ω_d t) - \underbrace{(y_0\omega_d + \zeta\omega_0 B)}_{\text{hệ số }\sin}\sin(ω_d t)\big]$$
-
-**Kết quả** (đặt `C = cos(ω_dΔt)`, `S = sin(ω_dΔt)`, `B = (v₀+ζω₀y₀)/ω_d`):
-$$\boxed{\;y = E\,(y_0 C + B S)\;}$$
-$$\boxed{\;v = E\big[(-\zeta\omega_0 y_0 + B\omega_d)\,C - (\zeta\omega_0 B + y_0\omega_d)\,S\big]\;}$$
-
-**④ Kiểm mốc:** `Δt=0` → `E=C=1, S=0` → `y=y₀`; `v = −ζω₀y₀ + Bω_d = −ζω₀y₀ + (v₀+ζω₀y₀) = v₀` ✓ · `Δt→∞` → `E→0` → `(0,0)` tức `x→target` ✓
-
-#### ● Over-damped (`ζ>1`) — cản mạnh, không nảy
-
-**① Nghiệm tổng quát.** Với `ζ>1`, `ζ²−1 > 0` → căn **thực**. **Đặt tên** `s ≡ ω₀√(ζ²−1)` (đối xứng với `ω_d` bên under, nhưng thực). Hai nghiệm thực:
-$$r = -\zeta\omega_0 \pm s$$
-
-*Về nguyên tắc* nghiệm là tổng 2 mũ `C₁e^{r₁t}+C₂e^{r₂t}`. Nhưng ta viết lại bằng **hàm hyperbolic**. Lý do đổi được: theo định nghĩa $\cosh(st)=\tfrac{e^{st}+e^{-st}}{2}$, $\sinh(st)=\tfrac{e^{st}-e^{-st}}{2}$, nên $e^{\pm st}$ là tổ hợp tuyến tính của `cosh/sinh` — cùng một không gian nghiệm, chỉ đổi cơ sở. Tách bao hình chung `e^{−ζω₀t}` (từ phần `−ζω₀` của `r`) ra ngoài, phần `±s` gói vào `cosh/sinh(st)`. Kết quả **giống hệt khuôn under-damped** với phép thế **`cos→cosh, sin→sinh, ω_d→s`**:
-$$y(t) = e^{-\zeta\omega_0 t}\big[y_0\cosh(st) + B\sinh(st)\big],\qquad B = \tfrac{v_0+\zeta\omega_0 y_0}{s}$$
-
-> **Vì sao dùng cosh/sinh thay vì `C₁e^{r₁t}+C₂e^{r₂t}`:** dạng tổng-2-mũ bị **triệt tiêu số học** (catastrophic cancellation) khi `ζ` lớn — hai mũ chênh lệch cực lớn, trừ nhau mất chữ số có nghĩa. Dạng hyperbolic gộp bao hình ra ngoài → ổn định float hơn hẳn. Cùng lý do `DecayFactor` cần cẩn thận với `1−e` ở Interpolator.
-
-**② Đạo hàm ra `v`** (`cosh'=s·sinh`, `sinh'=s·cosh`, cùng quy tắc tích như under):
-$$\boxed{\;y = E\,(y_0\,Ch + B\,Sh)\;}$$
-$$\boxed{\;v = E\big[(-\zeta\omega_0 y_0 + B s)\,Ch + (y_0 s - \zeta\omega_0 B)\,Sh\big]\;}$$
-với `Ch = cosh(sΔt)`, `Sh = sinh(sΔt)`.
-
-**③ Kiểm mốc** `Δt=0`: `Ch=1, Sh=0` → `y=y₀`; `v = −ζω₀y₀ + Bs = v₀` ✓
-
-> **Vì sao không nổ dù `cosh/sinh` tăng theo `e^{sΔt}`:** luôn có `ζω₀ > s` vì `ζ > √(ζ²−1)` (bình phương 2 vế: `ζ² > ζ²−1` luôn đúng). Nên bao hình `E=e^{−ζω₀Δt}` co nhanh hơn `cosh/sinh` giãn → **tích vẫn phân rã về 0**. ✓
-
-#### ● Critically damped (`ζ=1`) — về đích nhanh nhất, không nảy
-
-**① Nghiệm tổng quát.** `r=−ω₀` là nghiệm **kép**. Toán ODE: khi nghiệm đặc trưng trùng, nghiệm thứ hai phải nhân thêm `t` (nếu không sẽ thiếu 1 hằng số tự do). Nên dạng là `(A + Bt)e^{−ω₀t}`:
-$$y(t) = e^{-\omega_0 t}\,(A + B t)$$
-
-**② Ghim `A, B`:**
-
-| Điều kiện | Kết quả |
-|---|---|
-| `y(0) = y₀` | `A = y₀` |
-| `ẏ(0) = v₀` (xem đạo hàm dưới) → `v₀ = B − ω₀A` | `B = v₀ + ω₀y₀` |
-
-Đạo hàm `y = e^{−ω₀t}(A+Bt)` bằng quy tắc tích, `E' = −ω₀E`:
-$$\dot{y} = -\omega_0 e^{-\omega_0 t}(A+Bt) + e^{-\omega_0 t}\cdot B = e^{-\omega_0 t}\big(B - \omega_0(A+Bt)\big)$$
-Cho `t=0`: `ẏ(0) = B − ω₀A = v₀`.
-
-**③ Kết quả** (đặt `coeff = B = v₀ + ω₀y₀`):
-$$\boxed{\;y = E\,(y_0 + coeff\cdot\Delta t)\;}\qquad \boxed{\;v = E\,(v_0 - \omega_0\,coeff\cdot\Delta t)\;}$$
-với `E = e^{−ω₀Δt}`. Rút gọn `v`: `ẏ = E(B − ω₀(A+BΔt)) = E(v₀+ω₀y₀ − ω₀y₀ − ω₀·coeff·Δt) = E(v₀ − ω₀·coeff·Δt)`.
-
-**④ Kiểm mốc** `Δt=0`: `E=1` → `y=y₀, v=v₀` ✓
-
-> **Vì sao Analytic ổn định vô điều kiện (không bao giờ nổ):** cả 3 công thức đều là (đa thức/lượng giác bị chặn) × bao hình `E` **giảm** khi `ζ>0`. Không có phép **lặp** tích lũy sai số như Euler — mỗi bước tính thẳng nghiệm đúng tại `Δt`. Dù `Δt` khổng lồ (lag spike 2 giây), kết quả vẫn là điểm đúng trên đường cong. Cùng bản chất `Interpolator.ExpDecay` §Bước 4: hàm mũ **cộng số mũ** → chia thời gian kiểu gì cũng ra cùng một chỗ → **độc lập framerate tuyệt đối**.
-
-### 0.5. Semi-implicit Euler (đối chiếu, rẻ)
-
-Analytic đẹp nhưng tốn `exp + sin/cos` mỗi bước. Khi cần **rẻ** và `dt` nhỏ-ổn định, có cách xấp xỉ: thay vì giải chính xác, ta **mô phỏng từng bước nhỏ** theo đúng định nghĩa đạo hàm.
-
-**Ý tưởng rời rạc hóa:** đạo hàm ≈ "đổi bao nhiêu trong `Δt`". Từ ODE tính gia tốc hiện tại, rồi tiến vận tốc & vị trí:
-$$a = \ddot{y} = -\omega_0^2\,y - 2\zeta\omega_0\,v \quad(\text{rút từ dạng chuẩn})$$
-$$v_{new} = v + a\,\Delta t \qquad y_{new} = y + \mathbf{v_{new}}\,\Delta t$$
-
-**Điểm tinh tế — thứ tự cập nhật:**
-
-| Kiểu | Công thức vị trí | Ổn định |
-|---|---|---|
-| Explicit Euler (SAI) | `y += v·Δt` rồi mới `v += a·Δt` (dùng `v` **cũ**) | dễ nổ, bơm năng lượng |
-| **Semi-implicit** (dùng) | `v += a·Δt` trước, rồi `y += v_new·Δt` (dùng `v` **mới**) | ổn định hơn hẳn |
-
-> **Vì sao "velocity-first" ổn hơn:** dùng vận tốc **đã cập nhật** để dời vị trí = thêm một chút "nhìn trước" (tính ẩn). Nó bảo toàn năng lượng gần đúng cho hệ dao động, thay vì bơm năng lượng lên mỗi bước như explicit. Đây là chuẩn cho physics game (còn gọi symplectic Euler).
+| explicit Euler | `y += v·Δt` rồi `v += a·Δt` (vị trí dùng `v` cũ) | bơm năng lượng mỗi bước, dễ nổ |
+| **semi-implicit** (dùng) | `v += a·Δt` rồi `y += v_new·Δt` (vị trí dùng `v` mới) | gần bảo toàn năng lượng cho hệ dao động |
 
 | Đặc điểm | Nội dung |
 |---|---|
-| Ngưỡng nổ | phân kỳ khi `ω₀·Δt` lớn (bước quá thô so chu kỳ dao động). An toàn khi `ω₀·Δt` ≲ vài phần mười |
-| Khi nào tránh | `dt` dao động mạnh (lag spike) hoặc `ω₀` cao → dùng Analytic |
-| Khi nào dùng | `dt` cố định & nhỏ, cần tiết kiệm `exp/sincos`, hệ nhiều vật |
+| ngưỡng nổ | phân kỳ khi `ω₀·Δt` lớn (bước quá thô so chu kỳ); an toàn khi `ω₀·Δt` cỡ vài phần mười |
+| tránh khi | `dt` dao động mạnh, `ω₀` cao → nghiệm đóng |
+| dùng khi | `dt` cố định và nhỏ, nhiều vật, cần tiết kiệm `exp/sincos` |
 
-### 0.6. Mở rộng vector — vì sao chỉ cần chạy lõi scalar per-axis
+### §0.6 Vector: từng trục độc lập
 
-Với Vector3, mỗi trục `x, y, z` có phương trình lò xo **riêng**:
-$$\ddot{x} + 2\zeta\omega_0\dot{x} + \omega_0^2 x = 0,\quad \ddot{y} + \dots,\quad \ddot{z} + \dots$$
+Mỗi trục có phương trình riêng `ẍ + 2ζω₀ẋ + ω₀²x = 0`, `ÿ + …`, `z̈ + …`; không số hạng nào trộn hai trục (`x·y`, `ẋ·z`): hệ
+tuyến tính tách biến, chung `ω₀, ζ`. Code: gọi lõi scalar cho từng trục rồi ghép; không toán vector. Hiệu ứng phi tuyến theo độ dài
+vector ghép trục — Mở rộng sau.
 
-Nhìn kỹ: **không có số hạng nào trộn 2 trục** (không có `x·y`, không `ẋ·z`…). Đây là hệ **tuyến tính, tách biến** (decoupled) — mỗi trục tiến hóa độc lập, chỉ dùng chung `ω₀, ζ` (cùng `SpringConfig`).
+### §0.7 Mốc kiểm
 
-> **Hệ quả code:** không cần toán vector mới. Gọi **đúng lõi scalar** `SpringSolver.Solve` cho từng trục rồi ghép lại. DRY tuyệt đối: sửa lõi → mọi kiểu (float/V2/V3) hưởng lợi. (Lưu ý: điều này đúng vì lò xo *tuyến tính*; các hiệu ứng phi tuyến như giới hạn tốc độ theo *độ dài vector* sẽ ghép trục — ngoài phạm vi v1.)
+| Mốc | Kỳ vọng |
+|---|---|
+| `Δt = 0`, mọi chế độ | `(y, v) = (y₀, v₀)` |
+| `Δt → ∞`, `ζ > 0` | `(0, 0)`: `x → target` |
+| `ζ = 0`, `v₀ = 0` | `y = y₀cos(ω₀t)` — trùng `HarmonicOscillator.GetHarmonicDisplacement(Cos, f, t, y₀)`, biên độ không co |
+| `ζ < 1`, `v₀ = −ζω₀y₀` (`B = 0`) | `y = y₀·E·cos(ω_d t)` — trùng `DampedOscillator.GetDisplacement(Cos, ω_d/2π, ζω₀, t, y₀)`; `v` trùng `GetVelocity` |
+| `ζ = 1`, `y₀ > 0`, `v₀ = 0` | `y` không đổi dấu, giảm đơn điệu |
+| `ζ > 1` so `ζ = 1` cùng `(y₀, v₀)` | về chậm hơn, không đổi dấu |
+| `ζ = 1 − 2·10⁻⁴` (under) so `ζ = 1` (critical) | liên tục qua ranh giới: lệch `< 10⁻³` |
+| độc lập framerate (nghiệm đóng) | 1 bước `T` = 100 bước `T/100`, lệch `< 10⁻³` |
+| Euler | 1 bước `T` ≠ 100 bước `T/100`; sai số giảm khi `dt` giảm |
+| đạo hàm số | `v(t) ≈ (y(t+h) − y(t−h)) / 2h`, `h = 10⁻³` |
+| vector | từng trục bằng đúng kết quả scalar cùng tham số |
 
 ---
 
-## Bản đồ triển khai
+## Giai đoạn 1 — Chủ tạo config, giá trị float đuổi theo đích có nảy
 
-```
-Spring/
-├── SpringConfig.cs   Task 1  tham số + precompute + converter        (0.2)
-├── SpringSolver.cs   Task 2  lõi toán scalar analytic + euler        (0.4, 0.5)
-├── FloatSpring.cs    Task 3  state 1 chiều + API Solve
-├── Vector2Spring.cs  Task 4  per-axis                                 (0.6)
-└── Vector3Spring.cs  Task 4  per-axis                                 (0.6)
-```
-Thứ tự: **1 → 2 → 3/4** (2 cần 1; 3 và 4 đều cần 2, độc lập nhau).
+**Mục tiêu:** chủ gọi `SpringConfig.FromFrequency(f, ζ)` một lần, mỗi frame `FloatSpring.Solve(ref state, target, cfg, dt)`, đọc
+`state.Position`; đổi `target` giữa chừng thì truyền số khác. Chế độ cản yếu `ζ < 1`, nghiệm đóng. Xong giai đoạn này một giá trị
+đuổi theo đích, có đà, nảy rồi dừng, đúng với mọi `dt`.
 
----
+**Vì sao bây giờ:** đây là toàn bộ luồng dùng hệ của một chủ; cản yếu là cảm giác lò xo mặc định và là nhánh có đủ ba hệ số
+(`ζω₀`, `ω_d`, `E`) để mọi nhánh sau chỉ là thay `cos/sin`.
 
-### Task 1: `SpringConfig` — tham số + precompute + converter
-
-**Files:**
-- Create: `Assets/Horcrux/Runtime/Utilities/PhysXHelper/Spring/SpringConfig.cs`
-
-**Interfaces:**
-- Consumes: —
-- Produces:
-  - `enum SpringMode { UnderDamped, CriticallyDamped, OverDamped }`
-  - `readonly struct SpringConfig` — field `float Omega0, Zeta, ZetaOmega, OmegaD; SpringMode Mode; bool IsActive`
-  - `static SpringConfig FromFrequency(float frequency, float dampingRatio)`
-  - `static SpringConfig FromPhysical(float stiffness, float damping, float mass = 1f)`
-  - `(float stiffness, float damping) ToPhysical(float mass = 1f)`
-
-**Bản đồ toán → code:** §0.2 (chuẩn hóa `k/m=ω₀²`, `c/m=2ζω₀`) · §0.3 (chọn mode + `ω_d`/`s`).
-
-**Self-doc & tối ưu:**
-
-| Quyết định | Lý do |
-|---|---|
-| `readonly struct` | immutable, zero-GC, không đổi sau khi tạo |
-| precompute `ZetaOmega, OmegaD, Mode` trong factory | `Sqrt`/nhân tính **1 lần**, không lặp mỗi frame trong Solve |
-| `IsActive` cờ sẵn | Solve chỉ check `bool`, không so `frequency` lại |
-| `Mode` enum sẵn | Solve `switch` thẳng, không so `zeta` mỗi frame |
-| `CriticalEpsilon` | tránh chia 0 ở `ω_d`/`s` khi `ζ≈1` |
-
-- [ ] **Step 1: Tạo file với đầy đủ code**
-
-```csharp
-using System.Runtime.CompilerServices;
-using UnityEngine;
-
-namespace Horcrux.Runtime.Utilities.PhysXHelper
-{
-    public enum SpringMode { UnderDamped, CriticallyDamped, OverDamped }
-
-    /// <summary>
-    /// Tham số lò xo dạng chuẩn (frequency + dampingRatio) + hệ số precompute không phụ thuộc dt.
-    /// Immutable: tạo qua factory, hệ số nặng (Sqrt) tính 1 lần.
-    /// </summary>
-    /// <remarks>
-    /// ODE chuẩn: ÿ + 2ζω₀·ẏ + ω₀²·y = 0, với y = x − target.
-    /// ω₀ = 2π·f (tần số tự nhiên), ζ = damping ratio (không thứ nguyên).
-    /// </remarks>
-    public readonly struct SpringConfig
-    {
-        public readonly float Omega0;     // ω₀ = 2π·f
-        public readonly float Zeta;       // ζ  (đã clamp ≥ 0)
-        public readonly float ZetaOmega;  // ζω₀  — precompute cho bao hình e^(−ζω₀·dt)
-        public readonly float OmegaD;     // under: ω₀√(1−ζ²) | over: s=ω₀√(ζ²−1) | critical: 0
-        public readonly SpringMode Mode;
-        public readonly bool IsActive;    // false khi frequency ≤ 0 → Solve thành no-op
-
-        private const float CriticalEpsilon = 1e-4f; // dải coi ζ = 1 (tránh chia 0 ở ω_d/s)
-
-        private SpringConfig(float omega0, float zeta, float zetaOmega,
-            float omegaD, SpringMode mode, bool isActive)
-        {
-            Omega0 = omega0; Zeta = zeta; ZetaOmega = zetaOmega;
-            OmegaD = omegaD; Mode = mode; IsActive = isActive;
-        }
-
-        /// <summary>API chính (designer-friendly).</summary>
-        /// <param name="frequency">Tần số f (Hz): cảm giác "độ cứng"/tốc độ dao động. ≤ 0 → lò xo tắt.</param>
-        /// <param name="dampingRatio">ζ: &lt;1 nảy, =1 tới đích nhanh nhất không nảy, &gt;1 ì. Âm → clamp 0.</param>
-        public static SpringConfig FromFrequency(float frequency, float dampingRatio)
-        {
-            if (frequency <= 0f) // lò xo tắt: không hội tụ, đánh dấu no-op
-                return new SpringConfig(0f, 0f, 0f, 0f, SpringMode.CriticallyDamped, false);
-
-            float omega0 = 2f * Mathf.PI * frequency;        // ω₀ = 2π·f  (§0.2)
-            float zeta = dampingRatio < 0f ? 0f : dampingRatio; // ζ<0 = bơm năng lượng → nổ → clamp
-            float zetaOmega = zeta * omega0;
-
-            SpringMode mode;
-            float omegaD;
-            if (zeta < 1f - CriticalEpsilon)                 // under-damped (§0.3)
-            {
-                mode = SpringMode.UnderDamped;
-                omegaD = omega0 * Mathf.Sqrt(1f - zeta * zeta);   // ω_d = ω₀√(1−ζ²)
-            }
-            else if (zeta > 1f + CriticalEpsilon)            // over-damped
-            {
-                mode = SpringMode.OverDamped;
-                omegaD = omega0 * Mathf.Sqrt(zeta * zeta - 1f);   // s = ω₀√(ζ²−1)
-            }
-            else                                             // critical (ζ ≈ 1)
-            {
-                mode = SpringMode.CriticallyDamped;
-                omegaD = 0f;
-            }
-            return new SpringConfig(omega0, zeta, zetaOmega, omegaD, mode, true);
-        }
-
-        /// <summary>Converter: tham số vật lý thô (k, c, m) → dạng chuẩn (§0.2 đảo ngược).</summary>
-        public static SpringConfig FromPhysical(float stiffness, float damping, float mass = 1f)
-        {
-            // ω₀ = √(k/m); ζ = c / (2√(km)); f = ω₀ / 2π
-            float omega0 = Mathf.Sqrt(stiffness / mass);
-            float frequency = omega0 / (2f * Mathf.PI);
-            float denom = 2f * Mathf.Sqrt(stiffness * mass);
-            float zeta = denom > 0f ? damping / denom : 0f;
-            return FromFrequency(frequency, zeta);
-        }
-
-        /// <summary>Converter ngược: dạng chuẩn → (k, c) để tra cứu/so sánh. k=ω₀²m, c=2ζω₀m.</summary>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public (float stiffness, float damping) ToPhysical(float mass = 1f)
-        {
-            float k = Omega0 * Omega0 * mass;
-            float c = 2f * Zeta * Omega0 * mass;
-            return (k, c);
-        }
-    }
-}
-```
-
-- [ ] **Step 2: Kiểm chứng (chạy tay / nhẩm)**
-
-| Input | Kỳ vọng |
-|---|---|
-| `FromFrequency(2, 0.5)` | `Mode=UnderDamped`, `Omega0≈12.566`, `OmegaD≈10.88` (`=ω₀√0.75`) |
-| `FromFrequency(2, 1)` | `Mode=CriticallyDamped`, `OmegaD=0` |
-| `FromFrequency(2, 2)` | `Mode=OverDamped`, `OmegaD≈21.77` (`=ω₀√3`) |
-| `FromFrequency(0, 0.5)` | `IsActive=false` |
-| `FromFrequency(2, -1)` | `Zeta=0` |
-| `FromPhysical(k,c).ToPhysical()` | round-trip ≈ `(k,c)` (mass=1) |
-
-  Unity biên dịch sạch (Console không lỗi).
-
-- [ ] **Step 3: Commit**
-
-```bash
-git add Assets/Horcrux/Runtime/Utilities/PhysXHelper/Spring/SpringConfig.cs
-git commit -m "feat(spring): SpringConfig - tham so + precompute + converter"
-```
-
----
-
-### Task 2: `SpringSolver` — lõi toán scalar (analytic + euler)
-
-**Files:**
-- Create: `Assets/Horcrux/Runtime/Utilities/PhysXHelper/Spring/SpringSolver.cs`
-
-**Interfaces:**
-- Consumes: `SpringConfig` (field `IsActive, Omega0, Zeta, ZetaOmega, OmegaD, Mode`) — Task 1.
-- Produces:
-  - `enum SpringMethod { Analytic, SemiImplicit }`
-  - `static (float pos, float vel) Solve(float pos, float vel, float target, in SpringConfig cfg, SpringMethod method, float dt)`
-  - `internal static (float, float) SolveAnalytic(float y0, float v0, in SpringConfig cfg, float dt)`
-  - `internal static (float, float) SolveSemiImplicit(float y, float v, float omega0, float zeta, float dt)`
-
-**Bản đồ toán → code:** `SolveAnalytic` = 3 hộp công thức §0.4 · `SolveSemiImplicit` = §0.5 · đổi biến `y=pos−target` rồi ngược lại = §0.2.
-
-**Self-doc & tối ưu:**
-
-| Quyết định | Lý do |
-|---|---|
-| `in SpringConfig` | readonly by-ref, **không copy** struct mỗi call |
-| trả tuple `(float,float)` | value-type trên stack, zero-GC, không `out` rườm rà |
-| tách `SolveAnalytic`/`SolveSemiImplicit` `internal` | test/đọc từng nhánh; đặt tên nói rõ phương pháp |
-| guard `!IsActive \|\| dt≤0` ngay đầu | thoát sớm, không tính `exp` vô ích |
-| `math.exp/sin/cos/...` (Unity.Mathematics) | thuần `float`, Burst-friendly, không cast `double` |
-| tính `E` (bao hình) 1 lần, dùng chung | không gọi `exp` lặp trong nhánh |
-
-- [ ] **Step 1: Tạo file với đầy đủ code**
-
-```csharp
-using Unity.Mathematics;
-
-namespace Horcrux.Runtime.Utilities.PhysXHelper
-{
-    public enum SpringMethod { Analytic, SemiImplicit }
-
-    /// <summary>
-    /// Lõi giải lò xo 1 chiều (scalar). Vector2/3 gọi vào đây theo từng trục (§0.6).
-    /// </summary>
-    public static class SpringSolver
-    {
-        /// <summary>Tiến state lò xo một bước dt. Trả (position, velocity) mới.</summary>
-        /// <remarks>Giải ÿ + 2ζω₀·ẏ + ω₀²·y = 0 với y = pos − target. Xem §0.4–0.5.</remarks>
-        public static (float pos, float vel) Solve(
-            float pos, float vel, float target,
-            in SpringConfig cfg, SpringMethod method, float dt)
-        {
-            if (!cfg.IsActive || dt <= 0f) return (pos, vel); // guard: lò xo tắt / bước rỗng
-
-            float y = pos - target; // đổi biến về khoảng cách còn lại (§0.2)
-
-            (float ny, float nv) = method == SpringMethod.Analytic
-                ? SolveAnalytic(y, vel, cfg, dt)
-                : SolveSemiImplicit(y, vel, cfg.Omega0, cfg.Zeta, dt);
-
-            return (ny + target, nv); // đổi biến ngược: x = y + target
-        }
-
-        /// <summary>Nghiệm giải tích — ổn định vô điều kiện với mọi dt (§0.4).</summary>
-        internal static (float, float) SolveAnalytic(float y0, float v0, in SpringConfig cfg, float dt)
-        {
-            float zw = cfg.ZetaOmega;
-            float e = math.exp(-zw * dt); // bao hình chung E = e^(−ζω₀·dt)
-
-            switch (cfg.Mode)
-            {
-                case SpringMode.UnderDamped: // §0.4 ●under
-                {
-                    float wd = cfg.OmegaD;                 // ω_d
-                    float c = math.cos(wd * dt);
-                    float s = math.sin(wd * dt);
-                    float b = (v0 + zw * y0) / wd;         // B = (v₀+ζω₀y₀)/ω_d
-
-                    float y = e * (y0 * c + b * s);
-                    float v = e * ((-zw * y0 + b * wd) * c - (zw * b + y0 * wd) * s);
-                    return (y, v);
-                }
-                case SpringMode.OverDamped: // §0.4 ●over
-                {
-                    float sc = cfg.OmegaD;                 // s = ω₀√(ζ²−1)
-                    float ch = math.cosh(sc * dt);
-                    float sh = math.sinh(sc * dt);
-                    float b = (v0 + zw * y0) / sc;         // B = (v₀+ζω₀y₀)/s
-
-                    float y = e * (y0 * ch + b * sh);
-                    float v = e * ((-zw * y0 + b * sc) * ch + (y0 * sc - zw * b) * sh);
-                    return (y, v);
-                }
-                default: // CriticallyDamped — §0.4 ●critical
-                {
-                    float w0 = cfg.Omega0;
-                    float coeff = v0 + w0 * y0;            // B = v₀+ω₀y₀
-                    float y = e * (y0 + coeff * dt);
-                    float v = e * (v0 - w0 * coeff * dt);
-                    return (y, v);
-                }
-            }
-        }
-
-        /// <summary>Semi-implicit Euler — rẻ, có thể nổ khi ω₀·dt lớn (§0.5).</summary>
-        internal static (float, float) SolveSemiImplicit(float y, float v, float omega0, float zeta, float dt)
-        {
-            float a = -(omega0 * omega0) * y - 2f * zeta * omega0 * v; // gia tốc a = −ω₀²y − 2ζω₀v
-            v += a * dt;   // velocity trước
-            y += v * dt;   // position sau (dùng v đã cập nhật)
-            return (y, v);
-        }
-    }
-}
-```
-
-- [ ] **Step 2: Kiểm chứng — kiểm mốc `dt→0` (bất biến quan trọng nhất)**
-
-  Mọi mode, `SolveAnalytic(y0, v0, cfg, dt→0)` phải trả `≈ (y0, v0)`:
-
-| Mode | Tại `dt=0` | Kết quả |
-|---|---|---|
-| Under | `e=1,c=1,s=0` | `y=y0`; `v=−zw·y0+b·wd = −zw·y0+(v0+zw·y0)=v0` ✓ |
-| Over | `ch=1,sh=0` | `y=y0`; `v=−zw·y0+b·sc=v0` ✓ |
-| Critical | `e=1` | `y=y0`, `v=v0` ✓ |
-
-- [ ] **Step 3: Kiểm chứng — hội tụ & hành vi 3 mode**
-
-  Vòng `for` ~5s, `dt=1/60`, `target=10`, `pos0=0`, `vel0=0`:
-
-| ζ | Kỳ vọng | Tiêu chí |
-|---|---|---|
-| bất kỳ | `pos→10`, `vel→0` | #2 hội tụ |
-| `1` | `pos` **không vượt** 10 (đơn điệu) | #3 critical |
-| `0.3` | `pos` **vượt** 10 ≥1 lần, nảy giảm dần | #4 under |
-| `2` | về 10 chậm hơn critical, không vượt | #5 over |
-
-- [ ] **Step 4: Kiểm chứng — độc lập framerate (then chốt của Analytic)**
-
-  Cùng `(pos0, vel0)`, chạy Analytic tới cùng `T=1s`:
-  - A: 1 bước `dt=1` · B: 100 bước `dt=0.01`
-  - Hai `pos` **trùng ~1e-4**. (Euler thì lệch rõ → đúng đặc tính.)
-
-- [ ] **Step 5: Commit**
-
-```bash
-git add Assets/Horcrux/Runtime/Utilities/PhysXHelper/Spring/SpringSolver.cs
-git commit -m "feat(spring): SpringSolver - loi toan scalar analytic + euler"
-```
-
----
-
-### Task 3: `FloatSpring` — state 1 chiều + API người dùng
-
-**Files:**
-- Create: `Assets/Horcrux/Runtime/Utilities/PhysXHelper/Spring/FloatSpring.cs`
-
-**Interfaces:**
-- Consumes: `SpringSolver.Solve(float, float, float, in SpringConfig, SpringMethod, float)` — Task 2; `SpringConfig`, `SpringMethod`.
-- Produces:
-  - `struct FloatSpringState { float Position; float Velocity; ctor(float position, float velocity = 0f) }`
-  - `static void Solve(ref FloatSpringState s, float target, in SpringConfig cfg, float dt, SpringMethod method = SpringMethod.Analytic)`
-
-**Self-doc & tối ưu:**
-
-| Quyết định | Lý do |
-|---|---|
-| `struct` state | zero-GC, copy value an toàn, dễ pool/nhét vào array |
-| `Solve(ref ...)` | cập nhật **in-place**, không trả struct mới (khỏi copy) |
-| `method = Analytic` mặc định | chất lượng trước; muốn rẻ thì opt-in `SemiImplicit` |
-| `AggressiveInlining` | wrapper mỏng → nội tuyến khỏi phí gọi hàm |
-
-- [ ] **Step 1: Tạo file với đầy đủ code**
+### `Runtime/Utilities/PhysXHelper/Spring/FloatSpring.cs` — file mới (call site)
 
 ```csharp
 using System.Runtime.CompilerServices;
 
 namespace Horcrux.Runtime.Utilities.PhysXHelper
 {
-    /// <summary>State lò xo 1 chiều. Value-type: zero-GC, copy an toàn, dễ pool.</summary>
+    /// <summary>Vị trí và vận tốc của một giá trị đang đuổi theo đích. Chủ giữ struct này, truyền ref mỗi frame.</summary>
     public struct FloatSpringState
     {
         public float Position;
@@ -589,61 +330,453 @@ namespace Horcrux.Runtime.Utilities.PhysXHelper
 
     public static class FloatSpring
     {
-        /// <summary>Tiến lò xo về target một bước dt (in-place). Mặc định Analytic (chất lượng).</summary>
+        /// <summary>
+        /// Tiến state về target đúng dt giây, ghi tại chỗ. target là tham số, không nằm trong state: đổi đích giữa chừng
+        /// chỉ là truyền số khác, vận tốc giữ nguyên nên chuyển động không gãy.
+        /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void Solve(ref FloatSpringState s, float target,
-            in SpringConfig cfg, float dt, SpringMethod method = SpringMethod.Analytic)
+        public static void Solve(ref FloatSpringState s, float target, in SpringConfig cfg, float dt)
         {
-            (s.Position, s.Velocity) = SpringSolver.Solve(s.Position, s.Velocity, target, cfg, method, dt);
+            (s.Position, s.Velocity) = SpringSolver.Solve(s.Position, s.Velocity, target, cfg, dt);
         }
     }
 }
 ```
 
-- [ ] **Step 2: Kiểm chứng — smoke test ref-update**
+### `Runtime/Utilities/PhysXHelper/Spring/SpringSolver.cs` — file mới
 
 ```csharp
-var s = new FloatSpringState(0f);
-var cfg = SpringConfig.FromFrequency(3f, 0.5f);
-for (int i = 0; i < 300; i++) FloatSpring.Solve(ref s, 5f, cfg, 1f / 60f);
-// Kỳ vọng: s.Position ≈ 5, s.Velocity ≈ 0 (cập nhật in-place qua ref).
-```
-  - `dt=0` → state không đổi (guard xuyên suốt từ SpringSolver).
+using Unity.Mathematics;
 
-- [ ] **Step 3: Commit**
+namespace Horcrux.Runtime.Utilities.PhysXHelper
+{
+    /// <summary>Lõi giải một chiều: (pos, vel) sau dt giây khi đuổi theo target. Vector gọi vào đây từng trục.</summary>
+    public static class SpringSolver
+    {
+        /// <summary>Giải ÿ + 2ζω₀ẏ + ω₀²y = 0 với y = pos − target, rồi đổi về pos.</summary>
+        public static (float pos, float vel) Solve(float pos, float vel, float target, in SpringConfig cfg, float dt)
+        {
+            if (!cfg.IsActive || dt <= 0f) return (pos, vel);
 
-```bash
-git add Assets/Horcrux/Runtime/Utilities/PhysXHelper/Spring/FloatSpring.cs
-git commit -m "feat(spring): FloatSpring - state 1 chieu + API Solve"
+            float y = pos - target;
+            (float ny, float nv) = SolveAnalytic(y, vel, cfg, dt);
+            return (ny + target, nv);
+        }
+
+        /// <summary>Nghiệm đóng cản yếu: đúng với mọi dt, không tích luỹ sai số.</summary>
+        internal static (float, float) SolveAnalytic(float y0, float v0, in SpringConfig cfg, float dt)
+        {
+            float zw = cfg.ZetaOmega;
+            float wd = cfg.OmegaD;
+            float e = math.exp(-zw * dt);          // E = e^(−ζω₀·dt), bao hình
+            float c = math.cos(wd * dt);
+            float s = math.sin(wd * dt);
+            float b = (v0 + zw * y0) / wd;         // B = (v₀ + ζω₀y₀) / ω_d
+
+            float y = e * (y0 * c + b * s);
+            float v = e * ((-zw * y0 + b * wd) * c - (zw * b + y0 * wd) * s);
+            return (y, v);
+        }
+    }
+}
 ```
+
+### `Runtime/Utilities/PhysXHelper/Spring/SpringConfig.cs` — file mới
+
+```csharp
+using UnityEngine;
+
+namespace Horcrux.Runtime.Utilities.PhysXHelper
+{
+    /// <summary>
+    /// Núm của lò xo (tần số f Hz, tỉ số giảm chấn ζ) đã đổi sang hệ số mà nghiệm đóng dùng mỗi frame. Tạo một lần qua
+    /// factory, dùng chung cho mọi state cùng cảm giác; không đổi sau khi tạo. default là lò xo tắt.
+    /// </summary>
+    public readonly struct SpringConfig
+    {
+        /// <summary>ζω₀ — tốc độ co của bao hình e^(−ζω₀·dt).</summary>
+        public readonly float ZetaOmega;
+
+        /// <summary>ω_d = ω₀√(1−ζ²) — tần số dao động thật, nhỏ hơn ω₀ vì bị cản.</summary>
+        public readonly float OmegaD;
+
+        /// <summary>false khi frequency ≤ 0: lò xo tắt, Solve trả nguyên state.</summary>
+        public readonly bool IsActive;
+
+        // ζ sát 1 thì ω_d sát 0 và B = (…)/ω_d nổ. Tạm chặn ζ dưới dải này; GĐ2 thay bằng nhánh tới hạn.
+        private const float CriticalEpsilon = 1e-4f;
+
+        private SpringConfig(float zetaOmega, float omegaD, bool isActive)
+        {
+            ZetaOmega = zetaOmega;
+            OmegaD = omegaD;
+            IsActive = isActive;
+        }
+
+        /// <param name="frequency">f (Hz): số lần lắc mỗi giây khi không cản — cảm giác cứng, nhanh. ≤ 0 → tắt.</param>
+        /// <param name="dampingRatio">ζ: 0 lắc mãi, càng gần 1 càng ít nảy. Âm là bơm năng lượng → clamp 0.</param>
+        public static SpringConfig FromFrequency(float frequency, float dampingRatio)
+        {
+            if (frequency <= 0f) return default;                                    // IsActive false
+
+            float omega0 = 2f * Mathf.PI * frequency;                               // ω₀ = 2πf
+            float zeta = Mathf.Clamp(dampingRatio, 0f, 1f - CriticalEpsilon);       // tạm: GĐ2 mở ζ ≥ 1
+            float omegaD = omega0 * Mathf.Sqrt(1f - zeta * zeta);                   // ω_d
+            return new SpringConfig(zeta * omega0, omegaD, true);
+        }
+    }
+}
+```
+
+**Toán → code:** `e` = `E` · `b` = `B` · dòng `y` = hộp `y` cản yếu §0.4 · dòng `v` = hộp `v` cản yếu §0.4 · `pos − target` và
+`ny + target` = đổi biến §0.2 ②.
+
+**Quyết định** — `target` là tham số, không nằm trong state: đổi đích không cần API, vận tốc không reset. Phương án bỏ: state giữ
+`Target` và `SetTarget` — thêm một cửa ghi, và mọi chủ có đích đổi mỗi frame (camera bám) phải gọi hai hàm. — `default(SpringConfig)`
+là lò xo tắt: field config chưa gán không ra `NaN`, giá trị chỉ đứng yên; `FromFrequency(≤ 0)` trả `default` nên hai đường "tắt"
+là một. — Chặn `ζ` ở `1 − CriticalEpsilon` là code tạm: GĐ2 thay bằng ba nhánh, chặn này chỉ giữ GĐ1 không chia cho `ω_d ≈ 0`.
+— `(float, float)` tuple thay `out`: value trên stack, một dòng gán ở call site.
+
+| Consumes | Produces |
+|---|---|
+| `Unity.Mathematics` (`math.exp/sin/cos`, đã có trong `com.horcrux.runtime`), `UnityEngine.Mathf` lúc tạo config | `SpringConfig.FromFrequency`, `ZetaOmega`, `OmegaD`, `IsActive` · `SpringSolver.Solve`, `SolveAnalytic` · `FloatSpringState`, `FloatSpring.Solve` |
+
+**Sơ đồ tương tác sau GĐ1** (`+` là phần mới)
+
+```
+  chủ ──FromFrequency+──► SpringConfig+ ──in──► FloatSpring.Solve+(ref state+, target, cfg, dt) ──► SpringSolver.Solve+ ──► SolveAnalytic+ (cản yếu)
+                                                     ▲ đọc Position
+```
+
+**Editor setup:** không — thuần toán.
+
+**Kiểm:** compile sạch. Test trong `Tests/EditMode/SpringDamperTests.cs`, `namespace Horcrux.Tests`; hằng `f = 2`, `ζ = 0.3` trừ khi
+ghi khác; `ω₀ = 12.566`.
+
+| Case | Input | Kỳ vọng |
+|---|---|---|
+| frame đầu, đã ở đích | state `(10, 0)`, target 10 | state không đổi |
+| `dt = 0` · `dt < 0` | bất kỳ | state nguyên |
+| tắt | `FromFrequency(0, 0.5)` · `default(SpringConfig)` | `IsActive` false; `Solve` trả nguyên |
+| `ζ` âm | `FromFrequency(2, −1)` | `ZetaOmega` 0, `OmegaD` = `ω₀` — như `ζ = 0` |
+| hệ số | `FromFrequency(2, 0.5)` | `ZetaOmega` ≈ 6.283, `OmegaD` ≈ 10.883 (= `ω₀√0.75`) |
+| hội tụ | `(0, 0)` → 10, 300 bước `dt = 1/60` | `Position` ≈ 10 (±1e-3), `Velocity` ≈ 0 |
+| nảy | như trên, ghi `Position` từng bước | vượt 10 ít nhất một lần; đỉnh vượt sau nhỏ hơn đỉnh trước |
+| đổi đích giữa chừng | 60 bước về 10 rồi target 0, 300 bước | không gọi API nào khác; `Velocity` ngay trước lần `Solve` đầu sau đổi đích bằng `Velocity` bước trước; `Position` ≈ 0 |
+| `ζ = 0` khớp `HarmonicOscillator` | `(1, 0)` → 0, `ζ = 0`, một bước `dt = t`, `t ∈ {0.1, 0.37, 1}` | `Position` = `HarmonicOscillator.GetHarmonicDisplacement(WaveStyle.Cos, 2, t)` ±1e-4; biên độ không co |
+| cản yếu khớp `DampedOscillator` | `y₀ = 1`, `v₀ = −ZetaOmega`, target 0, một bước `dt = t` | `Position` = `DampedOscillator.GetDisplacement(Cos, OmegaD/2π, ZetaOmega, t, 1)` ±1e-4; `Velocity` = `GetVelocity(...)` ±1e-3 |
+| độc lập framerate | `(0, 0)` → 10: 1 bước `dt = 1` so 100 bước `dt = 0.01` | `Position` lệch < 1e-3 |
+| lag spike | `(0, 0)` → 10, một bước `dt = 2` | ≈ 10 (±1e-2), `Velocity` ≈ 0, không `NaN` |
+| đạo hàm số | `v(t)` so `(y(t+h) − y(t−h))/2h`, `h = 1e-3`, mỗi vế một bước từ `(1, 0)` | lệch tương đối < 1e-2 |
+
+**Mốc commit:** `feat(spring): SpringConfig, SpringSolver cản yếu, FloatSpring`.
 
 ---
 
-### Task 4: `Vector2Spring` + `Vector3Spring` — per-axis, tái dùng lõi
+## Giai đoạn 2 — Vặn `ζ` tới 1 và hơn: không nảy, bò về
 
-**Files:**
-- Create: `Assets/Horcrux/Runtime/Utilities/PhysXHelper/Spring/Vector2Spring.cs`
-- Create: `Assets/Horcrux/Runtime/Utilities/PhysXHelper/Spring/Vector3Spring.cs`
+**Mục tiêu:** `FromFrequency` nhận mọi `ζ ≥ 0`, chọn `SpringMode`; `SolveAnalytic` giải đủ ba chế độ. Xong giai đoạn này designer
+vặn `ζ = 1` được chuyển động về đích nhanh nhất không vượt, `ζ > 1` được chuyển động ì.
 
-**Interfaces:**
-- Consumes: `SpringSolver.Solve(float, float, float, in SpringConfig, SpringMethod, float)` — Task 2; `SpringConfig`, `SpringMethod`.
-- Produces:
-  - `struct Vector2SpringState { Vector2 Position; Vector2 Velocity; ctor(Vector2, Vector2 = default) }`
-  - `static void Vector2Spring.Solve(ref Vector2SpringState, Vector2 target, in SpringConfig, float dt, SpringMethod = Analytic)`
-  - `struct Vector3SpringState { Vector3 Position; Vector3 Velocity; ctor(Vector3, Vector3 = default) }`
-  - `static void Vector3Spring.Solve(ref Vector3SpringState, Vector3 target, in SpringConfig, float dt, SpringMethod = Analytic)`
+**Vì sao bây giờ:** `ζ` là núm thứ hai của chủ và `ζ ≥ 1` là nửa dải của nó; camera bám và UI không muốn vượt đích dùng đúng `ζ = 1`.
 
-**Bản đồ toán → code:** §0.6 — mỗi trục độc lập, cùng `cfg`. **Không toán mới, chỉ gọi lõi scalar per-axis.**
+### `SpringConfig.cs` › thêm trước `struct SpringConfig`
 
-**Self-doc & tối ưu:**
+```csharp
+    /// <summary>Theo ζ: dưới 1 nảy, bằng 1 về nhanh nhất không nảy, trên 1 bò về.</summary>
+    public enum SpringMode { UnderDamped, CriticallyDamped, OverDamped }
+```
 
-| Quyết định | Lý do |
+### `SpringConfig.cs` › field — thêm `Omega0` trước `ZetaOmega`, thay doc `OmegaD`, thêm `Mode` sau `OmegaD`
+
+```csharp
+        /// <summary>ω₀ = 2πf — tần số góc tự nhiên.</summary>
+        public readonly float Omega0;
+
+        /// <summary>ζω₀ — tốc độ co của bao hình e^(−ζω₀·dt).</summary>
+        public readonly float ZetaOmega;
+
+        /// <summary>Under: ω_d = ω₀√(1−ζ²) · Over: s = ω₀√(ζ²−1) · Critical: 0.</summary>
+        public readonly float OmegaD;
+
+        public readonly SpringMode Mode;
+```
+
+### `SpringConfig.cs` › `CriticalEpsilon`, constructor, `FromFrequency` — đoạn cũ → đoạn mới
+
+Cũ:
+
+```csharp
+        // ζ sát 1 thì ω_d sát 0 và B = (…)/ω_d nổ. Tạm chặn ζ dưới dải này; GĐ2 thay bằng nhánh tới hạn.
+        private const float CriticalEpsilon = 1e-4f;
+
+        private SpringConfig(float zetaOmega, float omegaD, bool isActive)
+        {
+            ZetaOmega = zetaOmega;
+            OmegaD = omegaD;
+            IsActive = isActive;
+        }
+```
+
+Mới:
+
+```csharp
+        // Dải coi ζ = 1: hai nhánh kia chia cho ω_d hay s, sát 1 thì sát 0.
+        private const float CriticalEpsilon = 1e-4f;
+
+        private SpringConfig(float omega0, float zetaOmega, float omegaD, SpringMode mode, bool isActive)
+        {
+            Omega0 = omega0;
+            ZetaOmega = zetaOmega;
+            OmegaD = omegaD;
+            Mode = mode;
+            IsActive = isActive;
+        }
+```
+
+Cũ:
+
+```csharp
+            float omega0 = 2f * Mathf.PI * frequency;                               // ω₀ = 2πf
+            float zeta = Mathf.Clamp(dampingRatio, 0f, 1f - CriticalEpsilon);       // tạm: GĐ2 mở ζ ≥ 1
+            float omegaD = omega0 * Mathf.Sqrt(1f - zeta * zeta);                   // ω_d
+            return new SpringConfig(zeta * omega0, omegaD, true);
+```
+
+Mới — ba nhánh theo dấu `ζ² − 1` (§0.3):
+
+```csharp
+            float omega0 = 2f * Mathf.PI * frequency;                               // ω₀ = 2πf
+            float zeta = Mathf.Max(dampingRatio, 0f);                               // ζ < 0 bơm năng lượng
+
+            if (zeta < 1f - CriticalEpsilon)
+                return new SpringConfig(omega0, zeta * omega0, omega0 * Mathf.Sqrt(1f - zeta * zeta),
+                    SpringMode.UnderDamped, true);
+
+            if (zeta > 1f + CriticalEpsilon)
+                return new SpringConfig(omega0, zeta * omega0, omega0 * Mathf.Sqrt(zeta * zeta - 1f),
+                    SpringMode.OverDamped, true);
+
+            // Dải tới hạn: ζ coi là 1 nên ζω₀ = ω₀; bao hình e^(−ζω₀·dt) dùng chung đúng là e^(−ω₀·dt) của nhánh này.
+            return new SpringConfig(omega0, omega0, 0f, SpringMode.CriticallyDamped, true);
+```
+
+### `SpringSolver.cs` › `SolveAnalytic` — đoạn cũ → đoạn mới
+
+Cũ: toàn bộ thân `SolveAnalytic` của GĐ1 (một nhánh cản yếu). Mới — nhánh cản yếu giữ nguyên từng dòng, thành `case` đầu; `E`
+tính một lần cho cả ba nhánh:
+
+```csharp
+        /// <summary>Nghiệm đóng ba chế độ: đúng với mọi dt, không tích luỹ sai số.</summary>
+        internal static (float, float) SolveAnalytic(float y0, float v0, in SpringConfig cfg, float dt)
+        {
+            float zw = cfg.ZetaOmega;
+            float e = math.exp(-zw * dt);          // E = e^(−ζω₀·dt), bao hình chung
+
+            switch (cfg.Mode)
+            {
+                case SpringMode.UnderDamped:
+                {
+                    float wd = cfg.OmegaD;             // ω_d
+                    float c = math.cos(wd * dt);
+                    float s = math.sin(wd * dt);
+                    float b = (v0 + zw * y0) / wd;     // B = (v₀ + ζω₀y₀) / ω_d
+
+                    float y = e * (y0 * c + b * s);
+                    float v = e * ((-zw * y0 + b * wd) * c - (zw * b + y0 * wd) * s);
+                    return (y, v);
+                }
+                case SpringMode.OverDamped:
+                {
+                    float sc = cfg.OmegaD;             // s = ω₀√(ζ²−1)
+                    float ch = math.cosh(sc * dt);
+                    float sh = math.sinh(sc * dt);
+                    float b = (v0 + zw * y0) / sc;     // B = (v₀ + ζω₀y₀) / s
+
+                    float y = e * (y0 * ch + b * sh);
+                    float v = e * ((-zw * y0 + b * sc) * ch + (y0 * sc - zw * b) * sh);
+                    return (y, v);
+                }
+                default:                               // CriticallyDamped, E = e^(−ω₀·dt) vì ZetaOmega = Omega0
+                {
+                    float w0 = cfg.Omega0;
+                    float coeff = v0 + w0 * y0;        // B = v₀ + ω₀y₀
+                    float y = e * (y0 + coeff * dt);
+                    float v = e * (v0 - w0 * coeff * dt);
+                    return (y, v);
+                }
+            }
+        }
+```
+
+**Toán → code:** nhánh over = hai hộp cản mạnh §0.4 với `ch, sh` · nhánh critical = hai hộp tới hạn §0.4 · `Mode` chọn lúc tạo
+config theo bảng §0.3 nên `Solve` không so `ζ` mỗi frame.
+
+**Quyết định** — dải tới hạn `ZetaOmega = Omega0`: một `E` cho ba nhánh mà nhánh tới hạn vẫn đúng công thức `e^{−ω₀Δt}`; sai số
+so với `ζ` thật trong dải là `ω₀·10⁻⁴·dt`, dưới ngưỡng `float`. Phương án bỏ: giữ `ζ` thật và `E` lệch công thức tới hạn một chút —
+hai công thức cho một nhánh. — `cosh/sinh` thay hai mũ: cùng khuôn với nhánh cản yếu, không trừ hai số lớn (§0.4). Giá là tràn
+`float` khi `s·dt > 88` (Mở rộng sau). — `switch` trên enum, `default` là tới hạn: không nhánh nào rơi ra ngoài.
+
+| Consumes | Produces |
 |---|---|
-| gọi `SpringSolver.Solve` mỗi trục | toán viết 1 lần (DRY); sửa lõi → mọi kiểu hưởng |
-| `new Vector3(...)` cuối | Vector3 là **struct** → nằm stack, không GC |
-| `Velocity = default` ctor | mặc định đứng yên, gọn |
+| GĐ1 | `SpringMode` · `SpringConfig.Omega0`, `Mode` · `SolveAnalytic` ba chế độ |
 
-- [ ] **Step 1: Tạo `Vector3Spring.cs`**
+**Sơ đồ tương tác sau GĐ2**
+
+```
+  chủ ──FromFrequency(f, ζ bất kỳ ≥ 0)+──► SpringConfig (Mode+, Omega0+) ──► FloatSpring.Solve ──► SpringSolver.Solve ──► SolveAnalytic
+                                                                                                          ├── UnderDamped
+                                                                                                          ├── OverDamped+
+                                                                                                          └── CriticallyDamped+
+```
+
+**Editor setup:** không.
+
+**Kiểm:** compile sạch; test GĐ1 vẫn xanh (nhánh cản yếu không đổi).
+
+| Case | Input | Kỳ vọng |
+|---|---|---|
+| chọn chế độ | `ζ ∈ {1, 1 − 5e-5, 1 + 5e-5}` | `Mode` Critically, `OmegaD` 0, `ZetaOmega` = `Omega0` |
+| sát ranh | `ζ = 1 − 2e-4` · `ζ = 1 + 2e-4` | Under · Over |
+| hệ số over | `FromFrequency(2, 2)` | `Mode` Over, `OmegaD` ≈ 21.766 (= `ω₀√3`) |
+| tới hạn đơn điệu | `(0, 0)` → 10, `ζ = 1`, 300 bước `dt = 1/60`, ghi `Position` | không bước nào > 10; không giảm; cuối ≈ 10 |
+| cản mạnh chậm hơn | `ζ = 2` so `ζ = 1`, cùng `(0, 0)` → 10, tại `t = 0.5` | `pos(ζ=2) < pos(ζ=1) < 10`; `ζ = 2` không vượt |
+| liên tục qua ranh | `ζ = 1 − 2e-4` so `ζ = 1`, `(1, 0)` → 0, một bước `dt = 0.1` | `Position` lệch < 1e-3 |
+| `dt = 0` | mỗi chế độ, `(1, 3)` | `(1, 3)` |
+| độc lập framerate | over và critical: 1 bước `dt = 1` so 100 bước `dt = 0.01` | lệch < 1e-3 |
+| lag spike over | `ζ = 2`, `(0, 0)` → 10, một bước `dt = 2` (`s·dt` ≈ 43.5) | ≈ 10, không `NaN` |
+| đạo hàm số | over và critical, `h = 1e-3` từ `(1, 0)` | lệch tương đối < 1e-2 |
+
+**Mốc commit:** `feat(spring): ba chế độ theo ζ`.
+
+---
+
+## Giai đoạn 3 — Nhiều vật, `dt` nhỏ và đều: Euler bán ẩn opt-in
+
+**Mục tiêu:** `SpringMethod { Analytic, SemiImplicit }`; `SpringSolver.Solve` nhận `method`, `FloatSpring.Solve` mặc định
+`Analytic`. Xong giai đoạn này chủ có nhiều vật và `dt` cố định đổi được sang bước rẻ không `exp/sincos`.
+
+**Vì sao bây giờ:** chọn phương pháp là quyết định của chủ sau khi đã có cảm giác đúng ở GĐ1–2; đặt mặc định `Analytic` trước
+khi có wrapper vector để bốn wrapper cùng một chữ ký.
+
+### `SpringSolver.cs` › thêm trước `class SpringSolver`
+
+```csharp
+    /// <summary>Analytic: nghiệm đóng, đúng mọi dt. SemiImplicit: Euler bán ẩn, rẻ hơn, chỉ khi dt nhỏ và đều.</summary>
+    public enum SpringMethod { Analytic, SemiImplicit }
+```
+
+### `SpringSolver.cs` › `Solve` — đoạn cũ → đoạn mới
+
+Cũ:
+
+```csharp
+        public static (float pos, float vel) Solve(float pos, float vel, float target, in SpringConfig cfg, float dt)
+        {
+            if (!cfg.IsActive || dt <= 0f) return (pos, vel);
+
+            float y = pos - target;
+            (float ny, float nv) = SolveAnalytic(y, vel, cfg, dt);
+            return (ny + target, nv);
+        }
+```
+
+Mới:
+
+```csharp
+        public static (float pos, float vel) Solve(float pos, float vel, float target,
+            in SpringConfig cfg, SpringMethod method, float dt)
+        {
+            if (!cfg.IsActive || dt <= 0f) return (pos, vel);
+
+            float y = pos - target;
+            (float ny, float nv) = method == SpringMethod.Analytic
+                ? SolveAnalytic(y, vel, cfg, dt)
+                : SolveSemiImplicit(y, vel, cfg, dt);
+            return (ny + target, nv);
+        }
+```
+
+### `SpringSolver.cs` › thêm sau `SolveAnalytic`
+
+```csharp
+        /// <summary>Euler bán ẩn: vận tốc trước, vị trí dùng vận tốc mới. Phân kỳ khi ω₀·dt lớn.</summary>
+        internal static (float, float) SolveSemiImplicit(float y, float v, in SpringConfig cfg, float dt)
+        {
+            float a = -cfg.Omega0 * cfg.Omega0 * y - 2f * cfg.ZetaOmega * v;   // a = −ω₀²y − 2ζω₀v
+            v += a * dt;
+            y += v * dt;
+            return (y, v);
+        }
+```
+
+### `FloatSpring.cs` › `Solve` — đoạn cũ → đoạn mới
+
+Cũ:
+
+```csharp
+        public static void Solve(ref FloatSpringState s, float target, in SpringConfig cfg, float dt)
+        {
+            (s.Position, s.Velocity) = SpringSolver.Solve(s.Position, s.Velocity, target, cfg, dt);
+        }
+```
+
+Mới:
+
+```csharp
+        public static void Solve(ref FloatSpringState s, float target, in SpringConfig cfg, float dt,
+            SpringMethod method = SpringMethod.Analytic)
+        {
+            (s.Position, s.Velocity) = SpringSolver.Solve(s.Position, s.Velocity, target, cfg, method, dt);
+        }
+```
+
+**Toán → code:** dòng `a` = §0.5 gia tốc với `2ζω₀ = 2·ZetaOmega` · hai dòng `+=` = thứ tự semi-implicit §0.5.
+
+**Quyết định** — mặc định `Analytic`: chất lượng trước, rẻ là opt-in có ý thức; call site không đổi khi chưa cần. — Euler đọc
+`ZetaOmega`, không cần `ζ` thô: config không có field `Zeta`. — `method` là tham số, không nằm trong config: một config dùng cho
+cả vật cần đúng và vật cần rẻ. Phương án bỏ: `Mode`-kiểu field `Method` trong config — hai config cho một cảm giác.
+
+| Consumes | Produces |
+|---|---|
+| GĐ2 | `SpringMethod` · `SpringSolver.Solve(…, method, dt)`, `SolveSemiImplicit` · `FloatSpring.Solve(…, method = Analytic)` |
+
+**Sơ đồ tương tác sau GĐ3**
+
+```
+  chủ ──Solve(ref state, target, cfg, dt[, method+])──► FloatSpring ──► SpringSolver.Solve(…, method+, dt)
+                                                                              ├── Analytic     → SolveAnalytic
+                                                                              └── SemiImplicit → SolveSemiImplicit+
+```
+
+**Editor setup:** không.
+
+**Kiểm:** compile sạch; test GĐ1–2 không sửa (mặc định `Analytic`).
+
+| Case | Input | Kỳ vọng |
+|---|---|---|
+| mặc định | `FloatSpring.Solve(ref s, 10, cfg, dt)` không truyền `method` | trùng bit với `Analytic` tường minh |
+| Euler hội tụ | `SemiImplicit`, `(0, 0)` → 10, `f = 2`, `ζ = 0.3`, 300 bước `dt = 1/60` (`ω₀·dt` = 0.21) | ≈ 10 (±0.05), `Velocity` ≈ 0 |
+| Euler là xấp xỉ | Euler so Analytic tại `t = 1`, `dt = 1/60` | lệch > 0 và < 0.2 |
+| sai số giảm theo `dt` | Euler `dt = 1/600` so `dt = 1/60`, cùng `t = 1`, so Analytic | lệch của `1/600` nhỏ hơn lệch của `1/60` |
+| Euler phụ thuộc framerate | 1 bước `dt = 1` so 100 bước `dt = 0.01` | lệch > 1 |
+| Euler nổ | `dt = 0.5` (`ω₀·dt` = 6.3), 20 bước từ `(0, 0)` → 10 | `|Position − 10|` tăng qua các bước, không hội tụ |
+| guard | `SemiImplicit` với `dt = 0` · config tắt | state nguyên |
+| Euler ba chế độ | `ζ ∈ {0.3, 1, 2}`, `dt = 1/60`, 300 bước | đều ≈ 10 (±0.05) |
+
+**Mốc commit:** `feat(spring): SpringMethod, Euler bán ẩn opt-in`.
+
+---
+
+## Giai đoạn 4 — Vị trí 2D, 3D: cùng config, từng trục độc lập
+
+**Mục tiêu:** `Vector2Spring.Solve(ref Vector2SpringState, Vector2 target, in cfg, dt, method)` và bản `Vector3`; mỗi trục gọi
+`SpringSolver.Solve`. Xong giai đoạn này camera, vị trí vật, scale ba trục đuổi theo đích bằng một lời gọi.
+
+**Vì sao bây giờ:** đa số người dùng ở bảng "Ngữ cảnh đã chốt" là vị trí 2D/3D; lõi scalar đã đủ ba chế độ và hai phương pháp
+nên wrapper viết một lần, không sửa lại.
+
+### `Runtime/Utilities/PhysXHelper/Spring/Vector3Spring.cs` — file mới
 
 ```csharp
 using UnityEngine;
@@ -664,9 +797,9 @@ namespace Horcrux.Runtime.Utilities.PhysXHelper
 
     public static class Vector3Spring
     {
-        /// <summary>Lò xo 3 trục độc lập, cùng config. Tái dùng lõi scalar — không lặp toán (§0.6).</summary>
-        public static void Solve(ref Vector3SpringState s, Vector3 target,
-            in SpringConfig cfg, float dt, SpringMethod method = SpringMethod.Analytic)
+        /// <summary>Ba trục độc lập, cùng config: lò xo tuyến tính tách biến nên không có toán vector.</summary>
+        public static void Solve(ref Vector3SpringState s, Vector3 target, in SpringConfig cfg, float dt,
+            SpringMethod method = SpringMethod.Analytic)
         {
             var (px, vx) = SpringSolver.Solve(s.Position.x, s.Velocity.x, target.x, cfg, method, dt);
             var (py, vy) = SpringSolver.Solve(s.Position.y, s.Velocity.y, target.y, cfg, method, dt);
@@ -678,7 +811,7 @@ namespace Horcrux.Runtime.Utilities.PhysXHelper
 }
 ```
 
-- [ ] **Step 2: Tạo `Vector2Spring.cs`**
+### `Runtime/Utilities/PhysXHelper/Spring/Vector2Spring.cs` — file mới
 
 ```csharp
 using UnityEngine;
@@ -699,9 +832,9 @@ namespace Horcrux.Runtime.Utilities.PhysXHelper
 
     public static class Vector2Spring
     {
-        /// <summary>Lò xo 2 trục độc lập, cùng config. Tái dùng lõi scalar — không lặp toán (§0.6).</summary>
-        public static void Solve(ref Vector2SpringState s, Vector2 target,
-            in SpringConfig cfg, float dt, SpringMethod method = SpringMethod.Analytic)
+        /// <summary>Hai trục độc lập, cùng config: lò xo tuyến tính tách biến nên không có toán vector.</summary>
+        public static void Solve(ref Vector2SpringState s, Vector2 target, in SpringConfig cfg, float dt,
+            SpringMethod method = SpringMethod.Analytic)
         {
             var (px, vx) = SpringSolver.Solve(s.Position.x, s.Velocity.x, target.x, cfg, method, dt);
             var (py, vy) = SpringSolver.Solve(s.Position.y, s.Velocity.y, target.y, cfg, method, dt);
@@ -712,25 +845,73 @@ namespace Horcrux.Runtime.Utilities.PhysXHelper
 }
 ```
 
-- [ ] **Step 3: Kiểm chứng — độc lập trục & khớp scalar**
+**Toán → code:** §0.6 — mỗi dòng `SpringSolver.Solve` là một phương trình trục.
 
-  - `Vector3` target `(5, −3, 10)`, ~5s: mỗi trục hội tụ đúng thành phần, `Velocity→0`.
-  - Chạy 1 trục Vector3 với cùng `(pos, vel, target, cfg, dt)` như `SpringSolver.Solve` scalar → **trùng khít** (chứng minh chỉ per-axis, không toán riêng).
-  - `Vector2` tương tự `(5, −3)`.
+**Quyết định** — gọi lõi scalar từng trục, không viết `SolveAnalytic` cho `Vector3`: sửa lõi một chỗ, ba kiểu hưởng; `Vector3`
+là struct nên `new` nằm trên stack. Phương án bỏ: generic `Spring<T>` với `IVectorOps` — một interface cho ba kiểu đã biết trước.
+— Không `AggressiveInlining`: thân ba lời gọi, không còn là wrapper mỏng.
 
-- [ ] **Step 4: Commit**
+| Consumes | Produces |
+|---|---|
+| GĐ3 | `Vector2SpringState`, `Vector2Spring.Solve` · `Vector3SpringState`, `Vector3Spring.Solve` |
 
-```bash
-git add Assets/Horcrux/Runtime/Utilities/PhysXHelper/Spring/Vector2Spring.cs Assets/Horcrux/Runtime/Utilities/PhysXHelper/Spring/Vector3Spring.cs
-git commit -m "feat(spring): Vector2/Vector3 spring - per-axis tai dung loi"
+**Sơ đồ tương tác sau GĐ4**
+
 ```
+  chủ ──Solve(ref Vector3SpringState+, Vector3 target, cfg, dt[, method])──► Vector3Spring+ ──x──► SpringSolver.Solve
+                                                                                             ──y──►
+                                                                                             ──z──►
+  (Vector2Spring+ hai trục, cùng hình)
+```
+
+**Editor setup:** không.
+
+**Kiểm:** compile sạch.
+
+| Case | Input | Kỳ vọng |
+|---|---|---|
+| trục = scalar | `Vector3` state `(1, −2, 3)`, vel `(0.5, 0, −1)`, target `(5, −3, 10)`, một bước `dt = 0.1` | mỗi trục **bằng đúng** (`==`) `SpringSolver.Solve` scalar cùng tham số trục đó |
+| hội tụ 3 trục | `(0, 0, 0)` → `(5, −3, 10)`, 300 bước `dt = 1/60` | `Position` ≈ target (±1e-3 mỗi trục), `Velocity` ≈ 0 |
+| trục đã ở đích | `Position.x = target.x`, `Velocity.x = 0`, hai trục kia chưa | trục `x` không đổi qua mọi bước |
+| `Vector2` | `(0, 0)` → `(5, −3)` | hội tụ; trục = scalar |
+| `dt = 0` · config tắt | bất kỳ | state nguyên |
+| Euler qua wrapper | `method = SemiImplicit`, `dt = 1/60` | hội tụ ≈ target (±0.05) |
+| `velocity` mặc định | `new Vector3SpringState(p)` | `Velocity` = `Vector3.zero` |
+
+**Mốc commit:** `feat(spring): Vector2Spring, Vector3Spring per-axis`.
 
 ---
 
-## Ghi chú thực thi
+## Giai đoạn 5 — Tài liệu `docs/Runtime/SpringDamper/SpringDamper.md` và `SpringDamper.html` (agent)
 
-- **Thứ tự:** 1 → 2 → 3/4 (3 và 4 độc lập, làm song song được sau khi 2 xong).
-- **File `.meta`:** Unity tự sinh khi import — commit kèm nếu repo giữ GUID ổn định.
-- **Kiểm chứng:** chạy tay qua script tạm hoặc nhẩm theo kiểm mốc — **không** tạo file test (spec §4). Xóa script tạm trước khi commit.
-- **Muốn test tự động sau này:** dựng NUnit EditMode theo bảng tiêu chí §4 của spec — ngoài phạm vi plan này.
-```
+`.md` mở đầu `Code: Runtime/Utilities/PhysXHelper/Spring`. Mục: luồng ASCII (luồng mô tả ở trên) · bảng chọn hệ — `SpringDamper`
+(đích đổi được, có đà, bước theo `dt`) · `DampedOscillator` (dao động quanh cân bằng cố định theo `t`) · `Interpolator.ExpDecay`
+(bậc một, không nảy) — với tiêu chí và kết luận · `§0` chuyển nguyên sang (đây là chỗ sống của toán sau khi Plan xoá) · bảng API
+năm file · "Design decisions" gom các **Quyết định** GĐ1–4 · bẫy: Euler với `ω₀·dt` lớn, `cosh` tràn khi `s·dt > 88`, `default` là
+tắt, dải tới hạn · Testing: trỏ `Tests/EditMode/SpringDamperTests.cs`. Không có "Trước khi chạy": thuần code, không wire.
+
+`.html` chọn từ `.md`: kịch bản (giá trị đuổi theo đích, đổi đích giữa chừng, ba chế độ theo `ζ`) · cách dùng (tạo config một lần,
+`Solve` mỗi frame, khi nào `SemiImplicit`) · flow · lưu ý. Demo nếu có: slider `f`, `ζ` vẽ `Position` theo thời gian từ `§0.4`,
+số đọc từ `.md`.
+
+`docs/Runtime/DampedOscillator/DampedOscillator.html` §5 đã nhắc `SpringDamper`: đổi thành link tới `SpringDamper.html`.
+
+Xoá `Plans/2026-07-24-springdamper.md` cùng commit: hệ có tài liệu module thì Plan hết vòng đời.
+
+**Mốc commit:** `docs(spring): SpringDamper.md, .html; xoá Plan`.
+
+---
+
+## File → giai đoạn
+
+| File | GĐ1 | GĐ2 | GĐ3 | GĐ4 | GĐ5 |
+|---|---|---|---|---|---|
+| `Runtime/Utilities/PhysXHelper/Spring/FloatSpring.cs` | tạo | | `method` mặc định | | |
+| `Runtime/Utilities/PhysXHelper/Spring/SpringSolver.cs` | tạo, cản yếu | ba chế độ | `SpringMethod`, `SolveSemiImplicit` | | |
+| `Runtime/Utilities/PhysXHelper/Spring/SpringConfig.cs` | tạo | `SpringMode`, `Omega0`, `Mode` | | | |
+| `Runtime/Utilities/PhysXHelper/Spring/Vector2Spring.cs` | | | | tạo | |
+| `Runtime/Utilities/PhysXHelper/Spring/Vector3Spring.cs` | | | | tạo | |
+| `Tests/EditMode/SpringDamperTests.cs` (agent) | tạo | thêm case | thêm case | thêm case | |
+| `docs/Runtime/SpringDamper/SpringDamper.md`, `.html` (agent) | | | | | tạo |
+| `docs/Runtime/DampedOscillator/DampedOscillator.html` (agent) | | | | | link §5 |
+| `Plans/2026-07-24-springdamper.md` | | | | | xoá |
