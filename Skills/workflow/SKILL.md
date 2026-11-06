@@ -70,7 +70,7 @@ không tự sửa dòng cũ · **③ ghi**:
 | Nguồn | Ghi |
 |---|---|
 | câu trả lời khi brainstorm | **hỏi** developer có ghi không, vào tầng nào; chốt mới ghi |
-| code thật lệch Plan (lượt so sau mỗi step) | *lỗi* → báo kèm bằng chứng · *trôi* (tên, thứ tự, chi tiết không mang lý do) → sync Plan theo code · *tư tưởng* (đổi hình dạng, ranh giới, kiểu, cách tiêm) → ghi thẳng, liệt kê để veto |
+| code thật lệch Plan (lượt so sau mỗi giai đoạn) | *lỗi* → báo kèm bằng chứng · *trôi* (tên, thứ tự, chi tiết không mang lý do) → sync Plan theo code · *tư tưởng* (đổi hình dạng, ranh giới, kiểu, cách tiêm) → ghi thẳng, liệt kê để veto |
 | **quét cuối chat — bắt buộc, không đợi nhắc** | duyệt cả chat: rule, tư tưởng dùng chung cho game Unity từ thứ developer yêu cầu, sửa, hoặc đồng ý. **Ghi thẳng, liệt kê nguyên văn trong báo cáo** để veto |
 
 Chỉ khái quát lựa chọn có "vì sao" lặp lại được; hằng số, tên, phạm vi một task thì không. Dòng ghi vào skill **không mang
@@ -79,7 +79,7 @@ module.
 
 ## Subagent
 
-Subagent là ngữ cảnh trắng; để nó tự tìm hiểu là thuế đọc nhân theo số subagent. Prompt **tự chứa như một task của Plan**:
+Subagent là ngữ cảnh trắng; để nó tự tìm hiểu là thuế đọc nhân theo số subagent. Prompt **tự chứa như một giai đoạn của Plan**:
 trích đoạn tài liệu cần, đường dẫn file sẽ chạm, tiêu chí nghiệm thu; thiếu thì báo về, không tự đi đọc — trừ **code nó sẽ
 sửa**.
 

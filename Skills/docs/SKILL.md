@@ -88,22 +88,38 @@ thị tĩnh. Trang: header → mục lục trỏ `id` → `<main>` → footer gh
 
 ## Plan — để developer tự triển khai
 
-**Tự chứa:** developer code lại được từ đầu tới cuối không suy đoán, không mở tài liệu khác; task xếp theo thứ tự phụ
-thuộc; hệ có lõi toán thì `§0` dẫn giải theo `math-physics` › Cho hiểu sâu. **Dẫn giải dừng ở luồng; Editor setup đầy đủ** —
-bước tay thiếu không compile error nào bắt; câu developer hỏi lặp lại thì ghi ngược vào Plan.
+**Gõ xong là hiểu hệ, không chỉ hệ chạy:** developer biết mỗi phần ai gọi, vì sao có, thiếu thì hỏng đâu — đủ để tự
+maintain. **Tự chứa:** code lại được từ đầu tới cuối không suy đoán, không mở tài liệu khác; hệ có lõi toán thì `§0` dẫn
+giải theo `math-physics` › Cho hiểu sâu. **Editor setup đầy đủ** — bước tay thiếu không compile error nào bắt; câu
+developer hỏi lặp lại thì ghi ngược vào Plan.
 
-**Lõi developer viết, test agent viết:** Plan chỉ có danh sách case, agent viết test sau khi đọc code thật. Việc phát sinh
-lúc làm Plan thì đầu ra là Plan, không tạo file code. **Plan chạm cả Horcrux lẫn consumer thì phần Horcrux chỉ thêm**
-(member mới mang mặc định, API cũ giữ) — mỗi task một mốc compile sạch và một commit; xoá API cũ là việc riêng. Developer
-gõ lệch Plan là bình thường: sau mỗi step agent compile, so code với Plan, phân loại theo `workflow` › Chưng cất.
+**Dựng theo luồng, chia theo giai đoạn — không theo file.** Mở đầu bằng **luồng mô tả** (kịch bản dùng hệ từ đầu tới cuối,
+cắt thành chặng) và **bản đồ hệ cuối** (ai làm gì, ai gọi ai). Mỗi giai đoạn nối thêm một chặng, xuyên qua mọi file chặng
+đó cần, kết ở trạng thái **chạy được, thấy được**. Thứ tự theo luồng, không theo cây phụ thuộc type — lá trước gốc là gõ
+class chưa biết ai dùng.
 
-**Hai hình dạng code:** hệ **chưa có code** — mỗi khối là một file trọn vẹn để chép · hệ **đang có code** — chuỗi chỗ đổi
-theo thứ tự: file · dòng · đoạn cũ → đoạn mới.
+**Mỗi giai đoạn chỉ ra chỗ dùng ngay trong nó:** member thêm vào có caller thật trong cùng giai đoạn (NT1 áp từng giai
+đoạn); call site trước, phần được gọi sau. Kèm sơ đồ tương tác sau giai đoạn, phần mới đánh dấu, và *vì sao chặng này
+đến lúc này*.
 
-**Sổ tay** — kho phần mỗi task: bảng "Đã khảo sát" · Files · Interfaces (consumes, produces, chữ ký đủ) · "toán → code" ·
-*quyết định và vì sao* · code dán được · Editor setup riêng · bảng case (input → kỳ vọng, biên theo `workflow` › Nghiệm thu) ·
-danh sách cheat. **Nghiệm thu:** có "Ngữ cảnh đã chốt" · mọi hàm có caller thật (NT1) · đúng công thức, đúng nhịp,
-self-document.
+**File đã có thì chỉ chỗ thêm, không chép lại:** neo theo file, region, tên member có thật — không số dòng, developer gõ
+lệch là dòng trôi — kèm vài dòng có sẵn quanh chỗ thêm. File mới thì khung đủ nhưng chỉ chứa thứ giai đoạn đó dùng. Hệ
+đang có code: giai đoạn 0 là bản đồ hệ hiện tại, chỗ đổi viết đoạn cũ → đoạn mới. Code tạm để chặng đầu chạy chỉ khi vài
+dòng và giai đoạn thay nó nói vì sao thay — mọc thêm hơn viết lại.
+
+**Lõi developer viết, test agent viết:** Plan chỉ có danh sách case theo giai đoạn, agent viết test sau khi đọc code thật.
+Việc phát sinh lúc làm Plan thì đầu ra là Plan, không tạo file code. **Plan chạm cả Horcrux lẫn consumer thì phần Horcrux
+chỉ thêm** (member mới mang mặc định, API cũ giữ) — mỗi giai đoạn một mốc compile sạch và một commit; xoá API cũ là việc
+riêng. Developer gõ lệch Plan là bình thường: sau mỗi giai đoạn agent compile, so code với Plan, phân loại theo `workflow`
+› Chưng cất.
+
+**Sổ tay** — đầu Plan: "Ngữ cảnh đã chốt" · bảng "Đã khảo sát" · phụ thuộc Plan nào · luồng mô tả · bản đồ hệ cuối · `§0`.
+Mỗi giai đoạn: mục tiêu (chặng nào, xong thì hệ làm thêm được gì) · vì sao bây giờ · sơ đồ tương tác · chỗ thêm theo neo
+(`File` › region › neo → đoạn mới) · Interfaces nó consumes, produces · "toán → code" · *quyết định, phương án bỏ, vì sao* ·
+Editor setup của giai đoạn · kiểm (compile, thấy gì, bảng case input → kỳ vọng, biên theo `workflow` › Nghiệm thu) · danh
+sách cheat · mốc commit. Cuối Plan: bảng file → giai đoạn đã chạm. **Nghiệm thu:** có "Ngữ cảnh đã chốt" · đọc giai đoạn
+nào cũng trả lời được "code này ai gọi" · không member nào có trước giai đoạn có caller của nó · không đoạn nào chép lại
+cả file đã có · mọi neo trỏ member có thật · đúng công thức, đúng nhịp, self-document.
 
 ## Kỷ luật viết — mọi loại tài liệu
 
@@ -114,8 +130,8 @@ lần · lý do dài cho khẳng định hiển nhiên. Cắt xong vẫn dài th
   *bấm gì ra gì, dùng khi nào*, không tên class.
 - **Không chép lại thứ người đọc đã cầm:** *xoá dòng này người đọc mất gì?* — "mở file kia xem" thì bỏ. Ngoại lệ: chữ ký
   API trong `.md`.
-- **Khối code trong Plan của code đã tồn tại là bản sao nguyên văn**, đồng bộ bằng chép rồi so máy. **Sổ tay** — script dò
-  khối mở bằng `using`/`namespace` tới `.cs` giống nhất, thay nguyên khối, chạy tới 0 khối lệch.
+- **Đoạn code trong Plan của code đã tồn tại khớp nguyên văn chỗ neo của nó trong file thật**, đồng bộ bằng chép rồi so
+  máy. **Sổ tay** — script dò mỗi đoạn tới file và neo nó ghi, so với vùng tương ứng, thay nguyên đoạn, chạy tới 0 đoạn lệch.
 - **Thao tác Editor là một mục riêng** ở mọi đầu ra: Plan (Editor setup) · tài liệu ("Trước khi chạy") · **trả lời chat**.
 - **Viết cho người đọc lần đầu, ở thì hiện tại**; ngoại lệ là "đã sai một lần" — ghi bài học, không tường thuật. **Sổ tay**
   — grep "trước đây", "bản cũ", "giờ đã".
