@@ -1,103 +1,55 @@
 # Plan — `HopCurve`, `DipSpec`, `FlashSpec`, `SinkSpec`, `PopSpec`, `LaunchSpec` và hai hàm `Interpolator` lên Horcrux
 
-Ngày 2026-11-06. Nguồn: category-jam, `Assets/_CategoryJam/Scripts/Entities/Tile/TileFlightCurve.cs` (hình dạng chuyến bay hai pha tới
-ô và cú nhảy lên hàng trước; call site ở `Entities/Tile/Tile.cs`), `Entities/Box/BoxFeelTuning.cs` (`DipTuning`, `FlashTuning`,
-`LaunchTuning`, `BoxFeelCurve.DipScaleY`, `BoxFeelCurve.LaunchScaleY`), `Entities/Box/BoxAnimation.cs` (`InsertFlash`,
-`InsertReceiveAccents`, `ApplyDip`, `ApplyLandCompress`), `Entities/Box/BoxReceiveTuning.cs` (ba núm `FramePunch*`, `CounterPopTuning`),
-`Entities/Box/CategoryBox.cs` và `Entities/Shelf/SingleShelfAmountBar.cs` (số nảy), `Entities/TileSlot/CacheTileSlot.cs`
-(`SlotSpringTuning`, `PlaySpring`), `Entities/Shelf/ShelfPromoteTuning.cs` (`LandPitch`). Bốn họ độc lập: **hình dạng cú nhảy** (toán
-thuần) · **lún và loé của vật nhận** · **lún vị trí và nảy một pha** (hai extension `Transform`) · **nén rồi vọt đi**. Các class núm của
-tile (`TileFlightTuning`, `TileRiseTuning`, `TilePressTuning`) và `BoxFeelCurve.LidStart` ở lại dự án.
+Ngày 2026-11-06. Nguồn: category-jam `Assets/_CategoryJam/Scripts/Entities/Tile/TileFlightCurve.cs` (call site `Tile.cs`),
+`Entities/Box/BoxFeelTuning.cs`, `BoxAnimation.cs`, `BoxReceiveTuning.cs`, `CategoryBox.cs`, `Entities/Shelf/SingleShelfAmountBar.cs`,
+`ShelfPromoteTuning.cs`, `Entities/TileSlot/CacheTileSlot.cs`. Bốn họ độc lập: **A** hình dạng cú nhảy (toán thuần) · **B** lún và loé
+của vật nhận · **C** lún vị trí và nảy một pha (extension `Transform`) · **D** nén rồi vọt đi.
 
-**Phân công:** GĐ1–GĐ8 (Horcrux, code runtime) developer gõ, sau mỗi giai đoạn agent viết test của giai đoạn đó theo bảng case rồi
-compile · GĐ9 (tài liệu) và GĐ10 (category-jam chuyển sang bản Horcrux, xoá bản tạm) agent làm.
-
-**Chạy được, thấy được ở GĐ1–GĐ8** = `com.horcrux.runtime` compile sạch và bảng case của giai đoạn xanh trong `Tests/EditMode/` (toán
-thuần, struct) hoặc `Tests/PlayMode/` (extension chạy tween); Horcrux không có host nên "thấy trong game" là GĐ10. Horcrux là submodule:
-GĐ1–GĐ9 commit **trong `Assets/Horcrux`**, GĐ10 commit ở repo dự án kèm con trỏ submodule.
-
-Không phụ thuộc Plan nào; `Plans/Horcrux_FeelUtilities_Plan.md` (`TadaCurve`, `TadaSpec`) theo cùng khuôn "struct núm + class toán" của
-Plan này, làm trước hay sau đều compile sạch. Có lõi toán: `§0` dẫn giải chuyến bay hai pha và cỡ theo pha; công thức một dòng ghi
-"Toán → code" tại giai đoạn của nó.
+**Phân công:** GĐ1–GĐ8 developer gõ, agent viết test theo bảng case rồi compile · GĐ9 (tài liệu), GĐ10 (category-jam chuyển sang bản
+Horcrux, xoá bản tạm) agent làm. **Chạy được, thấy được** ở GĐ1–GĐ8 = compile sạch + bảng case xanh trong `Tests/EditMode/` (toán,
+struct) hoặc `Tests/PlayMode/` (extension chạy tween); thấy trong game ở GĐ10. GĐ1–GĐ9 commit trong `Assets/Horcrux`, GĐ10 commit ở
+dự án kèm con trỏ submodule. Không phụ thuộc Plan nào; `Plans/Horcrux_FeelUtilities_Plan.md` (`TadaCurve`, `TadaSpec`, nhịp tada tile
+cuối, sổ "đang diễn") cùng khuôn "struct núm + class toán", làm trước hay sau đều compile sạch.
 
 ---
 
 ## Ngữ cảnh đã chốt
 
-| Mục | Chốt |
-|---|---|
-| Người dùng | category-jam: `Tile.StepFlight`, `Tile.StepRise`, `Tile.StepFinale`, `Tile.FlyToAsync`, `Tile.AnimateToFrontRow`, `BoxAnimation.PlayReceive`, `BoxAnimation.PlayComplete`, `CacheTileSlot.PlaySpring`, `CategoryBox.UpdateCounter`, `SingleShelfAmountBar.PlayPop`, `ShelfPromoteTuning.LandPitch` · foods_jam `CacheHole.PlaySpringAnimation` cùng hình lún vị trí · dự án sau có vật nhảy thấp có bóng, vật bay hai pha vào ô, vật nhận lún, vật vọt đi sau khi nén, sprite loé, số nảy |
-| Mục tiêu | đưa **toán thuần**, **struct núm** và các extension một lời gọi lên Horcrux, dự án gọi thẳng; cảm giác chơi **không đổi một giá trị nào**: mọi biểu thức chép nguyên văn, kể cả thứ tự phép nhân (float) |
-| Chỗ đặt | `HopCurve` cạnh `SquashStretch` ở `Runtime/Utilities/PhysXHelper/` (toán thuần, không tween) · `Interpolator.SmoothStep`, `Interpolator.OffsetFromCenter` thêm vào class có sẵn cùng thư mục · `DipSpec`, `FlashSpec`, `SinkSpec`, `PopSpec`, `LaunchSpec` ở `Runtime/Utilities/Tweening/`, namespace `Horcrux.Runtime.Utilities.Tweening` như `SquashStretchSpec`, `ArcFlightSpec` · `InsertFlash` là extension của `PrimeTween.Sequence` ở `Runtime/Utilities/ExtensionMethods/SequenceExtensions.cs` · `CharmSinkLocalY`, `CharmPop` là partial của `TransformExtensions` ở `Runtime/Utilities/ExtensionMethods/Transform/TransformExtensions.Accent.cs` |
-| Tên | `HopCurve` (cú nhảy thấp, không phải đạn đạo); hậu tố `Spec` theo `SquashStretchSpec` thay `Tuning` của dự án; `LaunchSpec` developer chốt. Tên **field** trong các struct giữ nguyên theo bản tạm (quyết định trái trực giác). Developer đổi tên type tuỳ ý trước khi gõ |
-| Hợp đồng `CharmSinkLocalY`, `CharmPop` | như `CharmJump`: trả `Sequence`, **không nhận `ct`**, thời gian scaled. Cả hai được nhét vào một `Sequence` lớn hơn (khung nảy nằm trong sequence nhận tile) mà PrimeTween không cho tween con mang token |
-| Đường bay hai pha | lên Horcrux trọn: `ApexT`, `Arc01`, `ArcY`, `StartLiftOffset`, `Shadow01`, `FlightScale`, hằng `MIN_APEX_T`; `TileFlightCurve.cs` xoá hẳn ở GĐ10 |
-| Số | số trên prefab và mặc định C# của dự án là nháp của developer, không phải mốc; GĐ10 đọc lại từ prefab lúc làm, không chép từ Plan |
-
-**Cố ý KHÔNG làm**
-
-| Không làm | Vì |
-|---|---|
-| Đưa `TileFlightTuning`, `TileRiseTuning`, `TilePressTuning` lên Horcrux | chứa bóng, lắc, tan thân, vệt — quyết định của tile nhựa 2.5D, không phải của cú nhảy; Horcrux nhận số |
-| Driver tween cho cú nhảy (một `Tween.Custom` lái mọi kênh) | driver ghi lên thân, bóng, màu của **dự án**; mỗi dự án một bộ kênh. Horcrux giữ hình dạng, dự án giữ vòng `Step` |
-| Driver tween cho lún và nén (`Tween DipScale(Transform, …)`) | `Tween.Custom<T>` cần một class giữ state (scale nghỉ) để callback `static`; bọc lại là sinh class trung gian cho một dòng `ApplyScaleY` |
-| Gộp `HopCurve.Lift` vào `JumpArc` | `JumpArc` lo hai đầu lệch cao; `Lift` là ca hai đầu ngang nhau, đọc được trong một dòng. Test giữ hai bản khớp nhau |
-| `HopCurve.HoldThenEaseIn`, `HopCurve.PeakForDistance` | không có người dùng: cỡ chuyến bay là `FlightScale` (OutQuad lên đỉnh rồi SmoothStep về đích), cú bay tới ô vượt đích một số cố định `FallHeight` |
-| `BoxFeelCurve.LidStart` lên Horcrux | lịch nắp bay vào so với cú lún tile cuối là dàn cảnh của box; ở lại dự án cùng hai case test của nó |
-| Field `UpEase` trong `SinkSpec` | cả hai người dùng về nghỉ bằng OutBack; thêm núm khi có người dùng về khác |
-| `CharmPop` bằng `Tween.PunchScale` của PrimeTween | khác hình: punch dao động quanh nghỉ nhiều chu kỳ, pop là **một** lượt lên rồi về. Ai cần rung quanh nghỉ thì dùng thẳng PrimeTween |
-| `CharmPop` bằng `Tween.Scale(…, startDelay: Delay)` | `startDelay` của PrimeTween lặp mỗi cycle, đỉnh đứng yên giữa hai lượt; trễ nằm trong `Sequence` bằng `ChainDelay` |
-| Lún vị trí cho nắp box | nắp dừng ngay tại vị trí đóng; cú lún dành cho cả box (`LaunchSpec`) |
-| Đưa nở ba nhịp `TileView.PlayPopIn` lên | foods_jam có bản giống hệt nhưng hình này bóp méo thân nhựa, đang chờ làm lại ở dự án; đưa lên là đóng băng thứ sắp đổi |
-| Đưa lắc xoay `TileView.PlayReject`, `PlayLandRock` lên | hai bản khác chia thời gian (1:2:1 với 1:1:1) và biên độ dội (1.0 với 0.66); struct chung mang năm số. Chờ người dùng thứ ba |
-
-**Quyết định trái trực giác** — lý do viết ở giai đoạn sinh ra nó: `SmoothStep` clamp đầu vào (GĐ2) · `LeanRamp`, `LeanToward`,
-`FlightScale` nhận mốc và ngưỡng làm tham số bắt buộc, `MIN_APEX_T` là hằng (GĐ1, GĐ2) · `OffsetFromCenter` ở `Interpolator` (GĐ3) ·
-field các struct PascalCase khác `SquashStretchSpec` (GĐ4) · `InsertFlash` bật tắt renderer (GĐ5) · `SinkSpec.DownEase` là núm, dời vị trí
-không bóp scale, `CharmSinkLocalY` nhận `restLocalY` (GĐ6) · `CharmPop` trả `Sequence` dù một tween (GĐ7) · `LaunchSpec.EvaluateStretchScaleY`
-chỉ cho pha bật (GĐ8).
-
-**Mở rộng sau**
-
-- `HorizontalGrid` của dự án dùng `Interpolator.OffsetFromCenter`: bản của nó viết `-(n − 1) · space / 2 + i · space`, thứ tự phép tính
-  khác nên có thể lệch 1 ulp; đổi khi có trace riêng cho bố cục.
-- Lắc xoay một chiều (`TileView.PlayReject`, `PlayLandRock`): lên Horcrux khi có người dùng thứ ba hoặc khi developer chọn đổi sang
-  `DampedOscillator`, việc đó đổi cảm giác.
-- Nở ba nhịp `TileView.PlayPopIn`: sau khi dự án làm lại cho vật cứng, nếu foods_jam vẫn dùng hình cũ thì xét lại.
-- Struct tư thế nghỉ (`Capture` ở Awake, `Restore` khi về pool) thay các field `_restScale`, `_originalLocalScale`, `_restLocalY` rời ở
-  bốn class: biến luật "tween trên giá trị nghỉ" thành kiểu; developer quyết.
-- Nhịp tada của tile cuối và sổ "đang diễn": `Plans/Horcrux_FeelUtilities_Plan.md`.
-
----
-
-## Đã khảo sát
-
-| Nguồn | Lấy gì | Không lấy, vì sao |
-|---|---|---|
-| `TileFlightCurve.cs` của dự án (bản 2026-11-06) | 16 hàm và 5 hằng; `Tile.cs` gọi 14 hàm ở `FlyToAsync`, `BuildFlightState`, `StepFlight`, `StepFinale`, `AnimateToFrontRow`, `StepRise`; `Lift` chỉ còn qua `RiseLift` | bốn hằng cảm giác `LEAN_RISE_END`, `LEAN_FALL_START`, `LEAN_MIN_DX`, `SCALE_PEAK_OF_RISE` thành `private const` của `Tile` (GĐ10) |
-| `BoxFeelTuning.cs`, `BoxReceiveTuning.cs`, `BoxAnimation.cs` | ba struct núm, hai hàm đường cong, `InsertFlash` private static, khung nảy trong `InsertReceiveAccents(Sequence, float, BoxReceiveTuning)` chạy cho cả `receive` lẫn `finalReceive` | `BoxFeelCurve.LidStart` (bảng "Cố ý KHÔNG làm") · `ApplyLandCompress` (hai dòng trên cùng t, GĐ8) · `BoxCompleteTuning`, `BoxAppearTuning` |
-| `CacheTileSlot.cs`, `CategoryBox.cs`, `SingleShelfAmountBar.cs`, `ShelfPromoteTuning.cs` | `PlaySpring` (InSine xuống, OutBack về quanh `_restLocalY` đọc ở Awake) · hai bản `Sequence.Create().ChainDelay(…).Chain(Tween.Scale(… 2, Yoyo))` giống hệt · `LandPitch` | `PlayLastSlotWarning`, `PlayPopOut`, bộ đếm chuỗi, thanh ruột |
-| `Tests/EditMode/TileFlightCurveTests.cs`, `BoxFeelCurveTests.cs` của dự án | 82 dòng `[Test]`/`[TestCase]` (4 là `LandPitch_CentersOnMiddleSlot`) và 11 dòng (2 là `LidStart`) — chuyển sang Horcrux ở từng giai đoạn | 4 + 2 case ở lại dự án |
-| Horcrux `PhysXHelper/Interpolator.cs` | có `SmootherStep` (quintic), chưa có cubic; `OffsetFromCenter` cùng họ ánh xạ chỉ số → giá trị như `Remap` | — |
-| Horcrux `PhysXHelper/SquashStretch.cs` | `BoxAnimation.ApplyScaleY` đã dùng `GetVolumePreservingScale`; `DipSpec`, `LaunchSpec` chỉ trả hệ số y | `GetSquashStretch(t, start, end)`: một pha lerp, không có pha về |
-| Horcrux `ExtensionMethods/Transform/SquashStretchSpec.cs`, `ArcFlightSpec.cs` | namespace `Horcrux.Runtime.Utilities.Tweening` và hậu tố `Spec` | hai file nằm ở `ExtensionMethods/Transform/` dù namespace là `Tweening`; Plan đặt spec mới ở `Runtime/Utilities/Tweening/` (hiện chỉ có `Easings/`), dời hai file cũ là việc riêng · `SquashStretchSpec` một pha (start → end, một ease) khác `DipSpec` hai pha |
-| Horcrux `ExtensionMethods/Transform/TransformExtensions.CharmTween.cs` | — | `CharmSquashStretch`, `CharmFlyArc` trả `Tween`, nhận `ct`, `useUnscaledTime: true`: hợp đồng khác (bảng "Ngữ cảnh"); `CharmFlyArc` là Bezier theo tốc độ, không phải hai pha với pha rơi cố định |
-| Horcrux `ExtensionMethods/Transform/TransformExtensions.Jump.cs`, `JumpArc.cs`, `docs/Runtime/CharmJump/CharmJump.md` | hợp đồng trả `Sequence`, không `ct`; file partial riêng cho mỗi họ extension; test chéo `Lift(t, peak)` = `JumpArc.EvaluateHeight(0, ComputeArcCoefficient(0, 0, peak), t)` | không thay `Lift` (bảng "Cố ý KHÔNG làm") |
-| Horcrux `Tweening/Easings/Easer.cs` (namespace `Horcrux.Runtime.Tweening.Easing`) | — | `DipSpec`, `LaunchSpec` dùng `PrimeTween.Easing.Evaluate` như bản tạm: cùng một hàm ease với tween đang chạy, khác bản thì lún lệch tween |
-| Horcrux `ExtensionMethods/` | chưa có extension nào cho `PrimeTween.Sequence`; dự án cũng không | — |
-| Horcrux `docs/Runtime/Interpolator/` | chỉ có `Interpolator.html` (mục 3 đã vẽ SmoothStep cubic để so với `SmootherStep`, mục 9 bảng API) | thư mục chưa có `Interpolator.md`; dựng `.md` là việc riêng ngoài Plan |
-| Horcrux `Tests/PlayMode/CharmJumpTests.cs`, `AllocationMeter.cs` | khung PlayMode: `PrimeTweenConfig.SetTweensCapacity`, `isPaused`, đo GC bằng `GC.Alloc` recorder | — |
-| PrimeTween `Sequence.cs` | `Insert(float, Tween)`, `Insert(float, Sequence)`, `InsertCallback<T>(float, T, Action<T>)`, `ChainDelay(float)` đều có; `Easing.Evaluate(float, Ease)` static | `startDelay` lặp mỗi cycle (bảng "Cố ý KHÔNG làm") |
-| foods_jam `CacheHole.PlaySpringAnimation` | người dùng thứ hai ngoài dự án của hình lún vị trí: xuống InSine rồi về OutBack, hai bộ số | — |
-| foods_jam, mahjong-jam `DOPunchScale` | — | khác hình `CharmPop` (bảng "Cố ý KHÔNG làm") |
+- **Người dùng:** category-jam — tile bay hai pha vào ô và nhảy lên hàng trước (`Tile`), box nhận và vọt đi (`BoxAnimation`), ô cache
+  nhún (`CacheTileSlot`), số nảy (`CategoryBox`, `SingleShelfAmountBar`), pitch đáp (`ShelfPromoteTuning.LandPitch`) · foods_jam
+  `CacheHole.PlaySpringAnimation` cùng hình lún vị trí.
+- **Mục tiêu:** toán thuần, struct núm, extension một lời gọi lên Horcrux, dự án gọi thẳng; cảm giác **không đổi một giá trị**: mọi
+  biểu thức chép nguyên văn, kể cả thứ tự phép nhân float. Đường bay hai pha lên trọn, `TileFlightCurve.cs` xoá hẳn ở GĐ10.
+- **Chỗ đặt:** `HopCurve` cạnh `SquashStretch` ở `Runtime/Utilities/PhysXHelper/`; `Interpolator.SmoothStep`, `OffsetFromCenter` thêm
+  vào class có sẵn cùng thư mục · năm `…Spec` ở `Runtime/Utilities/Tweening/` (hiện chỉ có `Easings/`), namespace
+  `Horcrux.Runtime.Utilities.Tweening` như `SquashStretchSpec`, `ArcFlightSpec` (hai file này nằm ở `ExtensionMethods/Transform/`, dời
+  là việc riêng) · `InsertFlash` ở `ExtensionMethods/SequenceExtensions.cs` · `CharmSinkLocalY`, `CharmPop` là partial ở
+  `ExtensionMethods/Transform/TransformExtensions.Accent.cs`, hợp đồng như `CharmJump`: trả `Sequence`, không `ct`, scaled (lý do GĐ6).
+- **Tên:** `HopCurve` (cú nhảy thấp, không phải đạn đạo) · hậu tố `Spec` thay `Tuning`, `LaunchSpec` developer chốt · tên field giữ theo
+  bản tạm (lý do GĐ4). Đổi tên type tuỳ ý trước khi gõ.
+- **Số** trên prefab và mặc định C# của dự án là nháp của developer; GĐ10 đọc lại từ prefab lúc làm, không chép từ Plan.
+- **Không làm:** đưa `TileFlightTuning`, `TileRiseTuning`, `TilePressTuning` lên (quyết định của tile nhựa 2.5D; Horcrux nhận số) ·
+  driver tween cho cú nhảy (GĐ1), cho lún (GĐ4) · gộp `Lift` vào `JumpArc` (GĐ3) · `HoldThenEaseIn`, `PeakForDistance` (không người
+  dùng) · `BoxFeelCurve.LidStart` (dàn cảnh của box, ở lại cùng 2 case test) · `UpEase` trong `SinkSpec` (GĐ6) · `CharmPop` bằng
+  `PunchScale` hay `startDelay` (GĐ7) · lún vị trí cho nắp box (nắp dừng ngay khi đóng) · nở ba nhịp `TileView.PlayPopIn` (đang chờ
+  làm lại ở dự án; xét lại nếu foods_jam vẫn giữ hình cũ) · lắc xoay `TileView.PlayReject`, `PlayLandRock` (hai bản khác chia thời gian
+  và biên độ; lên khi có người dùng thứ ba, hoặc developer chọn đổi sang `DampedOscillator` — việc đó đổi cảm giác).
+- **Đã khảo sát:** `TileFlightCurve.cs` (16 hàm, 5 hằng; `Tile.cs` gọi 14) · `BoxFeelTuning`, `BoxReceiveTuning`, `BoxAnimation` (ba
+  struct, hai hàm đường cong, `InsertFlash`, khung nảy trong `InsertReceiveAccents`) · `CacheTileSlot`, `CategoryBox`,
+  `SingleShelfAmountBar`, `ShelfPromoteTuning` (`PlaySpring`, hai bản pop giống hệt, `LandPitch`) · test dự án `TileFlightCurveTests`
+  (82 dòng), `BoxFeelCurveTests` (11) chuyển theo giai đoạn · Horcrux `Interpolator` (có `SmootherStep`, chưa có cubic), `SquashStretch`
+  (`GetVolumePreservingScale` dùng sẵn; `GetSquashStretch` một pha, không hợp), `JumpArc` và `CharmJump` (hợp đồng `Sequence`, test chéo
+  `Lift`), `CharmSquashStretch`, `CharmFlyArc` (nhận `ct`, unscaled, Bezier theo tốc độ — không hợp), `Easer` (không dùng, GĐ4),
+  `CharmJumpTests`, `AllocationMeter` (khung PlayMode) · PrimeTween `Sequence` (`Insert`, `InsertCallback<T>`, `ChainDelay`;
+  `Easing.Evaluate` static) · foods_jam `CacheHole` (người dùng thứ hai của lún vị trí), `DOPunchScale` (khác hình `CharmPop`).
 
 ---
 
 ## §0 — Lõi toán: chuyến bay hai pha và cỡ theo pha
 
 **Hiện tượng.** Vật bay từ chỗ cũ tới ô: gốc đi đường đất (lerp OutQuad giữa hai điểm, caller làm), thân **nhấc** trên đường đất
-theo một cung, lên đỉnh trên đích rồi **rơi** vào ô. Người chơi so sánh mọi cú đáp với nhau, nên cú rơi phải giống nhau dù bay từ kệ
-trên gần hay kệ dưới xa.
+theo một cung, lên đỉnh trên đích rồi **rơi** vào ô. Người chơi so mọi cú đáp với nhau, nên cú rơi phải giống nhau dù bay từ kệ trên
+gần hay kệ dưới xa.
 
 | Thành phần | Vai trò |
 |---|---|
@@ -108,8 +60,8 @@ trên gần hay kệ dưới xa.
 | `FlightScale` | cỡ nhìn thấy: to lên khi rời chỗ, co về cỡ ô lúc đáp |
 
 **Vì sao mô hình đúng.** Hai pha ghép ở đỉnh bằng hai ease có **vận tốc 0 tại chỗ ghép**: OutQuad kết thúc với đạo hàm 0, InQuad bắt
-đầu với đạo hàm 0. Cung vì thế trơn ở đỉnh dù hai pha dài khác nhau; đây là lý do chọn cặp OutQuad–InQuad thay parabol một khối
-(parabol buộc đỉnh ở giữa, không cho pha rơi cố định).
+đầu với đạo hàm 0, nên cung trơn ở đỉnh dù hai pha dài khác nhau. Phương án bỏ: parabol một khối — buộc đỉnh ở giữa, không cho pha rơi
+cố định.
 
 **Phương trình.**
 
@@ -136,7 +88,7 @@ khi rẽ nhánh · ④ `ArcY` chọn đầu `y0` hay `y1` theo `t ≤ apexT` r�
 
 **Cỡ theo pha** (`FlightScale`, GĐ2): OutQuad từ `from` lên `peak` tại `peakT = apexT · peakAt`, rồi `SmoothStep` từ `peak` về `to` ở
 `t = 1`. Vận tốc đổi cỡ bằng 0 ở `peakT` (OutQuad kết thúc, SmoothStep bắt đầu đều 0) và ở `t = 1` (SmoothStep kết thúc): vật **chui**
-vào ô, không đập vào. `peakAt` là tham số vì "đỉnh ở giữa pha lên" là số cảm giác của tile nhựa.
+vào ô, không đập vào.
 
 **Mốc kiểm** (`apexT = 0.7`, `fallHeight = 0.8`, `y0 = 0`):
 
@@ -159,13 +111,10 @@ Các hàm còn lại là công thức một dòng (SmoothStep cubic, parabol `4�
 
 ```
 caller dựng chuyến: quãng → DurationForSpeed · ApexT(duration, fallDuration)                      GĐ1
-            │
             ▼  mỗi frame, một t tuyến tính
 đường đất (caller lerp) + ArcY − ground.y ──► độ cao thân (world) ──► PeakToLocal ──► SetAirPose    GĐ1
-            │
             ├─► FlightScale (to lên rồi co về cỡ ô) · LeanToward × LeanRamp (nghiêng vào hướng đi)    GĐ2
             ├─► StartLiftOffset (nối từ độ cao tada) · Shadow01 (bóng co) · FadeOutTail (thân tan)    GĐ2
-            │
 cú lên hàng trước: LiftWithAnticipation (nhún lấy đà rồi cung Lift) · EaseOutUntil (to, sáng sớm)    GĐ3
 đáp: pitch clack theo chỉ số ô ──► Interpolator.OffsetFromCenter                                    GĐ3
 ```
@@ -183,10 +132,8 @@ cú lên hàng trước: LiftWithAnticipation (nhún lấy đà rồi cung Lift)
 
 ## Giai đoạn 1 — Cung và độ cao của chuyến bay hai pha
 
-**Mục tiêu:** từ quãng đường và núm tốc độ ra `duration`, `apexT`; từ `t` ra độ cao thân trên đường đất. Xong giai đoạn này một vật bay
-tới ô có cung đúng và pha rơi giống nhau mọi chuyến.
-
-**Vì sao bây giờ:** đây là kênh đầu tiên mọi vòng `Step` ghi (vị trí thân); các kênh khác đọc `apexT` và `ProgressAfter` của nó.
+**Mục tiêu:** quãng và núm tốc độ → `duration`, `apexT`; `t` → độ cao thân trên đường đất. Xong: cung đúng, pha rơi giống nhau mọi
+chuyến. **Vì sao bây giờ:** kênh đầu tiên vòng `Step` ghi; các kênh khác đọc `apexT`, `ProgressAfter` của nó.
 
 **Ai gọi:** test của giai đoạn; trong dự án là `Tile.FlyToAsync` (`DurationForSpeed`), `Tile.BuildFlightState` (`ApexT`), `Tile.StepFlight`
 (`ArcY`, `ProgressAfter`, `PeakToLocal`), `Tile.StepFinale` và `Tile.AnimateToFrontRow` (`PeakToLocal`) (GĐ10).
@@ -252,7 +199,9 @@ namespace Horcrux.Runtime.Utilities.PhysXHelper
 | `ApexT`, `ProgressAfter`, `Arc01`, `ArcY`, `PeakToLocal` | — | cùng tên, cùng tham số, cùng thân | — |
 
 **Quyết định** — `MIN_APEX_T` là hằng Horcrux, không phải tham số: "pha lên không ngắn hơn pha rơi" là cơ chế của cung hai pha, không
-phải số cảm giác của một dự án. Phương án bỏ: tham số `minApexT` — mọi caller truyền 0.5.
+phải số cảm giác của một dự án. Phương án bỏ: tham số `minApexT` — mọi caller truyền 0.5. — `HopCurve` chỉ trả số, không có driver
+tween: driver ghi lên thân, bóng, màu của **dự án**, mỗi dự án một bộ kênh; Horcrux giữ hình dạng, dự án giữ vòng `Step`. Phương án bỏ:
+một `Tween.Custom` của Horcrux lái mọi kênh.
 
 | Consumes | Produces |
 |---|---|
@@ -290,12 +239,9 @@ phải số cảm giác của một dự án. Phương án bỏ: tham số `minA
 
 ## Giai đoạn 2 — Cỡ, nghiêng, bóng, tan thân theo pha; `Interpolator.SmoothStep`
 
-**Mục tiêu:** các kênh còn lại của chuyến bay tới ô đọc cùng `t` và `apexT`: cỡ nhìn thấy (`FlightScale`), nghiêng (`LeanToward`,
-`LeanRamp`), nối từ độ cao tada (`StartLiftOffset`), bóng (`Shadow01`), thân tan vào khung (`FadeOutTail`). `SmoothStep` cubic thêm vào
-`Interpolator` vì `LeanRamp` và `FlightScale` cần nó. Xong giai đoạn này `Tile.StepFlight` có đủ hàm để trỏ về.
-
-**Vì sao bây giờ:** cả năm kênh đọc `apexT`, `Arc01`, `ProgressAfter` của GĐ1; thiếu chúng chuyến bay đúng đường nhưng cỡ, nghiêng, bóng
-vẫn của bản dự án.
+**Mục tiêu:** các kênh còn lại đọc cùng `t`, `apexT`: cỡ (`FlightScale`), nghiêng (`LeanToward`, `LeanRamp`), nối từ độ cao tada
+(`StartLiftOffset`), bóng (`Shadow01`), thân tan (`FadeOutTail`); `Interpolator.SmoothStep` cubic cho `LeanRamp`, `FlightScale`. Xong:
+`Tile.StepFlight` đủ hàm để trỏ về. **Vì sao bây giờ:** cả năm kênh đọc `apexT`, `Arc01`, `ProgressAfter` của GĐ1.
 
 **Ai gọi:** test của giai đoạn; `HopCurve.LeanRamp`, `FlightScale` gọi `Interpolator.SmoothStep` ngay trong giai đoạn; trong dự án là
 `Tile.StepFlight`, `Tile.BuildFlightState` (`LeanToward`) (GĐ10).
@@ -429,12 +375,9 @@ Horcrux là đóng băng nháp của một dự án thành chuẩn; người dù
 
 ## Giai đoạn 3 — Cú nhảy thấp lên hàng trước; `Interpolator.OffsetFromCenter`
 
-**Mục tiêu:** cú nhảy từ hàng sau lên hàng trước: thân nhún lấy đà rồi nhấc theo parabol (`LiftWithAnticipation` trên `Lift`), cỡ và
-màu đổi nhanh lúc đầu (`EaseOutUntil`), đáp kêu *clack* với pitch lên dần theo chỉ số ô (`OffsetFromCenter`). Xong giai đoạn này
-`Tile.StepRise` và `ShelfPromoteTuning.LandPitch` có đủ hàm để trỏ về.
-
-**Vì sao bây giờ:** cú lên hàng trước dùng `ProgressAfter` (GĐ1) và `SmoothStep` (GĐ2) để chia pha nhún và pha cung; pitch đáp là
-mốc cuối của cùng cú nhảy.
+**Mục tiêu:** cú nhảy lên hàng trước: nhún lấy đà rồi parabol (`LiftWithAnticipation` trên `Lift`), cỡ và màu đổi nhanh lúc đầu
+(`EaseOutUntil`), đáp *clack* với pitch lên dần theo chỉ số ô (`OffsetFromCenter`). **Vì sao bây giờ:** chia pha nhún và pha cung bằng
+`ProgressAfter` (GĐ1), `SmoothStep` (GĐ2); pitch đáp là mốc cuối của cùng cú nhảy.
 
 **Ai gọi:** test của giai đoạn; `LiftWithAnticipation` gọi `Lift` và `ProgressAfter` ngay trong giai đoạn; trong dự án là
 `Tile.StepRise` (`LiftWithAnticipation`, `EaseOutUntil`) và `ShelfPromoteTuning.LandPitch` → `Shelf` → `Tile.AnimateToFrontRow`
@@ -490,8 +433,10 @@ nguyên văn `(index - (count - 1) * 0.5f) * step` của `LandPitch`: pitch khô
 | `ShelfPromoteTuning.LandPitch` | `1f + (slotIndex - (capacity - 1) * 0.5f) * PitchStep` nội tuyến | `1f + Interpolator.OffsetFromCenter(slotIndex, capacity, PitchStep)` (GĐ10) | phần lệch từ tâm là toán chung |
 
 **Quyết định** — `OffsetFromCenter` ở `Interpolator`, không ở `HopCurve`: hàm ánh xạ chỉ số sang giá trị, cùng họ `Remap`, không
-phải hình dạng cú nhảy; developer chuyển sang class khác tuỳ ý. — `Lift` public dù trong Horcrux chỉ `LiftWithAnticipation` gọi: test
-chéo với `JumpArc` giữ hai bản khớp nhau.
+phải hình dạng cú nhảy; developer chuyển sang class khác tuỳ ý. Mở rộng sau: `HorizontalGrid` của dự án dùng `OffsetFromCenter` —
+bản của nó viết `-(n − 1) · space / 2 + i · space`, thứ tự phép tính khác nên có thể lệch 1 ulp; đổi khi có trace riêng cho bố cục.
+— `Lift` public dù trong Horcrux chỉ `LiftWithAnticipation` gọi: test chéo với `JumpArc` giữ hai bản khớp nhau. Phương án bỏ: gộp
+`Lift` vào `JumpArc` — `JumpArc` lo hai đầu lệch cao, `Lift` là ca hai đầu ngang nhau, đọc được trong một dòng.
 
 | Consumes | Produces |
 |---|---|
@@ -610,7 +555,8 @@ OutBack(…))` — `Unclamped` vì OutBack vượt 1. Mốc: `t = 0 → 1`, `t =
 **Quyết định** — field PascalCase (`ScaleY`, `DownDuration`, `UpDuration`), khác `SquashStretchSpec` camelCase: tên field là **key
 YAML** trên prefab của dự án; đổi kiểu struct thì Unity giữ giá trị vì khớp theo tên field, đổi tên field thì giá trị rơi về 0 im
 lặng. Áp cho cả năm struct của Plan. — Dùng `PrimeTween.Easing.Evaluate`, không dùng `Easer` của Horcrux: cùng hàm ease với tween đang
-chạy ở caller.
+chạy ở caller. — Không có driver `Tween DipScale(Transform, …)`: `Tween.Custom<T>` cần một class giữ state (scale nghỉ) để callback
+`static`; bọc lại là sinh class trung gian cho một dòng `ApplyScaleY`.
 
 | Consumes | Produces |
 |---|---|
@@ -642,10 +588,8 @@ chạy ở caller.
 ## Giai đoạn 5 — `FlashSpec` và `Sequence.InsertFlash`
 
 **Mục tiêu:** struct núm ba số và extension chèn cú loé vào `Sequence` ở mốc `at`: bật renderer, alpha lên `PeakAlpha` (OutQuad), về 0
-(InQuad), tắt renderer. Xong giai đoạn này mọi sprite loé nằm sẵn trên vật dùng một lời gọi.
-
-**Vì sao bây giờ:** loé đi cùng lún trong cùng sequence nhận; là extension `Sequence` đầu tiên của Horcrux nên file `SequenceExtensions.cs`
-sinh ra ở đây.
+(InQuad), tắt renderer. **Vì sao bây giờ:** loé đi cùng lún trong sequence nhận; extension `Sequence` đầu tiên của Horcrux nên
+`SequenceExtensions.cs` sinh ra ở đây.
 
 **Ai gọi:** test của giai đoạn; trong dự án là `BoxAnimation.InsertReceiveAccents` (lòng khung) và `BoxAnimation.PlayComplete` (nắp) (GĐ10).
 
@@ -840,7 +784,11 @@ namespace Horcrux.Runtime.Utilities.ExtensionMethods
 trong YAML thì giá trị là 0, tức `Ease.Default`, PrimeTween đọc thành OutQuad — GĐ10 ghi key thẳng vào prefab. — Dời vị trí, không bóp
 scale: luật vật cứng không biến dạng; cần bẹp thì `DipSpec`, cần nén rồi vọt thì `LaunchSpec`. — `restLocalY` là tham số, không đọc
 `localPosition.y` lúc gọi: lún gọi lại khi đang lún thì đọc lúc gọi trôi mốc nghỉ xuống dần; luật "tween trên giá trị nghỉ đọc ở
-Awake". — Không `UpEase`: cả hai người dùng về OutBack.
+Awake". Mở rộng sau: struct tư thế nghỉ (`Capture` ở Awake, `Restore` khi về pool) thay các field `_restScale`,
+`_originalLocalScale`, `_restLocalY` rời ở bốn class — biến luật này thành kiểu; developer quyết. — Không `UpEase`: cả hai người dùng
+về OutBack. — Hợp đồng như `CharmJump` (trả `Sequence`, không nhận `ct`, thời gian scaled), áp cho cả `CharmPop` ở GĐ7: hai extension
+được nhét vào một `Sequence` lớn hơn (khung nảy nằm trong sequence nhận tile) mà PrimeTween không cho tween con mang token. Phương án
+bỏ: hợp đồng `CharmSquashStretch`, `CharmFlyArc` (trả `Tween`, nhận `ct`, `useUnscaledTime: true`).
 
 | Consumes | Produces |
 |---|---|
@@ -873,10 +821,8 @@ Awake". — Không `UpEase`: cả hai người dùng về OutBack.
 
 ## Giai đoạn 7 — `PopSpec` và `CharmPop`
 
-**Mục tiêu:** struct núm ba số và extension nảy một pha trên scale nghỉ sau một trễ. Xong giai đoạn này ba chỗ nảy của dự án (khung
-box, bộ đếm box, số lớp kệ) đọc một hình.
-
-**Vì sao bây giờ:** cùng họ "nhịp nhấn của vật nhận" với GĐ6 và cùng file partial; bộ đếm nảy sau khung một nhịp nên trễ là một phần
+**Mục tiêu:** struct núm ba số và extension nảy một pha trên scale nghỉ sau một trễ; ba chỗ nảy của dự án (khung box, bộ đếm box,
+số lớp kệ) đọc một hình. **Vì sao bây giờ:** cùng họ và cùng file partial với GĐ6; bộ đếm nảy sau khung một nhịp nên trễ là một phần
 của hình.
 
 **Ai gọi:** test của giai đoạn; trong dự án là `BoxAnimation.InsertReceiveAccents` (chèn vào sequence nhận), `CategoryBox.UpdateCounter`,
@@ -931,7 +877,8 @@ namespace Horcrux.Runtime.Utilities.Tweening
 
 **Quyết định** — `CharmPop` trả `Sequence` dù chỉ có một tween: trễ là một phần của cú nảy, nằm trong `PopSpec` để một nguồn;
 PrimeTween chỉ cho trễ-không-lặp qua `ChainDelay` (`startDelay` lặp mỗi cycle, đỉnh đứng yên giữa hai lượt). Khung box chèn bằng
-`sequence.Insert(at, …)`, hai chỗ kia chạy rời; cả ba đọc một hình. — Không dùng `Tween.PunchScale`: khác hình (bảng "Cố ý KHÔNG làm").
+`sequence.Insert(at, …)`, hai chỗ kia chạy rời; cả ba đọc một hình. — Không dùng `Tween.PunchScale` (hay `DOPunchScale` của foods_jam,
+mahjong-jam): punch dao động quanh nghỉ nhiều chu kỳ, pop là **một** lượt lên rồi về. Ai cần rung quanh nghỉ thì dùng thẳng PrimeTween.
 
 | Consumes | Produces |
 |---|---|
@@ -987,9 +934,7 @@ vật nhận cú chạm (nắp đóng xuống box) tại mốc touch
 ## Giai đoạn 8 — `LaunchSpec`
 
 **Mục tiêu:** struct núm bảy field, hai mốc dẫn xuất (`LaunchDelay`, `StretchDuration`) và `EvaluateStretchScaleY(t)` cho pha bật.
-Xong giai đoạn này vật nhận cú chạm rồi vọt đi có một struct để lên lịch và một hàm cho pha giãn.
-
-**Vì sao bây giờ:** là họ cuối, độc lập với A–C; `BoxAnimation.PlayComplete` là người dùng duy nhất hiện có.
+**Vì sao bây giờ:** họ cuối, độc lập với A–C; `BoxAnimation.PlayComplete` là người dùng duy nhất hiện có.
 
 **Ai gọi:** test của giai đoạn; trong dự án là `BoxAnimation.PlayComplete` (ba mốc, `EvaluateStretchScaleY`) và `BoxAnimation.ApplyLandCompress`
 (`ScaleY`, `SinkDepth`) (GĐ10).

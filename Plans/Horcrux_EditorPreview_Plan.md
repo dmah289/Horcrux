@@ -1,93 +1,51 @@
 # Plan — Bộ xem trước trình diễn trên prefab (`PreviewSnapshot`, `EditorPreviewSession`, `PreviewTicker`) lên Horcrux
 
-Ngày 2026-11-06. Nguồn: category-jam, bản tạm của đợt feeling:
+Ngày 2026-11-06. Nguồn: category-jam, bản tạm của đợt feeling trong `Assets/_CategoryJam/Scripts/Entities/`:
+`PreviewSnapshot.Editor.cs`, `EditorPreviewSession.Editor.cs` (lấy toàn bộ, `internal` → `public`), `Box/BoxAnimation.Editor.cs`
+(nút `Preview Complete`; `TickParticles`/`AdvanceParticles`), `Tile/Tile.Editor.cs` (nút `Preview Finale`; `RepaintSceneView`). Hai
+người dùng thật: `BoxAnimation` (Edit lẫn Play mode), `Tile` (chỉ Edit mode). Ba class chỉ gọi `UnityEditor`.
 
-- `Assets/_CategoryJam/Scripts/Entities/PreviewSnapshot.Editor.cs` — chụp và trả nguyên transform, SpriteRenderer cả cây.
-- `Assets/_CategoryJam/Scripts/Entities/EditorPreviewSession.Editor.cs` — một màn xem trước mỗi lúc; lưu prefab, đóng Prefab Mode,
-  recompile, đổi Play mode thì dừng và trả nguyên.
-- `Assets/_CategoryJam/Scripts/Entities/Box/BoxAnimation.Editor.cs` — nút `Preview Complete`; `TickParticles`/`AdvanceParticles` đẩy
-  bốn hệ hạt của box và hiệu ứng box xong tạm theo đồng hồ Editor, vẽ lại Scene view.
-- `Assets/_CategoryJam/Scripts/Entities/Tile/Tile.Editor.cs` — nút `Preview Finale`; `RepaintSceneView` vẽ lại Scene view mỗi tick.
-
-Hai người dùng thật: `BoxAnimation` (Edit mode lẫn Play mode) và `Tile` (chỉ Edit mode). Ba class không gọi type dự án, chỉ
-`UnityEditor`.
-
-**Phân công** (developer chốt 2026-10-31): code Editor của Horcrux (GĐ1–3) **developer gõ** — ngoại lệ của luật `reuse-gate` "code
-Editor agent viết thẳng", theo ý developer cho plan này. Phần nối dự án ở mỗi giai đoạn, tài liệu (GĐ4), nghiệm thu tổng (GĐ5): agent.
-
-**Chạy được, thấy được** = bấm nút trong Prefab Mode thấy diễn rồi trả nguyên. Không có test: mỗi giai đoạn kết ở một thứ developer bấm
-thấy trên `CategoryBox.prefab` hoặc `Tile.prefab`, kèm phép kiểm máy "trả nguyên" của agent (prefab không đổi dòng YAML nào sau khi
-màn xem kết thúc). Vì caller duy nhất của ba class là hai partial Editor của dự án, mỗi giai đoạn Horcrux nối dự án ngay trong giai
-đoạn đó: bản tạm cùng tên xoá cùng lúc, nút bấm chạy thẳng bản Horcrux. Horcrux là submodule: mỗi giai đoạn một commit **trong
-`Assets/Horcrux`** rồi một commit ở repo dự án kèm con trỏ submodule; GĐ4 chỉ commit trong `Assets/Horcrux`.
-
-Không phụ thuộc Plan nào. Không có lõi toán, không có `§0`.
-
----
+**Phân công** (developer chốt 2026-10-31): GĐ1–3 code Editor của Horcrux **developer gõ** — ngoại lệ của "code Editor agent viết
+thẳng", theo ý developer; phần nối dự án mỗi giai đoạn, tài liệu (GĐ4), nghiệm thu tổng (GĐ5) agent làm. **Chạy được, thấy được** =
+bấm nút trong Prefab Mode thấy diễn rồi trả nguyên trên `CategoryBox.prefab` hoặc `Tile.prefab`, kèm phép kiểm máy của agent:
+prefab không đổi dòng YAML nào sau màn xem. Không có test: caller duy nhất là hai partial Editor của dự án, nên mỗi giai đoạn nối
+dự án ngay, xoá bản tạm cùng tên cùng lúc. Mỗi giai đoạn một commit trong `Assets/Horcrux` rồi một commit ở dự án kèm con trỏ
+submodule; GĐ4 chỉ commit trong `Assets/Horcrux`. Không phụ thuộc Plan nào, không có `§0`.
 
 ## Ngữ cảnh đã chốt
 
-| Mục | Chốt |
-|---|---|
-| Người dùng | partial `*.Editor.cs` của class trình diễn trong dự án (`BoxAnimation`, `Tile`); dự án sau: mọi prefab có trình diễn muốn một nút xem trước ngay trong Prefab Mode |
-| Mục tiêu | bấm nút trên prefab là diễn tại chỗ rồi trả nguyên từng giá trị; không bao giờ lưu trạng thái giữa chừng vào prefab |
-| Chỗ đặt | **`Runtime/Utilities/EditorPreview/`**, mỗi file bọc `#if UNITY_EDITOR`, namespace `Horcrux.Runtime.Utilities.EditorPreview`. Không ở `Editor/`: hai partial Editor của dự án nằm trong assembly runtime `CategoryJam.Gameplay` (partial không tách assembly được) và assembly đó chỉ tham chiếu `com.horcrux.runtime`, không `com.horcrux.editor`; Horcrux có tiền lệ năm file `*.Editor.cs` trong `Runtime/` |
-| Tên | `PreviewSnapshot`, `EditorPreviewSession` giữ; `PreviewTicker` gộp "đẩy hạt" và "vẽ lại Scene view" (hai người dùng chỉ khác có hạt hay không). Developer đổi tuỳ ý trước khi gõ |
-| Quyền truy cập | `public` cả ba (bản tạm `internal`): dự án gọi từ assembly khác |
-| Tài liệu | `docs/Editor/EditorPreview.md`, chỉ `.md`: đây là tool Editor |
-
-**Cố ý KHÔNG làm**
-
-| Không làm | Vì |
-|---|---|
-| Chụp thêm `ParticleSystem`, `TMP_Text`, `SortingGroup` | hai người dùng chỉ đổi transform và SpriteRenderer; hạt trả về bằng `Stop(StopEmittingAndClear)` trong hàm về nghỉ của chính class trình diễn |
-| Snapshot tự `Capture` khi `Begin` | snapshot là của object, session là của Editor: hai đời khác nhau (object có nhiều snapshot cho nhiều nút) |
-| Nút `[Button]` dựng sẵn trong Horcrux (base class hay attribute) | nút gọi method private của class trình diễn (`PlayComplete`, `StepFinale`); phải nằm trong partial của class đó |
-| Chạy được ở Play mode cho `PreviewTicker` | Play mode hệ hạt tự chạy và Scene view tự vẽ lại; `BoxAnimation` chỉ bật ticker khi `!Application.isPlaying`, `Tile` từ chối Play mode |
-| Ticker tự quét hệ hạt trong cây object | hiệu ứng box xong là object tạm đặt ngoài cây, sinh giữa màn xem; class trình diễn giao đích danh (GĐ3) |
-
-**Quyết định trái trực giác** — lý do ở giai đoạn sinh ra nó: `Restore` giữ `null` check (GĐ1) · `End()` gỡ đăng ký **trước** khi gọi
-`stop` (GĐ2) · `Tick` chỉ `Simulate` hệ hạt `isPlaying || isPaused` (GĐ3) · file trong `Runtime/` bọc `#if UNITY_EDITOR`, không đặt tên
-`*.Editor.cs` vì đó là khuôn partial của một class runtime, còn đây là ba class đứng riêng (GĐ1).
-
----
-
-## Đã khảo sát
-
-| Nguồn | Lấy gì | Không lấy, vì sao |
-|---|---|---|
-| `PreviewSnapshot.Editor.cs`, `EditorPreviewSession.Editor.cs` của dự án | toàn bộ, `internal` → `public` | — |
-| `BoxAnimation.Editor.cs` (`PreviewComplete`, `StopPreview`, `SpawnPreviewCompleteFx`, `TickParticles`, `AdvanceParticles`) | nhịp tick: đồng hồ `EditorApplication.timeSinceStartup`, `Simulate(dt, true, false, false)` khi `isPlaying \|\| isPaused`, `SceneView.RepaintAll()`; hệ hạt thứ năm sinh giữa màn xem → ticker nhận thêm giữa chừng | danh sách hệ hạt (`receiveBurst`, `finalReceiveBurst`, `nameRevealStars`, `leaveTrail`, `s_previewCompleteFx`): từ vựng của box, class trình diễn giao |
-| `Tile.Editor.cs` (`PreviewFinale`, `StopFinalePreview`, `RepaintSceneView`) | người dùng không hạt: ticker chỉ vẽ lại | `_flightMotion`, `_view.CaptureRestState()`, `SetShadowVisible`: việc riêng của tile |
-| `BoxAnimation.cs` › `CaptureRestState`, `ResetState`, `SpawnCompleteFx`; `TileView.cs` › `CaptureRestState` | mốc nghỉ đọc từ prefab vì Edit mode không chạy `Awake`; hàm về nghỉ dừng tween và hạt trước khi snapshot trả nguyên | — |
-| Horcrux `Runtime/Utilities/` | chưa có `EditorPreview/`; tiền lệ `*.Editor.cs` trong `Runtime/`: `PersistenceDataEntry`, `BasePersistenceDataCollection`, `AudioCatalog`, `AudioService`, `PoolService` | — |
-| Horcrux `Editor/Probe/`, `Editor/FeelTrace/` | — | chạy trong Play; đây là Edit mode trên prefab |
-| `CategoryJam.Gameplay.asmdef` | tham chiếu `com.horcrux.runtime`, không `com.horcrux.editor` → chỗ đặt ở `Runtime/` | — |
-| Odin `[Button]` | nút trên component (đang dùng) | nút ở lại dự án (bảng trên) |
-| Unity `PrefabStage.prefabSaving`, `prefabStageClosing`, `EditorSceneManager.sceneSaving`, `AssemblyReloadEvents.beforeAssemblyReload`, `EditorApplication.playModeStateChanged` | năm lối thoát của Editor | — |
-
----
+- **Mục tiêu:** bấm nút trên prefab là diễn tại chỗ rồi trả nguyên từng giá trị; không bao giờ lưu trạng thái giữa chừng vào
+  prefab. Người dùng: partial `*.Editor.cs` của class trình diễn (`BoxAnimation`, `Tile`), sau này mọi prefab có trình diễn.
+- **Chỗ đặt:** **`Runtime/Utilities/EditorPreview/`**, mỗi file bọc `#if UNITY_EDITOR`, namespace
+  `Horcrux.Runtime.Utilities.EditorPreview` — không ở `Editor/` (lý do ở GĐ1). Tài liệu `docs/Editor/EditorPreview.md`, chỉ `.md`.
+- **Tên:** `PreviewSnapshot`, `EditorPreviewSession` giữ; `PreviewTicker` gộp "đẩy hạt" và "vẽ lại Scene view" (hai người dùng chỉ
+  khác có hạt hay không). Cả ba `public` (bản tạm `internal`): dự án gọi từ assembly khác. Developer đổi tên tuỳ ý trước khi gõ.
+- **Không làm:** chụp `ParticleSystem`, `TMP_Text`, `SortingGroup` (GĐ1) · snapshot tự `Capture` khi `Begin` (GĐ2) · nút
+  `[Button]` dựng sẵn trong Horcrux (nút gọi method private của class trình diễn, phải ở partial của nó) · `PreviewTicker` chạy ở
+  Play mode, ticker tự quét hệ hạt trong cây (GĐ3).
+- **Đã khảo sát:** `BoxAnimation.Editor.cs` (nhịp tick: `timeSinceStartup`, `Simulate` khi `isPlaying || isPaused`,
+  `RepaintAll`; hệ hạt sinh giữa chừng; danh sách hạt là từ vựng box, không lấy) · `Tile.Editor.cs` (người dùng không hạt) ·
+  `BoxAnimation.cs`, `TileView.cs` › `CaptureRestState` (mốc nghỉ đọc từ prefab vì Edit mode không chạy `Awake`) · Horcrux `Runtime/Utilities/` (tiền lệ `*.Editor.cs` trong `Runtime/`:
+  `PersistenceDataEntry`, `BasePersistenceDataCollection`, `AudioCatalog`, `AudioService`, `PoolService`) · `Editor/Probe/`,
+  `Editor/FeelTrace/` (không hợp: chạy trong Play) · Odin `[Button]` (nút ở lại dự án) · `PrefabStage.prefabSaving`,
+  `prefabStageClosing`, `EditorSceneManager.sceneSaving`, `AssemblyReloadEvents.beforeAssemblyReload`,
+  `EditorApplication.playModeStateChanged` (năm lối thoát).
 
 ## Luồng mô tả — một lần bấm nút xem trước
 
 ```
 developer mở prefab trong Prefab Mode, bấm nút trên component trình diễn
-        │
         ▼
-nút: kết thúc màn đang chạy (nếu có) → đọc mốc nghỉ từ prefab → chụp cả cây          GĐ1 (chụp, trả nguyên)
-        │
+nút: kết thúc màn đang chạy → đọc mốc nghỉ từ prefab → chụp cả cây                  GĐ1 (chụp, trả nguyên)
         ▼
-mở phiên với thân dừng; Editor lưu / đóng Prefab Mode / lưu scene / recompile /
+mở phiên với thân dừng; lưu / đóng Prefab Mode / lưu scene / recompile /
 đổi Play mode thì phiên tự kết thúc                                                  GĐ2 (phiên, lối thoát)
-        │
         ▼
-Edit mode: ticker đẩy hệ hạt đã giao theo đồng hồ Editor, vẽ lại Scene view mỗi tick;
+Edit mode: ticker đẩy hệ hạt đã giao theo đồng hồ Editor, vẽ lại Scene view;
 hệ hạt sinh giữa chừng giao thêm                                                     GĐ3 (đồng hồ Editor)
-        │
         ▼
-trình diễn chạy hết (OnComplete gọi End) hay bị cắt → thân dừng: ticker dừng →
-class về nghỉ (dừng tween, Stop hạt) → snapshot trả nguyên từng giá trị              GĐ1 + GĐ2 + GĐ3
-        │
+diễn hết (OnComplete gọi End) hay bị cắt → thân dừng: ticker dừng →
+class về nghỉ (dừng tween, Stop hạt) → snapshot trả nguyên                           GĐ1 + GĐ2 + GĐ3
         ▼
 tài liệu tool (GĐ4) · nghiệm thu tổng trên dự án (GĐ5)
 ```
@@ -113,9 +71,6 @@ tài liệu tool (GĐ4) · nghiệm thu tổng trên dự án (GĐ5)
                               ▲
      prefabSaving · prefabStageClosing · sceneSaving · beforeAssemblyReload · playModeStateChanged
 ```
-
-Ai sở hữu gì: snapshot là field của object (mỗi nút một snapshot); session và ticker là static của Editor — mỗi lúc một màn, một đồng
-hồ; thân dừng là static của class trình diễn, giữ tham chiếu object đang xem.
 
 ---
 
@@ -223,7 +178,11 @@ namespace Horcrux.Runtime.Utilities.EditorPreview
 đây là Editor tool, người nhìn là người sửa được. Phương án bỏ: ném để lộ sớm — ném trong handler sự kiện Editor làm các handler sau
 không chạy. — `GetComponentsInChildren(true)`: node đang tắt lúc chụp (nắp box) được bật trong lúc diễn, phải trả về tắt. — File trong
 `Runtime/` bọc `#if UNITY_EDITOR`, không đặt tên `*.Editor.cs`: `*.Editor.cs` là khuôn partial của một class runtime, đây là class đứng
-riêng, tên file là tên class.
+riêng, tên file là tên class. — Ở `Runtime/`, không ở `Editor/`: hai partial Editor của dự án nằm trong assembly runtime
+`CategoryJam.Gameplay` (partial không tách assembly được), assembly đó chỉ tham chiếu `com.horcrux.runtime`, không
+`com.horcrux.editor`. — Chỉ chụp transform và SpriteRenderer: hai người dùng chỉ đổi hai thứ này; hạt về nghỉ bằng
+`Stop(StopEmittingAndClear)` trong hàm về nghỉ của class trình diễn. Phương án bỏ: chụp thêm `ParticleSystem`, `TMP_Text`,
+`SortingGroup` — chưa ai cần.
 
 | Consumes | Produces |
 |---|---|
@@ -334,7 +293,8 @@ namespace Horcrux.Runtime.Utilities.EditorPreview
 `OnComplete` của sequence là `End`); gỡ trước thì lần gọi lồng thấy `s_stop` null và thoát, thân dừng chạy đúng một lần. Phương án bỏ:
 cờ `s_ending` — thêm một trạng thái phải giữ khớp. — Một `Action` static thay vì danh sách màn: hai nút trên hai prefab không bao giờ
 cần diễn cùng lúc; màn mới cắt màn cũ là hành vi muốn có (bấm lại khi đang diễn). — `-=` trước `+=` không cần: `Begin` luôn qua `End`
-nên không đăng ký hai lần.
+nên không đăng ký hai lần. — `Begin` không tự `Capture` snapshot: snapshot là của object (một object có thể nhiều snapshot cho nhiều
+nút), session là của Editor — hai đời khác nhau.
 
 | Consumes | Produces |
 |---|---|
@@ -385,8 +345,7 @@ prefab rỗng sau mỗi dòng.
 rồi `SceneView.RepaintAll()`; `Add(hạt)` nhận hệ hạt sinh giữa màn xem; `Stop()` gỡ và quên. Xong giai đoạn này hai partial của dự án
 không còn code tick riêng.
 
-**Vì sao bây giờ:** Edit mode không vẽ lại Scene view theo tween và chỉ chạy hạt của object đang chọn; đây là phần cuối còn nằm trong
-dự án, và cả hai người dùng viết nó hai lần.
+**Vì sao bây giờ:** Edit mode không vẽ lại Scene view theo tween, chỉ chạy hạt của object đang chọn; hai người dùng đang viết nó hai lần.
 
 ### `Runtime/Utilities/EditorPreview/PreviewTicker.cs` — file mới
 
@@ -457,7 +416,8 @@ namespace Horcrux.Runtime.Utilities.EditorPreview
 quét `GetComponentsInChildren<ParticleSystem>` của root mỗi tick — hiệu ứng box xong nằm ngoài cây, và quét mỗi tick cấp phát. —
 `Simulate(dt, withChildren: true, restart: false, fixedTimeStep: false)`: hệ hạt ở trạng thái tạm dừng sau mỗi lần, frame sau đẩy tiếp;
 hệ đã `Stop(StopEmittingAndClear)` trong hàm về nghỉ không `isPlaying` cũng không `isPaused` nên không bị đẩy lại. — Tick đầu `deltaTime`
-là thời gian từ `Start` tới tick kế, cỡ một frame Editor.
+là thời gian từ `Start` tới tick kế, cỡ một frame Editor. — Ticker không phục vụ Play mode: ở Play hệ hạt tự chạy, Scene view tự vẽ
+lại; `BoxAnimation` chỉ bật ticker khi `!Application.isPlaying`, `Tile` từ chối Play mode.
 
 | Consumes | Produces |
 |---|---|
@@ -535,7 +495,7 @@ Thứ tự trong `StopPreview` giữ: `PreviewTicker.Stop()` trước, huỷ `s_
 ## Giai đoạn 4 — Tài liệu `docs/Editor/EditorPreview.md` (agent)
 
 Mở đầu `Code: Runtime/Utilities/EditorPreview/` (tool Editor đặt trong `Runtime/` — lý do ở "Ngữ cảnh đã chốt", chép sang). Mục:
-Ngữ cảnh đã chốt (bảng trên, bớt dòng dự án) · luồng một lần bấm nút (ASCII ở trên) · bảng API ba class · **Trước khi chạy** cho class
+Ngữ cảnh đã chốt (mục trên, bớt dòng dự án) · luồng một lần bấm nút (ASCII ở trên) · bảng API ba class · **Trước khi chạy** cho class
 trình diễn muốn có nút:
 
 | # | Thao tác | Thiếu thì hỏng ở đâu |

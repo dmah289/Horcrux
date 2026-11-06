@@ -2,91 +2,45 @@
 
 Ngày 2026-11-06. Nguồn: category-jam, bản tạm ở `Assets/_CategoryJam/Scripts/Utilities/` (`GameplayViewport.cs`,
 `GameplayViewport.Editor.cs`, `ViewportAnchor.cs`, `ViewportAnchor.Editor.cs`, `ViewportCover.cs`), dựng theo
-`Assets/_CategoryJam/Scripts/Layout.md` §1–§2, gắn trong `GameplayRoot.prefab` (1 camera, 9 anchor, 1 cover) và đã chơi thử ở
-1080×2340, 1080×1920. Một camera orthographic giữ cố định bề rộng world theo đơn vị thiết kế, vật thể world neo theo điểm trên màn,
-sprite nền phủ kín màn; tất cả tính **một lần** ở boot. Không gọi tên type dự án.
+`Assets/_CategoryJam/Scripts/Layout.md` §1–§2, gắn trong `GameplayRoot.prefab` (1 camera, 9 anchor, 1 cover), đã chơi thử ở 1080×2340,
+1080×1920. Camera ortho giữ cố định bề rộng world, vật thể world neo theo điểm trên màn, sprite nền phủ kín màn; tính **một lần** ở boot.
 
-**Phân công:** giai đoạn 1–3 (Horcrux, code runtime) developer gõ, sau mỗi giai đoạn agent viết test của giai đoạn đó theo bảng case
-rồi compile · giai đoạn 4 (hai partial `*.Editor.cs`, code Editor), giai đoạn 5 (tài liệu) và giai đoạn 6 (dự án chuyển sang bản
-Horcrux, giữ GUID) agent làm.
-
-**Chạy được, thấy được ở giai đoạn 1–3** = `com.horcrux.runtime` compile sạch và bảng case của giai đoạn xanh trong
-`Tests/EditMode/ViewportLayoutTests.cs`; "thấy ở Scene view" là giai đoạn 4, "thấy trong game" là giai đoạn 6. Horcrux là submodule:
-giai đoạn 1–5 commit **trong `Assets/Horcrux`**, giai đoạn 6 commit ở repo dự án kèm con trỏ submodule.
-
-Không phụ thuộc Plan nào; `Horcrux_BandFit_Plan.md` và `Horcrux_HorizontalRow_Plan.md` đặt file cùng thư mục `Runtime/Utilities/Layout/`.
-Không có lõi toán, không có `§0`: ba công thức một dòng nằm tại giai đoạn sinh ra chúng.
-
----
+**Phân công:** GĐ1–3 developer gõ, agent viết test theo bảng case rồi compile · GĐ4 (hai partial `*.Editor.cs`), GĐ5 (tài liệu), GĐ6
+(dự án chuyển sang bản Horcrux, giữ GUID) agent làm. **Chạy được, thấy được** ở GĐ1–3 = compile sạch + bảng case xanh trong
+`Tests/EditMode/ViewportLayoutTests.cs`; thấy ở Scene view ở GĐ4, trong game ở GĐ6. GĐ1–5 commit trong `Assets/Horcrux`, GĐ6 commit ở
+dự án kèm con trỏ submodule. Không phụ thuộc Plan nào; `Horcrux_BandFit_Plan.md`, `Horcrux_HorizontalRow_Plan.md` đặt file cùng
+`Runtime/Utilities/Layout/`. Không có `§0`: ba công thức một dòng nằm ở giai đoạn sinh ra chúng.
 
 ## Ngữ cảnh đã chốt
 
-| Mục | Chốt |
-|---|---|
-| Người dùng | dự án này: `GameplayRoot.prefab` › `camera_main` (camera + 9 anchor dưới `world` + 1 cover ở `world/background`) · dự án sau có camera ortho dọc, đặt vật thể world theo mép màn và một ảnh nền phủ kín |
-| Mục tiêu | camera ortho giữ cố định bề rộng world · vật thể world neo theo điểm trên màn · sprite nền phủ kín màn ở mọi tỉ lệ; tính **một lần** ở boot, không `Update`, không constraint |
-| Chỗ đặt | `Runtime/Utilities/Layout/`, namespace `Horcrux.Runtime.Utilities.Layout`; `Splitter` lấy từ namespace cha `Horcrux.Runtime.Utilities`, không cần `using` |
-| Tên | `ViewportAnchor`, `ViewportCover` giữ · `GameplayViewport` thành **`ViewportCamera`**: "Gameplay" là người dùng đầu tiên, không phải cơ chế; field `gameplayCamera` thành `targetCamera`. Developer đổi tuỳ ý trước khi gõ |
-| Giữ GUID | `.meta` của ba file Horcrux nhận lại GUID của bản tạm ở giai đoạn 6 (luật `reuse-gate`): `GameplayRoot.prefab` trỏ script bằng GUID, 11 component giữ nguyên, không nối lại. Hai `*.Editor.cs` không asset nào trỏ, GUID tuỳ ý |
-| Nút Inspector | Odin `[Button]` trong partial `*.Editor.cs` bọc `#if UNITY_EDITOR`; Odin đã là phụ thuộc của `com.horcrux.runtime` (`PersistenceDataEntry.cs`, `PoolService.Editor.cs`) |
-
-**Cố ý KHÔNG làm**
-
-| Không làm | Vì |
-|---|---|
-| Tính lại khi màn đổi cỡ (xoay, chia đôi màn) | game khoá dọc, màn không đổi cỡ trong phiên; dự án đầu tiên cần thì gọi lại `ApplyLayout`, không đổi chữ ký |
-| Camera perspective | chưa có người dùng; `ViewportToWorldPoint` với z = 0 chỉ đúng cho ortho |
-| Neo theo bề cao (giữ cố định chiều cao world) | chưa có người dùng; thêm sau là một `enum` trên `ViewportCamera`, `designWidthUnits` giữ nguyên nghĩa |
-| `ViewportCover` co giãn không đều (kéo méo cho vừa khít) | méo art; ảnh nền vẽ dư hai đầu thì cắt trục thừa là đủ |
-| `ViewportCover` cho `Image` của UI | UI có `AspectRatioFitter` chế độ `EnvelopeParent` và `UICoverFitter` (`Horcrux_UIFitters_Plan.md`) |
-| `ViewportCover` bù scale của cha | mọi cha hiện tại scale 1 (`world` trong prefab scale 1); Tooltip của ô `Target` ghi điều kiện này. Cần thì chia cho `parent.lossyScale`, không đổi chữ ký |
-| Guard `targetCamera`, `target`, `sprite` null | thiếu là lỗi setup, lộ ở frame đầu bằng `NullReferenceException` trỏ đúng component; bước Editor setup của giai đoạn ghi "thiếu thì hỏng ở đâu" |
-| Nút `Apply Layout` trên `ViewportCover` | cover chỉ có khi có camera trong cùng root; nút trên camera và trên anchor đã chạy lại cả chuỗi |
-
-**Quyết định trái trực giác** — lý do viết ở giai đoạn sinh ra nó: aspect đọc từ `targetCamera.aspect`, không từ `Screen` (GĐ1) ·
-`ViewportAnchor` không có `Awake`, một chủ gọi theo thứ tự mảng (GĐ2) · `ViewportCover` là component riêng, không phải cờ trên
-`ViewportAnchor` (GĐ3) · cover phóng **đều** theo trục thiếu hơn (GĐ3) · nút trên anchor gọi `ViewportCamera.ApplyLayout`, không gọi
-`Apply` của chính nó (GĐ4).
-
-**Mở rộng sau**
-
-- Màn đổi cỡ trong phiên: host gọi lại `ViewportCamera.ApplyLayout()` khi nhận sự kiện đổi cỡ.
-- Giữ cố định chiều cao world: `enum` chọn trục trên `ViewportCamera`, công thức ortho đổi theo trục.
-- Cha của sprite nền có scale khác 1: `ViewportCover.Apply` chia scale cho `target.transform.parent.lossyScale`.
-
----
-
-## Đã khảo sát
-
-| Nguồn | Lấy gì | Không lấy, vì sao |
-|---|---|---|
-| 5 file bản tạm trong dự án (bản 2026-11-06) | toàn bộ cơ chế: công thức ortho, `Apply(Camera)` của anchor và cover, thứ tự mảng, hai nút `Apply Layout` | dòng "Bản tạm của dự án" trong XML doc · `Screen.width / Screen.height` trong `ApplyLayout` (lý do ở GĐ1) |
-| `Layout.md` §1–§2 của dự án | kịch bản dùng: cụm trên neo `y = 1` trong safe area với `worldOffset.y` âm, cụm dưới neo theo tỉ lệ chiều cao; "đã sai một lần" về đổi đơn vị camera và đổi cỡ Game view khi đang Play | số `10.5`, các `worldOffset` — nháp của dự án, sống trong prefab |
-| `GameplayRoot.prefab` | camera `m_NormalizedViewPortRect` 0,0,1,1 (phủ cả màn) · `world` scale 1 · key YAML `gameplayCamera`, `anchors` (9), `covers` (1), `designWidthUnits` | — |
-| Horcrux `Runtime/Utilities/` | chưa có helper bố cục world; `Layout/` chưa tồn tại | — |
-| Horcrux `Editor/Probe` (`ScreenBox`, `playrun.sh` với `SIZES`) | kiểm giai đoạn 6: khung pixel của từng anchor trước và sau khi chuyển, ở hai cỡ màn | — |
-| Unity `PositionConstraint`, `AspectRatioFitter`, Cinemachine | — | constraint chạy mỗi frame cho thứ không đổi · `AspectRatioFitter` chỉ cho `RectTransform` · Cinemachine thừa cho một camera đứng yên |
-| Ảnh nền trên Canvas Screen Space–Camera + `AspectRatioFitter` `EnvelopeParent` | — | chạy được, nhưng thêm một canvas cho một ảnh; sprite world đi chung đơn vị và sorting layer với gameplay. Canvas Overlay luôn đè gameplay |
-| `Horcrux_UIFitters_Plan.md` (`UICoverFitter`) | cùng cách nói "phủ kín" `max(view / ảnh)` | đối tượng là `RectTransform` theo khung cha đổi trong Editor; cover ở đây là `SpriteRenderer` world tính một lần |
-
----
+- **Người dùng:** `GameplayRoot.prefab` › `camera_main` (camera + 9 anchor dưới `world` + 1 cover ở `world/background`) · dự án sau có
+  camera ortho dọc, đặt vật thể world theo mép màn và một ảnh nền phủ kín.
+- **Chỗ đặt, tên:** `Runtime/Utilities/Layout/`, namespace `Horcrux.Runtime.Utilities.Layout` (`Splitter` từ namespace cha, không cần
+  `using`). `ViewportAnchor`, `ViewportCover` giữ; `GameplayViewport` → **`ViewportCamera`**, `gameplayCamera` → `targetCamera` (lý do ở
+  GĐ1). Tên đổi tuỳ ý trước khi gõ.
+- **Bất biến:** tính một lần ở boot, không `Update`, không constraint. Ba file `.meta` Horcrux nhận lại GUID bản tạm ở GĐ6; hai
+  `*.Editor.cs` GUID tuỳ ý.
+- **Không làm:** tính lại khi màn đổi cỡ, neo theo bề cao, guard null (lý do ở GĐ1) · camera perspective (GĐ2) · cover co giãn không đều,
+  bù scale của cha (GĐ3) · cover cho `Image` UI (đã có `UICoverFitter`, `Horcrux_UIFitters_Plan.md`) · nút `Apply Layout` trên cover (GĐ4).
+- **Đã khảo sát:** 5 file bản tạm (lấy cả cơ chế; bỏ `Screen.width / Screen.height`, lý do ở GĐ1) · `Layout.md` §1–§2 (kịch bản neo cụm
+  trên, cụm dưới; "đã sai một lần" về đổi đơn vị camera, đổi cỡ Game view lúc Play; số `10.5`, `worldOffset` là nháp, sống trong prefab) · `GameplayRoot.prefab` (camera `m_NormalizedViewPortRect` 0,0,1,1;
+  `world` scale 1; key YAML `gameplayCamera`, `anchors` (9), `covers` (1), `designWidthUnits`) · Horcrux `Runtime/Utilities/` (chưa có;
+  `Layout/` chưa tồn tại) · Horcrux `Editor/Probe` (`ScreenBox`, `playrun.sh` với `SIZES`: kiểm GĐ6) · Unity `PositionConstraint`,
+  `AspectRatioFitter`, Cinemachine (không hợp: chạy mỗi frame · chỉ cho `RectTransform` · thừa cho camera đứng yên) · Canvas + `EnvelopeParent`
+  cho ảnh nền (lý do bỏ ở GĐ3) · `UICoverFitter` (cùng cách nói `max(view / ảnh)`; khác: `RectTransform` theo khung đổi trong Editor).
 
 ## Luồng mô tả — một lần boot của màn gameplay
 
 ```
 Unity Awake trên camera ──► ViewportCamera đọc targetCamera.aspect, đặt orthographicSize theo designWidthUnits   GĐ1
-                                        │
                                         ▼
                      từng ViewportAnchor theo thứ tự mảng: điểm màn (trong safe area nếu bật) → world, giữ z      GĐ2
-                                        │
                                         ▼
                      từng ViewportCover: scale đều để sprite phủ kín view, trục thừa tràn ra ngoài màn           GĐ3
-                                        │
                                         ▼
                      developer bấm Apply Layout trong Inspector: cả chuỗi chạy lại, thấy ở Scene view            GĐ4
-                                        │
                                         ▼
-                     tài liệu module (GĐ5) · dự án dùng bản Horcrux, giữ GUID (GĐ6)
+                     tài liệu (GĐ5) · dự án dùng bản Horcrux, giữ GUID (GĐ6)
 ```
 
 ## Bản đồ hệ cuối
@@ -100,8 +54,7 @@ Unity Awake trên camera ──► ViewportCamera đọc targetCamera.aspect, đ
                                       └─ covers[i].Apply(targetCamera)   ViewportCover: target.localScale = max(viewW / spriteW, viewH / spriteH)
 ```
 
-Ai sở hữu gì: `ViewportCamera` giữ thứ tự và là cửa gọi duy nhất; anchor chỉ ghi `transform.position` của chính nó; cover chỉ ghi
-`localScale` của `target`; không ai cache kết quả — gọi lại là tính lại từ cấu hình.
+`ViewportCamera` là cửa gọi duy nhất; không ai cache kết quả — gọi lại là tính lại từ cấu hình.
 
 ---
 
@@ -169,7 +122,11 @@ namespace Horcrux.Runtime.Utilities.Layout
 | XML doc | `(1 unit = 100 px of art at 1080 px wide)` | `(10.8 = 1080 px of art at 100 pixels per unit)` | nói về giá trị mặc định của field, không về một dự án |
 
 **Quyết định** — tính ở `Awake`, không `Start`: mọi thứ khác trong prefab đọc vị trí anchor sớm nhất ở `Start` hay frame tạo level; camera
-phải xong trước. Phương án bỏ: `[DefaultExecutionOrder]` — thứ tự ngầm, không thấy trong Inspector.
+phải xong trước. Phương án bỏ: `[DefaultExecutionOrder]` — thứ tự ngầm, không thấy trong Inspector. — Tính một lần, không theo dõi
+màn đổi cỡ (xoay, chia đôi màn): game khoá dọc, màn không đổi cỡ trong phiên. Mở rộng sau: host gọi lại `ApplyLayout()` khi nhận sự
+kiện đổi cỡ, không đổi chữ ký. — Chỉ giữ cố định bề rộng: chưa có người dùng neo theo bề cao; cần thì một `enum` chọn trục trên
+`ViewportCamera`, công thức ortho đổi theo trục, `designWidthUnits` giữ nghĩa. — Không guard `targetCamera` (và `target`, `sprite` ở
+GĐ2–3) null: thiếu là lỗi setup, lộ ở frame đầu bằng `NullReferenceException` trỏ đúng component; Editor setup ghi "thiếu thì hỏng ở đâu".
 
 | Consumes | Produces |
 |---|---|
@@ -297,7 +254,8 @@ màn. Mốc 9:16 với `10.8`: `(0, 0)` → `(−5.4, −9.6)`, `(1, 1)` → `(5
 đổi size và anchor con phải chạy sau anchor cha (`transform.position` của con tính trên cha đã dời); một chủ gọi theo mảng là thứ tự
 tường minh trong Inspector. Hệ quả: anchor trên object đang tắt vẫn được đặt. Phương án bỏ: `[DefaultExecutionOrder]` + `Awake` — không
 xếp được thứ tự giữa hai anchor. — `ToSafeAreaViewport` đọc `Screen`: safe area là khái niệm của màn, không của camera; đúng khi camera phủ
-cả màn (điều kiện của GĐ1). — Giữ `z`: thứ tự vẽ 2.5D của dự án sống ở z; anchor chỉ lo x, y.
+cả màn (điều kiện của GĐ1). — Giữ `z`: thứ tự vẽ 2.5D của dự án sống ở z; anchor chỉ lo x, y. — Chỉ camera ortho: `ViewportToWorldPoint`
+với z = 0 chỉ đúng cho ortho; perspective chưa có người dùng.
 
 | Consumes | Produces |
 |---|---|
@@ -418,8 +376,12 @@ máy 9:19.5 khớp (scale 1), máy thấp hơn cắt trên dưới, máy cao hơ
 **Quyết định** — component riêng, không phải cờ trên `ViewportAnchor`: anchor chỉ đặt vị trí, cover chỉ đặt scale, ảnh nền cần cả hai thì
 gắn cả hai; `ViewportCamera` gọi hai mảng riêng, cover sau anchor (cover không đọc vị trí nên thứ tự giữa hai mảng không đổi kết quả).
 Phương án bỏ: `bool coverScreen` trên anchor — anchor mang thêm lý do thay đổi và một ô `SpriteRenderer` vô nghĩa cho 9 anchor khác. —
-Phóng **đều**: không méo art; kéo méo cho vừa khít là phương án bỏ. — Đọc `sprite.bounds`, không đọc `localScale` hiện tại: gọi lại không
-cộng dồn, nút Inspector của GĐ4 bấm nhiều lần vẫn đúng.
+Phóng **đều**: không méo art; ảnh nền vẽ dư hai đầu thì cắt trục thừa là đủ, kéo méo cho vừa khít là phương án bỏ. — Đọc `sprite.bounds`,
+không đọc `localScale` hiện tại: gọi lại không cộng dồn, nút Inspector của GĐ4 bấm nhiều lần vẫn đúng. — Sprite world, không ảnh nền trên
+Canvas: Screen Space–Camera + `AspectRatioFitter` `EnvelopeParent` chạy được nhưng thêm một canvas cho một ảnh, còn sprite world đi chung
+đơn vị và sorting layer với gameplay; Canvas Overlay luôn đè gameplay. — Không bù scale của cha: mọi cha hiện tại scale 1 (`world` trong
+prefab), Tooltip ô `Target` ghi điều kiện này. Mở rộng sau: cha scale khác 1 thì `Apply` chia cho `target.transform.parent.lossyScale`,
+không đổi chữ ký.
 
 | Consumes | Produces |
 |---|---|
@@ -515,7 +477,9 @@ namespace Horcrux.Runtime.Utilities.Layout
 camera đã đúng size và anchor cha đã dời; chạy lại cả chuỗi rẻ (mười phép tính) và luôn đúng. Phương án bỏ: `Apply(Camera.main)` —
 `Camera.main` trong Prefab Mode là camera của scene đang mở, không phải camera trong prefab. — Tìm camera bằng `transform.root`: trong
 Prefab Mode root là root prefab; trong scene là root của object. Phương án bỏ: ô kéo `ViewportCamera` trên mỗi anchor — 9 ô kéo cho
-một nút Editor.
+một nút Editor. — Không có nút trên `ViewportCover`: cover chỉ có khi có camera trong cùng root, nút trên camera và anchor đã chạy lại cả
+chuỗi. — Odin `[Button]` trong partial `*.Editor.cs` bọc `#if UNITY_EDITOR`: Odin đã là phụ thuộc của `com.horcrux.runtime`
+(`PersistenceDataEntry.cs`, `PoolService.Editor.cs`).
 
 | Consumes | Produces |
 |---|---|

@@ -1,93 +1,58 @@
 # Plan — `TadaCurve`, `AnimationRegistry`, `ProgressBar.Play` và hai sửa extension Horcrux theo kinh nghiệm dự án
 
-Ngày 2026-11-06. Nguồn: category-jam, audit hiệu năng đợt feeling 2026-10-31 (kết luận ở `Assets/_CategoryJam/Scripts/Feel.md`),
+Ngày 2026-11-06. Nguồn: category-jam, audit hiệu năng đợt feeling 2026-10-31 (kết luận ở `Assets/_CategoryJam/Scripts/Feel.md`);
 developer chốt cùng ngày đưa **toàn bộ** lên Horcrux, kể cả thứ mới có một người dùng:
 
-- `Assets/_CategoryJam/Scripts/Entities/Tile/TileFinaleCurve.cs` (`TileFinaleCurve`, `FinalePose`), `Entities/Tile/TileFeelTuning.cs`
-  (`TileFinaleTuning`) — nhịp tada của tile cuối; caller `Tile.FlyToAsync`, `Tile.BuildFlightState`, `Tile.StepFinale`, nút Preview
-  Finale ở `Tile.Editor.cs`.
-- `Assets/_CategoryJam/Scripts/Director/AnimatingSystem.cs`, `Director/IAnimate.cs` — sổ "có gì đang diễn" của một level.
-- Horcrux `Runtime/Utilities/UI/ProgressBar.cs`, `Runtime/Utilities/ExtensionMethods/Transform/TransformExtensions.CharmTween.cs`,
-  `Runtime/Utilities/ExtensionMethods/UniTextExtensionMethods.cs`, `Runtime/Utilities/ExtensionMethods/SpriteRenderExtensions.cs` — ba chỗ
-  dự án làm tốt hơn bản Horcrux: `ComboPill` cần handle dừng thay token, `TileView` gọi `SetAlpha` mỗi frame bay, tween một `float`
-  không cần closure.
+- **A** `TadaCurve` ← `Assets/_CategoryJam/Scripts/Entities/Tile/TileFinaleCurve.cs` (`TileFinaleCurve`, `FinalePose`),
+  `Entities/Tile/TileFeelTuning.cs` (`TileFinaleTuning`) — nhịp tada của tile cuối.
+- **B** `AnimationRegistry` ← `Assets/_CategoryJam/Scripts/Director/AnimatingSystem.cs`, `Director/IAnimate.cs` — sổ "có gì đang diễn".
+- **C, D** sửa Horcrux `Runtime/Utilities/UI/ProgressBar.cs`,
+  `Runtime/Utilities/ExtensionMethods/Transform/TransformExtensions.CharmTween.cs`,
+  `Runtime/Utilities/ExtensionMethods/UniTextExtensionMethods.cs`, `Runtime/Utilities/ExtensionMethods/SpriteRenderExtensions.cs` —
+  dự án làm tốt hơn: `ComboPill` cần handle dừng thay token, `TileView` gọi `SetAlpha` mỗi frame bay, tween một `float` không cần
+  closure.
 
-**Phân công:** GĐ1–GĐ7 (Horcrux, code runtime) developer gõ, sau mỗi giai đoạn agent viết test của giai đoạn đó theo bảng case rồi
-compile · GĐ8 (tài liệu) và GĐ9 (category-jam chuyển sang bản Horcrux, xoá bản tạm) agent làm.
-
-**Chạy được, thấy được ở GĐ1–GĐ7** = `com.horcrux.runtime` compile sạch và bảng case của giai đoạn xanh (`Tests/EditMode/`,
-`Tests/PlayMode/`); Horcrux không có host nên "thấy trong game" là GĐ9. Horcrux là submodule: GĐ1–GĐ8 commit **trong
-`Assets/Horcrux`**, GĐ9 commit ở repo dự án kèm con trỏ submodule.
-
-Không phụ thuộc Plan nào; làm trước hay sau `Horcrux_HopCurve_DipFlash_Plan.md` đều compile sạch. Lõi toán chỉ có ở `TadaCurve`: `§0`
-dẫn giải; ba utility còn lại không có lõi toán.
-
----
+**Phân công:** GĐ1–GĐ7 developer gõ, agent viết test theo bảng case rồi compile · GĐ8 (tài liệu), GĐ9 (category-jam chuyển sang
+bản Horcrux, xoá bản tạm) agent làm. **Chạy được, thấy được** ở GĐ1–GĐ7 = compile sạch + bảng case xanh (`Tests/EditMode/`,
+`Tests/PlayMode/`); thấy trong game ở GĐ9. GĐ1–GĐ8 commit trong `Assets/Horcrux`, GĐ9 commit ở dự án kèm con trỏ submodule. Không
+phụ thuộc Plan nào: trước hay sau `Horcrux_HopCurve_DipFlash_Plan.md` đều compile sạch. Lõi toán chỉ ở `TadaCurve` (`§0`).
 
 ## Ngữ cảnh đã chốt
 
-| Mục | Chốt |
-|---|---|
-| Người dùng | tada: `Tile.StepFinale` (mỗi frame), `Tile.FlyToAsync`/`BuildFlightState` (nối sang chuyến bay), Preview Finale (`Tile.Editor.cs`) · registry: `AnimatingSystem` — 7 class implement `IAnimate` (`Tile`, `Box`, `BoxesContainer`, `PreviewBox`, `CacheTileSlots`, `ShoppingCart`, `Shelf`), 3 chủ `Register` (`GameDirector.OnTileActivated`, `BoxesContainer`, `CacheTileSlots`), `UnRegister` ở `BoxesContainer.HandleBoxCompleted` và `AnimatingSystem.HandleTileCompleted`, 2 chỗ hỏi (`GameDirector.IsAnimationInProgress`, `ContinueWithAddBoxAndClearAsync`) · `ProgressBar.Play`: `ComboPill` · `CharmSquashStretch`: chưa có caller (grep dự án và Horcrux: 0) · `SetAlpha(SpriteRenderer)`: `TileView.SetAirPose`, `SetBackgroundAlpha`, `SetAlpha` (mỗi frame bay), `BoxAnimation`, `BoxSlot`, `BoxTileSlot`, `CacheTileSlot` |
-| Mục tiêu | cảm giác chơi **không đổi một giá trị nào**: công thức tada chép nguyên văn; ba sửa Horcrux giữ chữ ký public đang có, bỏ cấp phát hoặc bỏ guard |
-| Chỗ đặt | `Runtime/Utilities/Tweening/Tada/` (`TadaSpec.cs`, `TadaPose.cs`, `TadaCurve.cs` — ba file của một hình dạng gom thư mục con), namespace `Horcrux.Runtime.Utilities.Tweening` như `SquashStretchSpec` · `IAnimating.cs`, `AnimationRegistry.cs` ở `Runtime/Utilities/Common/`, namespace `Horcrux.Runtime.Utilities.Common` · `Play` thêm vào `ProgressBar.cs` · tài liệu `docs/Runtime/Tada/`, `docs/Runtime/AnimationRegistry/` |
-| Tên | `TadaCurve`, `TadaSpec`, `TadaPose`, `AnimationRegistry`, `IAnimating` — developer chốt 2026-10-31. Field của `TadaSpec` **giữ nguyên** tên field của `TileFinaleTuning`: key YAML khối `finale` trên `Tile.prefab`, `GoldenTile.prefab` không đổi |
-| Giá đã nêu một lần | `TadaCurve` có **một** người dùng: hình (nhấc → 5 nhịp lắc giảm dần kèm phồng → lấy đà) đóng băng theo tile nhựa; dự án sau chỉnh được số, không chỉnh được mẫu lắc. Developer chấp nhận |
-
-**Cố ý KHÔNG làm**
-
-| Không làm | Vì |
-|---|---|
-| Driver tween cho tada (`Tween.Custom` lái thân, bóng, scale) | thân, bóng, scale là kênh của dự án; Horcrux giữ hình dạng, dự án giữ `StepFinale` |
-| Mẫu lắc là núm | năm mốc `1, −1, 0.66, −0.33, 0` là một hình; người dùng thứ hai cần mẫu khác thì thêm overload nhận mảng, không sửa bản này |
-| `ParticleSystem.ExpireAlive` (kết thúc đời mọi hạt đang sống) | không có caller: `TileView.StopFlightTrail` để đuôi vệt tan bằng `Stop(StopEmitting)` rồi `Tween.Delay` tắt object sau `_trailFadeTime`; hàm không caller không vào Horcrux |
-| `CharmFlyArc`, `CharmCount` viết lại 0 B | cần ba `Vector3` hoặc một `format` và `StringBuilder` trong callback, không nhét vào một target của `Tween.Custom<T>`; bọc class state là sinh một cấp phát khác. Ghi giá trong XML doc (GĐ6), đổi khi có caller mỗi frame |
-| `AnimationRegistry` là `MonoBehaviour` hay service | registry không có đời sống riêng; chủ (manager của dự án) giữ và `Clear` theo level |
-| `ProgressBar.PlayAsync` đổi hay bỏ | 7 case `PlayAsync` trong `ProgressBarTests` giữ nguyên; `Play` là cửa hẹp, `PlayAsync` gọi `Play` rồi gắn token |
-| Cache chuỗi số | `UniTextExtensionMethods.SetNumber(int)` (Horcrux, có test `UniTextSetNumberTests`) ghi số nguyên không cấp phát: dự án dùng thẳng (GĐ9); nhãn hai số `a/b` chưa có hàm Horcrux, dự án giữ cache có trần của nó |
-
-**Quyết định trái trực giác** — lý do viết ở giai đoạn sinh ra nó: `TadaCurve.Evaluate` nhận `in TadaSpec`, không là method của
-struct (GĐ1) · `WiggleKeys` có 6 phần tử cho 5 nhịp (GĐ1) · `Shadow01` guard `LiftHeight > 0` (GĐ2) · `IsAnyAnimating` so `null` kiểu
-tham chiếu, không so Unity (GĐ3) · `Play` trả `default` khi `goal <= 0` (GĐ5) · `SetAlpha` bỏ guard `null` (GĐ7) · `ComboTracker` dùng
-`Tween.Delay` làm cửa sổ decay — **đã có trong dự án**, GĐ9 không chạm.
-
-**Mở rộng sau**
-
-- `CharmFlyArc`, `CharmCount` 0 B khi có caller mỗi frame: cần một kiểu state nhỏ pooled hoặc `Tween.Custom` nhận `TweenSettings<Vector3>`
-  cho control point.
-- `AnimationRegistry` quét tuyến tính mọi mục mỗi lần hỏi; dự án đăng ký mọi tile nên mỗi `WaitUntil` quét vài trăm interface call mỗi
-  frame (memory perf-audit 2026-10-25, nhóm B). Đổi sang bộ đếm "đang diễn" tăng giảm khi mục đổi trạng thái là đổi hợp đồng `IAnimating`;
-  chờ số đo.
-- `ParticleSystem.ExpireAlive(buffer)` khi có hệ hạt sống lâu bám vật cần giết hạt ngay frame này; đặt cạnh `StopAndAwaitCompletion`
-  trong `ParticleSystemExtensions.cs`.
-
----
-
-## Đã khảo sát
-
-| Nguồn | Lấy gì | Không lấy, vì sao |
-|---|---|---|
-| category-jam `TileFinaleCurve.cs`, `TileFeelTuning.cs` › `TileFinaleTuning` (bản 2026-11-06) | toàn bộ công thức, hằng `BEAT_COUNT`, năm mốc lắc, hai ease inline; 9 field và giá trị mặc định C# | tooltip gọi tên `HeldScale` của press, `PeakScale` của flight, "sprite 2.5D lộ cạnh": luật của tile, về `[Tooltip]` của field `finale` trong `Tile` (GĐ9) |
-| category-jam `Tile.cs` (`FlyToAsync`, `BuildFlightState`, `BuildFlightMotion`, `StepFinale`), `Tile.Editor.cs` (`PreviewFinale`) | thứ tự gọi: `Duration` dựng tween `0 → Duration`, `Evaluate` mỗi frame, `Shadow01(pose.Lift)` cho bóng, `EndLift` và `Shadow01(startLift)` nối sang chuyến bay | — |
-| category-jam `Director/AnimatingSystem.cs`, `IAnimate.cs` và 7 class implement | `Register` chống trùng bằng `Contains`, quét bỏ qua `null`, `Clear` ở `OnDisable` và `HandleLevelDisposed`, `UnRegister` ở `HandleTileCompleted` | `BaseManager`, `Tile`: domain dự án |
-| category-jam `Tests/EditMode/TileFinaleCurveTests.cs` (19 case) | chuyển nguyên văn sang Horcrux (GĐ1, GĐ2) | — |
-| category-jam `TileView.StopFlightTrail`, `HideTrail` | `Stop(StopEmitting)` + `Tween.Delay(_trailFadeTime)`: không còn vòng `GetParticles`/`SetParticles` nào trong dự án | — |
-| category-jam `Hud/ComboPill.cs`, `Director/ComboTracker.cs` | `ComboPill` giữ `CancellationTokenSource _drainCts` quanh `PlayAsync(...).Forget()` — caller của `Play`; `ComboTracker` đã dùng `Tween _decay` + `Tween.Delay<T>` | — |
-| category-jam `Entities/Shelf/SingleShelfAmountBar.cs`, `Entities/Box/CategoryBox.cs` | `s_amountTexts` cache `count.ToString()` → `SetNumber`; `s_counterTexts` cache `$"{occupied}/{total}"` giữ | — |
-| Horcrux `Runtime/Utilities/UI/ProgressBar.cs` (bản 2026-11-05) | `PlayAsync` thân hiện tại, `TryWriteGoalAndLabel`, `WriteFill`, label `LightSide.UniText` | `Set`, `SetLabel`, `SetLabelActive`, `FillMode`, `initialFill`: không chạm |
-| Horcrux `Tests/PlayMode/ProgressBarTests.cs` | 7 case `PlayAsync` (null label, drain, same frame, scaled, unscaled, cancel midway, fill mode) phải PASS sau GĐ5; `SetField` reflection để dựng bar | — |
-| Horcrux `TransformExtensions.CharmTween.cs`, `UniTextExtensionMethods.cs` | `CharmSquashStretch` local function bắt `self`, `spec`; `CharmFlyArc` bắt `from`, `target`, `controlPoint`; `CharmCount` bắt `self`, `start`, `end`, `format`, `builder`, `slot` | — |
-| Horcrux `PhysXHelper/SquashStretch.cs` | `GetSquashStretch(t, a, b, axis, cs)` = `GetVolumePreservingScale(lerp(a, b, t), axis, cs)` (`math.lerp`, không kẹp) | — |
-| Horcrux `docs/Runtime/CharmFlyArc/CharmFlyArc.md` §2 | dòng "`GetSquashStretch` nhận `t` đã ease" phải đổi theo GĐ6 (GĐ8) | — |
-| Horcrux `SpriteRenderExtensions.cs`, `GraphicExtensions.cs` | `SetAlpha(SpriteRenderer)` có guard `null`; `SetAlpha(Graphic)` là bản khác, không chạm | — |
-| Horcrux `PhysXHelper/DampedOscillator.cs`, `HarmonicOscillator.cs` | — | lắc tada là 5 mốc góc đặt tay nội suy InOutSine, không phải dao động tắt dần: đổi sang oscillator là đổi cảm giác |
-| Horcrux `Tweening/Easings/Easer.Evaluate(EaseType, t)` | — | bản tạm viết `OutQuad`, `InOutSine` inline một dòng; gọi `Easer` thêm một switch mỗi frame cho cùng số |
-| Horcrux `Utilities/Common/` (`AxisType`, `CoordinateSystem`, `CountdownFormatter`, `DeferredSet`, `Direction`) | chỗ đặt registry | `DeferredSet`: registry chỉ `Register/Unregister/Clear/quét`, không sửa trong lúc quét; `List` đủ |
-| Horcrux `TransformExtensions.Jump.cs` › `SetJumpY` | khuôn `static readonly Action<Transform, Vector3>` cho callback không bắt biến | `CharmSquashStretch` chỉ cần một `float`: `Tween.Custom(target, from, to, …)` với lambda `static` là đủ |
-| Horcrux `Tests/PlayMode/CharmJumpTests.cs` › `CharmJump_DoesNotAllocate`, `Tests/PlayMode/AllocationMeter.cs` | khung đo 0 B: warm-up một lần rồi `Is.Not.AllocatingGCMemory()` quanh vòng gọi | — |
-| PrimeTween `Tween.Custom<T>(T target, float startValue, float endValue, float duration, Action<T, float> onValueChange, Easing ease, …, bool useUnscaledTime)`, `Tween.Delay<T>(T target, float duration, Action<T> onComplete, …)`, `Tween.SetCancellationToken(ct)` trả `Tween`, `implicit operator UniTask(Tween)`, `Tween.isAlive`, `Tween.Stop()` no-op trên `default` | chữ ký `Play`/`PlayAsync`, `CharmSquashStretch`, `ComboPill` | — |
-| Horcrux `UniTextExtensionMethods.SetNumber`, `Tests/EditMode/UniTextSetNumberTests.cs`; UniText `UniTextBase.SetText(ReadOnlySpan<char>)`, `UniTextWorld : UniTextBase` | `SingleShelfAmountBar` ghi số lớp bằng `SetNumber` (GĐ9) | — |
-| category-jam `docs/tools/feel_trace/trace.cs` (có bước "Tile cuối: tada tại chỗ rồi bay vào box" và bước magnet) | mốc trace trước–sau GĐ9 | — |
+- **Mục tiêu:** cảm giác chơi **không đổi một giá trị nào** — công thức tada chép nguyên văn; ba sửa Horcrux giữ chữ ký public đang
+  có, bỏ cấp phát hoặc bỏ guard.
+- **Người dùng** (đủ tên ở "Ai gọi" mỗi giai đoạn): tada — `Tile` · registry — `AnimatingSystem` và 7 class implement `IAnimate` ·
+  `Play` — `ComboPill` · `SetAlpha(SpriteRenderer)` — `TileView` mỗi frame bay và bốn chỗ khác · `CharmSquashStretch` chưa có caller
+  (grep dự án và Horcrux: 0).
+- **Chỗ đặt:** `Runtime/Utilities/Tweening/Tada/` (`TadaSpec.cs`, `TadaPose.cs`, `TadaCurve.cs`), namespace
+  `Horcrux.Runtime.Utilities.Tweening` như `SquashStretchSpec` · `IAnimating.cs`, `AnimationRegistry.cs` ở `Runtime/Utilities/Common/`,
+  namespace `Horcrux.Runtime.Utilities.Common` · `Play` thêm vào `ProgressBar.cs` · tài liệu `docs/Runtime/Tada/`,
+  `docs/Runtime/AnimationRegistry/`.
+- **Tên** (developer chốt 2026-10-31): `TadaCurve`, `TadaSpec`, `TadaPose`, `AnimationRegistry`, `IAnimating`. Field của `TadaSpec`
+  **giữ nguyên** tên field của `TileFinaleTuning`: key YAML khối `finale` trên `Tile.prefab`, `GoldenTile.prefab` không đổi.
+- **Không làm:** driver tween cho tada (thân, bóng, scale là kênh của dự án; Horcrux giữ hình dạng) · mẫu lắc là núm (GĐ1) ·
+  `ParticleSystem.ExpireAlive` (không caller: `TileView.StopFlightTrail` để vệt tan bằng `Stop(StopEmitting)`; khi cần thì đặt cạnh
+  `StopAndAwaitCompletion` trong `ParticleSystemExtensions.cs`) · `CharmFlyArc`,
+  `CharmCount` 0 B (GĐ6) · `AnimationRegistry` là `MonoBehaviour` hay service (GĐ3) · đổi hay bỏ `PlayAsync` (7 case giữ; `PlayAsync`
+  gọi `Play` rồi gắn token) · cache chuỗi số (dự án dùng `SetNumber` của Horcrux; nhãn hai số `a/b` giữ cache có trần, GĐ9).
+- **Mở rộng sau:** `CharmFlyArc`, `CharmCount` 0 B khi có caller mỗi frame (GĐ6) · `AnimationRegistry` đếm thay quét khi có số đo (GĐ3).
+- **Đã khảo sát:**
+  - A: `TileFinaleCurve.cs`, `TileFinaleTuning` bản 2026-11-06 (công thức, `BEAT_COUNT`, năm mốc lắc, hai ease inline, 9 field và
+    mặc định; tooltip về `Tile`, GĐ9) · `Tile.cs`, `Tile.Editor.cs` (thứ tự gọi `Duration`, `Evaluate`, `Shadow01`, `EndLift`) ·
+    `TileFinaleCurveTests.cs` (19 case, chuyển nguyên văn) · Horcrux `DampedOscillator`, `HarmonicOscillator` (không hợp, `§0`),
+    `Easer.Evaluate` (không hợp, GĐ1).
+  - B: `AnimatingSystem.cs`, `IAnimate.cs` và 7 class (`Register` chống trùng, quét bỏ `null`, `Clear` ở `OnDisable` và
+    `HandleLevelDisposed`; `BaseManager` là domain dự án) · Horcrux `Utilities/Common/` (chỗ đặt; `DeferredSet` không cần, GĐ3).
+  - C: `Hud/ComboPill.cs` (giữ CTS quanh `PlayAsync` — caller của `Play`), `Director/ComboTracker.cs` (đã dùng `Tween.Delay`, không
+    chạm) · `ProgressBar.cs` bản 2026-11-05 (`PlayAsync`, `TryWriteGoalAndLabel`, `WriteFill`; phần khác không chạm) ·
+    `Tests/PlayMode/ProgressBarTests.cs` (7 case `PlayAsync` phải PASS sau GĐ5).
+  - D: `TransformExtensions.CharmTween.cs`, `UniTextExtensionMethods.cs` (biến mỗi closure bắt) · `PhysXHelper/SquashStretch.cs`
+    (`GetSquashStretch` = `GetVolumePreservingScale(lerp(a, b, t), …)`, không kẹp) · `TransformExtensions.Jump.cs` › `SetJumpY`
+    (khuôn callback không bắt biến, GĐ6) · `CharmJumpTests.CharmJump_DoesNotAllocate`, `AllocationMeter` (khung đo 0 B) ·
+    `SpriteRenderExtensions.cs` (`SetAlpha(Graphic)` là bản khác, không chạm) · `docs/Runtime/CharmFlyArc/CharmFlyArc.md` §2 (GĐ8).
+  - Chung: PrimeTween `Tween.Custom<T>(target, …)`, `Tween.Delay<T>`, `SetCancellationToken` trả `Tween`, `isAlive`, `Stop()` no-op
+    trên `default` · `UniTextExtensionMethods.SetNumber`, `UniTextSetNumberTests` (`SingleShelfAmountBar`, GĐ9) · category-jam
+    `docs/tools/feel_trace/trace.cs` (mốc trace trước–sau GĐ9).
 
 ---
 
@@ -142,14 +107,12 @@ kẹp [0, 1] nên không vọt, giữ `LerpUnclamped` để không kẹp hai l�
 
 ```
 host dựng tween 0 → Duration(spec), Linear                                     GĐ1
-            │
             ▼
 mỗi frame: time ──► Evaluate(time, fromScale, spec) ──► TadaPose (Lift, Angle, Scale)
             │       host ghi: gốc đổi cỡ, thân nhấc và xoay quanh tâm            GĐ1
             │       bóng nằm lại, co theo Shadow01(pose.Lift, spec)              GĐ2
             ▼
 hết Duration: chuyến bay nối từ EndLift(spec), bóng từ Shadow01(EndLift)        GĐ2
-            │
             ▼
 tài liệu (GĐ8) · dự án: Tile.StepFinale, BuildFlightState dùng bản Horcrux (GĐ9)
 ```
@@ -165,8 +128,6 @@ tài liệu (GĐ8) · dự án: Tile.StepFinale, BuildFlightState dùng bản Ho
   ghi thân, gốc, bóng của mình
 ```
 
-Ai sở hữu gì: dự án giữ núm (`TadaSpec` serialize trên prefab) và ba kênh ghi; Horcrux giữ hình dạng theo thời gian, không giữ state.
-
 ---
 
 ## Giai đoạn 1 — Núm, tư thế, ba pha theo thời gian
@@ -176,8 +137,7 @@ Ai sở hữu gì: dự án giữ núm (`TadaSpec` serialize trên prefab) và b
 
 **Vì sao bây giờ:** đây là lõi của cơ chế; bóng và chuyến bay (GĐ2) chỉ đọc lại `Lift` mà pha này sinh ra.
 
-**Ai gọi:** test của giai đoạn; trong dự án là `Tile.BuildFlightMotion` (`Tween.Custom(this, 0f, finaleDuration, finaleDuration, …
-StepFinale(time))`) và `Tile.StepFinale` (GĐ9).
+**Ai gọi:** test; trong dự án `Tile.BuildFlightMotion` (tween `0 → finaleDuration` gọi `StepFinale(time)`), `Tile.StepFinale` (GĐ9).
 
 ### `Runtime/Utilities/Tweening/Tada/TadaSpec.cs` — file mới
 
@@ -314,7 +274,10 @@ namespace Horcrux.Runtime.Utilities.Tweening
 **Quyết định** — `Evaluate` là hàm của class toán nhận `in TadaSpec`, không là method của struct: struct núm chỉ giữ dữ liệu như
 `DipSpec`; hình tada là của class toán, cùng khuôn `HopCurve`. Phương án bỏ: `spec.Evaluate(time)` — trộn núm serialize với hình dạng, hai
 lý do thay đổi một struct. — `WiggleKeys` 6 phần tử cho 5 nhịp: mốc `index + 1` ở nhịp cuối là 0 (về thẳng); chép nguyên `WiggleKey(5) => 0`
-của bản tạm.
+của bản tạm. — Mẫu lắc `1, −1, 0.66, −0.33, 0` không là núm: năm mốc là một hình; người dùng thứ hai cần mẫu khác thì thêm overload
+nhận mảng, không sửa bản này. Giá developer đã chấp nhận: `TadaCurve` mới có một người dùng, hình (nhấc → 5 nhịp lắc giảm dần kèm
+phồng → lấy đà) đóng băng theo tile nhựa; dự án sau chỉnh được số, không chỉnh được mẫu. — `OutQuad`, `InOutSine` inline một dòng,
+không gọi `Easer.Evaluate(EaseType, t)`: thêm một switch mỗi frame cho cùng số.
 
 | Consumes | Produces |
 |---|---|
@@ -358,7 +321,7 @@ của bản tạm.
 
 **Vì sao bây giờ:** cả hai chỉ đọc `Lift` của GĐ1; bóng và cú cất cánh là hai kênh còn lại của một host thật.
 
-**Ai gọi:** test của giai đoạn; trong dự án `Tile.StepFinale` (`Shadow01(pose.Lift, finale)` mỗi frame), `Tile.FlyToAsync`
+**Ai gọi:** test; trong dự án `Tile.StepFinale` (`Shadow01(pose.Lift, finale)` mỗi frame), `Tile.FlyToAsync`
 (`startLift = EndLift(finale)`), `Tile.BuildFlightState` (`StartShadow01 = Shadow01(startLift, finale)`) (GĐ9).
 
 ### `TadaCurve.cs` › thêm sau `Duration`, trước `Evaluate`
@@ -414,13 +377,10 @@ của `WindupDip` nói rõ, Inspector là nơi người tune đang nhìn.
 
 ```
 chủ (manager của một level) new AnimationRegistry; vật vào sân ──► Register(vật : IAnimating)     GĐ3
-            │
             ▼
 host muốn mở tương tác, mở popup: hỏi IsAnyAnimating ──► quét, true khi còn một mục đang diễn      GĐ3
-            │
             ▼
 vật rời sân (box xong, tile xong) ──► Unregister · đổi level ──► Clear                              GĐ4
-            │
             ▼
 tài liệu (GĐ8) · dự án: AnimatingSystem giữ registry, 7 class đổi sang IAnimating (GĐ9)
 ```
@@ -433,9 +393,6 @@ tài liệu (GĐ8) · dự án: AnimatingSystem giữ registry, 7 class đổi s
                                                    ▼
                                                  host: WaitUntil(!IsAnyAnimating) rồi mở tương tác
 ```
-
-Ai sở hữu gì: vật giữ `IsAnimating` của nó; registry giữ danh sách; chủ giữ registry và vòng đời (gỡ, xoá theo level). Không ai giữ bản
-sao của trạng thái diễn.
 
 ---
 
@@ -513,7 +470,11 @@ namespace Horcrux.Runtime.Utilities.Common
 `MonoBehaviour` đã huỷ vẫn được hỏi `IsAnimating` — property thuần của dự án, không chạm native, trả giá trị cuối. Giữ để không đổi hành vi
 của `AnimatingSystem`; chủ gỡ đăng ký khi vật rời sân (GĐ4). Phương án bỏ: `item is Object o ? o != null : item != null` — một so sánh native
 mỗi mục mỗi lần hỏi, cho một ca chủ đã có đường gỡ. — `Register` chống trùng bằng `Contains` (O(n) lúc vật vào sân, nhịp "mỗi lần dữ liệu
-đổi"): đăng ký hai lần là ca thật (`CacheTileSlots` đăng ký ở cả `Initialize` và `ReinitializeByLevelLoad`).
+đổi"): đăng ký hai lần là ca thật (`CacheTileSlots` đăng ký ở cả `Initialize` và `ReinitializeByLevelLoad`). — Class thuần, chủ
+`new`: registry không có đời sống riêng; chủ (manager của dự án) giữ và `Clear` theo level. Phương án bỏ: `MonoBehaviour` hay service.
+— `List` đủ: registry chỉ `Register/Unregister/Clear/quét`, không sửa trong lúc quét. Phương án bỏ: `DeferredSet`. — Quét tuyến tính
+mỗi lần hỏi: dự án đăng ký mọi tile nên mỗi `WaitUntil` quét vài trăm interface call mỗi frame (memory perf-audit 2026-10-25, nhóm B).
+Mở rộng sau: bộ đếm "đang diễn" tăng giảm khi mục đổi trạng thái — đổi hợp đồng `IAnimating`, chờ số đo.
 
 | Consumes | Produces |
 |---|---|
@@ -608,13 +569,11 @@ biết ai đang diễn.
 
 ```
 caller có điểm mốc mới (combo tăng): tween cũ còn chạy ──► caller Stop() handle cũ
-            │
             ▼
 Play(from, to, goal, label) ──► ghi goal và nhãn một lần, ghi fill(from) ngay frame này,
             │                   trả Tween lái WriteFill mỗi frame                          GĐ5
             ▼
 caller giữ Tween: Stop() khi mốc mới tới hay khi huỷ; PlayAsync(…, ct) cho caller có token
-            │
             ▼
 dự án: ComboPill đổi CancellationTokenSource sang Tween (GĐ9)
 ```
@@ -631,8 +590,8 @@ dự án: ComboPill đổi CancellationTokenSource sang Tween (GĐ9)
 
 ## Giai đoạn 5 — `ProgressBar.Play` trả handle, `PlayAsync` gọi vào nó
 
-**Mục tiêu:** caller không có token của riêng mình dừng được tween bằng `Stop()`; `PlayAsync` giữ chữ ký và 7 case đang có. Xong giai đoạn này
-một pill combo nạp lại thanh mà không cấp phát `CancellationTokenSource` mỗi combo.
+**Mục tiêu:** caller không có token riêng dừng được tween bằng `Stop()`; `PlayAsync` giữ chữ ký và 7 case đang có. Xong giai đoạn
+này một pill combo nạp lại thanh mà không cấp phát `CancellationTokenSource` mỗi combo.
 
 **Vì sao bây giờ:** độc lập với A và B; caller thật (`ComboPill`) đang tự dựng và `Dispose` CTS cho mỗi lần `PlayAsync`.
 
@@ -746,8 +705,7 @@ Không có bản đồ riêng: hai hàm static có sẵn, chữ ký giữ nguyê
 
 **Vì sao bây giờ:** độc lập với A–C; cùng khuôn với `Play` (GĐ5): target vào `Tween.Custom<T>`, lambda `static`.
 
-**Ai gọi:** test của giai đoạn; chưa có caller trong dự án và Horcrux (Ngữ cảnh đã chốt) — hành vi public giữ nguyên nên giai đoạn này không
-đổi phạm vi.
+**Ai gọi:** test; chưa có caller trong dự án và Horcrux (grep: 0) — hành vi public giữ nguyên.
 
 ### `Runtime/Utilities/ExtensionMethods/Transform/TransformExtensions.CharmTween.cs` › `CharmSquashStretch` — đoạn cũ → đoạn mới
 
@@ -798,7 +756,9 @@ không kẹp, nên `OutBack`/`OutElastic` vẫn vọt.
 
 **Quyết định** — PrimeTween nội suy `s`, không nội suy `t` rồi lerp trong callback: cùng số, bớt một `lerp` mỗi frame, và callback không
 cần `spec`. Phương án bỏ: `static readonly Action<Transform, float>` như `SetJumpY` — lambda `static` inline cho cùng 0 B, ít hơn một
-field. — `CharmFlyArc`, `CharmCount` giữ closure: ghi ở "Cố ý KHÔNG làm".
+field. — `CharmFlyArc`, `CharmCount` giữ closure: cần ba `Vector3` hoặc một `format` và `StringBuilder` trong callback, không nhét
+vào một target của `Tween.Custom<T>`; bọc class state là sinh một cấp phát khác. Mở rộng sau, khi có caller mỗi frame: một kiểu state
+nhỏ pooled hoặc `Tween.Custom` nhận `TweenSettings<Vector3>` cho control point.
 
 | Consumes | Produces |
 |---|---|

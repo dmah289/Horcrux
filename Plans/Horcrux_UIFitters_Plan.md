@@ -2,100 +2,60 @@
 
 Ngày 2026-11-06. Nguồn: category-jam, bản tạm `Assets/_CategoryJam/Bridge/DesignWidthFitter.cs` (gắn ở `Shop/ShopPanel.prefab` ›
 `Viewport/Content` và root của `Popups/Parts/PopupFrame.prefab`) và `Assets/_CategoryJam/Bridge/Menu/HomeBackgroundFitter.cs` (gắn ở
-`Scenes/Menu.unity` › `Page3UI/Content/Home/bg_room`), dựng trong ba task reskin Home, Shop, popup theo demo 1080×2340. Hai component UGUI
-độc lập: một giữ bề rộng thiết kế của một khối, một phủ ảnh nền kín khung; mỗi cái một luồng và một chuỗi giai đoạn riêng dưới đây.
+`Scenes/Menu.unity` › `Page3UI/Content/Home/bg_room`), dựng khi reskin Home, Shop, popup theo demo 1080×2340. Hai component UGUI độc lập,
+mỗi cái một luồng và một chuỗi giai đoạn: giữ bề rộng thiết kế của một khối · phủ ảnh nền kín khung.
 
-**Phân công:** giai đoạn 1–4 (Horcrux, code runtime) developer gõ, sau mỗi giai đoạn agent viết test của giai đoạn đó theo bảng case rồi
-compile · giai đoạn 5 (tài liệu) và giai đoạn 6 (dự án chuyển sang bản Horcrux, xoá bản tạm) agent làm.
-
-**Chạy được, thấy được ở giai đoạn 1–4** = `bash Assets/Horcrux/Editor/CompileCheck/Tools~/verify.sh --csproj
-com.horcrux.runtime.csproj,Horcrux.EditModeTests.csproj --tests Horcrux.EditModeTests` xanh với bảng case của giai đoạn trong
-`Tests/EditMode/UIFitterTests.cs`; Horcrux không có canvas nào nên "thấy trong game" là giai đoạn 6. Horcrux là submodule: giai đoạn 1–5
-commit **trong `Assets/Horcrux`**, giai đoạn 6 commit ở repo dự án kèm con trỏ submodule.
-
-Không phụ thuộc Plan nào. Không có lõi toán, không có `§0`: hai công thức một dòng (`min` cho thu, `max` cho phủ) dẫn giải tại giai đoạn
-sinh ra nó.
-
----
+**Phân công:** GĐ1–4 developer gõ, agent viết test theo bảng case rồi compile · GĐ5 (tài liệu), GĐ6 (dự án chuyển sang bản Horcrux, xoá
+bản tạm) agent làm. **Chạy được, thấy được** ở GĐ1–4 = `bash Assets/Horcrux/Editor/CompileCheck/Tools~/verify.sh --csproj
+com.horcrux.runtime.csproj,Horcrux.EditModeTests.csproj --tests Horcrux.EditModeTests` xanh với bảng case trong
+`Tests/EditMode/UIFitterTests.cs`; thấy trong game ở GĐ6. GĐ1–5 commit trong `Assets/Horcrux`, GĐ6 commit ở dự án kèm con trỏ
+submodule. Không phụ thuộc Plan nào. Không có `§0`: hai công thức một dòng (`min` cho thu, `max` cho phủ) dẫn giải ở GĐ1, GĐ3.
 
 ## Ngữ cảnh đã chốt
 
-| Mục | Chốt |
-|---|---|
-| Người dùng | dự án này: cột Shop (`ShopPanel` › `Viewport/Content`) và khung popup (root `PopupFrame`) dùng `DesignWidthFitter`; ảnh nền Home (`Menu.unity` › `bg_room`) dùng `HomeBackgroundFitter` · dự án sau có UI dọc dựng 1:1 theo demo cỡ cố định, chạy trên cả điện thoại dài lẫn tablet |
-| Mục tiêu | khối UI giữ bề rộng thiết kế, thu nhỏ đều khi khung hẹp hơn · ảnh nền UI phủ kín khung, đổi ảnh tablet khi khung rộng hơn ảnh chính, con đặt theo pixel ảnh · cả hai không làm bẩn asset khi đổi Game view |
-| Chỗ đặt | `Runtime/Utilities/UI/`, namespace `Horcrux.Runtime.Utilities.UI`, cạnh `MButton`, `ProgressBar`, `Tooltip`. Không gọi type nào của dự án (bản tạm đã đạt). Developer đặt `Runtime/Utilities/Layout/` cạnh `ViewportCover` (Plan ViewportAnchor, thư mục chưa có) cũng được: không đổi gì khác |
-| Tên | `DesignWidthFitter` giữ · `HomeBackgroundFitter` đổi thành **`UICoverFitter`**: "Home" là người dùng đầu, "cover" là cơ chế, "UI" phân biệt với `ViewportCover` cho sprite world. Field `width`, `tablet` giữ tên: là key YAML `width: 1080` trong hai prefab và `tablet: {…}` trong scene. Developer đổi tuỳ ý trước khi gõ |
-| Giữ GUID | file Horcrux là file **mới** (GUID mới), bản tạm sống tới giai đoạn 6; lúc chuyển, `.meta` bản Horcrux **nhận lại GUID bản tạm** (`DesignWidthFitter` `36b62d2860b4cfb44907c8900a9178c9`, `HomeBackgroundFitter` `8e63ae2e0a997f64db2c23a1da699cf2`) — hai prefab và scene trỏ script bằng GUID, giữ GUID thì không nối lại component, không mất giá trị field |
-| Hợp đồng với tool chụp | Horcrux `Editor/UIReskin/UICapture.Canvas` tắt rồi bật lại mọi behaviour `[ExecuteAlways]` dưới canvas để fitter đọc cỡ khung mới ngay khi chụp ngoài Play. Hai component giữ `[ExecuteAlways]` và `OnEnable → Fit()` |
-
-**Cố ý KHÔNG làm**
-
-| Không làm | Vì |
-|---|---|
-| Base class chung cho hai fitter | khác lý do thay đổi (một giữ bề rộng khối, một phủ ảnh); chung mỗi khung `DrivenRectTransformTracker` + theo dõi cỡ cha, vài dòng |
-| `DesignWidthFitter` phóng to khi khung rộng hơn | khối nằm giữa, hai bên là nền: phóng to làm art vỡ nét và lệch tỉ lệ so với phần còn lại của màn |
-| `UICoverFitter` nhiều hơn hai ảnh | chưa có người dùng; xem "Mở rộng sau" |
-| Dùng `AspectRatioFitter` (`EnvelopeParent`) cho ảnh nền | nó giãn rect theo khung nên con đặt theo pixel ảnh trôi khỏi chi tiết vẽ sẵn khi tỉ lệ đổi; không đổi ảnh theo tỉ lệ |
-| Theo dõi cỡ cha bằng callback thay cho `Update` | `OnRectTransformDimensionsChange` chỉ gọi trên object đổi cỡ; con neo giữa không nhận khi cha đổi bề rộng |
-| Guard `Width ≤ 0`, ảnh chính thiếu | lỗi setup lộ ngay trong Editor (khối rộng 0, nền không hiện); code canh là giấu bước setup |
-
-**Quyết định trái trực giác** — lý do viết ở giai đoạn sinh ra nó: bề rộng và scale khai **driven**, ảnh tablet gán qua `overrideSprite`
-(GĐ1, GĐ3) · `[ExecuteAlways]` và `Update` so cỡ cha mỗi frame (GĐ2, GĐ4) · `UICoverFitter` giữ rect **đúng cỡ ảnh** và phóng bằng
-`localScale` (GĐ3) · ảnh tablet phải là ảnh chính **nới thêm hai bên, cùng tâm, cùng chiều cao** (GĐ3) · `DesignWidthFitter` chỉ thu,
-`scale = min(1, khung / width)` (GĐ1).
-
-**Mở rộng sau**
-
-- `UICoverFitter` nhiều hơn hai ảnh: mảng sprite kèm tỉ lệ ngưỡng; field `tablet` giữ nghĩa là phần tử đầu.
-- Khung đổi mà cha không đổi cỡ (đổi `Image.sprite` lúc chạy): thêm một hàm gọi lại `Fit`, không đổi chữ ký.
-
----
-
-## Đã khảo sát
-
-| Nguồn | Lấy gì | Không lấy, vì sao |
-|---|---|---|
-| Bản tạm trong dự án (2 file trên, bản trên đĩa 2026-11-06) | toàn bộ hành vi, nguyên văn | chữ "1080 như demo", "iPad", "Home", tên đồ vật trong comment; biến `mobile`: domain dự án |
-| `ShopPanel.prefab`, `PopupFrame.prefab`, `Menu.unity` | anchor, pivot, component đi kèm của ba object chủ; giá trị file lưu cho rect driven (`Content` của Shop lưu Size Delta Y 0, `bg_room` lưu Scale 0 và Size Delta 0) | — |
-| Canvas Scaler của dự án (`Menu`, `Game`, `Launcher`: 1080×2340, Match Width Or Height = 1) | lý do "chỉ thu": match height nên máy dài hơn 1080:2340 có canvas hẹp hơn 1080 | — |
-| `Arts/UI/Background/bg_mobile.png` 1080×2340, `bg_ipad.png` 1755×2340, Max Size 4096 | ví dụ cặp ảnh chính – tablet cùng cao; Max Size phải đủ cỡ ảnh | — |
-| Horcrux `Runtime/Utilities/UI/` (`MButton`, `ProgressBar`, `Tooltip`, `FlyRewardItem`, `RewardListView`, `RewardCellView`, `ACountdownLabel`, `UniTextTypewriter`) | chỗ đặt, namespace, region `Unity Callbacks` / `API` / `Class Methods` | chưa có fitter nào |
-| Horcrux `Editor/UIReskin/UICapture.cs`, `PrefabAudit.cs` | hợp đồng `[ExecuteAlways]` + `OnEnable → Fit`; `PrefabAudit.Report` báo `missing script` cho nghiệm thu GĐ6 | — |
-| Plan ViewportAnchor (`ViewportCover`, bản tạm `Scripts/Utilities/ViewportCover.cs`) | cách nói "phủ kín" `max(view / sprite)` | chạy cho `SpriteRenderer` world, tính một lần ở boot; UI cần theo khung cha đổi trong Editor |
-| UGUI `AspectRatioFitter`, `CanvasScaler`, `LayoutElement`, `ContentSizeFitter` | `ContentSizeFitter` lo chiều cao khối cạnh `DesignWidthFitter` | xem "Cố ý KHÔNG làm"; `CanvasScaler` scale cả canvas, không giữ một khối riêng |
-
----
+- **Người dùng:** cột Shop và khung popup dùng `DesignWidthFitter`; ảnh nền Home dùng `HomeBackgroundFitter` · dự án sau có UI dọc dựng
+  1:1 theo demo cỡ cố định, chạy cả điện thoại dài lẫn tablet.
+- **Mục tiêu:** khối UI giữ bề rộng thiết kế, thu đều khi khung hẹp hơn · ảnh nền phủ kín khung, đổi ảnh tablet khi khung rộng hơn ảnh
+  chính, con đặt theo pixel ảnh · không làm bẩn asset khi đổi Game view.
+- **Chỗ đặt, tên:** `Runtime/Utilities/UI/`, namespace `Horcrux.Runtime.Utilities.UI`, cạnh `MButton`, `ProgressBar`, `Tooltip` (đặt
+  `Runtime/Utilities/Layout/` cạnh `ViewportCover` cũng được). `DesignWidthFitter` giữ tên; `HomeBackgroundFitter` → **`UICoverFitter`**
+  (lý do ở GĐ3). Field `width`, `tablet` giữ tên: là key YAML trong hai prefab và scene. Tên đổi tuỳ ý trước khi gõ.
+- **GUID:** file Horcrux là file mới, bản tạm sống tới GĐ6; lúc chuyển `.meta` bản Horcrux nhận lại GUID bản tạm (GĐ6).
+- **Hợp đồng với tool chụp:** Horcrux `Editor/UIReskin/UICapture.Canvas` tắt rồi bật lại mọi behaviour `[ExecuteAlways]` dưới canvas để
+  fitter đọc cỡ khung mới khi chụp ngoài Play — hai component giữ `[ExecuteAlways]` và `OnEnable → Fit()`.
+- **Không làm:** base class chung (lý do ở GĐ3) · `DesignWidthFitter` phóng to, guard `Width ≤ 0` (lý do ở GĐ1) · `UICoverFitter` hơn hai
+  ảnh, `AspectRatioFitter` (lý do ở GĐ3) · callback cỡ cha thay `Update` (lý do ở GĐ2).
+- **Đã khảo sát:** hai bản tạm (lấy nguyên hành vi; bỏ chữ domain trong comment, biến `mobile`) · `ShopPanel.prefab`, `PopupFrame.prefab`,
+  `Menu.unity` (anchor, pivot; rect driven lưu Size Delta Y 0, Scale 0) · Canvas Scaler `Menu`, `Game`, `Launcher` (1080×2340, Match
+  Width Or Height = 1: máy dài có canvas hẹp hơn 1080) · `Arts/UI/Background/bg_mobile.png` 1080×2340, `bg_ipad.png` 1755×2340, Max
+  Size 4096 · Horcrux `Runtime/Utilities/UI/` (chỗ đặt, region; chưa có fitter) · `Editor/UIReskin/UICapture.cs`, `PrefabAudit.cs`
+  (hợp đồng chụp; `PrefabAudit.Report` cho nghiệm thu GĐ6) · Plan ViewportAnchor `ViewportCover` (lấy cách nói `max(view / sprite)`;
+  không hợp: sprite world, tính một lần ở boot) · UGUI `ContentSizeFitter` (lo chiều cao khối), `CanvasScaler` (không hợp: scale cả canvas).
 
 ## Luồng mô tả A — một khối giữ bề rộng thiết kế (`DesignWidthFitter`)
 
 ```
 khối rộng 1080 trong prefab, gắn fitter ──► bật (prefab mở, scene nạp, Editor hay Play)
-                                                   │
                                                    ▼
-                              Fit: đọc bề rộng cha → sizeDelta.x = width, scale = min(1, cha / width)
-                              khai hai thứ đó là driven; tắt component thì trả driven              GĐ1
-                                                   │
+                              Fit: sizeDelta.x = width, scale = min(1, cha / width); khai driven;
+                              tắt component thì trả driven                                          GĐ1
                                                    ▼
-                              khung cha đổi (CanvasScaler theo máy, safe area co ở Update,
-                              xoay, đổi Game view) · đổi cha ──► so bề rộng cha → Fit lại           GĐ2
+                              khung cha đổi (CanvasScaler, safe area, xoay, Game view) · đổi cha
+                              ──► so bề rộng cha → Fit lại                                           GĐ2
 ```
 
 ## Luồng mô tả B — một ảnh nền phủ kín khung (`UICoverFitter`)
 
 ```
 Image ảnh chính, con đặt theo pixel ảnh, gắn fitter ──► bật
-                                                   │
                                                    ▼
                               Fit: khung rộng hơn tỉ lệ ảnh chính? → ảnh tablet qua overrideSprite
                               sizeDelta = cỡ ảnh, scale = max(khung.x / ảnh.x, khung.y / ảnh.y)
                               khai driven; tắt component thì trả driven và overrideSprite            GĐ3
-                                                   │
                                                    ▼
                               khung cha đổi · rect chính nó đổi · đổi cha ──► so cỡ cha → Fit lại   GĐ4
-                                                   │
                                                    ▼
-                              tài liệu module (GĐ5) · dự án dùng bản Horcrux, xoá bản tạm (GĐ6)
+                              tài liệu (GĐ5) · dự án dùng bản Horcrux, xoá bản tạm (GĐ6)
 ```
 
 ## Bản đồ hệ cuối
@@ -112,9 +72,6 @@ Image ảnh chính, con đặt theo pixel ảnh, gắn fitter ──► bật
                                     Image: sprite (ảnh chính, author) · overrideSprite (tablet, driven)    RectTransform: sizeDelta = cỡ ảnh, localScale = phủ kín (driven)
                                                                                                              └── con: anchor giữa, toạ độ theo pixel ảnh, phóng cùng ảnh
 ```
-
-Ai sở hữu gì: fitter không giữ trạng thái nào ngoài cỡ cha đọc lần cuối; `RectTransform` và `Image` là nơi ghi; mọi giá trị fitter ghi
-đều khai driven nên Inspector khoá và không ghi vào file khi lưu.
 
 ---
 
@@ -188,7 +145,9 @@ rộng hơn: hai vế của `min` là hai loại máy.
 Size Delta Y 0, `bg_room` lưu Scale 0 trong khi lúc chạy là số khác), nên đổi Game view trong Editor tính lại mà không tạo diff và không đè giá trị
 author; Inspector khoá hai ô đó, developer không sửa tay thứ frame sau bị ghi đè. Phương án bỏ: ghi thẳng `sizeDelta`, `localScale` — mỗi lần
 đổi Game view là một diff trên prefab. — `Clear` rồi `Add` lại mỗi lần `Fit`: tracker là struct, `Add` lặp cộng dồn; `Clear` trước là cách
-rẻ nhất giữ đúng một đăng ký. — Chỉ ghi khi khác (`!=`): ghi `sizeDelta` làm bẩn layout của cả cây.
+rẻ nhất giữ đúng một đăng ký. — Chỉ ghi khi khác (`!=`): ghi `sizeDelta` làm bẩn layout của cả cây. — Chỉ thu, không phóng to khi
+khung rộng hơn: khối nằm giữa, hai bên là nền; phóng to làm art vỡ nét và lệch tỉ lệ so với phần còn lại của màn. — Không guard
+`Width ≤ 0`: lỗi setup lộ ngay trong Editor (khối rộng 0); code canh là giấu bước setup.
 
 | Consumes | Produces |
 |---|---|
@@ -404,7 +363,11 @@ trục thiếu là x, phóng theo x cắt trên dưới; ảnh tablet cùng cao,
 **Quyết định** — rect đúng cỡ ảnh, phóng bằng `localScale`: con theo pixel ảnh phóng cùng ảnh; `AspectRatioFitter` giãn rect nên con
 trôi. — Ảnh tablet qua `overrideSprite`, không ghi `sprite`: `sprite` là giá trị author, `overrideSprite` là lớp runtime, tắt
 component thì `null` trả về ảnh chính không cần nhớ ảnh cũ. — Ảnh tablet phải cùng cao, cùng tâm, nới hai bên: toạ độ con dùng chung;
-ảnh vẽ lệch tâm thì con trôi — điều kiện ghi ở Tooltip và tài liệu, không kiểm trong code. — Driven: như GĐ1.
+ảnh vẽ lệch tâm thì con trôi — điều kiện ghi ở Tooltip và tài liệu, không kiểm trong code. — Driven: như GĐ1. — Không guard ảnh chính
+thiếu: nền không hiện là lỗi setup lộ ngay, như GĐ1. — Tên `UICoverFitter`, không `HomeBackgroundFitter`: "Home" là người dùng đầu,
+"cover" là cơ chế, "UI" phân biệt với `ViewportCover` cho sprite world. — Không base class chung với `DesignWidthFitter`: khác lý do
+thay đổi (giữ bề rộng khối, phủ ảnh); phần chung chỉ là khung `DrivenRectTransformTracker` + theo dõi cỡ cha, vài dòng. — Hai ảnh,
+không hơn: chưa có người dùng; cần thì mảng sprite kèm tỉ lệ ngưỡng, field `tablet` giữ nghĩa là phần tử đầu.
 
 | Consumes | Produces |
 |---|---|
@@ -503,7 +466,7 @@ Mới:
 **Quyết định** — `Update` so một `Vector2` mỗi frame: như GĐ2. — `OnRectTransformDimensionsChange` giữ theo bản tạm: Unity gọi khi rect
 của chính ảnh đổi, kể cả do `Fit` vừa ghi `sizeDelta`; lần gọi lại thấy mọi giá trị đã khớp, không ghi, dừng — không vòng lặp.
 `Giả định (cần xác nhận):` ca thật callback này bắt mà `Update` không bắt (nguồn không ghi); giữ vì rẻ và không đổi kết quả. — Ảnh chính
-đổi lúc chạy mà cha không đổi thì không `Fit`: chưa có người dùng ("Mở rộng sau").
+đổi lúc chạy mà cha không đổi thì không `Fit`: chưa có người dùng; cần thì thêm một hàm gọi lại `Fit`, không đổi chữ ký.
 
 | Consumes | Produces |
 |---|---|
@@ -537,7 +500,7 @@ của chính ảnh đổi, kể cả do `Fit` vừa ghi `sizeDelta`; lần gọi
 
 Một cặp cho cả hai component, viết sau khi đọc code developer đã gõ. `.md` mở đầu `Code: Runtime/Utilities/UI/` (hai file). Mục: hai luồng
 mô tả ở trên (ASCII) · bảng field `Width`, `Tablet` · **"Trước khi chạy"** = hai bảng Editor setup của GĐ1 và GĐ3 nguyên vẹn, kèm Canvas
-Scaler · "Design decisions" gom "Cố ý KHÔNG làm", "Quyết định trái trực giác" và các **Quyết định** của GĐ1–4 · bẫy: đổi `sprite` lúc chạy
+Scaler · "Design decisions" gom "Không làm" của Ngữ cảnh đã chốt và các **Quyết định** của GĐ1–4 · bẫy: đổi `sprite` lúc chạy
 không tự `Fit`; file lưu Scale 0 là bình thường; Max Size texture · hợp đồng với `UICapture.Canvas`. `.html` lấy Kịch bản (máy dài, máy
 thấp, tablet → ảnh nào, khối thu bao nhiêu), Cách dùng ("Trước khi chạy"), Flow, Lưu ý; tên trung tính, không kịch bản chơi thử.
 
@@ -565,7 +528,7 @@ thấp, tablet → ảnh nào, khối thu bao nhiêu), Cách dùng ("Trước kh
 `UICoverFitter`; mục Reskin, cây Home (`bg_room [UICoverFitter]`), mục Popup, cây Shop: đổi tên, trỏ `Horcrux/Runtime/Utilities/UI/`.
 `Structure.md` — ba dòng nêu `DesignWidthFitter`, `HomeBackgroundFitter`: đổi tên, ghi là component Horcrux.
 
-**Editor setup:** không — anchor, Canvas Scaler, Max Size đã đúng trên ba object chủ (bảng "Đã khảo sát").
+**Editor setup:** không — anchor, Canvas Scaler, Max Size đã đúng trên ba object chủ (mục "Đã khảo sát").
 
 **Kiểm (agent):** grep `HomeBackgroundFitter`, `CategoryJam.Bridge.DesignWidthFitter` toàn repo (`.cs`, `.prefab`, `.unity`, `.md`): 0 · hai
 GUID chỉ còn ở hai `.meta` Horcrux và ba asset chủ · `PrefabAudit.Report("Assets/_CategoryJam/Bridge")` không có `missing script` ·

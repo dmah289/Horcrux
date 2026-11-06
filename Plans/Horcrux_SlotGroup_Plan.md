@@ -1,82 +1,37 @@
 # Plan — `Slot<TOccupant>` và `SlotGroup<TSlot, TOccupant>` lên Horcrux
 
-Ngày 2026-11-06. Nguồn: category-jam, `Assets/_CategoryJam/Scripts/Entities/TileSlot/TileSlot.cs` và
-`Entities/TileSlotGroup.cs`, đã chạy với ba chủ thật: `Box` (ô đáp theo sức chứa), `CacheTileSlots` (khay ô mở dần), `ShoppingCart`
-(xe đẩy). Cơ chế đặt chỗ → đáp → rời với hai hook, và nhóm đếm lại theo sự kiện; phần gọi tên tile (`TileScaleMode`,
-`TargetTileLocalScale`, `LandedState`, `PlayPoofVFX`, `View.SetDrawState`) ở lại dự án trong class con.
+Ngày 2026-11-06. Nguồn: category-jam `Entities/TileSlot/TileSlot.cs`, `Entities/TileSlotGroup.cs`, đã chạy với `Box`,
+`CacheTileSlots`, `ShoppingCart`. Lên Horcrux phần cơ chế đặt chỗ → đáp → rời; từ vựng tile ở lại `TileSlot` của dự án.
 
-**Phân công:** giai đoạn 1–4 (Horcrux, code runtime) developer gõ, sau mỗi giai đoạn agent viết test của giai đoạn đó theo bảng
-case rồi compile · giai đoạn 5 (tài liệu) và giai đoạn 6 (dự án chuyển sang bản Horcrux) agent làm.
-
-**Chạy được, thấy được ở giai đoạn 1–4** = `com.horcrux.runtime` compile sạch và bảng case của giai đoạn xanh trong
-`Tests/EditMode/SlotGroupTests.cs`; Horcrux không có host nên "thấy trong game" là giai đoạn 6. Horcrux là submodule: giai đoạn
-1–5 commit **trong `Assets/Horcrux`**, giai đoạn 6 commit ở repo dự án kèm con trỏ submodule.
-
-Không phụ thuộc Plan nào. Không có lõi toán, không có `§0`.
-
----
+**Phân công:** GĐ1–4 developer gõ, agent viết test theo bảng case rồi compile · GĐ5 (tài liệu), GĐ6 (dự án chuyển sang bản
+Horcrux) agent làm. **Chạy được, thấy được** ở GĐ1–4 = compile sạch + bảng case xanh trong `Tests/EditMode/SlotGroupTests.cs`;
+thấy trong game ở GĐ6. GĐ1–5 commit trong `Assets/Horcrux`, GĐ6 commit ở dự án kèm con trỏ submodule. Không phụ thuộc Plan nào.
 
 ## Ngữ cảnh đã chốt
 
-| Mục | Chốt |
-|---|---|
-| Người dùng | mọi game xếp vật vào ô: vật đặt chỗ lúc cất cánh, chiếm ô lúc đáp, rời ô thì trả; chủ ô cần đếm ô đã chiếm và tìm ô trống |
-| Mục tiêu | hai class generic giữ **bất biến** của ô và nhóm: một ô một vật · đặt chỗ không tính là chiếm · trạng thái ô suy từ hai tham chiếu, không giữ riêng · số ô chiếm của nhóm luôn bằng số ô `State == Occupied` sau mỗi sự kiện |
-| Chỗ đặt | `Runtime/Utilities/Slots/Slot.cs`, `Runtime/Utilities/Slots/SlotGroup.cs`, namespace `Horcrux.Runtime.Utilities.Slots`; không gọi tên type dự án |
-| Tên | `Slot<TOccupant>`, `SlotState`, `SlotGroup<TSlot, TOccupant>`; dự án: `TileSlot : Slot<Tile>`. Developer đổi tuỳ ý trước khi gõ |
-| Ràng buộc generic | `TOccupant : class` — chữ ký là thứ sửa sau đắt; `class` để `null` là "trống" không cần `Nullable`, so bằng tham chiếu |
-| Sự kiện | `Changed` mang **ô**, người nghe đọc `State`; không mang loại thay đổi — ba chủ hiện có đều hỏi `State == Occupied` |
-
-**Cố ý KHÔNG làm**
-
-| Không làm | Vì |
-|---|---|
-| `TargetTileLocalScale`, `ScaleMode`, `LandedState`, `PlayPoofVFX` trong base | từ vựng của tile 2.5D; dự án khai ở `TileSlot : Slot<Tile>`. Framework giữ cơ chế, dự án giữ từ vựng |
-| `tile.View.SetDrawState(Landed)` trong `Land` | gọi tên view dự án; `TileSlot` của dự án seal `OnLanded` để gọi nó rồi mở hook `OnTileLanded` cho hai ô con (giai đoạn 6) |
-| `SlotGroup` là `MonoBehaviour` | nhóm không có đời sống riêng: chủ `new` nó, `Attach` khi số ô đổi, `ResetAll` khi reset; không cần mốc tắt |
-| Interface `ISlot` | một implementation; base class đủ cho hook `protected virtual` |
-| `FindFreeSlot(predicate)` | chủ lọc theo luật riêng (`Box` so id trước khi hỏi nhóm; khay bỏ ô khoá) ở bên ngoài, nhóm chỉ biết "trống" |
-| Đếm "đang bay tới" (`ReservedCount`) | khay tự đếm `ReservedBy != null` trên `Slots` khi cần; thêm vào nhóm khi có chủ thứ hai hỏi |
-
-**Quyết định trái trực giác** — lý do viết ở giai đoạn sinh ra nó: `State` suy từ hai tham chiếu, đáp thắng đặt chỗ (GĐ2) ·
-`Reserve` không phát `Changed` (GĐ1) · `IsFree` kiểm `activeSelf` (GĐ1) · `Vacate` phát `Changed` kể cả khi ô chỉ đặt chỗ (GĐ3) ·
-`Clear` im lặng (GĐ4) · `Attach` gọi lại được (GĐ4).
-
-**Mở rộng sau**
-
-- Chủ cần biết "vừa đặt chỗ": `Reserve` phát `Changed`, người nghe đọc `State == Reserved`; nhóm đếm lại vẫn đúng.
-
----
-
-## Đã khảo sát
-
-| Nguồn | Lấy gì | Không lấy, vì sao |
-|---|---|---|
-| `TileSlot.cs`, `TileSlotGroup.cs` của dự án (bản 2026-11-05) | toàn bộ cơ chế: `State` suy từ `OccupiedBy`/`ReservedBy`, hai hook, nhóm đếm lại | field và property mang domain tile (bảng "Cố ý KHÔNG làm") |
-| `Tile.cs` (`FlyToAsync`, `FlyToCartAsync`, `ShiftLeftInCache`, `LeaveSlot`) | thứ tự gọi `Reserve` → `Land`, `Vacate` lúc rời | — |
-| `Box.cs`, `CacheTileSlots.cs`, `ShoppingCart.cs` | ba cách gọi `Attach`, `FindFreeSlot`, `ResetAll`, `FreeCount`, `OccupiedCount`, `AreAllOccupied`, `Slots`; ba handler `Changed(TileSlot)` đọc `State` | — |
-| Horcrux `Utilities/Common/DeferredSet.cs` | — | tập không trùng có tombstone, không có "ô" và "vật" |
-| Horcrux `Pooling` | — | cấp phát object, không giữ quan hệ ô–vật |
-
----
+- **Chỗ đặt:** `Runtime/Utilities/Slots/Slot.cs`, `SlotGroup.cs`, namespace `Horcrux.Runtime.Utilities.Slots`; dự án:
+  `TileSlot : Slot<Tile>`. Tên đổi tuỳ ý trước khi gõ.
+- **Bất biến:** một ô một vật · đặt chỗ không tính là chiếm · `State` suy từ hai tham chiếu · `OccupiedCount` luôn khớp số ô
+  `Occupied` sau mỗi sự kiện.
+- **Không làm:** từ vựng tile trong base (GĐ6) · `ISlot` (một implementation, base class đủ) · `SlotGroup` là `MonoBehaviour`,
+  `FindFreeSlot(predicate)` (lý do ở GĐ1) · `ReservedCount` (thêm khi có chủ thứ hai hỏi).
+- **Đã khảo sát:** `TileSlot`, `TileSlotGroup` (lấy cả cơ chế) · `Tile.cs` (thứ tự `Reserve` → `Land`, `Vacate`) · `Box`,
+  `CacheTileSlots`, `ShoppingCart` (cách gọi nhóm, handler đọc `State`) · Horcrux `DeferredSet`, `Pooling` (không hợp: không có
+  ô–vật).
 
 ## Luồng mô tả — một vật đi qua ô
 
 ```
-chủ (Box, khay, xe) dựng bộ ô ──► hỏi ô trống ──► vật đặt chỗ ô lúc cất cánh      GĐ1
-                                                       │
-                                                       ▼
-                                   vật đáp: hook trước → chiếm → xoá đặt chỗ → hook sau
-                                   nhóm đếm lại, báo chủ; chủ hỏi "đầy chưa"          GĐ2
-                                                       │
-                                                       ▼
-                                   vật rời (bay đi, về pool): ô trả, nhóm đếm lại     GĐ3
-                                                       │
-                                                       ▼
-                                   chủ đổi số ô giữa level · reset cả level           GĐ4
-                                                       │
-                                                       ▼
-                                   tài liệu module (GĐ5) · dự án dùng bản Horcrux (GĐ6)
+chủ dựng bộ ô ──► hỏi ô trống ──► vật đặt chỗ lúc cất cánh                         GĐ1
+                                        ▼
+                    vật đáp: hook trước → chiếm → xoá đặt chỗ → hook sau
+                    nhóm đếm lại, báo chủ; chủ hỏi "đầy chưa"                       GĐ2
+                                        ▼
+                    vật rời: ô trả, nhóm đếm lại                                    GĐ3
+                                        ▼
+                    chủ đổi số ô giữa level · reset cả level                        GĐ4
+                                        ▼
+                    tài liệu (GĐ5) · dự án dùng bản Horcrux (GĐ6)
 ```
 
 ## Bản đồ hệ cuối
@@ -92,9 +47,6 @@ chủ (Box, khay, xe) dựng bộ ô ──► hỏi ô trống ──► vật 
 
   class con của dự án : Slot<Vật>  — override OnBeforeLand, OnLanded, Clear; khai từ vựng riêng
 ```
-
-Ai sở hữu gì: ô giữ `ReservedBy`, `OccupiedBy` và **suy** `State`; nhóm giữ `Slots`, `OccupiedCount` (cache, dựng lại từ `State` mỗi
-sự kiện); chủ không giữ bản sao nào.
 
 ---
 
@@ -199,7 +151,11 @@ namespace Horcrux.Runtime.Utilities.Slots
 khi đó mọi truy cập khác cũng ném.
 
 **Quyết định** — `State` là property suy ra, không phải field: một sự thật một chủ; cờ riêng là bản sao thứ hai phải giữ khớp.
-Phương án bỏ: `enum` field ghi ở `Reserve`/`Land` — thêm một cửa ghi cho mỗi chuyển trạng thái.
+Phương án bỏ: `enum` field ghi ở `Reserve`/`Land` — thêm một cửa ghi cho mỗi chuyển trạng thái. — `TOccupant : class`: `null` là
+"trống", so bằng tham chiếu, không cần `Nullable`; chữ ký generic sửa sau đắt nên chốt ngay. — `SlotGroup` là class thường, chủ
+`new`: nhóm không có đời sống riêng, chỉ `Attach` khi số ô đổi và `ResetAll` khi reset. Phương án bỏ: `MonoBehaviour` — thêm
+một component phải gắn mà không có mốc `OnDisable` nào cần. — `FindFreeSlot` không nhận predicate: luật lọc là của chủ (`Box`
+so id trước khi hỏi, khay bỏ ô khoá), nhóm chỉ biết "trống".
 
 | Consumes | Produces |
 |---|---|
@@ -363,7 +319,8 @@ Mới — nhóm phải nghe từng ô trước khi ô đầu tiên đáp:
 **Quyết định** — nhóm **đếm lại từ đầu** ở mỗi sự kiện, không cộng trừ theo loại thay đổi: `OccupiedCount` là cache dựng lại từ
 `State`, không thể lệch; giá là O(n) mỗi lần đáp với n cỡ chục. Phương án bỏ: sự kiện mang `Linked/Unlinked` và nhóm `±1` —
 `Vacate` thừa (GĐ3) sẽ làm lệch số. — `Changed` ở nhóm đồng bộ, một người nghe là chủ; chủ cần mốc khác (đặt chỗ) thì thêm sự
-kiện, không thêm cờ.
+kiện, không thêm cờ. — `Changed` mang **ô**, không mang loại thay đổi: ba chủ đều chỉ hỏi
+`State == Occupied`. Chủ cần biết "vừa đặt chỗ" sau này thì `Reserve` phát `Changed`, nhóm đếm lại vẫn đúng.
 
 | Consumes | Produces |
 |---|---|

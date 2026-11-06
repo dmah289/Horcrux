@@ -1,113 +1,71 @@
 # Plan — `HorizontalRow` lên Horcrux
 
-Ngày 2026-11-06. Nguồn: category-jam, `Assets/_CategoryJam/Scripts/Utilities/HorizontalGrid.cs`, đã chạy với hai chủ thật trong
-`GameplayRoot.prefab`: hàng hộp (`BoxesContainer`, ô kéo `_grid` trỏ component trên object `box_row`) và thanh khay (`CacheTileSlots`,
-`[RequireComponent]`, component trên chính object `cache_bar`). Xếp các con đang bật thành một hàng ngang cách đều quanh gốc:
-xếp ngay, trượt tới chỗ, bay vào từ phải lúc vào level. Không gọi tên type dự án.
+Ngày 2026-11-06. Nguồn: category-jam `Assets/_CategoryJam/Scripts/Utilities/HorizontalGrid.cs`, đã chạy với hai chủ trong
+`GameplayRoot.prefab`: hàng hộp (`BoxesContainer`, ô kéo `_grid` → `box_row`) và thanh khay (`CacheTileSlots`, `[RequireComponent]`
+trên `cache_bar`). Xếp các con đang bật thành hàng ngang cách đều quanh gốc: xếp ngay, trượt tới chỗ, bay vào từ phải lúc vào level.
 
-**Phân công:** giai đoạn 1–3 (Horcrux, code runtime) developer gõ, sau mỗi giai đoạn agent viết test của giai đoạn đó theo bảng
-case rồi compile · giai đoạn 4 (tài liệu) và giai đoạn 5 (dự án chuyển sang bản Horcrux, xoá bản tạm) agent làm.
-
-**Chạy được, thấy được ở giai đoạn 1–3** = `com.horcrux.runtime` compile sạch và bảng case của giai đoạn xanh trong
-`Tests/PlayMode/HorizontalRowTests.cs` (tween và chờ frame cần Play; `Horcrux.PlayModeTests.asmdef` đã tham chiếu `PrimeTween.Runtime`
-và `UniTask`); Horcrux không có host nên "thấy trong game" là giai đoạn 5. Horcrux là submodule: giai đoạn 1–4 commit **trong
-`Assets/Horcrux`**, giai đoạn 5 commit ở repo dự án kèm con trỏ submodule.
-
-Không phụ thuộc Plan nào. Cùng thư mục `Runtime/Utilities/Layout/` với Plan `Horcrux_ViewportAnchor_Plan.md`: plan nào gõ trước thì
-tạo thư mục. Không có lõi toán, không có `§0`; công thức một dòng nằm ở giai đoạn 1.
-
----
+**Phân công:** GĐ1–3 developer gõ, agent viết test theo bảng case rồi compile · GĐ4 (tài liệu), GĐ5 (dự án chuyển sang bản Horcrux,
+xoá bản tạm) agent làm. **Chạy được, thấy được** ở GĐ1–3 = compile sạch + bảng case xanh trong `Tests/PlayMode/HorizontalRowTests.cs`
+(tween và chờ frame cần Play; `Horcrux.PlayModeTests.asmdef` đã tham chiếu `PrimeTween.Runtime` và `UniTask`); thấy trong game ở GĐ5.
+GĐ1–4 commit trong `Assets/Horcrux`, GĐ5 commit ở dự án kèm con trỏ submodule. Không phụ thuộc Plan nào; chung thư mục
+`Runtime/Utilities/Layout/` với `Horcrux_ViewportAnchor_Plan.md` — plan nào gõ trước thì tạo thư mục. Không có `§0`; công thức một
+dòng ở GĐ1.
 
 ## Ngữ cảnh đã chốt
 
-| Mục | Chốt |
-|---|---|
-| Người dùng | transform cha có các con cùng cỡ xếp thành hàng ngang, số con đang bật đổi lúc chạy: slot hộp ẩn khi trống lúc hết tile, mở thêm khi xem ads; ô khay mở dần theo level và booster |
-| Mục tiêu | ba động tác, mỗi động tác một giai đoạn: `RepositionNow` (đặt ngay) · `RepositionSmooth` (trượt, trả `Sequence` để chủ chờ) · `SetSpaceAndPlayAppearAsync` (từng con bay vào từ phải, so le); mọi số thời gian và offset thành núm Inspector với mặc định bằng số đang chạy |
-| Chỗ đặt | `Runtime/Utilities/Layout/HorizontalRow.cs`, namespace `Horcrux.Runtime.Utilities.Layout` |
-| Tên | `HorizontalGrid` đổi thành **`HorizontalRow`**: một hàng, không phải lưới. `SetSpaceAndRepositionSmooth(space)` giữ; `SetSpaceAndPlayStartLevelAnimation(space)` thành `SetSpaceAndPlayAppearAsync(space)` — "start level" là người dùng đầu tiên, không phải cơ chế. Developer đổi tuỳ ý trước khi gõ |
-| Thư viện | PrimeTween cho tween, UniTask cho chờ frame và `WhenAll`; `[Button]` của Odin cho hai nút thử trong Inspector; `[Splitter]` của Horcrux (`Runtime/Utilities/Attribute/SplitterAttribute.cs`, namespace cha nên không cần `using`) |
-
-**Cố ý KHÔNG làm**
-
-| Không làm | Vì |
-|---|---|
-| Hàng dọc, lưới hai chiều | chưa có người dùng; thêm là component khác (`VerticalRow`), không phải cờ trục trên cái này |
-| Con không cùng cỡ (cách theo bề rộng từng con) | hai người dùng đều con cùng cỡ; cần thì thêm chế độ đọc `Renderer.bounds` sau, `space` giữ nghĩa khoảng cách tâm |
-| Bỏ Odin `[Button]` | Horcrux runtime đã dùng Odin ngoài file Editor (`Abstractions/Foundations/Persistence/PersistenceDataEntry.cs`, `Implementations/Foundations/RemoteConfigSystem/RemoteConfig.cs`); giữ hai nút để developer thử trong Inspector |
-
-**Quyết định trái trực giác** — lý do viết ở giai đoạn sinh ra nó: `Start` chờ hai frame rồi tự `RepositionNow` (GĐ1) · một buffer
-`_activeChildren` dùng lại (GĐ1) · trượt tween từ chỗ đang đứng dù đã đúng chỗ (GĐ2) · bay vào tắt con rồi bật lại trong sequence
-(GĐ3) · `StopMoves` dừng cả sequence trượt lẫn mọi sequence bay vào (GĐ3).
-
-**Mở rộng sau**
-
-- Chủ muốn tự quyết mốc xếp lần đầu: thêm `[SerializeField] bool repositionOnStart = true`; mặc định giữ hành vi hiện có.
-
----
-
-## Đã khảo sát
-
-| Nguồn | Lấy gì | Không lấy, vì sao |
-|---|---|---|
-| `HorizontalGrid.cs` của dự án (commit `5c3549ed`, 2026-10-31) | toàn bộ cơ chế: lọc con `activeSelf`, công thức tâm, ba động tác, `StopMoves`, `Start` chờ hai frame | 5 hằng `const` thành `[SerializeField]`; `List<UniTask>` cấp phát mỗi lần bay vào; `DelayFrame` không token; tên |
-| `BoxesContainer.cs` (`SpawnInitialBoxesAsync`, `UnlockAdsSlotAsync`, `RepositionSlotsAsync`, `PlayLevelStartBoxAnimation`, `GetBoxSpacing`) | bốn cách gọi: `_ = SetSpaceAndRepositionSmooth`, `await SetSpaceAndRepositionSmooth`, `await SetSpaceAndPlayStartLevelAnimation` rồi `await RepositionSmooth`; `space` đổi theo số hộp (2 hộp rộng hơn ×1.2) | — |
-| `CacheTileSlots.cs` (`Initialize`, `OpenSlots`, `OpenOneMoreSlotAsync`, `BarWidthFor`) | `GetComponent` ở `Initialize`; `RepositionNow` ngay sau `SetLocked` bật/tắt ô; `await RepositionSmooth` khi mở thêm ô; đọc `Space` tính bề rộng thanh nền | — |
-| `GameDirector.StartLevelAsync`, `HandleLevelStartedAsync` | thứ tự lúc vào level: `OpenSlots` → `SpawnInitialBoxesAsync` → `HandleLevelStarted` của từng manager | — |
-| `GameplayRoot.prefab` | hai component, GUID script `3b10628ba4222cf4092c8a20be197ec7`; `cache_bar` có 7 ô con sẵn trong prefab, `box_row` không có con sẵn (slot sinh lúc vào level); `space`, `childLocalY` mỗi chủ một giá trị (nháp, không phải mốc) | — |
-| Unity `HorizontalLayoutGroup` | — | chỉ cho `RectTransform` trên Canvas; đây là object world |
-| Horcrux `Runtime/Utilities/ExtensionMethods/Transform/TransformExtensions.cs` › `PerformActionOnChildren` | — | duyệt mọi con kể cả tắt, nhận delegate; ở đây cần lọc `activeSelf` và giữ buffer để lặp theo chỉ số |
-
----
+- **Người dùng:** cha có các con cùng cỡ xếp hàng ngang, số con bật đổi lúc chạy (slot hộp ẩn khi trống, mở thêm khi xem ads; ô
+  khay mở dần theo level và booster).
+- **Chỗ đặt, tên:** `Runtime/Utilities/Layout/HorizontalRow.cs`, namespace `Horcrux.Runtime.Utilities.Layout`. `HorizontalGrid` →
+  `HorizontalRow`, `SetSpaceAndPlayStartLevelAnimation` → `SetSpaceAndPlayAppearAsync` (lý do ở GĐ1, GĐ3). Tên đổi tuỳ ý trước khi gõ.
+- **Mục tiêu:** ba động tác, mỗi động tác một giai đoạn: `RepositionNow` · `RepositionSmooth` (trả `Sequence` để chủ chờ) ·
+  `SetSpaceAndPlayAppearAsync`; mọi số thời gian và offset thành núm Inspector, mặc định bằng số đang chạy.
+- **Thư viện:** PrimeTween, UniTask; Odin `[Button]` cho hai nút thử (lý do ở GĐ1); `[Splitter]` của Horcrux
+  (`Runtime/Utilities/Attribute/SplitterAttribute.cs`, namespace cha nên không cần `using`).
+- **Không làm:** hàng dọc, lưới hai chiều (chưa có người dùng; cần thì component khác, không phải cờ trục) · con khác cỡ (cần thì thêm
+  chế độ đọc `Renderer.bounds`, `space` giữ nghĩa khoảng cách tâm).
+- **Đã khảo sát:** `HorizontalGrid.cs` (commit `5c3549ed`, lấy cả cơ chế; chỗ khác ở bảng "Khác với bản dự án" từng GĐ) ·
+  `BoxesContainer.cs` (bốn cách gọi, `space` đổi theo số hộp) · `CacheTileSlots.cs` (`GetComponent`, `RepositionNow` sau `SetLocked`,
+  đọc `Space` tính thanh nền) · `GameDirector.StartLevelAsync` (thứ tự `OpenSlots` → `SpawnInitialBoxesAsync`) · `GameplayRoot.prefab`
+  (GUID script `3b10628ba4222cf4092c8a20be197ec7`; `cache_bar` có 7 ô con sẵn, `box_row` không) · Unity `HorizontalLayoutGroup`
+  (không hợp: chỉ cho `RectTransform`) · Horcrux `TransformExtensions.PerformActionOnChildren` (không hợp: duyệt cả con tắt, không
+  giữ buffer theo chỉ số).
 
 ## Luồng mô tả — một hàng con qua một level
 
 ```
-chủ gắn HorizontalRow lên transform cha; con là object con trực tiếp (sẵn trong prefab hay sinh lúc vào level)
-        │
+chủ gắn HorizontalRow lên cha; con là object con trực tiếp
         ▼
-con bật / tắt (ô khay mở, slot hộp ẩn) ──► chủ gọi RepositionNow: xếp ngay                                   GĐ1
-        │   hai frame sau khi bật, hàng tự xếp một lần
+con bật / tắt ──► chủ gọi RepositionNow: xếp ngay; hai frame sau khi bật, hàng tự xếp một lần    GĐ1
         ▼
-số con đổi giữa level (mở thêm ô, hộp xong rời hàng, mở slot ads) ──► RepositionSmooth / SetSpaceAndRepositionSmooth,
-chủ await Sequence hoặc bỏ qua                                                                                GĐ2
-        │
+số con đổi giữa level ──► RepositionSmooth / SetSpaceAndRepositionSmooth, chủ await hoặc bỏ qua   GĐ2
         ▼
-vào level ──► SetSpaceAndPlayAppearAsync: xếp ngay, giấu con, từng con bay vào từ phải so le; chủ await       GĐ3
-        │
+vào level ──► SetSpaceAndPlayAppearAsync: xếp ngay, giấu con, từng con bay vào từ phải so le      GĐ3
         ▼
-tài liệu module (GĐ4) · dự án dùng bản Horcrux, xoá bản tạm (GĐ5)
+tài liệu (GĐ4) · dự án dùng bản Horcrux, xoá bản tạm (GĐ5)
 ```
 
 ## Bản đồ hệ cuối
 
 ```
-          RepositionNow / RepositionSmooth / SetSpaceAndRepositionSmooth / SetSpaceAndPlayAppearAsync / Space
-  chủ (component trên cha) ───────────────────────────────────────────────────────────────────► HorizontalRow
-  (quyết con nào bật, gọi lúc nào, await hay không)                                                  │
-                                                                                                     │ GetActiveChildren: lọc activeSelf
-                                                                                                     ▼
-                                                                                   con 0..n-1: localPosition.x = leftX + i·space
-                                                                                   _moveSequence ──► Tween.LocalPositionX (song song)
-                                                                                   _appearSequences ──► delay → bật → Tween.LocalPositionX
+chủ (component trên cha; quyết con nào bật, gọi lúc nào, await hay không)
+   │ RepositionNow / RepositionSmooth / SetSpaceAndRepositionSmooth / SetSpaceAndPlayAppearAsync / Space
+   ▼
+HorizontalRow ── GetActiveChildren: lọc activeSelf ──► con 0..n-1: localPosition.x = leftX + i·space
+   ├─ _moveSequence ──► Tween.LocalPositionX (song song)
+   └─ _appearSequences ──► delay → bật → Tween.LocalPositionX
 
-  Inspector: space, childLocalY · repositionDuration · appearDuration, appearStartDelay, appearDelayPerChild, appearOffsetX
-             nút RepositionSmooth, RepositionNow
+Inspector: space, childLocalY · repositionDuration · appearDuration, appearStartDelay, appearDelayPerChild, appearOffsetX
+           nút RepositionSmooth, RepositionNow
 ```
-
-Ai sở hữu gì: hàng giữ `space` (chủ đổi qua hai API `SetSpace…`), buffer con đang bật, các sequence của chính nó; chủ giữ danh sách
-con và quyết bật/tắt; con không biết hàng.
 
 ---
 
 ## Giai đoạn 1 — Chủ gắn component, con bật/tắt, xếp ngay
 
-**Mục tiêu:** chủ gắn `HorizontalRow` lên cha, bật/tắt con rồi gọi `RepositionNow`: các con đang bật đứng cách đều quanh gốc ở `childLocalY`;
-chủ đọc `Space` để tính thứ vẽ theo hàng (thanh nền khay). Hai frame sau khi bật, hàng tự xếp một lần. Xong giai đoạn này thanh khay
-mở `n` ô đúng chỗ.
+**Mục tiêu:** chủ bật/tắt con rồi gọi `RepositionNow`: con đang bật đứng cách đều quanh gốc ở `childLocalY`; chủ đọc `Space` tính
+thanh nền. Hai frame sau khi bật, hàng tự xếp một lần. Xong thì thanh khay mở `n` ô đúng chỗ.
 
-**Vì sao bây giờ:** đây là lời gọi đầu tiên của mọi chủ lúc vào level (`OpenSlots` gọi ngay sau `SetLocked`); chưa có tween vì chưa
-có gì phải chờ.
+**Vì sao bây giờ:** lời gọi đầu tiên của mọi chủ lúc vào level (`OpenSlots` gọi ngay sau `SetLocked`); chưa có gì phải chờ nên chưa tween.
 
 **Toán → code:** `n` con cách đều quanh gốc: `x_i = -(n - 1)·space / 2 + i·space`, `i = 0..n-1`; `n = 1` thì `x_0 = 0`.
 
@@ -198,10 +156,13 @@ namespace Horcrux.Runtime.Utilities.Layout
 
 **Quyết định** — `Start` chờ hai frame rồi tự xếp: hai chủ hiện tại đều gọi tường minh sau đó (`OpenSlots`, `SetSpaceAndRepositionSmooth`),
 nhưng mốc tự xếp là hành vi quan sát được của component (ô khay sẵn trong prefab đứng đúng chỗ từ lúc scene lên, trước khi level
-đầu nạp); bỏ hay đổi thành cờ là việc của giai đoạn chuyển dự án, ghi ở "Mở rộng sau". — Lọc `activeSelf`, không `activeInHierarchy`:
+đầu nạp). Mở rộng sau: chủ muốn tự quyết mốc xếp lần đầu thì thêm `[SerializeField] bool repositionOnStart = true`, mặc định giữ
+hành vi hiện có. — Lọc `activeSelf`, không `activeInHierarchy`:
 cha tắt thì mọi con đều "tắt theo cây", hàng vẫn phải xếp đúng để lúc cha bật không nhảy. — Buffer `_activeChildren` dùng lại:
 mọi API duyệt hết danh sách trước điểm `await` đầu tiên, nên không hai lượt chồng nhau. Phương án bỏ: `GetComponentsInChildren`
-— cấp phát mỗi lần, lấy cả cháu.
+— cấp phát mỗi lần, lấy cả cháu. — Tên `HorizontalRow`, không giữ `HorizontalGrid`: một hàng, không phải lưới. — Odin `[Button]` trong
+runtime: Horcrux runtime đã dùng Odin ngoài file Editor (`Abstractions/Foundations/Persistence/PersistenceDataEntry.cs`,
+`Implementations/Foundations/RemoteConfigSystem/RemoteConfig.cs`); hai nút để developer thử trong Inspector.
 
 | Consumes | Produces |
 |---|---|
@@ -351,8 +312,7 @@ trước khi dựng: chủ gọi hai lần sát nhau (`SpawnInitialBoxesAsync` r
 `đích + appearOffsetX` về đích, con sau trễ hơn con trước `appearDelayPerChild`; chủ `await` tới khi con cuối tới nơi. Xong giai đoạn
 này hàng hộp có màn vào level.
 
-**Vì sao bây giờ:** đây là động tác cuối của luồng và là động tác duy nhất dùng cả `RepositionNow` lẫn `StopMoves`; nó mọc trên hai
-giai đoạn trước, không đụng chữ ký nào đã có.
+**Vì sao bây giờ:** động tác cuối của luồng, dùng cả `RepositionNow` lẫn `StopMoves`; mọc trên hai GĐ trước, không đụng chữ ký nào.
 
 ### `HorizontalRow.cs` › `Properties` › thêm sau `repositionDuration`
 

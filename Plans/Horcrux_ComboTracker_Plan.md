@@ -1,76 +1,41 @@
 # Plan — `ComboTracker` lên Horcrux
 
-Ngày 2026-11-06. Nguồn: category-jam, `Assets/_CategoryJam/Scripts/Director/ComboTracker.cs` (class thuần do `GameDirector` sở hữu) và
-HUD `Scripts/Hud/ComboPill.cs` (vẽ bằng `ProgressBar.PlayAsync` có sẵn). Lõi là một bộ đếm với cửa sổ hết hạn là **hàm của count**; mọi
-phản hồi (tiếng, hình) là của dự án, gọi cạnh nhau trong một hàm của nó, không đi qua bridge.
+Ngày 2026-11-06. Nguồn: category-jam `Assets/_CategoryJam/Scripts/Director/ComboTracker.cs` (class thuần do `GameDirector` sở hữu),
+HUD `Scripts/Hud/ComboPill.cs` (vẽ bằng `ProgressBar.PlayAsync` có sẵn). Lõi là bộ đếm có cửa sổ hết hạn là **hàm của count**; phản
+hồi (tiếng, hình) là của dự án, gọi cạnh nhau trong một hàm của nó, không đi qua bridge.
 
-**Phân công:** giai đoạn 1–3 (Horcrux, code runtime) developer gõ, sau mỗi giai đoạn agent viết test của giai đoạn đó theo bảng case
-rồi compile · giai đoạn 4 (tài liệu) và giai đoạn 5 (dự án chuyển sang bản Horcrux, xoá bản tạm) agent làm.
-
-**Chạy được, thấy được ở giai đoạn 1–3** = `com.horcrux.runtime` compile sạch và bảng case của giai đoạn xanh trong
-`Tests/PlayMode/ComboTrackerTests.cs` (PlayMode vì cửa sổ là tween của PrimeTween, phải có frame chạy); Horcrux không có host nên "thấy
-trong game" là giai đoạn 5. Horcrux là submodule: giai đoạn 1–4 commit **trong `Assets/Horcrux`**, giai đoạn 5 commit ở repo dự án kèm
-con trỏ submodule.
-
-Không phụ thuộc Plan nào. Không có lõi toán, không có `§0`.
+**Phân công:** GĐ1–3 developer gõ, agent viết test theo bảng case rồi compile · GĐ4 (tài liệu), GĐ5 (dự án chuyển sang bản Horcrux,
+xoá bản tạm) agent làm. **Chạy được, thấy được** ở GĐ1–3 = compile sạch + bảng case xanh trong `Tests/PlayMode/ComboTrackerTests.cs`
+(PlayMode vì cửa sổ là tween PrimeTween, phải có frame chạy); thấy trong game ở GĐ5. GĐ1–4 commit trong `Assets/Horcrux`, GĐ5 commit
+ở dự án kèm con trỏ submodule. Không phụ thuộc Plan nào, không có lõi toán.
 
 ---
 
 ## Ngữ cảnh đã chốt
 
-| Mục | Chốt |
-|---|---|
-| Người dùng | dự án có chuỗi hành động nối nhau trong một cửa sổ thời gian (đóng nắp box, ghép ba, nổ chuỗi); chủ là director của level, sống và chết cùng level |
-| Mục tiêu | `Count` tăng mỗi điểm, cửa sổ mở lại theo `windowSeconds(Count)`, hết cửa sổ về 0; một event `Changed(count, windowSeconds)` cho HUD và phản hồi của dự án |
-| Chỗ đặt | `Runtime/Utilities/Combo/ComboTracker.cs`, namespace `Horcrux.Runtime.Utilities.Combo`; class thuần do một `MonoBehaviour` của dự án sở hữu, `Dispose` cùng chủ |
-| Thời gian | **scaled** qua `Tween.Delay` của PrimeTween: hitstop hay pause của dự án đặt `timeScale` 0 thì cửa sổ đứng theo; HUD vẽ bằng `ProgressBar` tắt `Use Unscaled Time` để khớp |
-| Cửa sổ vô hạn | `windowSeconds` trả `float.PositiveInfinity` là không hết giờ: chuỗi chỉ đứt khi chủ gọi `Reset` (combo theo lượt) |
-| Tên | `ComboTracker`, `AddPoint`, `Reset`, `Changed`. Developer đổi tuỳ ý trước khi gõ |
-
-**Cố ý KHÔNG làm**
-
-| Không làm | Vì |
-|---|---|
-| `IComboSystem`, `ComboSystem` MonoBehaviour bơm tick từ Ticker | `Tween.Delay` đã là đồng hồ có handle dừng; không cần Ticker, không cần `Update` |
-| Bridge sang Feedback, `ComboMeter` riêng, demo driver | phản hồi nhiều kênh của một khoảnh khắc gọi cạnh nhau trong **cùng một hàm** của dự án; meter là `ProgressBar` có sẵn với `PlayAsync(window, 0, window, label, ct)` |
-| Hệ số nhân, bậc (`tierMinCounts`), `Multiplier` | người dùng đầu không có; là hàm thuần của `Count`, dự án tính ở chỗ dùng. Thêm sau là hàm trên `Count`, không đổi tracker |
-| Cửa sổ dạng struct `lerp(w0, wMin, n/nMin)` trong Horcrux | người dùng đầu dùng công thức khác; tracker nhận `Func<int, float>`, công thức là của dự án. Có người dùng thứ hai cần núm Inspector thì thêm struct `[Serializable]` có `Evaluate`, tracker không đổi |
-| Event qua `EventBus` của Horcrux | event của dự án là `internal` trong assembly dự án; tracker phát C# event, lớp nối của dự án đẩy lên bus của nó |
-| Đóng băng cửa sổ khi app vào nền | `Tween.Delay` scaled: `timeScale` 0 lúc pause của dự án đã đóng băng; app nền thì PrimeTween không tick |
-| Phân biệt "đứt do hết giờ" với "đứt do `Reset`" | HUD hiện có chỉ cần "về 0"; dự án cần phân biệt thì thêm event riêng, `Changed` giữ nguyên |
-
-**Quyết định trái trực giác** — lý do viết ở giai đoạn sinh ra nó: hết cửa sổ phát `Changed(0, 0)` cùng đường với mọi lần về 0 (GĐ2) ·
-`_window.Stop()` trước khi tạo delay mới (GĐ2) · handle là `Tween` struct, không `CancellationTokenSource` (GĐ2) · callback `static`
-nhận tracker làm target (GĐ2) · `Reset` luôn phát `Changed(0, 0)`, kể cả khi `Count` đang 0 (GĐ3).
-
-**Mở rộng sau**
-
-- Struct núm cửa sổ `[Serializable]` (giây ở combo 1, giây tối thiểu, combo đạt tối thiểu) với `Evaluate(count)` khi có dự án tune trên Inspector.
-- `Multiplier(count)` khi có dự án tính điểm theo combo.
-
----
-
-## Đã khảo sát
-
-| Nguồn | Lấy gì | Không lấy, vì sao |
-|---|---|---|
-| `Scripts/Director/ComboTracker.cs` của dự án (bản 2026-11-06) | toàn bộ cơ chế: `Count`, `_decay.Stop()` rồi `Tween.Delay(this, …, static …)`, `Reset`, `Dispose`, `OnDecayElapsed` phát `(0, 0)` | `Subscription<BoxLidClosed>` và `HandleBoxLidClosed` gọi `e.Box.ShowCombo(Count)`: lớp nối dự án · property `DecayDuration`: công thức thành `Func` dự án truyền · `EventBus<ComboChanged>.Publish`: event dự án `internal` |
-| `Scripts/Director/GameDirector.cs` | vòng đời chủ: `new` trong `Init`, `Reset` trong `StartLevelFlow` (trước `LevelStarted`), `Dispose` trong `OnDestroy`, `CurrentComboNumber => _combo?.Count ?? 0`; `RegisterEvents` đăng ký bus không giữ handle vì bus tự gỡ listener là `MonoBehaviour` | — |
-| `Scripts/Hud/ComboPill.cs` | cách vẽ: `Count == 0` → `bar.Set(0, 1, null)` và tắt nhãn; còn lại `PlayAsync(window, 0, window, label, ct)`; `_labels` dựng một lần mỗi count | ở lại dự án nguyên |
-| `Scripts/Entities/Box/Box.cs` › `HandleLidClosed`, `ShowCombo` | nắp chạm phát `BoxLidClosed(this)`; `ShowCombo(n)` phát tiếng combo khi `n > 1` | — |
-| `Scripts/Events/GameplayEvents.cs` | `BoxLidClosed { Box }`, `ComboChanged { Count, WindowSeconds }`, cả hai `internal readonly struct : IEvent` | — |
-| Horcrux `Runtime/Abstractions/Composites/Combo/IComboSystem.cs`, `Runtime/Implementations/Composites/Combo/ComboSystem.cs` | — | hai stub rỗng (interface không member, class không member), không file nào tham chiếu; xoá ở GĐ1 |
-| Horcrux `Runtime/Utilities/UI/ProgressBar.cs` | `PlayAsync(float from, float to, float goal, string labelContent, CancellationToken ct)`; `useUnscaledTime` mặc định `true`, phải tắt trên prefab pill | — |
-| Horcrux `Runtime/Utilities/EventBus/EventBus.cs` › `IsOwnerDestroyed` | bus chỉ tự gỡ listener có `Target` là `UnityEngine.Object`; class thuần nghe bus phải giữ `Subscription` và `Dispose` | — |
-| PrimeTween `Tween.Delay<T>(T target, float duration, Action<T> onComplete, bool useUnscaledTime = false, …)` | đồng hồ; `Stop()` trên `Tween` mặc định là no-op | `useUnscaledTime` để mặc định |
-
----
+- **Người dùng:** dự án có chuỗi hành động nối nhau trong một cửa sổ thời gian (đóng nắp box, ghép ba, nổ chuỗi); chủ là director của
+  level, sống và chết cùng level.
+- **Chỗ đặt:** `Runtime/Utilities/Combo/ComboTracker.cs`, namespace `Horcrux.Runtime.Utilities.Combo`; class thuần do một
+  `MonoBehaviour` của dự án sở hữu, `Dispose` cùng chủ. Tên `ComboTracker`, `AddPoint`, `Reset`, `Changed` đổi tuỳ ý trước khi gõ.
+- **Hành vi:** `Count` tăng mỗi điểm, cửa sổ mở lại dài `windowSeconds(Count)`, hết cửa sổ về 0; một event `Changed(count,
+  windowSeconds)` cho HUD và phản hồi. `windowSeconds` trả `float.PositiveInfinity` là không hết giờ: chỉ đứt khi chủ gọi `Reset`
+  (combo theo lượt).
+- **Thời gian scaled** qua `Tween.Delay`: `timeScale` 0 (hitstop, pause) thì cửa sổ đứng theo, app vào nền thì PrimeTween không tick;
+  HUD dùng `ProgressBar` tắt `Use Unscaled Time` để khớp (GĐ5).
+- **Không làm:** `IComboSystem`, `ComboSystem` bơm tick từ Ticker (GĐ2; hai stub xoá ở GĐ1) · bridge sang Feedback, `ComboMeter`, demo
+  driver (GĐ1) · cửa sổ dạng struct trong Horcrux (GĐ1) · hệ số nhân, bậc (`tierMinCounts`), `Multiplier` (hàm thuần của `Count`, dự
+  án tính ở chỗ dùng; thêm sau không đổi tracker) · event qua `EventBus` Horcrux (GĐ1) · phân biệt đứt do hết giờ với do `Reset` (GĐ3).
+- **Đã khảo sát:** `ComboTracker.cs` dự án (lấy cả cơ chế; bỏ `Subscription<BoxLidClosed>`, `DecayDuration`,
+  `EventBus<ComboChanged>.Publish`) · `GameDirector.cs` (vòng đời chủ: `new` ở `Init`, `Reset` ở `StartLevelFlow`, `Dispose` ở
+  `OnDestroy`) · `ComboPill.cs` (cách vẽ, ở lại dự án) · `Box.cs` `HandleLidClosed`, `ShowCombo` · `GameplayEvents.cs` (`BoxLidClosed`,
+  `ComboChanged` đều `internal`) · Horcrux `IComboSystem`, `ComboSystem` (stub rỗng, không ai tham chiếu) · `ProgressBar.PlayAsync`
+  (`useUnscaledTime` mặc định `true`) · `EventBus.IsOwnerDestroyed` (chỉ tự gỡ listener là `UnityEngine.Object`) · PrimeTween
+  `Tween.Delay<T>` (`Stop()` trên `Tween` mặc định là no-op).
 
 ## Luồng mô tả — một chuỗi combo từ điểm đầu tới khi đứt
 
 ```
 chủ (director của level) new tracker với công thức cửa sổ
-        │
         ▼
 một cú ghi điểm: chủ gọi AddPoint ──► Count + 1, cửa sổ = windowSeconds(Count) ──► Changed(Count, cửa sổ)   GĐ1
         │                                                                             chủ: tiếng, HUD vẽ thanh rút
@@ -79,7 +44,6 @@ thời gian trôi (scaled): cửa sổ cũ huỷ, cửa sổ mới chạy ──
         │                                                                             chủ chết: Dispose huỷ cửa sổ
         ▼
 chủ cắt chuỗi khi vào level: Reset ──► Count 0, cửa sổ huỷ ──► Changed(0, 0)                                GĐ3
-        │
         ▼
 tài liệu module (GĐ4) · dự án dùng bản Horcrux, một hàm của dự án gọi AddPoint rồi tiếng, HUD nghe Changed (GĐ5)
 ```
@@ -96,9 +60,6 @@ tài liệu module (GĐ4) · dự án dùng bản Horcrux, một hàm của dự
   chủ: trong một hàm, cạnh AddPoint — tiếng, hình của dự án; đẩy Changed lên bus của dự án cho HUD
   HUD: count 0 → thanh rỗng, nhãn tắt · count n → ProgressBar.PlayAsync(window, 0, window, "Combo xn", ct)
 ```
-
-Ai sở hữu gì: tracker giữ `Count` (state thật duy nhất) và handle cửa sổ; công thức cửa sổ là của chủ, truyền một lần ở ctor; chủ
-không giữ bản sao `Count` nào.
 
 ---
 
@@ -159,7 +120,11 @@ namespace Horcrux.Runtime.Utilities.Combo
 
 **Quyết định** — `Changed` mang cả `windowSeconds`, không chỉ `count`: HUD vẽ thanh rút cần độ dài cửa sổ ngay lúc điểm vào, và chỉ
 tracker biết công thức. Phương án bỏ: HUD gọi lại công thức — hai nơi giữ công thức. — Công thức gọi **một lần** mỗi điểm, giữ vào local
-(GĐ2 dùng lại cho delay): kết quả không đổi trong một lần `AddPoint`.
+(GĐ2 dùng lại cho delay): kết quả không đổi trong một lần `AddPoint`. — Công thức là `Func<int, float>` của chủ, không phải struct
+`lerp(w0, wMin, n/nMin)` trong Horcrux: người dùng đầu dùng công thức khác. Mở rộng sau: dự án cần tune trên Inspector thì thêm struct
+`[Serializable]` (giây ở combo 1, giây tối thiểu, combo đạt tối thiểu) có `Evaluate(count)`, tracker không đổi. — Tracker chỉ phát
+`Changed`, không bridge sang Feedback, không `ComboMeter`, không demo driver: phản hồi nhiều kênh của một khoảnh khắc gọi cạnh nhau
+trong **cùng một hàm** của chủ (GĐ5); meter là `ProgressBar.PlayAsync(window, 0, window, label, ct)` có sẵn.
 
 | Consumes | Produces |
 |---|---|
@@ -192,12 +157,9 @@ chúng. Thiếu bước này: hai type chết trùng chủ đề nằm cạnh h�
 
 ## Giai đoạn 2 — Thời gian trôi: hết cửa sổ về 0 và báo, chủ chết thì huỷ cửa sổ
 
-**Mục tiêu:** mỗi `AddPoint` huỷ cửa sổ đang chạy và mở cửa sổ mới dài `window` bằng `Tween.Delay` (scaled); hết cửa sổ `Count` về 0
-và phát `Changed(0, 0)`; `PositiveInfinity` không mở đồng hồ; `Dispose` huỷ cửa sổ khi chủ chết. Xong giai đoạn này một chuỗi tự đứt khi
-người chơi ngừng tay, HUD thấy thanh về rỗng.
-
-**Vì sao bây giờ:** "hết giờ" là lý do tồn tại của cửa sổ; đồng hồ và cách huỷ nó (điểm mới, chủ chết) sinh ra cùng lúc vì hai delay
-sống song song là lỗi quan sát được ngay (cửa sổ cũ cắt ngang chuỗi mới).
+**Mục tiêu:** mỗi `AddPoint` huỷ cửa sổ đang chạy, mở cửa sổ mới bằng `Tween.Delay` (scaled); hết cửa sổ `Count` về 0, phát
+`Changed(0, 0)`; `PositiveInfinity` không mở đồng hồ; `Dispose` huỷ cửa sổ khi chủ chết. Xong: chuỗi tự đứt khi người chơi ngừng tay.
+**Vì sao bây giờ:** "hết giờ" là lý do tồn tại của cửa sổ; đồng hồ và cách huỷ nó sinh cùng lúc vì hai delay song song cắt ngang chuỗi mới.
 
 ### `ComboTracker.cs` › đầu file — đoạn cũ → đoạn mới
 
@@ -305,7 +267,8 @@ biệt lý do đứt là của dự án qua event riêng nếu cần. — `_wind
 0 giữa chừng; một handle cho một cửa sổ. — Handle là `Tween` struct: `Stop` là huỷ, không cấp phát `CancellationTokenSource` mỗi điểm.
 Phương án bỏ: `CancellationTokenSource` + `UniTask.Delay` — một cấp phát và một `Dispose` mỗi điểm combo. — Callback `static tracker =>
 tracker.OnWindowElapsed()` nhận tracker làm target của delay: không closure. — `Stop()` trên `Tween` mặc định là no-op, nên điểm đầu
-tiên không cần kiểm `isAlive`.
+tiên không cần kiểm `isAlive`. — Đồng hồ là `Tween.Delay` ngay trong tracker: delay đã là đồng hồ có handle dừng, không cần Ticker,
+không cần `Update`. Phương án bỏ: `ComboSystem` `MonoBehaviour` bơm tick từ Ticker.
 
 | Consumes | Produces |
 |---|---|
@@ -364,7 +327,8 @@ và là cách đứt duy nhất của cửa sổ vô hạn (GĐ2).
 
 **Quyết định** — `Reset` luôn phát `Changed(0, 0)`, kể cả khi `Count` đang 0: HUD vào level mới phải về trạng thái rỗng dù chuỗi trước
 đã tự đứt; chủ không phải nhớ "đã về 0 chưa". Phương án bỏ: chỉ phát khi `Count > 0` — HUD giữ state riêng để tự chặn, hai nơi giữ sự
-thật. — `Reset` không phân biệt với hết giờ: bảng "Cố ý KHÔNG làm".
+thật. — `Reset` không phân biệt với hết giờ: HUD hiện có chỉ cần "về 0"; dự án cần phân biệt thì thêm event riêng, `Changed` giữ
+nguyên.
 
 | Consumes | Produces |
 |---|---|
@@ -397,7 +361,7 @@ thật. — `Reset` không phân biệt với hết giờ: bảng "Cố ý KHÔN
 
 `ComboTracker.md` mở đầu `Code: Runtime/Utilities/Combo/`. Mục: luồng `AddPoint → windowSeconds(Count) → Tween.Delay → OnWindowElapsed
 → Changed(0, 0)` ASCII (luồng mô tả ở trên) · bảng API (`ComboTracker(Func<int, float>)`, `Count`, `AddPoint`, `Reset`, `Dispose`,
-`Changed`) · "Design decisions" gom các **Quyết định** của GĐ1–3 và bảng "Cố ý KHÔNG làm" · "Dùng trong dự án": chủ `MonoBehaviour` `new`
+`Changed`) · "Design decisions" gom các **Quyết định** của GĐ1–3 và dòng **Không làm** của Ngữ cảnh đã chốt · "Dùng trong dự án": chủ `MonoBehaviour` `new`
 ở khởi tạo, `Reset` ở đầu level, `Dispose` ở `OnDestroy`; một hàm của chủ gọi `AddPoint` rồi phản hồi (tiếng, hình) cạnh nhau; HUD nghe
 `Changed`: count 0 → thanh rỗng, nhãn tắt; count n → `ProgressBar.PlayAsync(window, 0, window, label, ct)` với `Use Unscaled Time` tắt
 · ca `PositiveInfinity`, ca công thức trả 0. Không có "Trước khi chạy": tracker là class thuần, không wire tay; ô `Use Unscaled Time`
