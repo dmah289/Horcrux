@@ -329,11 +329,11 @@ máy 1080×2400 inset 110 → hạ 13.3 px; máy 1170×2532 inset 141 (`h` ≈ 1
 
 | Chỗ | Bản dự án | Bản Horcrux | Vì |
 |---|---|---|---|
-| nguồn dải trống | hằng `SafeAreaHeadroom.TopHeadroom` trong class static | field `top` của asset, kéo vào camera và panel HUD | mỗi thiết kế màn có dải riêng (Menu có thể khác Game); Horcrux không giữ số của dự án |
-| ai đọc `Screen` | mỗi anchor bật safe area tự đọc `Screen.safeArea` | `ViewportCamera` đọc một lần, truyền `Rect` viewport | một lần mỗi layout thay vì mỗi anchor; anchor thành hàm thuần, test EditMode dựng được safe area lệch |
-| `Apply` | `Apply(Camera)` | `Apply(Camera, Rect)` | theo dòng trên |
+| menu tạo asset | `CategoryJam/Safe Area Headroom` | `Horcrux/Layout/Safe Area Headroom` | nhóm theo framework |
+| XML doc `SafeAreaHeadroom` | trỏ `GameplayViewport`, dòng "Bản tạm của dự án" | trỏ `ViewportCamera`, bỏ dòng bản tạm | tên Horcrux |
 
-Còn lại chỉ namespace, `<see cref="ViewportCamera"/>` và bỏ dòng "Bản tạm của dự án" trong XML doc.
+Bản tạm đã mang cả asset, `Apply(Camera, Rect)` và `SafeViewport()` như trên (mỗi màn một asset: Game 94.3/2340, Menu 117/2340). Còn lại chỉ
+namespace, `<see cref="ViewportCamera"/>` và bỏ dòng "Bản tạm của dự án" trong XML doc.
 
 **Quyết định** — `ViewportAnchor` không có `Awake`: thứ tự `Awake` giữa các object không định trước, anchor phải chạy **sau** khi camera
 đổi size và anchor con phải chạy sau anchor cha (`transform.position` của con tính trên cha đã dời); một chủ gọi theo mảng là thứ tự
@@ -637,33 +637,30 @@ khi Play).
 
 ## Giai đoạn 6 — Dự án dùng bản Horcrux, giữ GUID, xoá bản tạm (agent)
 
-**Mục tiêu:** `GameplayRoot.prefab` chạy trên ba component Horcrux với 11 component giữ nguyên tham chiếu; camera và panel HUD đọc cùng
-một asset `SafeAreaHeadroom`; 6 file bản tạm, test bản tạm và `.meta` xoá; tài liệu dự án đổi tên theo.
+**Mục tiêu:** `GameplayRoot.prefab` chạy trên ba component Horcrux với 11 component giữ nguyên tham chiếu; hai asset dải trống của dự án
+(`SafeAreaHeadroom_Game`, `SafeAreaHeadroom_Menu`) chạy trên `SafeAreaHeadroom` của Horcrux, giữ nguyên số và mọi ô đã kéo; 6 file bản
+tạm, test bản tạm và `.meta` xoá; tài liệu dự án đổi tên theo.
+
+**Dự án đã đi trước một phần (2026-11-09):** bản tạm `SafeAreaHeadroom` đã là ScriptableObject cùng chữ ký `Absorb(Rect, float)`, bản
+tạm `ViewportAnchor.Apply(Camera, Rect)` và `GameplayViewport.SafeViewport()` đã như GĐ2; `HeadroomSafeArea` có ô `headroom`; hai asset
+đã tạo và kéo vào `camera_main`, `Game.unity` › `ViewInGame/*SafeArea*`, `Menu.unity` › `Home/*SafeArea*` và `CanvasMenu/*SafeArea*`.
+GĐ6 vì thế chỉ đổi type dưới asset (giữ GUID), không tạo, không kéo lại.
 
 **Thứ tự — trong một lần Unity refresh** (Editor đóng, hoặc làm hết rồi mới focus Editor; Prefab Mode của `GameplayRoot` đóng trước):
 
 | # | Việc | Thiếu thì |
 |---|---|---|
 | 1 | Xoá 6 file ở `Assets/_CategoryJam/Scripts/Utilities/` (`GameplayViewport.cs`, `GameplayViewport.Editor.cs`, `ViewportAnchor.cs`, `ViewportAnchor.Editor.cs`, `ViewportCover.cs`, `SafeAreaHeadroom.cs`), `Tests/EditMode/SafeAreaHeadroomTests.cs` (case đã sang `ViewportLayoutTests` ở GĐ2) và các `.meta` | hai asset cùng GUID sau bước 2: Unity cấp GUID mới cho một bản, prefab báo 11 script missing |
-| 2 | Ghi GUID bản tạm vào `.meta` Horcrux: `ViewportCamera.cs.meta` ← `3fc862fca3d20714aa53ea069560ef9f` · `ViewportAnchor.cs.meta` ← `c29c8c47f2b864541b173c28f727e131` · `ViewportCover.cs.meta` ← `233404ff652a67d4ca28f25e2e133308` | prefab trỏ GUID không còn: 11 script missing |
+| 2 | Ghi GUID bản tạm vào `.meta` Horcrux: `ViewportCamera.cs.meta` ← `3fc862fca3d20714aa53ea069560ef9f` · `ViewportAnchor.cs.meta` ← `c29c8c47f2b864541b173c28f727e131` · `ViewportCover.cs.meta` ← `233404ff652a67d4ca28f25e2e133308` · `SafeAreaHeadroom.cs.meta` ← `fb1d5289493ff0b48971e95027977c88` | prefab trỏ GUID không còn: 11 script missing · hai asset dải trống mất script: ô `headroom`, `safeAreaHeadroom` thành null, `NullReferenceException` ở `Awake`/`Start` |
 | 3 | `GameplayRoot.prefab`: key `gameplayCamera: {fileID: 5567243261129153408}` → `targetCamera: {fileID: 5567243261129153408}` | key cũ bị bỏ khi deserialize, `targetCamera` null: `NullReferenceException` ở `Awake` |
-| 4 | `Scripts/Hud/HeadroomSafeArea.cs`: thêm `using Horcrux.Runtime.Utilities.Layout;`, field `[SerializeField] private SafeAreaHeadroom headroom;`, thân `GetSafeArea` thành `headroom.Absorb(base.GetSafeArea(), Screen.height)`; XML doc trỏ asset thay cho class static | class static đã xoá ở bước 1: lỗi compile |
-| 5 | Không file `.cs` nào khác của dự án gọi tên bốn type (grep 2026-11-09: `SafeAreaHeadroom` chỉ ở `HeadroomSafeArea.cs`, `ViewportAnchor.cs` bản tạm và test bản tạm) | — |
-
-**Sau refresh, Editor mở** (giá trị dải trống là của thiết kế, chuyển nguyên số, không đo lại):
-
-| # | Việc | Thiếu thì |
-|---|---|---|
-| 6 | Tạo asset `SafeAreaHeadroom` cho màn Game, **Top** = `94.3 / 2340` (≈ 0.0403, hằng của bản tạm: mép trên `txtLevel` trong `CanvasUI`). Giả định (cần xác nhận): đặt ở `Assets/_CategoryJam/Content/Layout/SafeAreaHeadroom_Game.asset` | — |
-| 7 | `GameplayRoot.prefab` › `camera_main` › `ViewportCamera` › ô **Safe Area Headroom** kéo asset bước 6 | `NullReferenceException` ở `Awake` của `ViewportCamera` |
-| 8 | `Game.unity` › `CanvasUI/ViewInGame/*SafeArea*` › `HeadroomSafeArea` › ô **Headroom** kéo **cùng** asset | `NullReferenceException` ở `Start` của panel; asset khác: khe pill–hàng box đổi theo máy |
+| 4 | `Scripts/Hud/HeadroomSafeArea.cs`: `using CategoryJam.Gameplay.Utilities;` → `using Horcrux.Runtime.Utilities.Layout;` | type bản tạm đã xoá ở bước 1: lỗi compile |
+| 5 | Không file `.cs` nào khác của dự án gọi tên bốn type (grep 2026-11-09: `SafeAreaHeadroom` chỉ ở `HeadroomSafeArea.cs`, ba file bản tạm và test bản tạm) | — |
 
 **Tài liệu dự án:** `Scripts/Layout.md` §1 tiêu đề và thân `GameplayViewport` → `ViewportCamera`, "aspect đọc từ `Screen`" → "từ
 `camera.aspect`", nút trên anchor là **Apply Layout** (không có nút tên khác); §2, §3, "Đã sai một lần", "Trước khi chạy" hàng 2 đổi tên type
-và key (`gameplayCamera` → `targetCamera`); đoạn "Inset tai thỏ chỉ đẩy phần vượt dải trống" và "Trước khi chạy" hàng 7: hằng
-`SafeAreaHeadroom.TopHeadroom` → asset `SafeAreaHeadroom_Game`, hai ô kéo cùng asset, đổi `txtLevel` thì sửa **Top** của asset; hàng "Mở rộng
-sau" bỏ mục "lên Horcrux". `Structure.md`: dòng `Utilities/` bỏ ba type và dòng "bản tạm chờ lên Horcrux"; dòng `Prefabs/` đổi
-`GameplayViewport` → `ViewportCamera`; dòng `Content/` thêm `Layout/`; bảng nợ bỏ hàng ba type.
+và key (`gameplayCamera` → `targetCamera`); menu tạo asset là **Create › Horcrux › Layout › Safe Area Headroom**; hàng "Mở rộng sau" bỏ
+mục "lên Horcrux". `Structure.md`: dòng `Utilities/` bỏ bốn type và dòng "bản tạm chờ lên Horcrux"; dòng `Prefabs/` đổi
+`GameplayViewport` → `ViewportCamera`; bảng nợ bỏ hàng bản tạm.
 
 **Kiểm (agent):**
 
@@ -673,8 +670,9 @@ sau" bỏ mục "lên Horcrux". `Structure.md`: dòng `Utilities/` bỏ ba type 
   `.md` toàn repo: 0.
 - Nhất quán chéo trước–sau: một probe (`Editor/Probe`, `playrun.sh` với `SIZES="1080x2340 1080x1920"`,
   `DEVICES="Poco M7 Pro 5G;iOS Notch Device"`, `PLAY_FROM_BUILD_SCENE=1`) vào level, in `ScreenBox.Of` của 9 object anchor, khung
-  `*SafeArea*` và `localScale` của `background`; chạy **trước** bước 1 và **sau** bước 8, hai file ra trùng từng số ở cả hai cỡ và hai
-  máy (mốc bản tạm: máy Poco dời 13 px, máy iOS Notch 39 px so với safe area cả màn).
+  `*SafeArea*` và `localScale` của `background`; chạy **trước** bước 1 và **sau** bước 5, hai file ra trùng từng số ở cả hai cỡ và hai
+  máy (mốc bản tạm: máy Poco dời 13 px, máy iOS Notch 39 px so với safe area cả màn). Màn Menu cùng cách với probe Home của dự án
+  (`docs/tools/layout_probe/measure_menu.cs`).
 
 **Cần chơi thử (developer):** *vào* level 1 ở Game view 1080×2340 rồi 1080×1920, và trên máy có tai thỏ · *nhìn* hàng box, thanh
 khay, mask, bàn chơi nằm như lúc chưa chuyển; nền phủ kín, không hở mép; khe pill–hàng box trên máy bằng ở Game view · *dấu hiệu hỏng:*
@@ -698,4 +696,4 @@ sâu dưới dải trống · nền hở một dải ở cạnh.
 | `Runtime/Utilities/Layout/ViewportAnchor.Editor.cs` (agent) | | | | tạo | | |
 | `Tests/EditMode/ViewportLayoutTests.cs` (agent) | tạo | thêm case | thêm case | | | |
 | `docs/Runtime/ViewportAnchor/ViewportAnchor.md`, `.html` (agent) | | | | | tạo | |
-| dự án: xoá 6 file bản tạm và `SafeAreaHeadroomTests.cs`, `HeadroomSafeArea.cs`, asset `SafeAreaHeadroom_Game`, `GameplayRoot.prefab`, `Game.unity`, `Scripts/Layout.md`, `Structure.md` | | | | | | đổi |
+| dự án: xoá 6 file bản tạm và `SafeAreaHeadroomTests.cs`, `HeadroomSafeArea.cs`, `GameplayRoot.prefab`, `Scripts/Layout.md`, `Structure.md` | | | | | | đổi |
