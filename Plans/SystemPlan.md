@@ -584,11 +584,17 @@ safe-area song song — SDK tồn tại để mỗi dự án chỉ còn **một 
   SDK safe-area không được phụ thuộc ads; banner chỉ là một nguồn inset nữa cộng vào padding đáy.
 - **Vùng ngược là component riêng** — nhu cầu ngược hẳn, nhồi cờ vào một class là if/else lồng.
 - Quy đổi vùng an toàn → world bounds (bounder) cho board/camera — cùng nguồn sự thật với UI.
+- **Inset trên chỉ đẩy phần vượt dải trống thiết kế**: demo thường đã chừa dải trên cùng cho thanh trạng
+  thái và lỗ camera; cộng nguyên inset lên trên dải đó là đếm hai lần, cả cụm trên tụt sâu trên máy tai thỏ
+  mà Game view không lộ (safe area bằng cả màn). Dải trống là asset `SafeAreaHeadroom`
+  (`Horcrux_ViewportAnchor_Plan.md` GĐ2), mỗi thiết kế màn một asset; panel cạnh `Top` và bounder/anchor world
+  của cùng màn kéo **cùng asset** để dời cùng số pixel.
 
-**Công thức padding** (`safeArea` gốc trái-dưới, cùng hệ pixel với `width`/`height`):
+**Công thức padding** (`safeArea` gốc trái-dưới, cùng hệ pixel với `width`/`height`; `headroom.top` là phần
+chiều cao màn của dải trống, panel không có asset thì coi là 0):
 
 ```
-paddingTop    = height − (safeArea.y + safeArea.height)
+paddingTop    = max(0, height − (safeArea.y + safeArea.height) − headroom.top · height)
 paddingBottom = safeArea.y            (+ inset banner nếu có)
 paddingLeft   = safeArea.x
 paddingRight  = width  − (safeArea.x + safeArea.width)
@@ -603,7 +609,9 @@ sizeDelta = anchoredPosition = 0        ← anchor gánh toàn bộ, không dùn
 | Mốc | Kỳ vọng | ✓ |
 |---|---|---|
 | Không notch (`safeArea == full screen`) | 4 padding = 0 → `anchorMin=(0,0)`, `anchorMax=(1,1)` | full-stretch |
-| Chỉ bám `Top`, notch cao 100px, `height=2400` | `anchorMax.y = 2300/2400` | chừa đúng 100px |
+| Chỉ bám `Top`, notch cao 100px, `height=2400`, không asset dải trống | `anchorMax.y = 2300/2400` | chừa đúng 100px |
+| Như trên, dải trống `top = 94.3/2340` (≈ 96.7px ở 2400) | `paddingTop ≈ 3.3px` | chỉ dời phần vượt |
+| Notch 80px, cùng dải trống | `paddingTop = 0`, `anchorMax.y = 1` | inset nằm gọn trong dải, không dời |
 | Banner 150px, có cờ `Bottom` | `anchorMin.y = 150/2400` | UI đẩy lên đúng chiều cao banner |
 | Xoay ngang | `safeArea` đổi → watcher phát hiện → update | không cần restart |
 
@@ -613,6 +621,7 @@ sizeDelta = anchoredPosition = 0        ← anchor gánh toàn bộ, không dùn
 |---|---|
 | Contract + base + component padding/vùng-ngược + watcher + bounder | Áp component vào canvas/layout của nó |
 | Contract inset provider (optional) | Hệ ads của game implement provider (báo chiều cao banner) |
+| Kiểu asset `SafeAreaHeadroom` và công thức `Absorb` (`Runtime/Utilities/Layout/`) | Đo dải trống từ demo (mép trên canvas tới mép trên phần tử HUD cao nhất), một asset mỗi thiết kế màn, kéo vào panel `Top` và camera/bounder cùng màn |
 
 **Phạm vi v1.**
 - Đủ bộ trên (contract · base · padding `[Flags]` · vùng ngược · watcher · inset provider · bounder).
@@ -627,6 +636,8 @@ sizeDelta = anchoredPosition = 0        ← anchor gánh toàn bộ, không dùn
   (bảng kiểm mốc trên).
 - Zero rebuild khi vùng an toàn không đổi (watcher chỉ phát khi khác).
 - Dự án tích hợp xong: grep chỉ còn **một** đường safe-area — các bản song song cũ bị thay, không chạy kèm.
+- Device Simulator với máy tai thỏ thật (probe `DEVICES`, `docs/Editor/Probe.md`): cụm trên dời đúng phần inset vượt dải
+  trống, khe HUD–world bằng ở Game view cỡ demo.
 
 **Khảo sát (re-verify 2026-08-29).**
 - Bộ code hội tụ (`SafeAreaBase` ~171–176 LOC + `SafeAreaComponent` ~92–96 + `RuntimeSafeAreaUpdater` +
@@ -640,8 +651,10 @@ sizeDelta = anchoredPosition = 0        ← anchor gánh toàn bộ, không dùn
 
 **Cạm bẫy.** Tính một lần trong `Start()` → sai khi xoay máy/banner hiện · trộn safe-area với anchor thủ
 công trên **cùng** `RectTransform` → giằng nhau (component chiếm trọn một RectTransform, con của nó tự do)
-· quên vùng ngược → viền đen quanh notch · quên inset banner → nút bị banner đè · tích hợp mà không gỡ
-bản song song cũ là tái tạo đúng cái bệnh SDK sinh ra để chữa.
+· quên vùng ngược → viền đen quanh notch · quên inset banner → nút bị banner đè · cộng nguyên inset trên
+lên dải trống demo đã chừa → cả cụm trên tụt sâu trên máy punch-hole, Game view vẫn đúng · panel HUD và
+anchor world đọc hai nguồn dải trống → khe giữa chúng đổi theo máy · tích hợp mà không gỡ bản song song
+cũ là tái tạo đúng cái bệnh SDK sinh ra để chữa.
 
 ---
 
