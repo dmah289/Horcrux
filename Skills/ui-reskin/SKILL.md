@@ -117,6 +117,7 @@ sách file của task, không `add` cả thư mục.
 | Gọi service trong Play làm game kẹt ở màn chờ | gọi trước khi scene chứa service nạp · `PlayProbe.WaitForSceneAsync` |
 | Ảnh chụp ngay sau đổi cỡ Game view vẫn bố cục cũ | layout và fitter cập nhật vài frame sau · chờ vài frame, hoặc chụp canvas ngoài Play |
 | Ảnh chụp khớp demo mà vào chơi khối đè HUD | chụp lúc phần tử hiện theo gameplay (tab trượt ra, badge, chữ nhiều dòng) chưa hiện, khe trông rộng nên dời quá tay · ép mọi phần tử như vậy hiện với nội dung dài nhất rồi mới đo, so |
+| Developer đè demo mờ lên Game view thấy lệch hàng chục px, đo thật chỉ vài px | Game view khác tỉ lệ demo: khối neo theo bề rộng đứng yên, khối theo chiều cao (canvas match height, demo co theo màn) trôi · đọc cỡ Game view trước khi tin ảnh đè, so demo chỉ ở đúng cỡ demo, bằng số trên ảnh chụp |
 | Ghi giá trị vào SerializedProperty ném lỗi kiểu, hoặc lưu xong giá trị vẫn như cũ | property là Float mà ghi `intValue`; Vector2 mà ghi `vector3Value` thì bỏ qua im lặng, lần lưu prefab vẫn kéo theo nhiễu serialize · đọc `propertyType` trước, đọc lại giá trị sau khi lưu |
 | `manage_camera` không ghi ảnh ra ngoài project, ảnh xuất hiện muộn | lệnh ghi bất đồng bộ vào `Assets/` · `UICapture` ghi đường dẫn bất kỳ |
 | Eval thất bại không dữ liệu ngay sau khi vào Play | Editor đang domain reload · thử lại |
