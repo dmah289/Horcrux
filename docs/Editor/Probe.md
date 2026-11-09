@@ -12,7 +12,7 @@ kiểm tĩnh trước: `PrefabDump` không cần vào Play.
 | Mục | Chốt |
 |---|---|
 | Người dùng | agent, khi chỉnh feeling, dò lỗi trình diễn, đo hiệu năng; quy trình chọn công cụ ở `Skills/feel-tune/SKILL.md` |
-| Ranh giới | Horcrux giữ runner, ghi kết quả, reflection, chờ scene, bấm nút, dump prefab, ghép ảnh, cỡ Game view, chạy lần lượt nhiều cỡ, đo khung object trên màn, vào Play từ scene đầu. Dự án giữ **đường tắt vào trạng thái cần đo** (bấm menu, chờ level, chọn entity), một class Editor của dự án |
+| Ranh giới | Horcrux giữ runner, ghi kết quả, reflection, chờ scene, bấm nút, dump prefab, ghép ảnh, cỡ Game view, máy trên Device Simulator, chạy lần lượt nhiều cỡ hay nhiều máy, file máy thật (`Editor/Probe/Devices/`), đo khung object trên màn, vào Play từ scene đầu. Dự án giữ **đường tắt vào trạng thái cần đo** (bấm menu, chờ level, chọn entity), một class Editor của dự án |
 | Chỗ đặt | C# ở `Editor/Probe/` (assembly `com.horcrux.editor`). Shell ở `Editor/Probe/Tools~/`: Unity không import, không vào build |
 | Quan hệ với FeelTrace | `feeltrace.sh` chạy qua `playrun.sh`; `FeelTraceRecorder` dùng chung cờ `.done` |
 
@@ -38,6 +38,9 @@ kiểm tĩnh trước: `PrefabDump` không cần vào Play.
 | `ScreenBox` gốc trên trái, trục y đi xuống | trùng hệ toạ độ ảnh chụp và ảnh demo: số đo so thẳng với `DemoCompare` (`docs/Editor/UIReskin.md`). Tự đổi bằng `WorldToScreenPoint` hay quên lật trục y |
 | `ScreenBox` của object có RectTransform là rect của chính nó, không gộp con | chữ world có RectTransform mà không có Renderer; khung là ô chữ, không phải nét chữ. Cần cả cụm thì đo object cha không có RectTransform |
 | `SIZES` đặt cỡ trước khi vào Play, mỗi cỡ một lần Play | game đọc cỡ màn lúc khởi động; đổi giữa Play thì phần tính theo màn lúc boot vẫn theo cỡ cũ |
+| Đo cả Game view lẫn Device Simulator | Game view có `Screen.safeArea` bằng cả màn: mọi thứ neo theo vùng an toàn (tai thỏ, thanh home) đứng đúng ở Game view mà lệch trên máy. Simulator giả cỡ màn, vùng an toàn, cutout của máy |
+| `SimulatorDevice` đổi view Play chính bằng `PlayModeView.SwapMainWindow` qua reflection | không có API công khai chọn máy; swap trong cùng ô dock, Simulator nhớ máy đã chọn qua domain reload. Tên type, method nội bộ kiểm trên Unity 6 |
+| `DEVICES` dừng lần chạy khi không chọn được máy | chạy tiếp là đo máy đang chọn từ trước mà file ra mang tên máy mới |
 
 ## Luồng dữ liệu
 
@@ -66,6 +69,7 @@ playrun.sh: thấy .done → playmode stop → chuyển file về <file ra> → 
 | `PlayProbe.WaitForSceneAsync(string sceneName, CancellationToken ct)` | trả `Scene` khi scene đúng tên đã nạp xong. Gọi service của game trước khi scene chứa nó nạp là chạy trước boot |
 | `PlayProbe.Click(GameObject target)` | pointerDown, pointerUp, pointerClick vào handler gần nhất từ `target` lên cha; cần EventSystem |
 | `GameViewSize.Set(int width, int height)` · `Restore()` · `Current()` | chọn cỡ cố định (chưa có thì thêm vào nhóm của platform đang chọn, lưu trong preference của máy), trả `index: nhãn`; `Restore` về cỡ trước lần `Set` đầu. Trong và ngoài Play; layout UI cập nhật vài frame sau |
+| `SimulatorDevice.Set(string name)` · `Restore()` · `Current()` · `List()` | đưa Device Simulator lên làm view Play chính và chọn máy theo tên (không phân biệt hoa thường, tên trần khớp máy mẫu Unity có đuôi `" (WxH)"`), trả `index: tên rộng×cao safe x,y,w,h`; không thấy tên thì ném `ArgumentException` kèm danh sách. `Restore` về view và máy trước lần `Set` đầu; `List` mọi máy Simulator thấy. `GameViewSize` tự đưa Game view về trước khi đổi cỡ |
 | `PlayFrom.FirstBuildScene()` · `Arm()` | đặt scene đầu Build Settings làm scene khởi động (`FirstBuildScene` vào Play luôn); về Edit mode thì trả scene khởi động cũ. Trong Play bật `Application.runInBackground` |
 | `PlayProbe.Field<T>(object target, string fieldName)` · `Call(object target, string methodName, params object[] args)` | instance, public hay không, dò từ type thật lên base. Không có thì ném `MissingFieldException` / `MissingMethodException`; nhiều overload cùng tên thì `AmbiguousMatchException` |
 | `PrefabDump.Dump(GameObject root, string pathFilter = null)` | một dòng mỗi object (xem "Đọc PrefabDump"); `pathFilter` giữ dòng có đường dẫn chứa chuỗi đó. Soát override, reference gãy của prefab UI ở `docs/Editor/UIReskin.md` |
@@ -100,6 +104,26 @@ lỗi, dừng ngay), không chạy, hay timeout.
 ```bash
 SIZES="1080x2340 1080x2220 1080x1920" PLAY_FROM_BUILD_SCENE=1 bash "Assets/Horcrux/Editor/Probe/Tools~/playrun.sh" probe.cs out.txt
 ```
+
+`DEVICES="Poco M7 Pro 5G;iOS Notch Device"` chạy một lần mỗi máy trên Device Simulator, tên cách nhau bằng `;`. File ra và `__SIZE__`
+mang tên máy đã thay khoảng trắng bằng `_` (`out_Poco_M7_Pro_5G.txt`); xong trả view Play về như trước. Chọn máy hỏng thì in danh sách
+máy và bỏ máy đó. Có cả `SIZES` thì chạy các cỡ Game view trước, rồi các máy.
+
+```bash
+SIZES="1080x2340" DEVICES="Poco M7 Pro 5G" bash "Assets/Horcrux/Editor/Probe/Tools~/playrun.sh" probe.cs out.txt
+```
+
+## Thêm máy thật cho Simulator
+
+Một file `.device` (JSON, định dạng Device Simulator của Unity) ở `Editor/Probe/Devices/`; Simulator nạp mọi file `.device` trong
+`Assets`. Cần đúng: `friendlyName`, `screens[0]` `width` `height` `dpi`, `orientations` (1 là dọc) với `safeArea` và `cutouts` theo pixel
+gốc **dưới** trái, `systemInfo.operatingSystem` (Android hay iOS). Vùng an toàn lấy từ thông số hãng, hoặc đo từ ảnh chụp máy: chạy
+probe ở Game view đúng cỡ màn máy, so dải màu cùng cột với ảnh chụp (`DemoCompare.Runs`); mọi khối neo mép trên lệch cùng một số pixel
+là inset trên. Kiểm file: chạy probe trên máy mới, ảnh chụp Simulator phải trùng ảnh máy theo từng dải màu.
+
+| Máy | Màn | Vùng an toàn dọc | Nguồn |
+|---|---|---|---|
+| `Poco M7 Pro 5G` | 1080×2400, 395 dpi | trên 110 px, dưới 0 | đo từ ảnh chụp máy; cutout chỉ ước lượng vị trí lỗ camera |
 
 ## Hợp đồng script
 
@@ -149,7 +173,7 @@ header/txt_title on p=20,-105,0 s=1,1,1 r=0 | rt a=20,8 sd=660,130 anc=0.5,0.5-0
 | 1 | Unity Editor mở project; Unity CLI và package `com.unity.pipeline` đã cài; `unity status --project-path <project>` báo `ready` | runner báo `pipeline not ready` |
 | 2 | Không có lỗi compile trong project | Editor vào Safe Mode, pipeline không nạp |
 | 3 | Scene khởi động của game đang mở, hoặc chạy với `PLAY_FROM_BUILD_SCENE=1`, nếu script vào level qua menu | script chờ mãi, runner báo timeout |
-| 4 | Game view giữ một độ phân giải cho mọi lần đo so với nhau, và cho mọi `crop` của `FrameSheet`: chạy với `SIZES`, hoặc script gọi `GameViewSize.Set` trước khi đo | toạ độ, vùng cắt lệch |
+| 4 | Game view giữ một độ phân giải cho mọi lần đo so với nhau, và cho mọi `crop` của `FrameSheet`: chạy với `SIZES` hay `DEVICES`, hoặc script gọi `GameViewSize.Set`, `SimulatorDevice.Set` trước khi đo | toạ độ, vùng cắt lệch |
 
 Run In Background và auto-tick runner tự bật, và trả lại khi thoát ở mọi đường ra (override ghi vào `ProjectSettings/Packages/com.unity.pipeline`).
 
@@ -164,6 +188,8 @@ Run In Background và auto-tick runner tự bật, và trả lại khi thoát �
   xuống dòng; khác giá trị thì giữ bản Unity ghi và in một dòng báo.
 - **Scene đang mở có thay đổi chưa lưu**: Editor hỏi lưu khi vào Play hay khi chạy test và đứng chờ hộp thoại; CLI chỉ thấy timeout,
   `unity status` báo `unreachable`. Lưu hoặc bỏ thay đổi trước khi chạy.
+- **Đúng ở Game view, lệch trên máy thật**: Game view không có tai thỏ, thanh home. Khối neo theo vùng an toàn chỉ lộ lệch trên Simulator
+  với máy có inset; kiểm cả hai trước khi build.
 - **`FindObjectsByType` mỗi frame cấp phát**: trong script đo GC, gom danh sách một lần lúc vào level.
 - **`Time.captureFramerate` còn khoá sau khi script tự đặt**: `PlayProbe.Run` không trả về 0; script đặt thì tự trả, hoặc dùng
   `FeelTraceRecorder` (tự trả ở mọi đường ra).
@@ -176,7 +202,8 @@ cắt; `Compose` đặt ảnh 0 trên trái theo hàng; `Dump` tính bounds tron
 Runner kiểm bằng chạy thật: trace quay qua `playrun.sh` khớp 0 chênh với trace cùng chữ ký quay bằng runner trước nó; một probe vào
 level, tap, chụp bốn ảnh ghép một sheet, đọc field private, in kết quả ba dòng. `ScreenBox` và `SIZES` kiểm cùng một lần chạy hai cỡ:
 khung sprite và ô chữ world khớp số tự tính bằng `WorldToScreenPoint`, rect UI Overlay co theo cỡ màn, Game view về cỡ cũ, `git status`
-của dự án sạch.
+của dự án sạch. `SimulatorDevice` và `DEVICES` kiểm bằng một máy đo từ ảnh chụp: ảnh Simulator trùng ảnh máy theo từng dải màu ở
+mọi khối neo mép trên; tên máy sai thì runner dừng và in danh sách; tên trần chọn đúng máy mẫu; view Play về Game view sau lần chạy.
 
 ## Mở rộng sau
 

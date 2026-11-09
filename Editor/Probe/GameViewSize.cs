@@ -82,7 +82,12 @@ namespace Horcrux.Editor.Probe
             return -1;
         }
 
-        private static EditorWindow Window() => EditorWindow.GetWindow(GameViewType, false, null, false);
+        // Simulator đang chiếm chỗ view Play thì GetWindow mở thêm một Game view nổi: đưa Game view về chỗ cũ trước
+        private static EditorWindow Window()
+        {
+            SimulatorDevice.UseGameView();
+            return EditorWindow.GetWindow(GameViewType, false, null, false);
+        }
 
         private static int SelectedIndex() => (int)GameViewType.GetProperty("selectedSizeIndex", Any).GetValue(Window());
 

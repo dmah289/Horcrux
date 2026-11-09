@@ -1,0 +1,42 @@
+{
+    "friendlyName": "Poco M7 Pro 5G",
+    "version": 1,
+    "screens": [
+        {
+            "width": 1080,
+            "height": 2400,
+            "navigationBarHeight": 0,
+            "dpi": 395.0,
+            "orientations": [
+                {
+                    "orientation": 1,
+                    "safeArea": { "serializedVersion": "2", "x": 0.0, "y": 0.0, "width": 1080.0, "height": 2290.0 },
+                    "cutouts": [
+                        { "serializedVersion": "2", "x": 495.0, "y": 2310.0, "width": 90.0, "height": 90.0 }
+                    ]
+                }
+            ],
+            "presentation": {
+                "name": "",
+                "overlayPath": "",
+                "borderSize": { "x": 40.0, "y": 40.0, "z": 40.0, "w": 40.0 },
+                "cornerRadius": 110.0
+            }
+        }
+    ],
+    "systemInfo": {
+        "deviceModel": "Xiaomi Poco M7 Pro 5G",
+        "deviceType": 1,
+        "operatingSystem": "Android OS 15 / API-35",
+        "operatingSystemFamily": 0,
+        "processorCount": 8,
+        "supportsAccelerometer": true,
+        "supportsAudio": true,
+        "supportsGyroscope": true,
+        "supportsVibration": true,
+        "graphicsDependentData": [
+            { "graphicsDeviceType": 21, "graphicsUVStartsAtTop": true, "graphicsShaderLevel": 50, "supportsInstancing": true, "npotSupport": 2, "maxTextureSize": 16384 },
+            { "graphicsDeviceType": 11, "graphicsUVStartsAtTop": false, "graphicsShaderLevel": 50, "supportsInstancing": true, "npotSupport": 2, "maxTextureSize": 16384 }
+        ]
+    }
+}

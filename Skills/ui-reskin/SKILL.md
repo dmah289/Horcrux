@@ -89,8 +89,7 @@ cùng bộ màn ở nhiều độ phân giải) gom thành một script chạy m
 mình cần nhìn gì. Mọi trạng thái Editor đã đổi (cỡ Game view, scene khởi động, Play) trả lại trước khi báo xong.
 
 **Kết quả là asset đã lưu** (`editor-first` › Editor-first). Nghiệm thu bằng hình **sau khi lưu và nạp lại**: lỗi pivot, override
-mất chỉ lộ sau khi nạp. So cạnh demo ở cùng tỉ lệ (`DemoCompare.SideBySide`), đo lệch bằng số (ảnh demo: `BBox`, `Runs`,
-`TemplateMatch`; object trong game: `ScreenBox`, cùng hệ pixel gốc trên trái), rồi xem thêm một máy dài và một tablet. Hình đúng hay chưa do developer chốt (`workflow` › Nghiệm thu); agent báo số lệch còn lại.
+mất chỉ lộ sau khi nạp. So với demo ở Game view đúng cỡ demo và trên máy giả lập theo `demo-compare`. Hình đúng hay chưa do developer chốt (`workflow` › Nghiệm thu); agent báo số lệch còn lại.
 
 **Commit chọn file.** Vào Play làm đổi file không thuộc task (config Addressables, scene khởi động, xuống dòng): stage theo danh
 sách file của task, không `add` cả thư mục.
@@ -117,10 +116,7 @@ sách file của task, không `add` cả thư mục.
 | Đổi màu viền chữ phải sửa từng prefab | viền, bóng đặt thẳng trên component · kiểu chữ là `StylePreset` dùng chung gắn vào Style Presets, như material preset của TMP |
 | Gọi service trong Play làm game kẹt ở màn chờ | gọi trước khi scene chứa service nạp · `PlayProbe.WaitForSceneAsync` |
 | Ảnh chụp ngay sau đổi cỡ Game view vẫn bố cục cũ | layout và fitter cập nhật vài frame sau · chờ vài frame, hoặc chụp canvas ngoài Play |
-| Ảnh chụp khớp demo mà vào chơi khối đè HUD | chụp lúc phần tử hiện theo gameplay (tab trượt ra, badge, chữ nhiều dòng) chưa hiện, khe trông rộng nên dời quá tay · ép mọi phần tử như vậy hiện với nội dung dài nhất rồi mới đo, so |
-| Số `ScreenBox`, bounds renderer lệch pixel demo vài px dù hình đã khớp | bounds gồm viền trong suốt và bóng của art · bounds chỉ để tìm cột và vùng; số so với demo lấy bằng `DemoCompare.Runs` cùng cột trên cả hai ảnh |
 | Diff prefab sau khi lưu qua `PrefabEdit` có dòng mình không sửa | Unity ghi lại field mới có mặc định, cờ nội bộ (`m_WasSpriteAssigned`) · đọc diff trước khi commit để biết, không gỡ tay |
-| Developer đè demo mờ lên Game view thấy lệch hàng chục px, đo thật chỉ vài px | Game view khác tỉ lệ demo: khối neo theo bề rộng đứng yên, khối theo chiều cao (canvas match height, demo co theo màn) trôi · đọc cỡ Game view trước khi tin ảnh đè, so demo chỉ ở đúng cỡ demo, bằng số trên ảnh chụp |
 | Ghi giá trị vào SerializedProperty ném lỗi kiểu, hoặc lưu xong giá trị vẫn như cũ | property là Float mà ghi `intValue`; Vector2 mà ghi `vector3Value` thì bỏ qua im lặng, lần lưu prefab vẫn kéo theo nhiễu serialize · đọc `propertyType` trước, đọc lại giá trị sau khi lưu |
 | `manage_camera` không ghi ảnh ra ngoài project, ảnh xuất hiện muộn | lệnh ghi bất đồng bộ vào `Assets/` · `UICapture` ghi đường dẫn bất kỳ |
 | Eval thất bại không dữ liệu ngay sau khi vào Play | Editor đang domain reload · thử lại |

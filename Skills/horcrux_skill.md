@@ -31,6 +31,7 @@ từ gốc Horcrux: skill `Skills/`, Plan `Plans/`, tài liệu hệ `docs/Runti
 | `build-size` | build nặng vì sao, giảm, so trước–sau |
 | `compile-check` | kiểm sau mỗi task sửa code bằng một lệnh |
 | `ui-reskin` | dựng, reskin UI theo demo: tổ chức prefab, chia atlas, làm việc qua Editor tool, bẫy UGUI |
+| `demo-compare` | so màn với demo, ảnh máy thật: Game view cỡ demo và Device Simulator theo máy, đo bằng số, vùng an toàn |
 | `merge-audit` | merge nhánh Unity theo bậc khi có commit dời thư mục, kiểm trước–sau, merge người khác đẩy lên |
 
 ## Bảng chỉ dẫn
@@ -44,7 +45,8 @@ từ gốc Horcrux: skill `Skills/`, Plan `Plans/`, tài liệu hệ `docs/Runti
 | Hệ có công thức toán, vật lý | `math-physics`, `code-design` | `docs` khi phải dẫn giải |
 | Viết hoặc cập nhật tài liệu, Plan, Manual, skill | `docs` | `math-physics` khi có công thức |
 | Chỉnh feeling, đo GC và batches lúc trình diễn | `feel-tune` | `async-presentation` |
-| Dựng, reskin UI theo demo; prefab UI; thêm art UI, atlas | `ui-reskin`, `editor-first` | `code-design` khi viết script UI, `build-size` khi đo byte trên build |
+| Dựng, reskin UI theo demo; prefab UI; thêm art UI, atlas | `ui-reskin`, `editor-first` | `code-design` khi viết script UI, `build-size` khi đo byte trên build, `demo-compare` khi so với demo |
+| So màn với demo, ảnh máy thật; bố cục trên máy khác Editor; xem trên máy trước khi build | `demo-compare` | `ui-reskin` khi sửa prefab UI, `editor-first` khi chỉnh scene, prefab |
 | Build nặng, giảm size | `build-size` | |
 | Kết thúc task sửa code C#, trước khi báo xong hay commit | `compile-check` | |
 | Merge nhánh, giải conflict, soát merge commit người khác đẩy lên | `merge-audit`, `compile-check` | `editor-first` khi ghép prefab, scene |
