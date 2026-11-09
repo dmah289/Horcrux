@@ -3,8 +3,9 @@
 Ngày 2026-11-06. Nguồn: category-jam, bản tạm ở `Assets/_CategoryJam/Scripts/Utilities/` (`GameplayViewport.cs`,
 `GameplayViewport.Editor.cs`, `ViewportAnchor.cs`, `ViewportAnchor.Editor.cs`, `ViewportCover.cs`, `SafeAreaHeadroom.cs`), dựng theo
 `Assets/_CategoryJam/Scripts/Layout.md` §1–§2, gắn trong `GameplayRoot.prefab` (1 camera, 9 anchor, 1 cover), đã chơi thử ở 1080×2340,
-1080×1920, đo trên Device Simulator với máy tai thỏ. Camera ortho giữ cố định bề rộng world, vật thể world neo theo điểm trên màn (trong
-safe area mà dải trống thiết kế đã nuốt phần inset nằm gọn trong nó), sprite nền phủ kín màn; tính **một lần** ở boot.
+1080×1920, 2136×3200, đo trên Device Simulator với máy tai thỏ. Camera ortho giữ trọn khung thiết kế (bề rộng trên màn cao, chiều cao trên
+màn rộng), vật thể world neo theo mép màn (trong safe area mà dải trống thiết kế đã nuốt phần inset nằm gọn trong nó) cộng offset pixel
+thiết kế, sprite nền phủ kín màn; tính **một lần** ở boot.
 
 **Phân công:** GĐ1–3 developer gõ, agent viết test theo bảng case rồi compile · GĐ4 (hai partial `*.Editor.cs`), GĐ5 (tài liệu), GĐ6
 (dự án chuyển sang bản Horcrux, giữ GUID) agent làm. **Chạy được, thấy được** ở GĐ1–3 = compile sạch + bảng case xanh trong
@@ -31,8 +32,8 @@ dự án kèm con trỏ submodule. Không phụ thuộc Plan nào; `Horcrux_Band
   thiết kế nào chừa).
 - **Đã khảo sát:** 6 file bản tạm (lấy cả cơ chế; bỏ `Screen.width / Screen.height`, lý do ở GĐ1; hằng dải trống thành asset, lý do ở
   GĐ2) · dự án `Scripts/Hud/HeadroomSafeArea.cs` (panel HUD đọc cùng quy tắc) · `Layout.md` §1–§2 (kịch bản neo cụm
-  trên, cụm dưới; "đã sai một lần" về đổi đơn vị camera, đổi cỡ Game view lúc Play; số `10.5`, `worldOffset` là nháp, sống trong prefab) · `GameplayRoot.prefab` (camera `m_NormalizedViewPortRect` 0,0,1,1;
-  `world` scale 1; key YAML `gameplayCamera`, `anchors` (9), `covers` (1), `designWidthUnits`) · Horcrux `Runtime/Utilities/` (chưa có;
+  trên, cụm dưới; "đã sai một lần" về đổi đơn vị camera, đổi cỡ Game view lúc Play; số `10.5`, `designPixelOffset` là nháp, sống trong prefab) · `GameplayRoot.prefab` (camera `m_NormalizedViewPortRect` 0,0,1,1;
+  `world` scale 1; key YAML `gameplayCamera`, `anchors` (9), `covers` (1), `designWidthUnits`, `designResolution`) · Horcrux `Runtime/Utilities/` (chưa có;
   `Layout/` chưa tồn tại) · Horcrux `Editor/Probe` (`ScreenBox`, `playrun.sh` với `SIZES` và `DEVICES`: kiểm GĐ6) · Unity `PositionConstraint`,
   `AspectRatioFitter`, Cinemachine (không hợp: chạy mỗi frame · chỉ cho `RectTransform` · thừa cho camera đứng yên) · Canvas + `EnvelopeParent`
   cho ảnh nền (lý do bỏ ở GĐ3) · `UICoverFitter` (cùng cách nói `max(view / ảnh)`; khác: `RectTransform` theo khung đổi trong Editor).
@@ -40,7 +41,7 @@ dự án kèm con trỏ submodule. Không phụ thuộc Plan nào; `Horcrux_Band
 ## Luồng mô tả — một lần boot của màn gameplay
 
 ```
-Unity Awake trên camera ──► ViewportCamera đọc targetCamera.aspect, đặt orthographicSize theo designWidthUnits   GĐ1
+Unity Awake trên camera ──► ViewportCamera đọc targetCamera.aspect, đặt orthographicSize giữ trọn designResolution   GĐ1
                                         ▼
                      safe area một lần: SafeAreaHeadroom nuốt phần inset trên nằm gọn trong dải trống thiết kế   GĐ2
                      từng ViewportAnchor theo thứ tự mảng: điểm màn (trong safe area đó nếu bật) → world, giữ z    GĐ2
@@ -58,9 +59,9 @@ Unity Awake trên camera ──► ViewportCamera đọc targetCamera.aspect, đ
   Unity Awake ─────────────► ViewportCamera.ApplyLayout
   nút Apply Layout (camera) ─┘        │
   nút Apply Layout (anchor) ──────────┤  tìm ViewportCamera cùng root
-                                      ├─ targetCamera.orthographicSize = designWidthUnits / 2 / targetCamera.aspect
+                                      ├─ targetCamera.orthographicSize = designWidthUnits / 2 · max(1 / aspect, designH / designW)
                                       ├─ safe = safeAreaHeadroom.Absorb(Screen.safeArea) / cỡ màn   SafeAreaHeadroom (asset)
-                                      ├─ anchors[i].Apply(targetCamera, safe)  ViewportAnchor: viewportPoint (trong safe) → world + worldOffset, giữ z
+                                      ├─ anchors[i].Apply(targetCamera, safe, px→viewport)  ViewportAnchor: mép (trong safe) + designPixelOffset → world, giữ z
                                       └─ covers[i].Apply(targetCamera)   ViewportCover: target.localScale = max(viewW / spriteW, viewH / spriteH)
 
   panel safe area của HUD (dự án) ──► cùng asset SafeAreaHeadroom.Absorb ──► khung HUD dời cùng số pixel với cụm world
@@ -70,10 +71,11 @@ Unity Awake trên camera ──► ViewportCamera đọc targetCamera.aspect, đ
 
 ---
 
-## Giai đoạn 1 — Camera định bề rộng
+## Giai đoạn 1 — Camera giữ trọn thiết kế
 
-**Mục tiêu:** `ViewportCamera` trên camera ortho đặt `orthographicSize` để đúng `designWidthUnits` unit world trải hết bề rộng màn, ở
-`Awake`. Xong giai đoạn này mọi sprite world giữ đúng cỡ art ở mọi tỉ lệ màn dọc; màn cao chỉ dư phần dọc.
+**Mục tiêu:** `ViewportCamera` trên camera ortho đặt `orthographicSize` để cả khung thiết kế (`designResolution`, rộng
+`designWidthUnits` unit) lọt màn, ở `Awake`: màn cao bằng hoặc hơn thiết kế giữ bề rộng, màn rộng hơn (tablet, 16:9) giữ chiều cao.
+Xong giai đoạn này ở cỡ thiết kế sprite đúng cỡ art; màn cao chỉ dư phần dọc, màn rộng co đều cả world và dư hai bên.
 
 **Vì sao bây giờ:** bề rộng world là đại lượng mọi thứ sau neo vào; anchor và cover đều đọc camera đã đặt size.
 
@@ -85,8 +87,9 @@ using UnityEngine;
 namespace Horcrux.Runtime.Utilities.Layout
 {
     /// <summary>
-    /// Sizes an orthographic camera so <see cref="designWidthUnits"/> world units always span the screen width
-    /// (10.8 = 1080 px of art at 100 pixels per unit). Runs once at boot: the screen keeps one size for the whole session.
+    /// Sizes an orthographic camera so the design (<see cref="designResolution"/>, <see cref="designWidthUnits"/> wide; 10.8 = 1080 px
+    /// of art at 100 pixels per unit) fits the screen: width on screens as tall as the design or taller, height on wider ones, as a
+    /// canvas matching height does. Runs once at boot: the screen keeps one size for the whole session.
     /// </summary>
     public sealed partial class ViewportCamera : MonoBehaviour
     {
@@ -96,8 +99,10 @@ namespace Horcrux.Runtime.Utilities.Layout
         [SerializeField] private Camera targetCamera;
 
         [Splitter("Configs")]
-        [Tooltip("World units visible across the screen width.")]
+        [Tooltip("World units across the design width.")]
         [SerializeField, Min(0.01f)] private float designWidthUnits = 10.8f;
+        [Tooltip("Demo size in pixels. Same as the HUD CanvasScaler reference resolution; anchor offsets are in these pixels.")]
+        [SerializeField] private Vector2 designResolution = new(1080f, 2340f);
 
         #endregion
 
@@ -109,11 +114,17 @@ namespace Horcrux.Runtime.Utilities.Layout
 
         #region API
 
-        /// <summary>Half the design width divided by width/height: the camera's half height in world units.</summary>
         public void ApplyLayout()
         {
-            targetCamera.orthographicSize = designWidthUnits * 0.5f / targetCamera.aspect;
+            targetCamera.orthographicSize = OrthographicSize(designWidthUnits, designResolution, targetCamera.aspect);
         }
+
+        /// <summary>
+        /// Half view height in world units: the design width spans the screen unless the screen is wider than the design,
+        /// then the design height spans it. The larger of the two keeps the whole design visible.
+        /// </summary>
+        public static float OrthographicSize(float designWidthUnits, Vector2 designResolution, float screenAspect)
+            => designWidthUnits * 0.5f * Mathf.Max(1f / screenAspect, designResolution.y / designResolution.x);
 
         #endregion
     }
@@ -122,8 +133,11 @@ namespace Horcrux.Runtime.Utilities.Layout
 
 `partial` từ giai đoạn này: giai đoạn 4 ghép nút Inspector vào file `.Editor.cs`, không chạm dòng khai báo class.
 
-**Toán → code.** Ortho size là nửa chiều cao view (unit). Bề rộng view = `2 · size · aspect`; đặt bằng `designWidthUnits` thì
-`size = designWidthUnits / (2 · aspect)`. Mốc: `10.8` ở 1080×2340 → `11.7`; ở 1080×1920 → `9.6`.
+**Toán → code.** Ortho size là nửa chiều cao view (unit). Giữ bề rộng: bề rộng view `2 · size · aspect` bằng `designWidthUnits`, nên
+`size = designWidthUnits / (2 · aspect)`. Giữ chiều cao: chiều cao view bằng chiều cao thiết kế tính theo unit,
+`designWidthUnits · designResolution.y / designResolution.x`, nên `size = designWidthUnits / 2 · designResolution.y / designResolution.x`.
+Lấy số lớn hơn: view chứa trọn thiết kế, trục thừa chỉ dư ra. Hai số bằng nhau đúng ở aspect thiết kế, nên đổi nhánh không giật.
+Mốc với `10.8`, 1080×2340: 1080×2340 → `11.7` · 1080×2400 (cao hơn) → `12.0` · 1080×1920 và 2136×3200 (rộng hơn) → `11.7`.
 
 **Khác với bản dự án**
 
@@ -136,13 +150,18 @@ namespace Horcrux.Runtime.Utilities.Layout
 **Quyết định** — tính ở `Awake`, không `Start`: mọi thứ khác trong prefab đọc vị trí anchor sớm nhất ở `Start` hay frame tạo level; camera
 phải xong trước. Phương án bỏ: `[DefaultExecutionOrder]` — thứ tự ngầm, không thấy trong Inspector. — Tính một lần, không theo dõi
 màn đổi cỡ (xoay, chia đôi màn): game khoá dọc, màn không đổi cỡ trong phiên. Mở rộng sau: host gọi lại `ApplyLayout()` khi nhận sự
-kiện đổi cỡ, không đổi chữ ký. — Chỉ giữ cố định bề rộng: chưa có người dùng neo theo bề cao; cần thì một `enum` chọn trục trên
-`ViewportCamera`, công thức ortho đổi theo trục, `designWidthUnits` giữ nghĩa. — Không guard `targetCamera` (và `target`, `sprite` ở
+kiện đổi cỡ, không đổi chữ ký. — Lấy max hai luật, không chỉ giữ bề rộng: HUD là canvas khớp chiều cao, world chỉ giữ bề rộng thì
+trên màn rộng hơn thiết kế mỗi unit world to hơn mỗi pixel HUD theo tỉ số hai aspect (Mi Pad 8 3:2 là 1.45 lần): khe HUD–world giãn,
+dải giữa hai mép co còn nửa số unit, bàn chơi fit theo dải co về sàn. *Đã sai một lần:* chỉ giữ bề rộng, khớp demo ở 19.5:9, trên tablet
+khe đáy HUD tới hàng vật thể gấp 4 lần demo và vật trên bàn nhỏ hơn nửa vật cùng cỡ ở hàng trên. Giá: màn 16:9 cũng co đều (82 % cỡ art).
+Phương án bỏ: `enum` chọn trục — trục đúng phụ thuộc màn, không phụ thuộc dự án; ngưỡng aspect riêng — thêm một hằng, vùng giữa ngưỡng và
+aspect thiết kế vẫn lệch. — `designResolution` lặp reference resolution của `CanvasScaler`: canvas ở scene khác prefab camera, không kéo
+được; hằng của thiết kế, tooltip nói phải khớp. — Không guard `targetCamera` (và `target`, `sprite` ở
 GĐ2–3) null: thiếu là lỗi setup, lộ ở frame đầu bằng `NullReferenceException` trỏ đúng component; Editor setup ghi "thiếu thì hỏng ở đâu".
 
 | Consumes | Produces |
 |---|---|
-| `UnityEngine.Camera` (ortho, `aspect`) · `Splitter` (`Runtime/Utilities/Attribute/SplitterAttribute.cs`) | `ViewportCamera.ApplyLayout()` · field `targetCamera`, `designWidthUnits` |
+| `UnityEngine.Camera` (ortho, `aspect`) · `Splitter` (`Runtime/Utilities/Attribute/SplitterAttribute.cs`) | `ViewportCamera.ApplyLayout()` · `ViewportCamera.OrthographicSize(float, Vector2, float)` · field `targetCamera`, `designWidthUnits`, `designResolution` |
 
 **Sơ đồ tương tác sau GĐ1** (`+` là phần mới)
 
@@ -156,8 +175,9 @@ GĐ2–3) null: thiếu là lỗi setup, lộ ở frame đầu bằng `NullRefer
 |---|---|---|
 | 1 | Camera › **Projection** = `Orthographic` | công thức ghi `orthographicSize` mà camera không đọc: bề rộng không cố định |
 | 2 | Gắn `ViewportCamera` lên object của camera; ô **Target Camera** kéo chính camera đó | `NullReferenceException` ở `Awake`, trỏ `ViewportCamera` |
-| 3 | **Design Width Units**: số unit world trải hết bề rộng (mặc định `10.8` cho art 1080 px ở 100 px/unit) | dùng mặc định; art PPU khác 100 thì sprite sai cỡ, không lỗi |
-| 4 | Game view chọn cỡ **dọc** (vd 1080×2340) trước khi Play | aspect đọc một lần ở `Awake`: Game view ngang cho ortho sai, mọi thứ sai cỡ; đổi cỡ khi đang Play thì Play lại |
+| 3 | **Design Width Units**: số unit world trải hết bề rộng thiết kế (mặc định `10.8` cho art 1080 px ở 100 px/unit) | dùng mặc định; art PPU khác 100 thì sprite sai cỡ, không lỗi |
+| 4 | **Design Resolution**: cỡ demo, bằng reference resolution của `CanvasScaler` HUD | khác canvas: màn rộng hơn thiết kế đổi nhánh sai chỗ, khe HUD–world lệch theo máy |
+| 5 | Game view chọn cỡ **dọc** (vd 1080×2340) trước khi Play | aspect đọc một lần ở `Awake`: Game view ngang cho ortho sai, mọi thứ sai cỡ; đổi cỡ khi đang Play thì Play lại |
 
 **Kiểm:** compile sạch. Camera test dựng bằng `new GameObject().AddComponent<Camera>()`, `orthographic = true`, đặt `aspect` tường minh;
 field private đặt qua `SerializedObject` (`FindProperty`, `ApplyModifiedPropertiesWithoutUndo`), không mở API cho test; `Awake` không
@@ -165,12 +185,13 @@ chạy ở EditMode nên test gọi `ApplyLayout()`.
 
 | Case | Input | Kỳ vọng |
 |---|---|---|
-| 9:19.5 | `designWidthUnits 10.8`, `aspect 1080/2340` | `orthographicSize` 11.7 (±1e-4) |
-| 9:16 | `aspect 1080/1920` | 9.6 |
-| vuông | `aspect 1` | 5.4 |
+| aspect thiết kế | `designWidthUnits 10.8`, `designResolution 1080×2340`, `aspect 1080/2340` | `orthographicSize` 11.7 (±1e-4) |
+| cao hơn thiết kế | `aspect 1080/2400` | 12.0: giữ bề rộng |
+| rộng hơn: 9:16 | `aspect 1080/1920` | 11.7: giữ chiều cao |
+| rộng hơn: tablet 3:2 | `aspect 2136/3200` | 11.7 |
 | đổi bề rộng | `designWidthUnits 10.5`, `aspect 1080/2340` | 11.375 |
 | gọi lại | `ApplyLayout` hai lần cùng aspect | cùng số; không cộng dồn |
-| camera đổi aspect giữa hai lần gọi | 9:16 rồi 9:19.5 | 9.6 rồi 11.7: không cache |
+| camera đổi aspect giữa hai lần gọi | 1080/2400 rồi 1080/2340 | 12.0 rồi 11.7: không cache |
 
 **Mốc commit:** `feat(layout): ViewportCamera giữ bề rộng thiết kế`.
 
@@ -178,12 +199,13 @@ chạy ở EditMode nên test gọi `ApplyLayout()`.
 
 ## Giai đoạn 2 — Anchor bám mép màn
 
-**Mục tiêu:** `ViewportAnchor` đặt transform của nó tại một điểm màn (0–1, tuỳ chọn trong safe area) cộng `worldOffset`, giữ z;
+**Mục tiêu:** `ViewportAnchor` đặt transform của nó tại một điểm mép màn (0–1, tuỳ chọn trong safe area) cộng offset đo bằng pixel
+thiết kế, co theo chiều cao màn như canvas HUD, giữ z;
 `ViewportCamera` tính safe area **một lần** qua asset `SafeAreaHeadroom` rồi gọi từng anchor **theo thứ tự mảng** ngay sau khi đặt size.
 Xong giai đoạn này hàng box, thanh khay, mask nằm đúng mép ở mọi tỉ lệ màn, và trên máy tai thỏ cụm trên chỉ dời phần inset vượt dải
 trống thiết kế, cùng số pixel với HUD.
 
-**Vì sao bây giờ:** đặt vật thể theo mép là lý do tồn tại của bề rộng cố định; anchor cần camera đã có size nên mới đến lượt. Dải trống
+**Vì sao bây giờ:** đặt vật thể theo mép là lý do tồn tại của khung thiết kế cố định; anchor cần camera đã có size nên mới đến lượt. Dải trống
 đến cùng lúc vì `respectSafeArea` sinh ra ở đây: anchor đọc safe area thô thì máy tai thỏ đếm inset hai lần ngay từ bản đầu.
 
 ### `Runtime/Utilities/Layout/SafeAreaHeadroom.cs` — file mới
@@ -241,10 +263,10 @@ namespace Horcrux.Runtime.Utilities.Layout
         #region Properties
 
         [Splitter("Configs")]
-        [Tooltip("Screen point, (0,0) bottom-left to (1,1) top-right.")]
+        [Tooltip("Edge point the offset is measured from, (0,0) bottom-left to (1,1) top-right.")]
         [SerializeField] private Vector2 viewportPoint = new(0.5f, 0.5f);
-        [Tooltip("Added to the world position after the viewport point is resolved.")]
-        [SerializeField] private Vector2 worldOffset;
+        [Tooltip("Offset from the viewport point in pixels of the design resolution, scaled with the screen height like the HUD canvas.")]
+        [SerializeField] private Vector2 designPixelOffset;
         [Tooltip("Resolve the viewport point inside the safe area ViewportCamera passes in instead of the whole screen.")]
         [SerializeField] private bool respectSafeArea;
 
@@ -254,21 +276,20 @@ namespace Horcrux.Runtime.Utilities.Layout
 
         /// <summary>
         /// Moves this transform to the configured screen point as seen by <paramref name="camera"/>; keeps z.
-        /// <paramref name="safeViewport"/> is the safe area in viewport units (0–1), used only when the anchor respects it.
+        /// <paramref name="safeViewport"/> is the safe area in viewport units (0–1), used only when the anchor respects it;
+        /// <paramref name="designPixelToViewport"/> converts one design pixel to viewport units on each axis.
         /// </summary>
-        public void Apply(Camera camera, Rect safeViewport)
+        public void Apply(Camera camera, Rect safeViewport, Vector2 designPixelToViewport)
         {
-            var point = respectSafeArea ? ToSafeAreaViewport(viewportPoint, safeViewport) : viewportPoint;
+            var area = respectSafeArea ? safeViewport : new Rect(0f, 0f, 1f, 1f);
+            var point = ViewportPoint(area, viewportPoint, designPixelOffset, designPixelToViewport);
             var world = camera.ViewportToWorldPoint(new Vector3(point.x, point.y, 0f));
-            transform.position = new Vector3(world.x + worldOffset.x, world.y + worldOffset.y, transform.position.z);
+            transform.position = new Vector3(world.x, world.y, transform.position.z);
         }
 
-        #endregion
-
-        #region Class Methods
-
-        private static Vector2 ToSafeAreaViewport(Vector2 point, Rect safe) =>
-            new(safe.x + point.x * safe.width, safe.y + point.y * safe.height);
+        /// <summary><paramref name="point"/> inside <paramref name="area"/>, then the design-pixel offset; all in viewport units.</summary>
+        public static Vector2 ViewportPoint(Rect area, Vector2 point, Vector2 designPixelOffset, Vector2 designPixelToViewport)
+            => area.position + Vector2.Scale(area.size, point) + Vector2.Scale(designPixelOffset, designPixelToViewport);
 
         #endregion
     }
@@ -288,11 +309,12 @@ namespace Horcrux.Runtime.Utilities.Layout
 ### `ViewportCamera.cs` › `API` › `ApplyLayout` — thêm sau dòng đặt `orthographicSize`
 
 ```csharp
-            targetCamera.orthographicSize = designWidthUnits * 0.5f / targetCamera.aspect;
+            targetCamera.orthographicSize = OrthographicSize(designWidthUnits, designResolution, targetCamera.aspect);
 
             var safe = SafeViewport();
+            var designPixelToViewport = new Vector2(1f / (designResolution.y * targetCamera.aspect), 1f / designResolution.y);
             foreach (var anchor in anchors)
-                anchor.Apply(targetCamera, safe);
+                anchor.Apply(targetCamera, safe, designPixelToViewport);
 ```
 
 ### `ViewportCamera.cs` › region mới `Class Methods` sau `API`
@@ -310,12 +332,16 @@ namespace Horcrux.Runtime.Utilities.Layout
         #endregion
 ```
 
-Sửa XML doc của class: `... span the screen width (10.8 = 1080 px of art at 100 pixels per unit), then places every
-<see cref="ViewportAnchor"/> in order.`
+Sửa XML doc của class: thêm câu cuối `Then places every <see cref="ViewportAnchor"/> in order.`
 
 **Toán → code.** `ViewportToWorldPoint(x, y, 0)` với camera ortho trả điểm world trên mặt phẳng z của camera; chỉ lấy x, y, giữ z của
-transform. Mốc 9:16 với `10.8`: `(0, 0)` → `(−5.4, −9.6)`, `(1, 1)` → `(5.4, 9.6)`. Safe area ở đơn vị viewport `s`: điểm `(px, py)` trong
-nó là `(s.x + px · s.width, s.y + py · s.height)` của cả màn.
+transform. Mốc camera đặt tay ortho 9.6, aspect 9:16: `(0, 0)` → `(−5.4, −9.6)`, `(1, 1)` → `(5.4, 9.6)`. Safe area ở đơn vị viewport `s`:
+điểm `(px, py)` trong nó là `(s.x + px · s.width, s.y + py · s.height)` của cả màn.
+
+Offset: canvas HUD khớp chiều cao nên một pixel thiết kế là `H / designResolution.y` pixel màn trên **cả hai trục**. Quy ra viewport:
+trục y chia `H` còn `1 / designResolution.y`; trục x chia `W` còn `H / (designResolution.y · W) = 1 / (designResolution.y · aspect)`.
+Ở cỡ thiết kế một unit là `designResolution.y / (2 · orthographicSize)` pixel, nên offset unit cũ `u` đổi thành `u · designResolution.y /
+(2 · orthographicSize)` pixel thiết kế và vị trí giữ nguyên (dự án: 10.5 unit, 1 unit = 2340 / 22.75 ≈ 102.86 px, −4.9 unit = −504 px).
 
 Dải trống: màn cao `H` pixel, inset trên `i = H − safeArea.yMax`, dải trống thiết kế `h = top · H`. Mép trên safe area chỉ hạ
 
@@ -332,14 +358,17 @@ máy 1080×2400 inset 110 → hạ 13.3 px; máy 1170×2532 inset 141 (`h` ≈ 1
 | menu tạo asset | `CategoryJam/Safe Area Headroom` | `Horcrux/Layout/Safe Area Headroom` | nhóm theo framework |
 | XML doc `SafeAreaHeadroom` | trỏ `GameplayViewport`, dòng "Bản tạm của dự án" | trỏ `ViewportCamera`, bỏ dòng bản tạm | tên Horcrux |
 
-Bản tạm đã mang cả asset, `Apply(Camera, Rect)` và `SafeViewport()` như trên (mỗi màn một asset: Game 94.3/2340, Menu 117/2340). Còn lại chỉ
+Bản tạm đã mang cả asset, `Apply(Camera, Rect, Vector2)`, `ViewportPoint` và `SafeViewport()` như trên (bản tạm đọc aspect từ `Screen`, GĐ1) (mỗi màn một asset: Game 94.3/2340, Menu 117/2340). Còn lại chỉ
 namespace, `<see cref="ViewportCamera"/>` và bỏ dòng "Bản tạm của dự án" trong XML doc.
 
 **Quyết định** — `ViewportAnchor` không có `Awake`: thứ tự `Awake` giữa các object không định trước, anchor phải chạy **sau** khi camera
 đổi size và anchor con phải chạy sau anchor cha (`transform.position` của con tính trên cha đã dời); một chủ gọi theo mảng là thứ tự
 tường minh trong Inspector. Hệ quả: anchor trên object đang tắt vẫn được đặt. Phương án bỏ: `[DefaultExecutionOrder]` + `Awake` — không
 xếp được thứ tự giữa hai anchor. — `SafeViewport` đọc `Screen`: safe area là khái niệm của màn, không của camera; đúng khi camera phủ
-cả màn (điều kiện của GĐ1). — Giữ `z`: thứ tự vẽ 2.5D của dự án sống ở z; anchor chỉ lo x, y. — Chỉ camera ortho: `ViewportToWorldPoint`
+cả màn (điều kiện của GĐ1). — Offset bằng pixel thiết kế, không bằng unit world: vật world kề HUD giữ khe với HUD chỉ khi đo cùng đơn vị
+HUD dùng; unit world theo bề rộng trên màn cao hơn thiết kế, pixel HUD theo chiều cao, khe lệch theo máy. Số đo trên demo ghi thẳng vào ô.
+— Điểm neo ở **mép**, offset đo từ mép, không đặt cả vị trí bằng phần của safe area: safe area ngắn đi vì inset thì điểm ở `y = 0.785`
+chỉ tụt 78.5 % inset trên và còn nhích theo inset dưới, trong khi HUD trong panel safe area tụt đúng 100 % inset trên. — Giữ `z`: thứ tự vẽ 2.5D của dự án sống ở z; anchor chỉ lo x, y. — Chỉ camera ortho: `ViewportToWorldPoint`
 với z = 0 chỉ đúng cho ortho; perspective chưa có người dùng.
 
 **Quyết định** — dải trống: demo thường đã chừa dải trên cùng cho thanh trạng thái và lỗ camera; safe area thô cộng inset của máy lên trên
@@ -351,7 +380,7 @@ lệch nhau thì khe giữa chúng đổi theo máy; một asset là một ngu�
 
 | Consumes | Produces |
 |---|---|
-| GĐ1 · `Camera.ViewportToWorldPoint` · `Screen.safeArea` | `SafeAreaHeadroom.Absorb(Rect, float)` · `ViewportAnchor.Apply(Camera, Rect)` · `ViewportCamera.anchors`, `safeAreaHeadroom` |
+| GĐ1 · `Camera.ViewportToWorldPoint` · `Screen.safeArea` | `SafeAreaHeadroom.Absorb(Rect, float)` · `ViewportAnchor.Apply(Camera, Rect, Vector2)` · `ViewportAnchor.ViewportPoint(Rect, Vector2, Vector2, Vector2)` · `ViewportCamera.anchors`, `safeAreaHeadroom` |
 
 **Sơ đồ tương tác sau GĐ2**
 
@@ -359,22 +388,23 @@ lệch nhau thì khe giữa chúng đổi theo máy; một asset là một ngu�
   Unity Awake ──► ViewportCamera ──orthographicSize──► targetCamera
                         │
                         ├──SafeViewport()+ ──Absorb(Screen.safeArea)+──► SafeAreaHeadroom+ (asset)
-                        └──anchors[i].Apply(targetCamera, safe)+──► ViewportAnchor+ ──transform.position──► vật thể world
+                        └──anchors[i].Apply(targetCamera, safe, designPixelToViewport)+──► ViewportAnchor+ ──transform.position──► vật thể world
 ```
 
 **Editor setup**
 
 | # | Thao tác | Thiếu thì |
 |---|---|---|
-| 1 | Gắn `ViewportAnchor` lên object cần neo; **Viewport Point** `(0,0)` dưới trái → `(1,1)` trên phải; **World Offset** theo unit; **Respect Safe Area** bật cho cụm kề HUD trên | object đứng ở vị trí prefab, không theo màn |
+| 1 | Gắn `ViewportAnchor` lên object cần neo; **Viewport Point** là mép đo từ đó, `(0,0)` dưới trái → `(1,1)` trên phải; **Design Pixel Offset** là khoảng đo trên demo theo pixel; **Respect Safe Area** bật cho vật kề HUD ở mép đó | object đứng ở vị trí prefab, không theo màn · điểm giữa màn thay cho mép: lệch HUD trên máy có inset |
 | 2 | `ViewportCamera` › ô **Anchors**: kéo từng anchor vào, **theo thứ tự muốn đặt** — anchor con sau anchor cha | anchor không trong mảng: không ai gọi, đứng yên; con trước cha: con đặt xong bị cha kéo đi |
-| 3 | Hai vật kề nhau ở hai hệ toạ độ (world và canvas HUD) neo **cùng một mép, cùng luật co giãn** (dự án: cụm trên `y = 1` trong safe area với `worldOffset.y` âm) | ở màn thấp hai vật đè nhau |
+| 3 | Hai vật kề nhau ở hai hệ toạ độ (world và canvas HUD) neo **cùng một mép, cùng luật co giãn** (dự án: cụm trên `y = 1`, cụm dưới `y = 0`, trong safe area, offset pixel demo) | ở màn thấp hai vật đè nhau |
 | 4 | Project › **Create › Horcrux › Layout › Safe Area Headroom**, một asset cho mỗi thiết kế màn; **Top** = khoảng từ mép trên canvas tới mép trên phần tử HUD cao nhất, chia chiều cao canvas, đo ở cỡ demo | `top = 0`: máy tai thỏ dời cả cụm trên đúng bằng inset, tụt dưới dải trống demo đã chừa |
 | 5 | `ViewportCamera` › ô **Safe Area Headroom** kéo asset đó; panel safe area của HUD cùng màn đọc **cùng asset** | ô trống: `NullReferenceException` ở `Awake`, trỏ `ViewportCamera` · HUD đọc asset khác hay safe area thô: khe HUD–world đổi theo máy |
 | 6 | Đổi vị trí phần tử HUD cao nhất thì đo lại **Top** | dải trống lệch thiết kế: máy tai thỏ dời thiếu hay thừa |
 
-**Kiểm:** compile sạch; camera test đặt ở `(0, 0, −10)`, aspect 9:16, `designWidthUnits 10.8`, asset `SafeAreaHeadroom` từ
-`ScriptableObject.CreateInstance` gán vào `safeAreaHeadroom`, rồi `ApplyLayout`. Ca safe area lệch gọi thẳng `Apply(camera, rect)`.
+**Kiểm:** compile sạch; camera test đặt ở `(0, 0, −10)`, aspect 9:16, `designWidthUnits 10.8`, `designResolution 1080×1920` (ortho
+9.6), asset `SafeAreaHeadroom` từ `ScriptableObject.CreateInstance` gán vào `safeAreaHeadroom`, rồi `ApplyLayout`. Ca safe area lệch gọi
+thẳng `Apply(camera, rect, Vector2.zero)`; ca offset gọi `ViewportPoint`.
 
 | Case | Input | Kỳ vọng |
 |---|---|---|
@@ -382,7 +412,9 @@ lệch nhau thì khe giữa chúng đổi theo máy; một asset là một ngu�
 | góc dưới trái | `(0, 0)` | `(−5.4, −9.6)` |
 | góc trên phải | `(1, 1)` | `(5.4, 9.6)` |
 | ngoài dải | `(1.5, −0.5)` | `(10.8, −19.2)`: không kẹp, điểm ngoài màn hợp lệ |
-| offset | `(0.5, 0.5)`, `worldOffset (1, −2)` | `(1, −2)` |
+| offset | `(0.5, 0.5)`, `designPixelOffset (100, −200)` | `(1, −2)`: 1 unit = 100 px thiết kế |
+| offset đo từ mép safe | `ViewportPoint((0, 0.1, 1, 0.85), (0, 1), (100, −100), (0.002, 1/2000))` | `(0.2, 0.9)` |
+| offset trùng unit cũ ở cỡ thiết kế | 10.5 unit, 1080×2340, `(0.5, 1)`, `designPixelOffset (0, −504)` | dưới mép trên 4.9 unit |
 | giữ z | transform z = 7 trước `Apply` | z vẫn 7 |
 | camera không ở gốc | camera `(3, 1, −10)`, anchor `(0.5, 0.5)` | `(3, 1)` |
 | thứ tự mảng | anchor B là con của anchor A, mảng `[A, B]`, A `(0, 1)`, B `(1, 0)` | B ở `(5.4, −9.6)` thế giới sau khi A đã dời |
@@ -390,9 +422,9 @@ lệch nhau thì khe giữa chúng đổi theo máy; một asset là một ngu�
 | object tắt | anchor trên object `SetActive(false)` | vẫn được đặt |
 | mảng rỗng | `anchors` rỗng | `ApplyLayout` không ném |
 | safe area cả màn | `respectSafeArea true`, Editor có safe area = cả màn | bằng ca `false` |
-| safe area hạ mép trên | `Apply(camera, (0, 0, 1, 0.95))`, `respectSafeArea true`, anchor `(0.5, 1)` | `(0, 8.64)` |
-| safe area lệch trái | `Apply(camera, (0.1, 0, 0.8, 1))`, `respectSafeArea true`, anchor `(0, 0.5)` | `(−4.32, 0)` |
-| không bật safe area | `Apply(camera, (0, 0.05, 1, 0.9))`, `respectSafeArea false`, anchor `(0.5, 1)` | `(0, 9.6)`: rect bị bỏ qua |
+| safe area hạ mép trên | `Apply(camera, (0, 0, 1, 0.95), Vector2.zero)`, `respectSafeArea true`, anchor `(0.5, 1)` | `(0, 8.64)` |
+| safe area lệch trái | `Apply(camera, (0.1, 0, 0.8, 1), Vector2.zero)`, `respectSafeArea true`, anchor `(0, 0.5)` | `(−4.32, 0)` |
+| không bật safe area | `Apply(camera, (0, 0.05, 1, 0.9), Vector2.zero)`, `respectSafeArea false`, anchor `(0.5, 1)` | `(0, 9.6)`: rect bị bỏ qua |
 | không inset | `Absorb((0, 0, 1080, 2400), 2400)`, `top 94.3/2340` | `yMax` 2400 |
 | inset trong dải | inset 86.7 (dải ≈ 96.7) | `yMax` 2400: không dời |
 | inset vượt dải | inset 110 | `2400 − yMax` = 110 − 96.7 ≈ 13.3 (±1e-3) |
@@ -463,7 +495,7 @@ namespace Horcrux.Runtime.Utilities.Layout
 
 ```csharp
             foreach (var anchor in anchors)
-                anchor.Apply(targetCamera, safe);
+                anchor.Apply(targetCamera, safe, designPixelToViewport);
 
             foreach (var cover in covers)
                 cover.Apply(targetCamera);
@@ -509,7 +541,7 @@ không đổi chữ ký.
 | 3 | Ảnh nền import **Sprite (2D and UI)**, Sprite Mode `Single`, Mesh Type `Full Rect`, PPU bằng art; đặt ngoài thư mục atlas world | vào atlas: một ảnh cỡ cả màn làm phình atlas · Mesh Type `Tight`: `bounds` vẫn là rect, không ảnh hưởng, nhưng tốn vertex vô ích |
 
 **Kiểm:** compile sạch; sprite dựng bằng `Sprite.Create` từ `Texture2D` (108×234 px, 10 PPU → 10.8×23.4 unit); camera 9:21, 9:16 với
-`designWidthUnits 10.8`.
+`designWidthUnits 10.8`, `designResolution 1080×1920` (9:16 là thiết kế, view 10.8×19.2).
 
 | Case | Input | Kỳ vọng |
 |---|---|---|
@@ -617,14 +649,15 @@ lại: cụm trên hạ xuống theo mép. Dấu hiệu hỏng: bấm nhiều l�
 Một tài liệu cho ba component và asset, mở đầu `Code: Runtime/Utilities/Layout/`, viết sau khi đọc code developer đã gõ. Mục:
 
 - **Trước khi chạy:** bốn bảng Editor setup của GĐ1–4 gộp một bảng, nhãn thật trên Inspector, mỗi dòng "thiếu thì hỏng ở đâu".
-- **Luồng:** luồng mô tả ở trên; bảng API (`ApplyLayout()`, `ViewportAnchor.Apply(Camera, Rect)`, `ViewportCover.Apply(Camera)`,
+- **Luồng:** luồng mô tả ở trên; bảng API (`ApplyLayout()`, `ViewportCamera.OrthographicSize`, `ViewportAnchor.Apply(Camera, Rect, Vector2)`, `ViewportAnchor.ViewportPoint`, `ViewportCover.Apply(Camera)`,
   `SafeAreaHeadroom.Absorb(Rect, float)`, field serialize).
-- **Core algorithm:** công thức `shift = max(0, i − h)` của GĐ2 kèm hai mốc máy.
+- **Core algorithm:** ortho lấy max hai luật của GĐ1 kèm bốn mốc màn; offset pixel thiết kế quy ra viewport của GĐ2; công thức
+  `shift = max(0, i − h)` của GĐ2 kèm hai mốc máy.
 - **Design decisions:** các **Quyết định** của GĐ1–4 kèm ba bẫy *đã sai một lần*: `Screen` ở `Awake` khi Editor không focus; đổi
   đơn vị camera thì grep mọi hằng khoảng cách trong code (kể cả hằng scale) trước lần Play đầu; safe area thô đếm inset hai lần trên dải
-  trống demo đã chừa, Game view không bao giờ lộ.
-- **Kịch bản dùng** (tên trung tính): cụm kề HUD trên neo `y = 1` trong safe area với offset âm, panel HUD và camera kéo cùng một asset
-  `SafeAreaHeadroom`; đo **Top** ở cỡ demo; cụm kề thanh dưới co theo chiều cao neo theo tỉ lệ `y`; ảnh nền = anchor tâm + cover, import
+  trống demo đã chừa, Game view không bao giờ lộ; camera chỉ giữ bề rộng làm tablet giãn khe HUD–world và co bàn chơi về sàn.
+- **Kịch bản dùng** (tên trung tính): cụm kề HUD trên neo `y = 1` trong safe area với offset pixel demo âm, panel HUD và camera kéo cùng một asset
+  `SafeAreaHeadroom`; đo **Top** ở cỡ demo; cụm kề thanh dưới neo `y = 0` trong safe area với offset pixel demo dương; ảnh nền = anchor tâm + cover, import
   Single, Full Rect, ngoài atlas.
 - **Testing:** kiểm trên máy tai thỏ bằng Device Simulator (`docs/Editor/Probe.md`, `DEVICES`) trước khi build.
 
@@ -642,7 +675,7 @@ khi Play).
 tạm, test bản tạm và `.meta` xoá; tài liệu dự án đổi tên theo.
 
 **Dự án đã đi trước một phần (2026-11-09):** bản tạm `SafeAreaHeadroom` đã là ScriptableObject cùng chữ ký `Absorb(Rect, float)`, bản
-tạm `ViewportAnchor.Apply(Camera, Rect)` và `GameplayViewport.SafeViewport()` đã như GĐ2; `HeadroomSafeArea` có ô `headroom`; hai asset
+tạm `ViewportAnchor.Apply(Camera, Rect, Vector2)`, `ViewportPoint`, `GameplayViewport.OrthographicSize` và `SafeViewport()` đã như GĐ1–2; `HeadroomSafeArea` có ô `headroom`; hai asset
 đã tạo và kéo vào `camera_main`, `Game.unity` › `ViewInGame/*SafeArea*`, `Menu.unity` › `Home/*SafeArea*` và `CanvasMenu/*SafeArea*`.
 GĐ6 vì thế chỉ đổi type dưới asset (giữ GUID), không tạo, không kéo lại.
 
@@ -650,7 +683,7 @@ GĐ6 vì thế chỉ đổi type dưới asset (giữ GUID), không tạo, khôn
 
 | # | Việc | Thiếu thì |
 |---|---|---|
-| 1 | Xoá 6 file ở `Assets/_CategoryJam/Scripts/Utilities/` (`GameplayViewport.cs`, `GameplayViewport.Editor.cs`, `ViewportAnchor.cs`, `ViewportAnchor.Editor.cs`, `ViewportCover.cs`, `SafeAreaHeadroom.cs`), `Tests/EditMode/SafeAreaHeadroomTests.cs` (case đã sang `ViewportLayoutTests` ở GĐ2) và các `.meta` | hai asset cùng GUID sau bước 2: Unity cấp GUID mới cho một bản, prefab báo 11 script missing |
+| 1 | Xoá 6 file ở `Assets/_CategoryJam/Scripts/Utilities/` (`GameplayViewport.cs`, `GameplayViewport.Editor.cs`, `ViewportAnchor.cs`, `ViewportAnchor.Editor.cs`, `ViewportCover.cs`, `SafeAreaHeadroom.cs`), `Tests/EditMode/SafeAreaHeadroomTests.cs`, `Tests/EditMode/GameplayViewportTests.cs` (case đã sang `ViewportLayoutTests` ở GĐ1–2) và các `.meta` | hai asset cùng GUID sau bước 2: Unity cấp GUID mới cho một bản, prefab báo 11 script missing |
 | 2 | Ghi GUID bản tạm vào `.meta` Horcrux: `ViewportCamera.cs.meta` ← `3fc862fca3d20714aa53ea069560ef9f` · `ViewportAnchor.cs.meta` ← `c29c8c47f2b864541b173c28f727e131` · `ViewportCover.cs.meta` ← `233404ff652a67d4ca28f25e2e133308` · `SafeAreaHeadroom.cs.meta` ← `fb1d5289493ff0b48971e95027977c88` | prefab trỏ GUID không còn: 11 script missing · hai asset dải trống mất script: ô `headroom`, `safeAreaHeadroom` thành null, `NullReferenceException` ở `Awake`/`Start` |
 | 3 | `GameplayRoot.prefab`: key `gameplayCamera: {fileID: 5567243261129153408}` → `targetCamera: {fileID: 5567243261129153408}` | key cũ bị bỏ khi deserialize, `targetCamera` null: `NullReferenceException` ở `Awake` |
 | 4 | `Scripts/Hud/HeadroomSafeArea.cs`: `using CategoryJam.Gameplay.Utilities;` → `using Horcrux.Runtime.Utilities.Layout;` | type bản tạm đã xoá ở bước 1: lỗi compile |
