@@ -52,6 +52,17 @@ namespace Horcrux.Editor.Probe
             if (!found)
                 throw new InvalidOperationException("ScreenBox: " + target.name + " has no RectTransform and no enabled Renderer");
 
+            return FromBounds(bounds, corners);
+        }
+
+        /// <summary>
+        /// Khung của riêng một Renderer, không gộp con: sprite nền có con nhô ra ngoài (ô trong khay) thì bản gộp cây đo sai.
+        /// Bounds của sprite gồm cả viền trong suốt; so với pixel demo thì lấy cột từ đây rồi đo màu bằng DemoCompare.Runs.
+        /// </summary>
+        public static ScreenBox Of(Renderer renderer) => FromBounds(renderer.bounds, new Vector3[8]);
+
+        private static ScreenBox FromBounds(Bounds bounds, Vector3[] corners)
+        {
             // tám góc thay vì min-max: camera phối cảnh làm góc gần, góc xa rơi khác chỗ trên màn
             var min = bounds.min;
             var max = bounds.max;

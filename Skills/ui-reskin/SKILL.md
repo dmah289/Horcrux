@@ -76,7 +76,8 @@ sai khác ~0.
 **Gọi hàm Horcrux, không chép khung vào eval.** Mở, sửa, lưu, dỡ prefab, dựng node, chụp, đo đã có sẵn và đã compile thật: eval
 chỉ còn phần riêng của bài, ít chỗ cho lỗi biên dịch C# 6 và API đoán tên. Khung nào eval tới lần thứ hai mà Horcrux chưa có
 thì đề xuất công cụ theo `workflow` (đầu skill đó). *Đã sai một lần:* hàng trăm eval chép cùng khung dump, sửa, chụp, so; đoạn
-code phải đào lại từ lịch sử chat nhiều lần.
+code phải đào lại từ lịch sử chat nhiều lần · viết lại bộ đọc PNG và dò dải màu bằng Python ngoài Editor trong khi
+`DemoCompare.Runs` đã có — demo và ảnh chụp đo bằng cùng một hàm, cùng cột, cùng tolerance mới so được.
 
 **Nhìn trước khi sửa.** Dump cây và field serialize (`PrefabDump`, `PrefabAudit.ListOverrides`), contact sheet art
 (`DemoCompare.ContactSheet`), báo cáo sprite (`SpriteSlicing.Report`) trước khi chạm: tên file art và số trong YAML có thể đánh
@@ -117,6 +118,8 @@ sách file của task, không `add` cả thư mục.
 | Gọi service trong Play làm game kẹt ở màn chờ | gọi trước khi scene chứa service nạp · `PlayProbe.WaitForSceneAsync` |
 | Ảnh chụp ngay sau đổi cỡ Game view vẫn bố cục cũ | layout và fitter cập nhật vài frame sau · chờ vài frame, hoặc chụp canvas ngoài Play |
 | Ảnh chụp khớp demo mà vào chơi khối đè HUD | chụp lúc phần tử hiện theo gameplay (tab trượt ra, badge, chữ nhiều dòng) chưa hiện, khe trông rộng nên dời quá tay · ép mọi phần tử như vậy hiện với nội dung dài nhất rồi mới đo, so |
+| Số `ScreenBox`, bounds renderer lệch pixel demo vài px dù hình đã khớp | bounds gồm viền trong suốt và bóng của art · bounds chỉ để tìm cột và vùng; số so với demo lấy bằng `DemoCompare.Runs` cùng cột trên cả hai ảnh |
+| Diff prefab sau khi lưu qua `PrefabEdit` có dòng mình không sửa | Unity ghi lại field mới có mặc định, cờ nội bộ (`m_WasSpriteAssigned`) · đọc diff trước khi commit để biết, không gỡ tay |
 | Developer đè demo mờ lên Game view thấy lệch hàng chục px, đo thật chỉ vài px | Game view khác tỉ lệ demo: khối neo theo bề rộng đứng yên, khối theo chiều cao (canvas match height, demo co theo màn) trôi · đọc cỡ Game view trước khi tin ảnh đè, so demo chỉ ở đúng cỡ demo, bằng số trên ảnh chụp |
 | Ghi giá trị vào SerializedProperty ném lỗi kiểu, hoặc lưu xong giá trị vẫn như cũ | property là Float mà ghi `intValue`; Vector2 mà ghi `vector3Value` thì bỏ qua im lặng, lần lưu prefab vẫn kéo theo nhiễu serialize · đọc `propertyType` trước, đọc lại giá trị sau khi lưu |
 | `manage_camera` không ghi ảnh ra ngoài project, ảnh xuất hiện muộn | lệnh ghi bất đồng bộ vào `Assets/` · `UICapture` ghi đường dẫn bất kỳ |
