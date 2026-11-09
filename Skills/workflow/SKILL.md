@@ -110,7 +110,8 @@ bản buộc khớp; trước–sau refactor phải trùng). Không dấu hiệu
 **Cheat — mở đường tới kịch bản, không mở nắp kỹ thuật.** Chính đáng khi kịch bản **không tới được bằng đường người chơi
 trong thời gian hợp lý**: thời gian (hết tuần) · khối lượng (đủ điểm mốc cuối) · trạng thái đầu (save mới). Mỗi nút là một
 dòng phải giữ đúng mãi. Hàng đọc chỉ cho thứ màn hình không hiện, qua API sẵn có, không bọc thứ đã public; lệnh riêng chỉ khi
-phải chạm `private`, gọi đúng lệnh thật của hệ. Panel có trong **build chính thức, không `#if`** — QA kiểm bản người chơi cầm.
+phải chạm `private`, gọi đúng lệnh thật của hệ. Lệnh rời trạng thái giữa chừng đi đường người chơi rời nó; popup còn mở
+lúc chuyển màn bị đóng theo nhánh huỷ của chính nó — đếm hệ quả nhánh đó tự làm trước khi gọi thêm. Panel có trong **build chính thức, không `#if`** — QA kiểm bản người chơi cầm.
 Lệnh, cửa đọc `private` và suy luận thuộc **hệ**, không phụ thuộc công cụ debug — hệ framework mang được sang dự án dùng
 panel khác; lớp nối với panel thuộc dự án. **Đưa về trạng thái đầu** đi qua chủ giữ state: thay bản trong RAM lẫn bản lưu,
 flush, rồi **thoát app** — xoá kho lưu giữa phiên bị flush lúc pause/quit ghi đè, việc chỉ chạy lúc boot (grant, cache dẫn
