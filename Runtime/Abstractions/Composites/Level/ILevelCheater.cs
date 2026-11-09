@@ -5,5 +5,7 @@ namespace Horcrux.Runtime.Abstractions.Composites
         public void NextLevel();
         public void PreviousLevel();
         public void JumpToLevel(int levelIndex);
+        /// <summary>Chơi lại level đang lưu.</summary>
+        public void ReplayLevel();
     }
 }
