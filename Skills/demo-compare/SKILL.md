@@ -67,4 +67,5 @@ lần demo, dải bàn chơi còn nửa và scale fit kẹt sàn; developer nghi
 | Đúng ở Editor, lệch trên máy; lệch đều mọi khối cùng một mép | inset của máy, Game view không có · tái hiện trên Simulator với file máy đó |
 | Kết quả Simulator mang tên máy mới mà số là của máy cũ | chọn máy hỏng (tên sai) mà vẫn chạy · runner dừng khi chọn máy hỏng; đọc dòng chọn máy trong kết quả |
 | Simulator cùng cỡ mà không giống máy | máy mẫu của Unity là máy chung chung, inset và cutout khác máy thật · thêm file máy thật, kiểm bằng ảnh chụp máy |
+| Gradient shader dựng theo demo đúng màu tâm và mép mà sai nhịp tắt | hệ số đo ở sRGB của ảnh, shader nội suy ở Linear · fit hệ số trong không gian màu shader nội suy, render mô phỏng so pixel với demo trước khi giao |
 | Đổi cỡ Game view thì bật thêm một cửa sổ Game nổi | Simulator đang chiếm chỗ view Play · công cụ đổi cỡ tự đưa Game view về; swap tay thì trả lại |
