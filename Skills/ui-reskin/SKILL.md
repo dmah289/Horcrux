@@ -51,7 +51,8 @@ mỗi khi thêm art UI, dựng bằng `SpriteAtlasBuilder`.
 **Chia atlas theo thứ hiện cùng lúc, không theo tên thư mục art.** Mỗi lần đổi texture giữa hai Graphic kề nhau là một batch, mỗi
 atlas nạp là cả trang vào bộ nhớ: một màn vẽ từ ít atlas nhất, và không nạp trang mà phần lớn nó không dùng. Art của một màn vào
 atlas của màn; art nhiều màn cùng dùng vào atlas chung hoặc atlas của bên luôn có mặt (khung popup mở trên mọi màn). Thư mục art là
-packable của atlas để art mới thả vào tự vào atlas; thứ không nên pack thì dời sang thư mục khác (GUID giữ, reference không vỡ).
+packable của atlas để art mới thả vào tự vào atlas; thứ không nên pack thì dời sang thư mục khác (GUID giữ, reference không vỡ; đường dẫn viết bằng chữ trong code, bảng layout thì
+vỡ — grep đường dẫn cũ sau mỗi lần dời).
 
 **Thứ không nên pack: to hơn trang, hoặc chỉ một trong vài bản hiện.** Nền toàn màn vượt trang thì để lẻ; nền theo loại máy
 (mobile, tablet) chỉ một bản hiện, pack chung là nạp cả hai. Sprite to nhưng vừa trang (`BIG`) thì so hai phương án bằng số — trang
@@ -60,6 +61,10 @@ nhỏ hơn cộng texture lẻ, với trang lớn chứa nó: texture lẻ cỡ 
 **Atlas mà nhiều bundle cùng dùng là entry Addressables tường minh**, không thì mỗi bundle chép một bản (`DUP`). Group theo vòng
 đời: thứ mọi màn dùng nạp lúc boot, thứ của một màn đi với màn. Khai ở bảng layout của dự án (`AddressablesLayout`), không thêm tay.
 Cài đặt importer theo spec atlas sẵn có của dự án, không đặt mới cho từng atlas.
+
+**Reference serialize là dependency dù không dùng.** Ô của chế độ đang tắt (mesh trên renderer hạt vẽ Billboard, material của
+lớp tắt) vẫn kéo asset và mọi thứ asset đó trỏ vào bundle; thêm VFX hay prefab của bên thứ ba thì đọc `GetDependencies` của
+prefab nhận, gỡ ô thừa.
 
 **Object tắt vẫn nạp art của nó.** Skin cũ tắt để giữ cây (mục trên) mà còn giữ sprite thì kéo theo cả trang atlas cũ — `Usage`
 báo `off`. Reskin đổi style nên art cũ không dùng lại: gỡ reference art trên cây skin cũ, giữ object (`HiddenArt`,
@@ -86,7 +91,9 @@ lừa, giá trị đọc qua engine thì không.
 **Edit mode cho dựng và soát; Play cho thứ cần dữ liệu thật.** Bố cục của khối xem được bằng chụp canvas ngoài Play
 (`UICapture.Canvas`). Màn cần service (chữ do script đặt, popup mở qua navigator) thì vào Play. Chuỗi Play lặp lại nhiều lần (chụp
 cùng bộ màn ở nhiều độ phân giải) gom thành một script chạy một lần (`playrun.sh`, nhiều cỡ qua `SIZES`); đi từng bước qua MCP chỉ khi còn đang dò
-mình cần nhìn gì. Mọi trạng thái Editor đã đổi (cỡ Game view, scene khởi động, Play) trả lại trước khi báo xong.
+mình cần nhìn gì. Hình đúng ở Prefab Mode mà sai ở Play: liệt kê điều kiện vẽ khác nhau giữa hai nơi (chế độ render canvas,
+camera, mask, quality), lật từng cái trên bản chạy, không lưu, tới khi gọi tên được nguyên nhân rồi mới sửa asset.
+Mọi trạng thái Editor đã đổi (cỡ Game view, scene khởi động, Play) trả lại trước khi báo xong.
 
 **Kết quả là asset đã lưu** (`editor-first` › Editor-first). Nghiệm thu bằng hình **sau khi lưu và nạp lại**: lỗi pivot, override
 mất chỉ lộ sau khi nạp. So với demo ở Game view đúng cỡ demo và trên máy giả lập theo `demo-compare`. Hình đúng hay chưa do developer chốt (`workflow` › Nghiệm thu); agent báo số lệch còn lại.
@@ -109,7 +116,9 @@ sách file của task, không `add` cả thư mục.
 | Border đặt xong vẫn như cũ | sprite Multiple bỏ qua `spriteBorder` của importer · `SpriteSlicing.SetBorder` (đi qua sprite data provider) |
 | Đường dẫn của sprite đã pack là file `.spriteatlasv2` | `sprite.texture` trả trang atlas · lấy nguồn bằng `AssetDatabase.GetAssetPath(sprite)` |
 | Art đã vào atlas mà bundle vẫn chứa texture nguồn | RawImage, material, sprite asset TMP giữ thẳng texture, không qua atlas · chấp nhận khi nhỏ, hoặc tách art đó ra |
-| Sprite lấy ra là mảnh vụn | `LoadAssetAtPath<Sprite>` trả mảnh đầu · `SpriteSlicing.LargestSlice` |
+| Sprite lấy ra là mảnh vụn | `LoadAssetAtPath<Sprite>` trả mảnh đầu · `SpriteSlicing.LargestSlice`; art một mảnh mà importer Multiple tự cắt thì đổi Single |
+| Hạt trên canvas vẽ thành khối màu đặc ở Play, Prefab Mode và ảnh chụp canvas vẫn đúng | material hạt dùng shader không dành cho UI, cần dữ liệu camera mà canvas Overlay không có · hạt bake vào canvas (UIParticle) dùng shader UI, kiểm trong Play ở đúng chế độ render của game |
+| Glow màu trên nền màu đậm ra trắng, hồng | blend cộng cộng cả màu nền · glow cần giữ màu dùng alpha blend; cộng chỉ cho ánh sáng trên nền tối |
 | Số đo pixel lệch đều một tỉ lệ | texture nguồn vượt Max Size nên bị thu lúc import · `SpriteSlicing.Report` báo `SHRUNK`, nâng Max Size |
 | Chữ TMP có `<sprite=0>` không hiện gì, không lỗi | sprite asset có face info bằng 0 · `TmpSpriteAssetBuilder.Create` |
 | Không chữ UniText nào được vẽ, ảnh chụp có số batches thấp bất thường | plugin GPU của UniText tách khi package cập nhật lúc Editor chạy · khởi động lại Editor trước mọi phép chụp, đo |

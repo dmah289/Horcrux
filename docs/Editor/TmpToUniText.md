@@ -29,7 +29,7 @@ các bẫy đã trả giá.
 | Chỗ | Vì |
 |---|---|
 | Underlay không lệch (offset 0) thành `StrokeModifier`, không phải `ShadowModifier` | TMP hay giả viền bằng underlay dilate; vẽ như stroke ngoài mới cùng dạng |
-| `Width` = 2 × bề dày cần ra ngoài mép | `StrokeModifier` lấy `width × 0.5` làm nửa dải: align +1 chỉ vẽ ra ngoài nửa `Width`. Đo pixel trước–sau khớp |
+| `Width` em = 2 × bề dày cần ra ngoài mép | `StrokeModifier` lấy `width × 0.5` làm nửa dải: align +1 chỉ vẽ ra ngoài nửa `Width` em. Đơn vị px đổi qua hệ số khác: `Width` px = đúng bề dày ra ngoài. Đo pixel: 0.1 em ở cỡ 200 ra 10 px, 20 px ra 20 px |
 | Đơn vị em | TMP đo lớp sơn theo khoảng SDF, tỉ lệ với cỡ chữ: một preset dùng được mọi cỡ, như material |
 | `CreatePresets` dựng lại preset đã có | giữ GUID, chữ đã gán vẫn trỏ đúng; chỉnh công thức rồi chạy lại là đủ |
 | Đường dẫn bản ghi là `tên#thứ tự anh em` từ root | tên trùng trong cùng cha là chuyện thường ở prefab UI; GameObject không đổi khi tool thay component |
@@ -93,6 +93,8 @@ Apply(json, folder) ── gán preset vào ô Style Presets của UniText cùng
 | Autosize co chữ thay vì ngắt giữa từ | autosize UniText co cả theo bề ngang (TMP chỉ co theo chiều cao) · kiểm cỡ tối thiểu thay vì kiểm ngắt từ |
 | `SetText("{0}", n)` không còn | UniText không có overload format · `SetNumber(int)` (`UniTextExtensionMethods`) |
 | Atlas glyph 8 MB | mặc định page 2048², 16 bit · font Latin một bộ: 1024², 8 bit (1 MB), so pixel trước–sau |
+| Bóng, viền đè lên ruột chữ dù là lớp "vẽ sau fill" | lớp vẽ theo thứ tự danh sách Styles của Look, lớp sau đè lớp trước; cờ vẽ sau fill không đảo thứ tự · xếp bóng → viền → fill → bóng trong |
+| Chữ art cong vòm, chữ UniText thẳng | uốn là lớp Layout, không phải lớp sơn · `ArcModifier`, góc dương cong lên, Origin `Alignment` uốn từ giữa chữ căn giữa; chọn góc bằng độ võng giữa–mép đo trên art, chụp so |
 | Skin cũ đã tắt vẫn kéo texture sprite TMP vào bundle | catalog `UniTextSprites` tool sinh trỏ texture TMP · gỡ style sprite trên cây tắt |
 
 ## Kiểm thử

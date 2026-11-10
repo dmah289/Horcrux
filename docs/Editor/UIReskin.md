@@ -115,7 +115,7 @@ theo tay. Prefab gốc của variant còn giữ art; build nướng variant thà
 |---|---|
 | `GameAsync(string pngPath, CancellationToken ct = default)` | Play: chờ cuối frame, ghi PNG đúng cỡ Game view, gồm canvas Overlay |
 | `Game(string pngPath)` | như trên, không chờ: file có sau một frame (eval tiếp theo đọc được) |
-| `Canvas(Canvas canvas, int width, int height, string pngPath)` | ngoài Play: canvas tạm sang Screen Space–Camera với camera tạm vẽ vào RenderTexture width×height, CanvasScaler tính theo cỡ đó; trả canvas như cũ ở mọi đường ra |
+| `Canvas(Canvas canvas, int width, int height, string pngPath)` | ngoài Play: canvas tạm sang Screen Space–Camera với camera tạm vẽ vào RenderTexture width×height, CanvasScaler tính theo cỡ đó; trả canvas như cũ ở mọi đường ra. Vì vẽ ở chế độ Camera, lỗi chỉ có ở Overlay (material hạt không dùng shader UI) không lộ: kiểm bằng `Game` trong Play. `UIParticle` ngoài Play chỉ bake một lần mỗi frame: dựng object và chụp ở hai eval |
 
 ### `DemoCompare` — toạ độ gốc trên trái, `RectInt(x, y, width, height)` theo hệ đó
 

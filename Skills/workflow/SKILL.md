@@ -101,6 +101,11 @@ Neo khi phân vân: **công sức đắt nhất là của developer.**
 ở phần tĩnh (code, YAML, eval không vào Play), chỉ ra nguyên nhân, sửa, giao kịch bản. Play qua công cụ chỉ cho thứ
 developer **không cảm được**: trace chứng minh refactor giữ chuyển động, số đo, trạng thái nội bộ (`feel-tune`).
 
+**Hướng dẫn developer tự làm là output phải nghiệm thu:** mỗi giá trị, thứ tự, tên ô đã dựng thử trên engine, ở đúng điều kiện
+nơi dùng thật (chế độ render, đơn vị, quality). Số trong tài liệu mang theo đơn vị và điều kiện nó được đo. Công cụ kiểm đổi điều
+kiện (chụp ở chế độ render khác) thì không chứng minh gì cho điều kiện kia. *Đã sai một lần:* chép bề dày viền từ tài liệu đo ở
+đơn vị khác; kiểm hiệu ứng hạt bằng ảnh chụp chế độ Camera, game chạy Overlay thì ra khối màu đặc.
+
 **Vét cạn khi có đáp án xác định được và ít nhất một dấu hiệu** — agent làm kể cả chưa được yêu cầu, vì đây là bằng chứng:
 *sức* (không gian đầu vào lớn, lặp nhiều) · *thiên kiến* (ca biên khó nghĩ hết — **liệt kê biên trước khi chạy**: rỗng,
 một phần tử, chạm giới hạn, trùng, ngoài dải, thứ tự đảo, hai sự kiện cùng lúc, frame đầu, object huỷ giữa chừng) · *tầm
