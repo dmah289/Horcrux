@@ -24,9 +24,13 @@ dự án kèm con trỏ submodule. Không phụ thuộc Plan nào; `Horcrux_Band
   `ViewportCamera` (cho anchor bật safe area). Hai bên phải dời cùng số pixel, nếu không khe HUD–world đổi theo máy. Phương án bỏ: field số
   trên mỗi consumer (hai bản buộc khớp mà không gì canh) · hằng static dự án đặt lúc boot (bước setup ẩn, quên thì im lặng về cách cũ).
   Lý do và công thức ở GĐ2.
+- **World và HUD cùng một luật co giãn:** canvas HUD khớp chiều cao, nên camera giữ trọn khung thiết kế (bề rộng trên màn cao hơn
+  thiết kế, chiều cao trên màn rộng hơn) và offset anchor đo bằng pixel thiết kế nhân theo chiều cao màn. Hai thứ này là một quyết định:
+  thiếu vế nào thì khe HUD–world đổi theo tỉ lệ màn. Lý do ở GĐ1, GĐ2.
 - **Bất biến:** tính một lần ở boot, không `Update`, không constraint. Ba file `.meta` Horcrux nhận lại GUID bản tạm ở GĐ6; hai
   `*.Editor.cs` GUID tuỳ ý.
-- **Không làm:** tính lại khi màn đổi cỡ, neo theo bề cao, guard null (lý do ở GĐ1) · camera perspective (GĐ2) · cover co giãn không đều,
+- **Không làm:** tính lại khi màn đổi cỡ, `enum` chọn trục camera, guard null (lý do ở GĐ1) · bàn chơi theo inset banner (anchor tính một
+  lần lúc boot, banner hiện sau; cần thì host gọi lại `ApplyLayout()` khi banner đổi) · camera perspective (GĐ2) · cover co giãn không đều,
   bù scale của cha (GĐ3) · cover cho `Image` UI (đã có `UICoverFitter`, `Horcrux_UIFitters_Plan.md`) · nút `Apply Layout` trên cover (GĐ4) ·
   panel safe area cho UI (thuộc `SystemPlan.md` §6; dự án dùng panel của nó, chỉ đọc asset) · dải trống ở cạnh dưới và hai bên (chưa có
   thiết kế nào chừa).
@@ -560,7 +564,7 @@ không đổi chữ ký.
 ## Giai đoạn 4 — Nút Apply Layout trong Inspector (agent)
 
 **Mục tiêu:** bấm **Apply Layout** trên `ViewportCamera` hoặc trên bất kỳ `ViewportAnchor` nào là cả chuỗi GĐ1–3 chạy lại ở Edit mode;
-designer chỉnh `Viewport Point`, `World Offset` và thấy ngay ở Scene view, không vào Play.
+designer chỉnh `Viewport Point`, `Design Pixel Offset` và thấy ngay ở Scene view, không vào Play.
 
 **Vì sao bây giờ:** ba thành phần đã đủ để "thấy"; nút chỉ gọi API có sẵn. Code Editor: agent viết thẳng theo `reuse-gate`, developer
 review và veto.
@@ -638,7 +642,7 @@ chuỗi. — Odin `[Button]` trong partial `*.Editor.cs` bọc `#if UNITY_EDITOR
 
 **Kiểm:** compile sạch (`com.horcrux.runtime` ở cả Editor lẫn build: file bọc `#if UNITY_EDITOR`). Developer bấm nút trên `camera_main`
 của `GameplayRoot.prefab` trong Prefab Mode với Game view 1080×2340: hàng box, thanh khay nằm như lúc Play; đổi Game view 1080×1920 bấm
-lại: cụm trên hạ xuống theo mép. Dấu hiệu hỏng: bấm nhiều lần vị trí hay scale nền thay đổi dần (phải đứng yên).
+lại: cả cụm co đều về 82 %, khe với HUD giữ tỉ lệ demo; đổi 1080×2400 bấm lại: world giữ cỡ, cụm dời theo mép trên. Dấu hiệu hỏng: bấm nhiều lần vị trí hay scale nền thay đổi dần (phải đứng yên).
 
 **Mốc commit:** `feat(layout): nút Apply Layout trong Inspector`.
 
@@ -701,13 +705,13 @@ mục "lên Horcrux". `Structure.md`: dòng `Utilities/` bỏ bốn type và dò
   — lỗi build ngay sau khi xoá file là lỗi tạm tới khi Editor sinh lại csproj; chạy lại trước khi kết luận.
 - grep `GameplayViewport`, `gameplayCamera`, `CategoryJam.Gameplay.Utilities.Viewport`, `TopHeadroom` trên `.cs`, `.prefab`, `.unity`,
   `.md` toàn repo: 0.
-- Nhất quán chéo trước–sau: một probe (`Editor/Probe`, `playrun.sh` với `SIZES="1080x2340 1080x1920"`,
+- Nhất quán chéo trước–sau: một probe (`Editor/Probe`, `playrun.sh` với `SIZES="1080x2340 1080x1920 2136x3200"`,
   `DEVICES="Poco M7 Pro 5G;iOS Notch Device"`, `PLAY_FROM_BUILD_SCENE=1`) vào level, in `ScreenBox.Of` của 9 object anchor, khung
-  `*SafeArea*` và `localScale` của `background`; chạy **trước** bước 1 và **sau** bước 5, hai file ra trùng từng số ở cả hai cỡ và hai
+  `*SafeArea*` và `localScale` của `background`; chạy **trước** bước 1 và **sau** bước 5, hai file ra trùng từng số ở cả ba cỡ và hai
   máy (mốc bản tạm: máy Poco dời 13 px, máy iOS Notch 39 px so với safe area cả màn). Màn Menu cùng cách với probe Home của dự án
   (`docs/tools/layout_probe/measure_menu.cs`).
 
-**Cần chơi thử (developer):** *vào* level 1 ở Game view 1080×2340 rồi 1080×1920, và trên máy có tai thỏ · *nhìn* hàng box, thanh
+**Cần chơi thử (developer):** *vào* level 1 ở Game view 1080×2340, 1080×1920, 2136×3200, và trên máy có tai thỏ · *nhìn* hàng box, thanh
 khay, mask, bàn chơi nằm như lúc chưa chuyển; nền phủ kín, không hở mép; khe pill–hàng box trên máy bằng ở Game view · *dấu hiệu hỏng:*
 11 script missing trên `GameplayRoot` · `NullReferenceException` ở `Awake` của `ViewportCamera` · cụm trên chui dưới tai thỏ hoặc tụt
 sâu dưới dải trống · nền hở một dải ở cạnh.
@@ -729,4 +733,4 @@ sâu dưới dải trống · nền hở một dải ở cạnh.
 | `Runtime/Utilities/Layout/ViewportAnchor.Editor.cs` (agent) | | | | tạo | | |
 | `Tests/EditMode/ViewportLayoutTests.cs` (agent) | tạo | thêm case | thêm case | | | |
 | `docs/Runtime/ViewportAnchor/ViewportAnchor.md`, `.html` (agent) | | | | | tạo | |
-| dự án: xoá 6 file bản tạm và `SafeAreaHeadroomTests.cs`, `HeadroomSafeArea.cs`, `GameplayRoot.prefab`, `Scripts/Layout.md`, `Structure.md` | | | | | | đổi |
+| dự án: xoá 6 file bản tạm, `SafeAreaHeadroomTests.cs` và `GameplayViewportTests.cs`, `HeadroomSafeArea.cs`, `GameplayRoot.prefab`, `Scripts/Layout.md`, `Structure.md` | | | | | | đổi |

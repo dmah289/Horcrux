@@ -589,6 +589,11 @@ safe-area song song — SDK tồn tại để mỗi dự án chỉ còn **một 
   mà Game view không lộ (safe area bằng cả màn). Dải trống là asset `SafeAreaHeadroom`
   (`Horcrux_ViewportAnchor_Plan.md` GĐ2), mỗi thiết kế màn một asset; panel cạnh `Top` và bounder/anchor world
   của cùng màn kéo **cùng asset** để dời cùng số pixel.
+- **World kề HUD co cùng luật với canvas**: canvas khớp chiều cao thì camera giữ trọn khung thiết kế (bề rộng
+  trên màn cao, chiều cao trên màn rộng) và khoảng từ mép tới vật world đo bằng pixel thiết kế nhân theo chiều
+  cao màn — cùng đơn vị HUD dùng. Unit world theo bề rộng lệch pixel HUD đúng tỉ số hai aspect: tablet giãn khe,
+  co dải bàn chơi (`Horcrux_ViewportAnchor_Plan.md` GĐ1–2). Bounder world cũng phải nhận **mọi** nguồn inset
+  của panel kề nó (banner), không chỉ `Screen.safeArea`.
 
 **Công thức padding** (`safeArea` gốc trái-dưới, cùng hệ pixel với `width`/`height`; `headroom.top` là phần
 chiều cao màn của dải trống, panel không có asset thì coi là 0):

@@ -13,7 +13,8 @@ mục. Có `§0`.
 
 ## Ngữ cảnh đã chốt
 
-- **Người dùng:** game đặt bàn chơi world vào dải giữa HUD trên và HUD dưới, camera ortho giữ cố định bề rộng world; bàn chơi là
+- **Người dùng:** game đặt bàn chơi world vào dải giữa HUD trên và HUD dưới, camera ortho giữ trọn khung thiết kế
+  (`Horcrux_ViewportAnchor_Plan.md` GĐ1: bề rộng trên màn cao hơn thiết kế, chiều cao trên màn rộng hơn); bàn chơi là
   một container scale đồng nhất, bounds tính ở scale 1.
 - **Chỗ đặt:** `Runtime/Utilities/Layout/BandFit.cs`, namespace `Horcrux.Runtime.Utilities.Layout`. Tên `BandFit`, `FitScale`,
   `ContainerPosition` đổi tuỳ ý trước khi gõ.
@@ -60,7 +61,9 @@ chủ có Bounds bàn chơi (scale 1), bề rộng màn, dải giữa hai HUD (h
 
 ## §0 — Công thức
 
-**Hiện tượng.** Bàn chơi vẽ ở scale 1 có cỡ tuỳ level. Màn có bề rộng world cố định `W`; HUD trên và HUD dưới chừa một dải cao `H`.
+**Hiện tượng.** Bàn chơi vẽ ở scale 1 có cỡ tuỳ level. Màn có bề rộng world `W` (bằng bề rộng thiết kế trên màn cao, rộng hơn trên tablet); HUD trên và HUD dưới chừa
+một dải cao `H`. Camera và anchor hai mép co cùng luật với HUD, nên `H` theo unit giữ nguyên trên màn rộng hơn thiết kế; camera chỉ giữ
+bề rộng thì `H` co theo tỉ số hai aspect và bàn chơi tụt về `s_min` (tablet 3:2: dải còn nửa, scale kẹt sàn).
 Cần một scale `s` để bàn lọt cả bề rộng lẫn dải, mỗi bên chừa lề `m`; không to quá `s₀` (cỡ art đã chốt) và không nhỏ dưới `s_min`
 (còn đọc được, chấp nhận tràn).
 
