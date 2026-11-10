@@ -12,7 +12,7 @@ namespace Horcrux.Editor.UIReskin
     /// So ảnh chụp với ảnh demo bằng số đo pixel, không cần Python. Mọi toạ độ tính từ góc trên trái như phần mềm ảnh (demo đo
     /// bằng mắt hay bằng tool ảnh khớp số), vùng là RectInt x, y, width, height theo hệ đó. Ảnh đọc thẳng từ file PNG.
     /// </summary>
-    public static class DemoCompare
+    public static partial class DemoCompare
     {
         private const int Gap = 20;
         private static readonly Color32 GapColor = new(255, 0, 255, 255);
@@ -45,6 +45,16 @@ namespace Horcrux.Editor.UIReskin
             }
             output.Save(outPath);
             return outPath;
+        }
+
+        /// <summary>
+        /// Lệch giữa demo và ảnh chụp (đưa về cỡ demo) trên mọi pixel ngoài exclude, mỗi pixel lấy kênh RGB lệch nhất theo 0–255:
+        /// <c>mean m p95 p max x at x,y (n px)</c>. Dùng để báo số lệch còn lại sau khi dựng theo demo.
+        /// </summary>
+        public static string Diff(string demoPath, string capturePath, params RectInt[] exclude)
+        {
+            var demo = Load(demoPath);
+            return DiffStats(demo, Load(capturePath).Resized(demo.Width, demo.Height), exclude);
         }
 
         /// <summary>Khung bao các pixel trong region thoả match: <c>x0,y0 x1,y1 (w x h)</c>, hai góc đều tính vào; không có thì <c>none</c>.</summary>
@@ -206,6 +216,38 @@ namespace Horcrux.Editor.UIReskin
                     best = (ox, oy, error);
             }
             return best;
+        }
+
+        private static string DiffStats(Pixels a, Pixels b, RectInt[] exclude)
+        {
+            var histogram = new int[256];
+            long sum = 0;
+            int count = 0, max = -1, maxX = 0, maxY = 0;
+            for (var y = 0; y < a.Height; y++)
+            for (var x = 0; x < a.Width; x++)
+            {
+                if (Excluded(x, y, exclude))
+                    continue;
+                Color32 p = a.At(x, y), q = b.At(x, y);
+                var d = Math.Max(Math.Abs(p.r - q.r), Math.Max(Math.Abs(p.g - q.g), Math.Abs(p.b - q.b)));
+                histogram[d]++;
+                sum += d;
+                count++;
+                if (d > max) { max = d; maxX = x; maxY = y; }
+            }
+            if (count == 0)
+                return "none";
+            int p95 = 0, seen = 0;
+            while (seen + histogram[p95] < count * 0.95) seen += histogram[p95++];
+            return $"mean {(double)sum / count:0.##} p95 {p95} max {max} at {maxX},{maxY} ({count} px)";
+        }
+
+        private static bool Excluded(int x, int y, RectInt[] exclude)
+        {
+            foreach (var rect in exclude)
+                if (rect.Contains(new Vector2Int(x, y)))
+                    return true;
+            return false;
         }
 
         private static Color32 OverGrey(Color32 c)

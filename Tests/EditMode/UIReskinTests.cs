@@ -73,6 +73,53 @@ namespace Horcrux.Tests
         }
 
         [Test]
+        public void Diff_CountsOnlyPixelsOutsideExclude()
+        {
+            var demo = WritePng("diff_demo.png", 20, 10, (x, y) => Color.white);
+            var capture = WritePng("diff_cap.png", 20, 10, (x, y) => x < 4 && y < 3 ? Color.red : Color.white);
+            Assert.AreEqual("mean 0 p95 0 max 0 at 4,0 (188 px)", DemoCompare.Diff(demo, capture, new RectInt(0, 0, 4, 3)));
+            StringAssert.Contains("max 255 at 0,0 (200 px)", DemoCompare.Diff(demo, capture));
+        }
+
+        [Test]
+        public void FitRadialGlow_RecoversRenderedParameters()
+        {
+            // Oracle viết riêng theo frag của ui_radial_glow: nội suy trong không gian màu project.
+            var linear = QualitySettings.activeColorSpace == ColorSpace.Linear;
+            Color edge = new Color32(21, 46, 94, 255), center = new Color32(36, 74, 150, 255);
+            Vector2 glowCenter = new(0.45f, 0.6f);
+            const int width = 120, height = 260;
+            const float radius = 0.35f, falloff = 2f, aspect = (float)width / height;
+            Color Glow(int x, int y)
+            {
+                float u = (x + 0.5f) / width, v = 1f - (y + 0.5f) / height;
+                float dx = (u - glowCenter.x) * aspect, dy = v - glowCenter.y;
+                var f = Mathf.Pow(Mathf.Clamp01(1f - Mathf.Sqrt(dx * dx + dy * dy) / radius), falloff);
+                return linear ? Color.LerpUnclamped(edge.linear, center.linear, f).gamma : Color.LerpUnclamped(edge, center, f);
+            }
+            var logo = new RectInt(20, 90, 80, 40);
+            var demo = WritePng("glow.png", width, height, (x, y) => logo.Contains(new Vector2Int(x, y)) ? Color.yellow : Glow(x, y));
+
+            var fit = DemoCompare.FitRadialGlow(demo, logo);
+
+            Assert.AreEqual(glowCenter.x, fit.Center.x, 0.01f, fit.ToString());
+            Assert.AreEqual(glowCenter.y, fit.Center.y, 0.01f, fit.ToString());
+            Assert.AreEqual(radius, fit.Radius, 0.01f, fit.ToString());
+            Assert.AreEqual(falloff, fit.Falloff, 0.1f, fit.ToString());
+            AssertColor(center, fit.CenterColor, fit.ToString());
+            AssertColor(edge, fit.EdgeColor, fit.ToString());
+            StringAssert.StartsWith("mean 0", fit.ModelDiff);
+        }
+
+        private static void AssertColor(Color expected, Color actual, string message)
+        {
+            const float tolerance = 1.5f / 255f;
+            Assert.AreEqual(expected.r, actual.r, tolerance, message);
+            Assert.AreEqual(expected.g, actual.g, tolerance, message);
+            Assert.AreEqual(expected.b, actual.b, tolerance, message);
+        }
+
+        [Test]
         public void PruneNoise_RemovesLayoutDrivenOverridesOnly()
         {
             var basePath = Folder + "/base.prefab";
