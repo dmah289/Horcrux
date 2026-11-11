@@ -1,3 +1,5 @@
+using System.Threading;
+using Cysharp.Threading.Tasks;
 using Horcrux.Runtime.Utilities.Common;
 using LightSide;
 using PrimeTween;
@@ -61,6 +63,15 @@ namespace Horcrux.Runtime.Utilities.UI
             SetFront(from);
             _typing = Tween.Custom(this, from, 100f, duration, static (self, percent) => self.SetFront(percent),
                 PrimeTween.Ease.Linear, useUnscaledTime: true);
+        }
+
+        /// <summary>Gõ lại từ đầu; xong khi ký tự cuối bắt đầu hiện. Huỷ thì dừng gõ.</summary>
+        public async UniTask ShowAsync(CancellationToken ct)
+        {
+            StartShowingText(true);
+            using (ct.Register(static self => ((UniTextTypewriter)self)._typing.Stop(), this))
+                await _typing;
+            ct.ThrowIfCancellationRequested();
         }
 
         #endregion
