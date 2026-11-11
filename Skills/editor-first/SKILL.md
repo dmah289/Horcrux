@@ -41,7 +41,9 @@ scene vào build là mục **"Trước khi chạy"** của tài liệu module (`
 nối. Hệ không gánh lỗi quên setup; đổi lại hệ **nợ** mục "Trước khi chạy" đủ dựng lại từ 0.
 
 **Agent làm thao tác Editor qua công cụ (MCP, eval) khi được giao** thì kết quả là asset đã lưu (prefab, scene,
-`ScriptableObject`) developer mở ra thấy, không phải code chạy lúc boot làm thay.
+`ScriptableObject`) developer mở ra thấy, không phải code chạy lúc boot làm thay. Lệnh lưu kéo theo mọi asset đang bẩn
+trong Editor: soát `git status` ngay sau, file ngoài phạm vi thì báo developer. *Đã sai một lần:* lưu scene làm asset cấu
+hình rơi dữ liệu của field đã xoá khỏi code.
 
 ## Import/export — dữ liệu đi qua tool
 
