@@ -28,7 +28,8 @@ theo từng dải màu mới được dùng làm chuẩn để sửa và nghiệ
 
 **Đo bằng số, cùng một phép đo cho mọi ảnh.** Demo, ảnh Game view, ảnh Simulator, ảnh máy đo bằng cùng hàm dò dải màu, cùng cột, cùng
 tolerance. Khung object chỉ để tìm cột. Đè ảnh mờ lên màn chỉ để nhìn, không để kết luận: hai ảnh khác tỉ lệ thì khối neo theo bề rộng
-và khối co theo chiều cao trôi khác nhau.
+và khối co theo chiều cao trôi khác nhau. Khớp khung chưa phải khớp hình: chữ art, nút có viền và bóng so theo từng lớp
+(`ui-reskin` › Tổ chức prefab, chữ art).
 
 **So ở trạng thái cao nhất.** Phần tử chỉ hiện theo gameplay (chữ nhiều dòng, badge, thứ trượt ra) ép hiện với nội dung dài nhất rồi mới
 đo; đo lúc nó ẩn thì khe trông rộng, dời quá tay.

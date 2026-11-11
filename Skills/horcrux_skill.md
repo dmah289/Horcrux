@@ -30,7 +30,7 @@ từ gốc Horcrux: skill `Skills/`, Plan `Plans/`, tài liệu hệ `docs/Runti
 | `feel-tune` | chỉnh, refactor, dò lỗi feeling; đo GC, batches lúc trình diễn |
 | `build-size` | build nặng vì sao, giảm, so trước–sau |
 | `compile-check` | kiểm sau mỗi task sửa code bằng một lệnh |
-| `ui-reskin` | dựng, reskin UI theo demo: tổ chức prefab, chia atlas, làm việc qua Editor tool, bẫy UGUI |
+| `ui-reskin` | dựng, reskin UI theo demo: tổ chức prefab, chữ art theo lớp, chia atlas, làm việc qua Editor tool, bẫy UGUI |
 | `demo-compare` | so màn với demo, ảnh máy thật: Game view cỡ demo và Device Simulator theo máy, đo bằng số, vùng an toàn |
 | `merge-audit` | merge nhánh Unity theo bậc khi có commit dời thư mục, kiểm trước–sau, merge người khác đẩy lên |
 

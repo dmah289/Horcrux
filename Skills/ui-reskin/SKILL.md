@@ -1,6 +1,6 @@
 ---
 name: ui-reskin
-description: Dùng khi dựng hoặc reskin UI theo ảnh demo, hay thêm art UI: cách tổ chức prefab UI để đúng demo và dễ mở rộng, chia atlas và bundle cho art UI, cách làm việc với Editor qua công cụ (MCP, eval) khi dựng, soát, chụp, đo, và các bẫy của UGUI, prefab, sprite, TMP đã trả giá.
+description: Dùng khi dựng hoặc reskin UI theo ảnh demo, hay thêm art UI: cách tổ chức prefab UI để đúng demo và dễ mở rộng, chữ art nhiều lớp (màu, viền, bóng đổ) đúng số theo demo, chia atlas và bundle cho art UI, cách làm việc với Editor qua công cụ (MCP, eval) khi dựng, soát, chụp, đo, và các bẫy của UGUI, prefab, sprite, TMP đã trả giá.
 ---
 
 # ui-reskin — prefab UI theo demo
@@ -38,6 +38,18 @@ chữ: chữ nào có thể đổi thì bật autosize, cỡ tối đa là cỡ 
 gờ sáng, bóng, chỗ của icon. Đó không phải rect của Image, vì rect gồm cả phần trong suốt và trang trí, chữ co trong đó vẫn
 đè lên viền. Đo vùng đó trên art, đặt rect của chữ đúng vùng, nghiệm thu bằng chuỗi dài nhất có thật. Mỗi loại chữ co theo
 chiều nào thì xem `async-presentation` › Trình diễn vật thể có chất liệu (khối Nền tảng về autosize).
+
+**Chữ art là một chồng lớp; dựng đủ mọi lớp demo có, mỗi lớp đúng số.** Thường gồm ruột (màu phẳng hay gradient), một hay
+vài vòng viền, bóng đổ lệch xuống hoặc chéo, đôi khi gờ sáng, bóng trong. Bóng đổ cho chữ khối nổi: thiếu nó chữ dẹt dù màu
+và khung đều đúng. Trước khi chọn kiểu chữ, tách chữ demo thành lớp bằng số: cắt một đường qua nét dày từ nền vào tới ruột,
+kéo tiếp sang phía bóng; mỗi dải màu là một lớp, cho màu và bề dày px. Màu lấy ở lõi dải, không ở pixel mép (khử răng cưa
+trộn màu lớp kề); ruột gradient thì đo cả hai đầu. Bề dày đo bằng px ở cỡ demo rồi mới đổi ra đơn vị của kiểu chữ: đơn vị
+tương đối theo cỡ chữ thì đổi cỡ là đổi bề dày. Kiểu chữ có sẵn chỉ dùng khi khớp số từng lớp; giống bằng mắt chưa đủ, và
+sửa kiểu dùng chung là đổi mọi chữ khác đang dùng nó. **Nghiệm thu theo lớp:** cùng đường cắt trên demo và ảnh chụp ra cùng
+số dải, màu và bề dày từng dải khớp. Khung bao đo bằng màu ruột không thấy viền và bóng; lớp mỏng chiếm ít pixel nên chìm
+trong `Diff` trung bình. Màu đặt đúng số mà ảnh chụp ra khác thì tìm khâu đổi màu (không gian màu, alpha cha, tint, lớp
+đè), không chỉnh mò tới khi giống. *Đã sai một lần:* chữ dựng khớp khung và `Diff`, developer nghiệm thu thấy màu lệch,
+viền dày mỏng khác demo, bóng đổ bị bỏ hẳn.
 
 **Neo theo màn, không theo một máy.** Nền và dải màu phủ ra ngoài safe area (tai thỏ, thanh home); nội dung bấm được nằm trong.
 Khối thiết kế theo một bề rộng thì giữ bề rộng đó: màn hẹp hơn thu nhỏ đều, màn rộng hơn (tablet) nằm giữa. Art vẽ sẵn chi tiết
