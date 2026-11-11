@@ -35,7 +35,8 @@ quanh từng callback trong vòng dispatch).
 >   `Release()`. Prefab con trong cha đã nạp thì kéo thẳng — nhưng con chia đời với cha.
 > - **PrimeTween**, không tự viết runner: UI đặt `useUnscaledTime`; object huỷ hay về pool thì dừng tween; exception trong
 >   callback bị bọc thành log chung — `PRIME_TWEEN_SAFETY_CHECKS` để biết tween nào. `startDelay` lặp ở **mỗi** cycle; trễ
->   một lần thì `ChainDelay` trong Sequence.
+>   một lần thì `ChainDelay` trong Sequence. `await` tween hay Sequence đã `Stop()` trả về như chạy xong — huỷ theo token
+>   thì kiểm token sau `await`.
 > - Anim UI dùng `Time.unscaledDeltaTime` (popup chạy khi `timeScale` = 0) · data lớn cho GPU, Job: `NativeArray` · tài
 >   nguyên nặng (`RenderTexture`, `Texture2D`) cache, dọn ở `OnDestroy()`.
 > - Tham số mặc định của method `virtual` lấy theo kiểu khai báo lúc gọi, không theo override.
@@ -54,6 +55,9 @@ Dữ liệu đổi ở một nơi, người chơi thấy ở nơi khác, có khi
   quanh scale 1 trên node scale khác 1 — co vĩnh viễn · gán scale 0 rồi mới bật object tắt sẵn — `Awake` chụp nghỉ là 0.
 - **Vật hiện ra lần đầu đã đứng ở chỗ nghỉ:** bố cục tính được thì đặt cùng frame tạo vật; chờ frame chỉ khi đọc từ thứ
   engine dựng sau (layout UI, bounds), và ẩn vật tới lúc đặt xong.
+- **Nhiều lớp chung một nhịp (scale, độ sáng, màu) ghép một Sequence, chung thời lượng và ease** — đỉnh trùng nhau dù
+  chỉnh số nào; căn bằng delay rời thì lệch ở lần chỉnh sau. Cú bùng (hạt, loé) bắn lúc nhịp **bắt đầu**: chờ tới đỉnh
+  mới bắn, mắt đọc thành trễ.
 - **Lớp trên đè lớp dưới**, không bật/tắt thứ bị che hết · **giá trị đổi lúc tới nơi**, không lúc bắt đầu · **bước thiếu dữ
   liệu thì bỏ bước**, không rẽ nhánh cả luồng · **service overlay giữ cơ chế, nội dung là canvas của consumer**.
 - **Nhiều module cùng trình diễn khi vào một màn → một điều phối viên theo giai đoạn cố định.** Lease, hàng đợi, chờ frame
@@ -84,6 +88,7 @@ Chất liệu quyết *cái gì được biến dạng*; phần vui đến từ 
 > chiều; đo chữ ngay sau khi đặt bằng `MeasureText` truyền `maxWidth` và `maxHeight` của khung — thiếu `maxWidth` là đo
 > không wrap, `GetRangeBounds` ngoài vòng render chưa có vị trí dòng. Lớp vẽ UniText xếp theo thứ tự style: Styles của
 > chính chữ → từng preset theo danh sách → preset global; style riêng nằm **dưới** mọi lớp của look — lớp phải đè lên look
-> (dải sáng, phủ màu) đặt trong preset xếp sau. `SpriteMask` không bật Custom Range
+> (dải sáng, phủ màu) đặt trong preset xếp sau, lớp phải nằm sau look (Glow quầng sáng) đặt trong style riêng: Glow
+> trong preset xếp sau phủ trắng cả mặt chữ. `SpriteMask` không bật Custom Range
 > ghi stencil cho **mọi** tầng dưới nó — giới hạn dải về đúng tầng nó phục vụ. `SpriteRenderer` Sliced, Tiled vẽ theo
 > `size`; `sprite.bounds` vẫn là cỡ gốc của ảnh — đo phần nhìn thấy theo `drawMode`, đổi art sang Sliced là đổi số đo.

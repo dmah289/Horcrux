@@ -25,6 +25,9 @@ nó, không phải lý do bỏ.
 **Sổ tay** — reference kéo vào ô · component add sẵn trên prefab · số tinh chỉnh phơi Inspector · preset là
 `ScriptableObject` · wire sẵn trong prefab rồi `Instantiate` · `RectTransform` của chính object cũng là một ô thay cho cast.
 
+**Thuộc tính code ghi lúc chạy không còn là ô cấu hình trên asset** — sửa ở đó không tác dụng mà không gì báo. Núm chỉnh
+nằm trên component code; asset chỉ giữ phần code không chạm (màu khi code ghi độ đậm), tooltip nói rõ phần nào.
+
 **Bắt buộc nối bằng code thì bên đời ngắn tự trình diện với bên đời dài:** đăng ký và huỷ là **một cặp trong một file**,
 xong **trước tín hiệu cần tới nó** — tín hiệu phát ngay sau khi bật cây thì `Awake` đã chạy còn `Start` chưa, nên cặp là
 `Awake`/`OnDestroy`; view tự ẩn bằng tắt chính nó thì cặp bật/tắt gỡ nó khỏi chủ ngay lần ẩn đầu.
