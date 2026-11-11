@@ -32,6 +32,13 @@ soát và gỡ sau mỗi lần dựng (`PrefabAudit.PruneNoise`). Gỡ hàng lo�
 dựng đúng số đó. Rect của art gồm cả bóng và viền trong suốt, nên khung đo trên demo nhỏ hơn rect. Số hiển thị (giá, số lượng,
 đồng hồ) đọc từ dữ liệu thật; demo là chữ giữ chỗ.
 
+**Chữ đổi theo dữ liệu thì co trong vùng art cho phép, không đặt cỡ cố định.** Giá, số lượng, chữ dịch dài ngắn theo dữ liệu
+và ngôn ngữ; cỡ cố định vừa chữ demo sẽ tràn khi giá nhiều chữ số hơn hay sang ngôn ngữ dài hơn. Mỗi lần thay art, xét từng
+chữ: chữ nào có thể đổi thì bật autosize, cỡ tối đa là cỡ demo. Khung co là **vùng chữ được phép nằm**: lòng nút trừ viền,
+gờ sáng, bóng, chỗ của icon. Đó không phải rect của Image, vì rect gồm cả phần trong suốt và trang trí, chữ co trong đó vẫn
+đè lên viền. Đo vùng đó trên art, đặt rect của chữ đúng vùng, nghiệm thu bằng chuỗi dài nhất có thật. Mỗi loại chữ co theo
+chiều nào thì xem `async-presentation` › Trình diễn vật thể có chất liệu (khối Nền tảng về autosize).
+
 **Neo theo màn, không theo một máy.** Nền và dải màu phủ ra ngoài safe area (tai thỏ, thanh home); nội dung bấm được nằm trong.
 Khối thiết kế theo một bề rộng thì giữ bề rộng đó: màn hẹp hơn thu nhỏ đều, màn rộng hơn (tablet) nằm giữa. Art vẽ sẵn chi tiết
 (bóng sàn, khe) thì con đặt theo pixel của ảnh và phóng cùng ảnh. Fitter chạy trong Editor khai giá trị nó ghi là driven
