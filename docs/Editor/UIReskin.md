@@ -36,6 +36,7 @@ Cách dùng chúng trong một task reskin ở `Skills/ui-reskin/SKILL.md`. Đ�
 | `PrefabEdit.CreateVariant` lưu variant trống rồi sửa qua `Edit` | sửa trên instance trong scene mà không ghi lại modification thì mất khi lưu; sửa trong nội dung prefab thì thay đổi tự thành override |
 | Override nhiễu xác định theo **component trên instance** (cha có LayoutGroup, chính nó có ContentSizeFitter), không theo tên property | cùng `m_AnchoredPosition` là ý đồ ở object tự do và là rác ở con của LayoutGroup |
 | `UICapture.Canvas` tắt bật lại behaviour `[ExecuteAlways]` của dự án | fitter đọc bề rộng cha ở `Update`; chụp đồng bộ không có frame nào chạy giữa đổi cỡ và vẽ |
+| `UICapture.Variants` chụp trên **copy** trong preview scene, không trên object gốc | nguồn hay là con của prefab asset (không nằm trong scene nào), và mọi giá trị `pose` đặt mất theo copy: không phải trả lại, không làm bẩn prefab đang mở Prefab Mode |
 | `TmpSpriteAssetBuilder` ghi `m_Version` | asset version rỗng bị TMP nâng cấp lúc nạp và xoá bảng glyph |
 
 ## API
@@ -116,6 +117,7 @@ theo tay. Prefab gốc của variant còn giữ art; build nướng variant thà
 | `GameAsync(string pngPath, CancellationToken ct = default)` | Play: chờ cuối frame, ghi PNG đúng cỡ Game view, gồm canvas Overlay |
 | `Game(string pngPath)` | như trên, không chờ: file có sau một frame (eval tiếp theo đọc được) |
 | `Canvas(Canvas canvas, int width, int height, string pngPath)` | ngoài Play: canvas tạm sang Screen Space–Camera với camera tạm vẽ vào RenderTexture width×height, CanvasScaler tính theo cỡ đó; trả canvas như cũ ở mọi đường ra. Vì vẽ ở chế độ Camera, lỗi chỉ có ở Overlay (material hạt không dùng shader UI) không lộ: kiểm bằng `Game` trong Play. `UIParticle` ngoài Play chỉ bake một lần mỗi frame: dựng object và chụp ở hai eval |
+| `Variants(GameObject source, int width, int height, Color background, int count, Action<GameObject, int> pose, string pngPath, int columns = 1)` | ngoài Play, không chạm scene đang mở: copy `source` (object trong prefab asset hay scene) lên canvas tạm, không CanvasScaler (1 đơn vị = 1 px), giữa khung; mỗi lượt `i` gọi `pose(copy, i)` rồi chụp; ghép lưới như `FrameSheet.Compose`, ảnh 0 trên trái. Dùng để so một look ở vài giá trị thông số (lớp vẽ, độ toả, offset dải sáng, scale) mà không vào Play. Copy tách khỏi nguồn: modifier trong Styles riêng của chữ UniText đổi trên copy không lọt về asset; thứ copy chỉ tham chiếu (preset, material, ScriptableObject) thì `pose` sửa là sửa asset dùng chung |
 
 ### `DemoCompare` — toạ độ gốc trên trái, `RectInt(x, y, width, height)` theo hệ đó
 

@@ -30,6 +30,7 @@ Khi nào được vào Play và khi nào giao developer chơi thử: `workflow` 
 | một hàm có cấp phát dưới vài chục KB | test PlayMode `Is.Not.AllocatingGCMemory`, **không** đọc từ M0 — GC mỗi frame trong Editor có nền nhiễu ≈ 100 KB | có |
 | trạng thái nội bộ sau một chuỗi thao tác | `playrun.sh` + `PlayProbe.Run` | có |
 | mất hình, lệch lớp, nháy ở một frame | `FrameSheet` trong probe hay `Act` của kịch bản, một PNG | có |
+| một look ở vài giá trị thông số (lớp vẽ có bị che, độ toả, offset, scale đỉnh) | `UICapture.Variants` qua `script eval` (`docs/Editor/UIReskin.md`) | không |
 | cảm giác, nhịp, "đã tay" | developer chơi thử | — |
 
 ## Lệnh

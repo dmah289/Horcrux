@@ -1,9 +1,13 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 using Cysharp.Threading.Tasks;
+using Horcrux.Editor.Probe;
+using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 using Object = UnityEngine.Object;
 
@@ -84,6 +88,71 @@ namespace Horcrux.Editor.UIReskin
                 Object.DestroyImmediate(texture);
                 if (shot != null)
                     Object.DestroyImmediate(shot);
+            }
+            return pngPath;
+        }
+
+        /// <summary>
+        /// Ngoài Play, không chạm scene đang mở: copy source lên canvas tạm trong preview scene, mỗi lượt pose(copy, i) rồi
+        /// chụp; count ảnh ghép lưới một PNG, ảnh 0 trên trái. Source là object trong prefab asset hay scene.
+        /// </summary>
+        public static string Variants(GameObject source, int width, int height, Color background, int count,
+            Action<GameObject, int> pose, string pngPath, int columns = 1)
+        {
+            var scene = EditorSceneManager.NewPreviewScene();
+            var texture = new RenderTexture(width, height, 24);
+            var shots = new List<Texture2D>(count);
+            try
+            {
+                var cameraObject = new GameObject("UICapture camera");
+                SceneManager.MoveGameObjectToScene(cameraObject, scene);
+                var camera = cameraObject.AddComponent<Camera>();
+                camera.scene = scene;
+                camera.orthographic = true;
+                camera.clearFlags = CameraClearFlags.SolidColor;
+                camera.backgroundColor = background;
+                camera.targetTexture = texture;
+                camera.transform.position = new Vector3(0f, 0f, -10f);
+
+                var canvasObject = new GameObject("UICapture canvas", typeof(RectTransform));
+                SceneManager.MoveGameObjectToScene(canvasObject, scene);
+                var canvas = canvasObject.AddComponent<Canvas>();
+                canvas.renderMode = RenderMode.ScreenSpaceCamera;
+                canvas.worldCamera = camera;
+                canvas.planeDistance = 5f;
+
+                var copy = Object.Instantiate(source, canvasObject.transform);
+                copy.SetActive(true);
+                if (copy.transform is RectTransform rect)
+                {
+                    rect.anchorMin = rect.anchorMax = new Vector2(0.5f, 0.5f);
+                    rect.anchoredPosition = Vector2.zero;
+                }
+
+                for (var i = 0; i < count; i++)
+                {
+                    pose?.Invoke(copy, i);
+                    Relayout(canvas);
+                    camera.Render();
+                    var previous = RenderTexture.active;
+                    RenderTexture.active = texture;
+                    var shot = new Texture2D(width, height, TextureFormat.RGBA32, false);
+                    shot.ReadPixels(new Rect(0, 0, width, height), 0, 0);
+                    shot.Apply();
+                    RenderTexture.active = previous;
+                    shots.Add(shot);
+                }
+
+                var sheet = FrameSheet.Compose(shots, Mathf.Max(1, columns));
+                Write(pngPath, sheet);
+                Object.DestroyImmediate(sheet);
+            }
+            finally
+            {
+                foreach (var shot in shots)
+                    Object.DestroyImmediate(shot);
+                EditorSceneManager.ClosePreviewScene(scene);
+                Object.DestroyImmediate(texture);
             }
             return pngPath;
         }
