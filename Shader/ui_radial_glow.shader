@@ -2,6 +2,8 @@ Shader "Horcrux/ui_radial_glow"
 {
     Properties
     {
+        // UGUI Graphic assigns its texture here every canvas rebuild; declared only to keep that call valid.
+        [PerRendererData] _MainTex ("Texture", 2D) = "white" {}
         _EdgeColor ("Edge Color", Color) = (0.082, 0.180, 0.369, 1)
         _CenterColor ("Center Color", Color) = (0.141, 0.290, 0.588, 1)
         _Center ("Center (UV)", Vector) = (0.5, 0.57, 0, 0)
