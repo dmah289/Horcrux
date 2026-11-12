@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
-# Một lệnh kiểm sau mỗi task: dotnet build các csproj → Unity recompile → test EditMode theo assembly. In gọn, mã thoát 1 khi một bước hỏng.
-# Editor phải đang mở project cho hai bước Unity; --no-unity chỉ chạy dotnet build.
+# Một lệnh kiểm sau mỗi task: build các csproj → Unity recompile → test EditMode theo assembly. In gọn, mã thoát 1 khi một bước hỏng.
+# Editor phải đang mở project cho hai bước Unity; --no-unity chỉ chạy bước build.
 # Dùng: bash verify.sh [--project <path>] [--csproj a.csproj,b.csproj] [--tests Asm1,Asm2] [--no-unity] [--no-tests] [--timeout giây] [--help]
-#   --csproj   csproj do Unity sinh ở gốc project (gitignore), build bằng dotnet, chỉ in lỗi. Bỏ trống thì bỏ bước này.
+#   --csproj   csproj do Unity sinh ở gốc project (gitignore), build bằng dotnet hoặc MSBuild, chỉ in lỗi. Bỏ trống thì bỏ bước này.
+#   MSBUILD ép đường dẫn MSBuild.exe. Không đặt thì dùng `dotnet` trên PATH, thiếu nữa thì tìm MSBuild của Rider, Visual Studio.
 #   --tests    assembly test EditMode, mỗi assembly một lần `test run`. Bỏ trống thì bỏ bước này.
 #   --timeout  giây chờ mỗi assembly test (mặc định 600).
 #   UNITY_CLI ép đường dẫn unity.exe (mặc định tìm `unity` trên PATH). Chạy từ gốc project hoặc đặt --project.
@@ -43,19 +44,44 @@ print("" if cur is None else (json.dumps(cur, ensure_ascii=False) if isinstance(
 
 finish() { [ -z "$FAIL" ] && { echo "verify: OK${1:-}"; exit 0; }; echo "verify: FAIL$FAIL"; exit 1; }
 
-# 1. dotnet build: chỉ dòng lỗi, bỏ dòng trùng (MSBuild in mỗi lỗi hai lần).
+# 1. Build csproj: chỉ dòng lỗi, bỏ dòng trùng (MSBuild in mỗi lỗi hai lần).
+# Chọn builder một lần. Không tìm thấy là FAIL: chạy lệnh không tồn tại không in dòng "error CS" nào, bước này từng báo ok giả.
+# Git Bash không liệt kê ổ đĩa dưới `/`, glob `/?/` không khớp: duyệt từng chữ ổ.
+find_msbuild() {
+  local d c
+  for d in c d e f g h; do
+    for c in "/$d/Program Files/JetBrains/"*/tools/MSBuild/Current/Bin/MSBuild.exe \
+             "/$d/Program Files/Microsoft Visual Studio/"*/*/MSBuild/Current/Bin/MSBuild.exe; do
+      [ -f "$c" ] && echo "$c"
+    done
+  done | sort | tail -1
+}
+build_csproj() {
+  if [ -n "$MSB" ]; then MSYS_NO_PATHCONV=1 "$MSB" "$(cygpath -w "$1")" -t:Build -p:Configuration=Debug -v:q -nologo -clp:ErrorsOnly 2>&1
+  else dotnet build "$1" -nologo -v q -clp:ErrorsOnly 2>&1; fi
+}
 IFS=',' read -ra PROJS <<< "$CSPROJ"
+if [ -n "$CSPROJ" ]; then
+  MSB="${MSBUILD:-}"
+  if [ -z "$MSB" ] && ! command -v dotnet >/dev/null 2>&1; then MSB="$(find_msbuild)"; fi
+  if [ -n "$MSB" ] && [ ! -f "$MSB" ]; then echo "build: MSBuild không có ở $MSB"; FAIL="$FAIL build"; PROJS=()
+  elif [ -z "$MSB" ] && ! command -v dotnet >/dev/null 2>&1; then
+    echo "build: không có dotnet trên PATH, không tìm thấy MSBuild của Rider hay Visual Studio. Đặt MSBUILD=<đường dẫn MSBuild.exe>"
+    FAIL="$FAIL build"; PROJS=()
+  elif [ -n "$MSB" ]; then echo "build: dùng $MSB"; fi
+fi
 for proj in "${PROJS[@]}"; do
   [ -z "$proj" ] && continue
   path="$PROJECT/$proj"; [ -f "$proj" ] && path="$proj"
   if [ ! -f "$path" ]; then echo "build $proj: không có file (Unity chưa sinh csproj?)"; FAIL="$FAIL build"; continue; fi
-  out="$(dotnet build "$path" -nologo -v q -clp:ErrorsOnly 2>&1)"
-  errs="$(echo "$out" | grep -E "error (CS|MSB)[0-9]+" | sed 's/ \[.*csproj\]$//' | sort -u)"
+  out="$(build_csproj "$path")"; rc=$?
+  errs="$(echo "$out" | tr -d '\r' | grep -E "error (CS|MSB)[0-9]+" | sed 's/ *\[.*csproj\] *$//' | sort -u)"
   if [ -n "$errs" ]; then echo "build $proj: LỖI"; echo "$errs" | head -40; FAIL="$FAIL build"
+  elif [ $rc -ne 0 ]; then echo "build $proj: LỖI (mã thoát $rc, không có dòng error CS/MSB)"; echo "$out" | tr -d '\r' | head -20; FAIL="$FAIL build"
   else echo "build $proj: ok"; fi
 done
 
-[ $UNITY -eq 1 ] || finish " (chỉ dotnet build)"
+[ $UNITY -eq 1 ] || finish " (chỉ build csproj)"
 
 # 2. Unity recompile: hỏi trạng thái tới khi completed hoặc up_to_date; lỗi biên dịch nằm trong errors.
 "$U" status --project-path "$W" 2>&1 | grep -q "ready" || { echo "unity: Editor chưa mở project (unity status không ready)"; FAIL="$FAIL unity"; finish; }

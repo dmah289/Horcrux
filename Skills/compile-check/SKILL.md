@@ -31,7 +31,7 @@ Tên csproj và assembly test của dự án ghi trong file hướng dẫn agent
 ## Quy trình
 
 1. Sửa code xong, chạy lệnh đầy đủ từ gốc project.
-2. `FAIL build`: đọc dòng lỗi, sửa, chạy lại. `FAIL recompile` mà build ok: assembly chưa có trong `--csproj`, hoặc lỗi ở
+2. `FAIL build`: đọc dòng lỗi, sửa, chạy lại. `build: không có dotnet …`: đặt `MSBUILD=<MSBuild.exe>`, không coi là xanh. `FAIL recompile` mà build ok: assembly chưa có trong `--csproj`, hoặc lỗi ở
    asmdef, define — đọc `errors`. `FAIL unity` (Editor chưa mở): báo là chưa kiểm phần Unity, không coi là xanh.
 3. `FAIL tests`: tên test và dòng đầu message in dưới dòng tổng; mở đúng test đó.
 4. Dán dòng `verify: OK` và các dòng `tests …: n/m pass` vào báo cáo.
