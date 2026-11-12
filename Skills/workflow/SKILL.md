@@ -15,6 +15,10 @@ Trình tự: **phỏng vấn tới khi chốt kịch bản** → **đối chiế
 Editor, script `Tools~`, skill); dự án chỉ giữ lớp nối. Developer đồng ý thì viết công cụ, tài liệu, cập nhật skill hoặc
 mở skill công cụ mới kèm hàng trong bảng chỉ dẫn. *Đã sai một lần:* hàng trăm lần eval chép cùng một khung không đề xuất gom.
 
+**Commit trong Horcrux thì commit luôn con trỏ submodule ở dự án**, kể cả khi chỉ đổi skill, tài liệu hay Plan. Con trỏ là thứ
+duy nhất ghi dự án đi với bản Horcrux nào: bỏ lại thì máy khác, nhánh khác, phiên agent sau đọc bản cũ, và `git status` luôn
+bẩn che mất thay đổi thật.
+
 ## Phỏng vấn — hỏi tới khi chốt kịch bản
 
 Không đoán rồi làm (NT5): đoán thừa là hàm không caller, đoán thiếu là chữ ký chặn hướng dùng thật. Hỏi đủ năm nhóm, mỗi
