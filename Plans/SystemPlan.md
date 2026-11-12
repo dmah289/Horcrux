@@ -182,6 +182,7 @@ Các hệ dưới đây đã được viết plan tự chứa, có code dán-đ�
 | §23 Combo | `Plans/Horcrux_ComboTracker_Plan.md` | `ComboTracker` thuần nhận `Func<int, float> windowSeconds`, đồng hồ `Tween.Delay`, một event `Changed(count, window)`; meter là `ProgressBar` có sẵn; phản hồi nhiều kênh gọi cạnh nhau trong một hàm của dự án. 1 file | struct núm cửa sổ trên Inspector, `Multiplier(count)`, bậc, multi-track, kỷ lục, telemetry |
 | 4b Time | `docs/Runtime/TimeSystem/TimeSystem.md` | `ITimeService.UtcNowUnix` không lùi (mốc lớn nhất từng thấy, field `protected internal` trong `BasePersistenceDataCollection`). 2 file + 1 field | **toàn bộ server time** (contract `IServerTimeProvider` + `offsetSeconds` + `IsServerTimeTrusted` + `ResyncAsync` + gate cấp thưởng — thiết kế ở §4b ngay dưới), `Countdown`, `TimeFormatter`, nhịp qua Ticker |
 | 14c Reward | `docs/Runtime/RewardSystem/RewardSystem.md` | `RewardData{TypeId, Amount}` + `IRewardHandler` (1 member) + `IRewardService.Register(typeId, handler)/Grant` sync. 2 file | `GrantAsync` + fly, claim popup, `IRewardIconProvider`, 14a Currency, 14b Lives |
+| §13 Ads | `Plans/Horcrux_Ads_Plan.md` | `IAdService` một service cho rewarded và interstitial (chung cờ chiếu, đồng hồ giãn cách) · `IAdVendor` cổng SDK · bộ chuyển `Vendors/Zego`. Luật kịch bản interstitial ở game. 6 file | banner, IAP, `IRemoveAdsService`, compare chọn interstitial khi rewarded chưa sẵn |
 | 20 LiveOps | `docs/Runtime/LiveOpsHost/LiveOpsHost.md` | `LiveOpsModuleState` 3 trạng thái · `WeeklySchedule.Resolve` thuần · `LiveOpsModuleBase` (một thân `Refresh` cho init + tick) · `LiveOpsHost` chờ save, tick 1 Hz, `LiveOpsSecondTick`. 8 file. Module đầu: Collection (`Assets/LiveOps/Collection/Collection_Plan.md`) | `IOptionalService`, tick thích ứng, `EActivationTiming`, `#define` per module, asset preload, lịch chu kỳ N ngày, cheat-time |
 
 > ⚠️ **2/7 file plan đã bị xoá trong commit `clean` của repo Horcrux** — `TickerSystem.md` và
@@ -1256,62 +1257,27 @@ IAnalyticsService.Log ─┬─ for i in filters:  !IsAllowed(name) → return  
 **Bài toán.** SDK ads/IAP của bên thứ 3 là thứ **đổi thường xuyên nhất** (đổi mediation, thêm network, đổi lib IAP) và **tangled nhất** (impl hay thò tay vào UI/toast/liveops). Cách duy nhất giữ được game sạch: cô lập chúng **sau contract của mình**, và **chỉ** đưa contract vào SDK.
 
 **Use case**
-- `ShowRewarded(placement, onReward, onFail)` · `ShowInterstitial(placement, onClose)` · banner show/hide/height.
+- Rewarded `await` ra `Earned`/`Skipped`/`NotAvailable` · interstitial `await` tới lúc đóng, giãn cách tính chung với rewarded · banner show/hide/height.
 - Đổi vendor / thêm network → chỉ sửa impl, game không biết.
 - Remove-ads (IAP) tắt banner + inter, giữ rewarded.
 - IAP: mua, khôi phục, lấy giá đã format theo tiền tệ máy.
 - Gate theo level (banner từ level N, inter từ level M) và theo **pacing** (§21 xây trên đây).
 - Anti-cheat / device-id / IDFA cho attribution.
 
-**Mô hình — interface segregation triệt để**
+**Mô hình**
 
 | Interface | Trách nhiệm | Vì sao tách |
 |---|---|---|
-| `IRewardedAds` | rewarded | Nhiều UI chỉ cần rewarded; không nên thấy banner API |
-| `IInterstitialAds` | inter + `ForceCompleteInterval()` | Pacing chỉ liên quan inter |
-| `IBannerAds` | show/hide/`HeightPixels` + `HeightChanged` | §6 cần đúng chiều cao, không cần gì khác |
+| `IAdService` | rewarded, interstitial; banner thêm sau vào chính nó | Mọi quảng cáo toàn màn chung cờ "đang chiếu" và đồng hồ giãn cách; tách theo loại thì hai thứ đó cần chủ thứ ba. Consumer chỉ cần phần hẹp (§6 cần chiều cao banner) thì service cài thêm interface nhỏ cho nó |
+| `IAdVendor` | cổng vào SDK: sẵn sàng, chiếu, báo đóng, remove ads của SDK | Lõi test được bằng vendor giả; bộ chuyển ở `Vendors/<SDK>` |
 | `IRemoveAdsService` | trạng thái + kích hoạt | Nhiều hệ chỉ cần hỏi "đã mua chưa" |
 | `IIapService` | mua/khôi phục/giá | — |
-| `IAdPlacement` | id + loại + gate level | Placement là **dữ liệu**, không hardcode string ở call-site |
 | `IAttributionService` | Adjust/campaign/device-id | Tách khỏi ads |
 | `IAntiCheatService` | phát hiện can thiệp | Tách hẳn |
 
-**Contract**
+**Contract** — ads: `Plans/Horcrux_Ads_Plan.md` (`IAdService`, `IAdVendor`, `RewardedAdResult`). Phần còn lại:
 
 ```csharp
-public enum EAdType { Rewarded, Interstitial, Banner, AppOpen }
-
-public readonly struct AdPlacement                 // struct, zero-GC
-{
-    public readonly string Id;                     // "revive", "x2_coin", "level_end"
-    public readonly EAdType Type;
-}
-
-public interface IRewardedAds : IService<IRewardedAds>
-{
-    bool IsReady { get; }
-    void Show(in AdPlacement placement, Action onRewarded, Action onFailed = null);
-    UniTask<bool> ShowAsync(AdPlacement placement, CancellationToken ct = default);
-}
-
-public interface IInterstitialAds : IService<IInterstitialAds>
-{
-    bool IsReady { get; }
-    bool CanShow(in AdPlacement placement);        // gate + pacing (§21 quyết định)
-    void Show(in AdPlacement placement, Action onClosed = null);
-    void ForceCompleteInterval();                  // cho phép show ngay lần tới
-}
-
-public interface IBannerAds : IService<IBannerAds>
-{
-    bool IsVisible { get; }
-    float HeightPixels { get; }                    // §6 IScreenInsetProvider lấy từ đây
-    event Action HeightChanged;
-    void Show();
-    void Hide();
-    void Destroy();
-}
-
 public interface IRemoveAdsService : IService<IRemoveAdsService>
 {
     bool IsRemoved { get; }
@@ -1333,22 +1299,22 @@ public interface IIapService : IService<IIapService>
 
 | Quyết định | Vì sao | Đánh đổi |
 |---|---|---|
-| **Chỉ** interface vào SDK, impl per-game | Impl vendor đổi liên tục và luôn tangled; SDK-hoá impl là nhận nợ | Mỗi game viết impl |
-| Tách 5+ interface nhỏ thay 1 `IAdsService` to | Consumer chỉ phụ thuộc đúng phần nó dùng (I trong SOLID); test/mock dễ | Nhiều file interface |
-| `AdPlacement` là struct dữ liệu | String rải rác = typo + không đối soát được với dashboard | Cần bảng placement |
-| `CanShow` **tách khỏi** `Show` | UI cần biết trước để ẩn/hiện nút; và §21 gắn rule pacing vào đúng `CanShow` | Consumer phải hỏi 2 bước |
-| Cả callback **và** `UniTask` overload | Callback cho code UI cũ; `await` cho flow tuần tự | 2 API cùng nghĩa |
+| Contract và lõi ads trong Horcrux; bộ chuyển SDK ở `Vendors/<SDK>`, asmdef bật bằng define | Lõi (mỗi lúc một quảng cáo, giãn cách, chốt kết quả rewarded) giống nhau mọi game; chỉ phần gọi SDK đổi | Mỗi SDK một bộ chuyển |
+| **Một** `IAdService` cho mọi loại quảng cáo | Rewarded và interstitial chung cờ chiếu và đồng hồ giãn cách: rewarded vừa đóng thì interstitial tự chờ, không luật riêng ở game | Fake trong test cài đủ mọi nhóm member; consumer hẹp cần interface nhỏ riêng |
+| Placement là `string` const phía game | Định danh ra dashboard; struct bọc không thêm phép kiểm nào | Typo chỉ lộ trên dashboard |
+| Interstitial một lời gọi, bỏ im lặng khi không đủ điều kiện; số giây giãn cách là **tham số** | Mốc level và giãn cách (§21) là luật của game, đổi theo tập user; service chỉ giữ cơ chế | UI không hỏi trước được "có interstitial không" |
+| Chỉ `await`, không overload callback | Mọi caller hiện có đều tuần tự | — |
 | Banner lộ `HeightPixels` + event | §6 cần đúng số này; hardcode 150px là sai trên tablet | — |
 | `IRemoveAdsService` riêng, có event | Rất nhiều hệ cần hỏi/nghe trạng thái này | — |
 
 **Cạm bẫy**
 - Impl ads gọi trực tiếp vào UI (mở toast, đóng popup, cộng reward) → không port, không test. Impl **chỉ** được phát callback/event; ai muốn làm gì thì subscribe.
 - Rewarded `onRewarded` gọi 2 lần (một số mediation callback trùng) → cấp thưởng 2 lần. Impl phải guard idempotent theo phiên show.
-- Không xử lý nhánh **fail/không có mạng** → người chơi bấm rồi treo. `onFailed` là bắt buộc, không optional.
+- Không xử lý nhánh **fail/không có mạng** → người chơi bấm rồi treo. Rewarded trả `NotAvailable` và bắn `RewardedNotAvailable` cho listener chữ báo của game.
 - Gate level hardcode trong code → không A/B được. Ngưỡng phải từ remote config (§21).
 - `Show` khi đang có popup/transition → chồng UI. Kết hợp `IInteractionBlocker` (§3).
 
-**Xong khi:** §0.6 + không có tên vendor trong SDK · mock impl chạy được toàn bộ flow game · rewarded fail không treo UI · banner height đúng trên tablet.
+**Xong khi:** §0.6 + không có tên vendor ngoài `Vendors/` · mock impl chạy được toàn bộ flow game · rewarded fail không treo UI · banner height đúng trên tablet.
 
 ---
 
@@ -2610,8 +2576,8 @@ public interface IMonetizationConfig : IService<IMonetizationConfig>
 public interface IMonetizationRules : IService<IMonetizationRules>
 {
     bool CanShowBanner(int currentLevel);
-    bool CanShowInterstitial(in AdPlacement placement, int gateLevel);
-    bool CanShowRewarded(in AdPlacement placement, int currentLevel);
+    bool CanShowInterstitial(string placement, int gateLevel);
+    bool CanShowRewarded(string placement, int currentLevel);
     int  EffectiveInterstitialIntervalSeconds { get; }   // day-active override ‖ mặc định
 }
 
@@ -2681,7 +2647,7 @@ RemoteConfig fetched ──► config.ApplyRemoteJson(json)
 resume (§4 OnPauseChanged) ──► tracker.Touch() ──► TickDayTransitions() ──► Resync()
 
 Resync(): interval = TryGetIntervalByDayActive(day) ? s : MinInterstitialIntervalSeconds
-          IInterstitialAds impl nhận interval mới      ← qua contract §13, KHÔNG gọi vendor
+          lời gọi IAdService.ShowInterstitialAsync(placement, interval, ct)   ← qua contract §13, KHÔNG gọi vendor
 ```
 
 **Quyết định thiết kế**
