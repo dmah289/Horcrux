@@ -202,8 +202,9 @@ footer{text-align:center;padding:2.5rem 1rem;color:var(--tx3);font-size:.82rem;b
   <p>Hệ không tự setup. Dựng từ 0 theo thứ tự:</p>
   <ol class="steps">
     <li><strong>DTO hàng pool</strong>
-      <p>Cột <code>int</code> nào cũng phải có một dòng <code>Pick</code>.</p>
+      <p>Cột <code>int</code> nào cũng phải có một dòng <code>Pick</code>; đòi đủ khoá để hàng thiếu cột bị từ chối thay vì đọc ra 0.</p>
 <pre><code>[Serializable]
+[JsonObject(ItemRequired = Required.Always)]
 public sealed class MySegmentConfig : IUserSegmentConfig&lt;MySegmentConfig&gt;
 {
     public int segment_id;
@@ -378,6 +379,7 @@ Commit   entry.Value = state                     luôn: SessionCount, LastCampai
   <div class="note"><strong>Trong Editor Adjust không trả lời:</strong> phiên đầu chờ hết <code>firstSessionWaitSeconds</code> rồi poll nền vô ích; chậm, không sai. Thử tập theo camp bằng cheat <code>ReportCampaign</code>.</div>
   <div class="note"><strong>Thiếu package Adjust</strong> thì hệ vẫn chạy: mọi user ở tập <code>default</code>.</div>
   <div class="note"><strong>Lỗi "order must be lower" của bước Adjust</strong> cũng hiện khi host thiếu Initializer: đọc dòng lỗi của host in trước nó.</div>
+  <div class="note bad"><strong>Thêm một cột là bốn chỗ cùng lần:</strong> field và dòng <code>Pick</code> · mọi hàng trong asset · mọi hàng trên console · danh sách cột trong test. DTO đòi đủ khoá nên một hàng console thiếu cột mới làm <strong>cả pool</strong> bị từ chối: game chạy bằng giá trị asset, chỉ một dòng <code>LogError</code> lúc boot. Lên console trước khi phát hành bản có cột đó.</div>
 </section>
 
 </main>

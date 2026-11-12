@@ -114,10 +114,11 @@ trị thật, không kế thừa. DTO của dự án gọi `Pick` cho từng c�
 
 Hệ không tự setup. Dựng từ 0 theo thứ tự:
 
-**1 · DTO hàng pool** — cột `int` nào cũng phải có một dòng `Pick`:
+**1 · DTO hàng pool** — cột `int` nào cũng phải có một dòng `Pick`; đòi đủ khoá để hàng thiếu cột bị từ chối thay vì đọc ra 0:
 
 ```csharp
 [Serializable]
+[JsonObject(ItemRequired = Required.Always)]
 public sealed class MySegmentConfig : IUserSegmentConfig<MySegmentConfig>
 {
     public int segment_id;
@@ -249,6 +250,9 @@ Hai lệnh còn lại của cheat là cửa ghi thật: `ReportCampaign(camp)` (
 - **Pool rỗng hoặc thiếu hàng `default`.** Exception ném trong `InitializeAsync` sau khi state đã nạp: `IsReady` là true nhưng
   `CurrConfig` vẫn `null`. `BootstrapService` ghi lỗi bước rồi vào game; consumer đầu tiên đọc config ném NRE.
 - **Lỗi "order must be lower" của bước Adjust** cũng hiện khi host thiếu Initializer: đọc dòng lỗi của host in trước nó.
+- **Thêm một cột là bốn chỗ cùng lần:** field và dòng `Pick` · mọi hàng trong asset · mọi hàng trên console · danh sách cột trong
+  test. DTO đòi đủ khoá nên một hàng console thiếu cột mới làm **cả pool** bị từ chối: game chạy bằng giá trị asset, chỉ một dòng
+  `LogError` lúc boot. Lên console trước khi phát hành bản có cột đó.
 - **Collection giả trong test** phải điền `Key` cho `userSegmentState` như mọi entry base tự khai (`Persistence.md`, mục
   Bẫy và quyết định).
 - **"Phiên" ở đây không phải session của Adjust hay Firebase.** Hai SDK đó mặc định tính phiên mới khi app ở nền quá 30 phút;
