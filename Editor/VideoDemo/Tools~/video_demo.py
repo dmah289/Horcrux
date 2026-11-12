@@ -39,7 +39,9 @@ class Video:
         cap = cv2.VideoCapture(path)
         if not cap.isOpened():
             sys.exit('video_demo: không mở được %s' % path)
-        self.fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
+        # Chuỗi ảnh (f_%04d.png) không mang fps, OpenCV trả -1: coi là 30, nhịp quay Unity khoá bằng captureFramerate 30.
+        fps = cap.get(cv2.CAP_PROP_FPS)
+        self.fps = fps if fps > 0 else 30.0
         self.w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
         self.h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
         self.n = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
@@ -74,7 +76,7 @@ class Video:
             if not ok:
                 break
             if i in wanted:
-                out[i] = frame
+                out[i] = to_bgr(frame)
             i += 1
         cap.release()
         return out
@@ -88,9 +90,14 @@ class Video:
             if not ok:
                 break
             if i >= a:
-                fn(i, frame)
+                fn(i, to_bgr(frame))
             i += 1
         cap.release()
+
+
+def to_bgr(frame):
+    """Chuỗi PNG chụp từ Unity có kênh alpha; mọi phép đo và ghép ảnh làm trên BGR 3 kênh."""
+    return cv2.cvtColor(frame, cv2.COLOR_BGRA2BGR) if frame.ndim == 3 and frame.shape[2] == 4 else frame
 
 
 def parse_roi(text, w, h):
@@ -872,9 +879,10 @@ QUIET_LEVEL = 0.15         # dưới mức này là lặng; một lần "bắt �
 
 
 def norm_curve(v, m):
-    """Độ động trên lưới GRID, chia cho phân vị 99 của chính video: hai bản quay khác nhiễu, khác độ sáng vẫn so được hình dạng."""
+    """Độ động trên lưới GRID tính từ frame đầu của đoạn đo, chia cho phân vị 99 của chính đoạn: hai bản quay khác nhiễu, khác
+    độ sáng vẫn so được hình dạng."""
     t = (m['a'] + np.arange(len(m['e']))) / v.fps
-    grid = np.arange(0.0, t[-1] + 1e-9, GRID)
+    grid = np.arange(t[0], t[-1] + 1e-9, GRID)
     e = np.interp(grid, t, m['e'])
     top = float(np.percentile(e, 99)) or 1.0
     return np.clip(e / top, 0.0, 1.5)
@@ -932,12 +940,19 @@ def cmd_compare(args):
     print('A ' + va.header())
     print('B ' + vb.header())
     ra, rb = parse_roi(args.roi, va.w, va.h), parse_roi(args.roi, vb.w, vb.h)
-    ma = analyse_motion(va, ra, 0, va.n - 1, None, args.bin)
-    mb = analyse_motion(vb, rb, 0, vb.n - 1, None, args.bin)
+    a0, a1 = va.range(args.a_from, args.a_to)
+    b0, b1 = vb.range(args.b_from, args.b_to)
+    ma = analyse_motion(va, ra, a0, a1, None, args.bin)
+    mb = analyse_motion(vb, rb, b0, b1, None, args.bin)
     ca, cb = norm_curve(va, ma), norm_curve(vb, mb)
-    r, k, c = best_warp(ca, cb, min(args.max_lag, 0.5 * max(va.duration, vb.duration)), args.tempo)
-    print('canh: B(t) = A(%.3f·t %+.2fs) (tương quan độ động %.2f%s)' % (k, c, r, '' if r >= 0.5 else ', thấp: hai video có thể khác nội dung, hãy đặt --roi'))
-    ea, eb = curve_events(ca), curve_events(cb)
+    oa, ob = a0 / va.fps, b0 / vb.fps
+    r, k, c_rel = best_warp(ca, cb, min(args.max_lag, 0.5 * max(len(ca), len(cb)) * GRID), args.tempo)
+    # best_warp canh trên giây tính từ đầu mỗi đoạn; quy về giây của cả hai video: tB = k·tA + c.
+    c = ob + c_rel - k * oa
+    print('đoạn A %.2f–%.2fs · B %.2f–%.2fs' % (oa, a1 / va.fps, ob, b1 / vb.fps))
+    print('canh: tB = %.3f·tA %+.2fs (tương quan độ động %.2f%s)' % (k, c, r, '' if r >= 0.5 else ', thấp: hai video có thể khác nội dung, hãy đặt --roi, --a-from…'))
+    ea = [(kind, oa + t) for kind, t in curve_events(ca)]
+    eb = [(kind, ob + t) for kind, t in curve_events(cb)]
     used = set()
     pairs = []
     print('sự kiện (giây của A · của B · B lệch so với mốc canh k·tA + c):')
@@ -964,12 +979,12 @@ def cmd_compare(args):
         for s, t in m['segs']:
             loop = loop_period(m['grays'], s, t, v.fps)
             if loop and loop[1] < LOOP_RATIO_MAX:
-                print('%s lặp ~%.2fs trong đoạn %.2f–%.2fs' % (tag, loop[0], s / v.fps, t / v.fps))
+                print('%s lặp ~%.2fs trong đoạn %.2f–%.2fs' % (tag, loop[0], (m['a'] + s) / v.fps, (m['a'] + t) / v.fps))
     if not args.out:
         return
     # Mốc của A có B tương ứng theo k·t + c, chia đều.
-    t_lo = max(0.0, -c / k)
-    t_hi = min(va.duration, (vb.duration - c) / k) - 1.0 / va.fps
+    t_lo = max(oa, (ob - c) / k)
+    t_hi = min(a1 / va.fps, (b1 / vb.fps - c) / k) - 1.0 / va.fps
     count = max(2, args.count)
     ta_list = [t_lo + (t_hi - t_lo) * j / (count - 1) for j in range(count)]
     tb_list = [k * x + c for x in ta_list]
@@ -1041,6 +1056,9 @@ def main():
     sp.add_argument('--max-lag', type=float, default=5.0, help='giây lệch tối đa khi canh hai video')
     sp.add_argument('--tempo', type=float, default=1.25, help='dò nhịp B so với A trong [1/tempo, tempo]')
     sp.add_argument('--pair-window', type=float, default=0.4, help='hai sự kiện cùng loại cách nhau tới mức này (sau khi canh) là một cặp')
+    for side in ('a', 'b'):
+        sp.add_argument('--%s-from' % side, dest='%s_from' % side, type=float, default=None, help='giây bắt đầu đoạn so của %s' % side.upper())
+        sp.add_argument('--%s-to' % side, dest='%s_to' % side, type=float, default=None, help='giây kết thúc đoạn so của %s' % side.upper())
     sp.set_defaults(fn=cmd_compare)
 
     sp = sub.add_parser('selftest', help='đối chiếu bảng ease với PrimeTween, rồi đo video tổng hợp đã biết đáp án')

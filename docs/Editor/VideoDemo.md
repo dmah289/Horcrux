@@ -11,7 +11,7 @@ bản quay Unity. Dùng để dựng và chỉnh animation, hiệu ứng theo de
 | Mục | Chốt |
 |---|---|
 | Người dùng | agent: đọc demo trước khi dựng anim, so bản dựng với demo sau mỗi lần chỉnh. Đầu ra là PNG nhỏ và vài chục dòng số, không HTML |
-| Đầu vào | file video OpenCV đọc được (mp4, mov), mọi cỡ, mọi fps; bản quay Unity bằng Unity Recorder khi dự án có `com.unity.recorder` |
+| Đầu vào | file video OpenCV đọc được (mp4, mov), mọi cỡ, mọi fps; chuỗi PNG đặt tên theo mẫu `f_%04d.png` (coi 30 fps, bỏ kênh alpha); bản quay Unity theo mục Quay bản Unity |
 | Ranh giới | tool **đọc và đo**; chọn tham số tween, Spine, particle là việc của agent sau đó. So một khung tĩnh với Game view dùng `DemoCompare.Diff`, `SideBySide` (`docs/Editor/UIReskin.md`), tool chỉ xuất khung PNG đúng cỡ |
 | Chỗ đặt | Python ở `Editor/VideoDemo/Tools~/`: thư mục đuôi `~` Unity không import, không vào build. Không có C# |
 | Phụ thuộc | `opencv-python-headless`, `numpy` (cài một lần, mục Cài đặt) |
@@ -65,7 +65,7 @@ python -X utf8 -P "$T" sheet   <video> --out <png> [--from s] [--to s] [--count 
 python -X utf8 -P "$T" frame   <video> --at 1.2,3.4 --out-dir <dir> [--size 1080x2340] [--roi R]
 python -X utf8 -P "$T" motion  <video> [--from s] [--to s] [--roi R] [--bin 0.1] [--threshold v]
 python -X utf8 -P "$T" track   <video> --roi R --ref t [--bg t] [--from s] [--to s] [--csv <file>] [--min-score 0.7]
-python -X utf8 -P "$T" compare <a> <b> [--roi R] [--out <png>] [--count 8] [--max-lag 5] [--tempo 1.25] [--pair-window 0.4]
+python -X utf8 -P "$T" compare <a> <b> [--roi R] [--a-from s] [--a-to s] [--b-from s] [--b-to s] [--out <png>] [--count 8] [--max-lag 5] [--tempo 1.25] [--pair-window 0.4]
 ```
 
 | Cờ | Nghĩa |
@@ -81,6 +81,7 @@ python -X utf8 -P "$T" compare <a> <b> [--roi R] [--out <png>] [--count 8] [--ma
 | `track --min-score` | điểm khớp (`TM_CCOEFF_NORMED`) dưới mức này là không thấy. Mẫu thu rất nhỏ khớp nhiễu tới ~0.65 |
 | `track --eps-px` | vị trí đổi dưới mức này mỗi frame coi là đứng (mặc định 1 px) |
 | `track --csv` | ghi mọi frame: `t,frame,score,dx,dy,scale,alpha` |
+| `compare --a-from`, `--a-to`, `--b-from`, `--b-to` | đoạn so của từng video, giây in ra vẫn là giây của cả video. Demo nhiều lượt, bản Unity có thêm màn sau anim thì cắt mỗi bên đúng một lượt |
 | `compare --max-lag`, `--tempo` | dò trễ trong ±giây, nhịp B so với A trong `[1/tempo, tempo]` |
 | `compare --pair-window` | hai sự kiện cùng loại cách mốc canh tới mức này là một cặp |
 
@@ -102,6 +103,11 @@ Thời gian: `motion`, `sheet`, `frame` vài giây cho video 15 s; `track` ~10 s
 Window › General › Recorder › Recorder Window → Add Recorder › Movie. Source **Game View**, Output Resolution theo Game view, Format
 MP4. Playback **Constant**, Target FPS 30 (thiếu thì nhịp trôi theo máy, `compare` báo lệch giả). Game view đặt cùng tỉ lệ demo
 (`demo-compare`). Bấm Start Recording rồi vào màn cần quay; Recorder dừng khi thoát Play.
+
+**Sổ tay** — không cần Recorder: probe `playrun.sh` (`docs/Editor/Probe.md`) đặt `Time.captureFramerate = 30`, gọi lệnh mở anim, rồi
+mỗi frame `FrameSheet.CaptureAsync` + `Save(<thư mục>/f_%04d.png, 1)`. Nhịp tất định dù máy ghi PNG chậm, vì anim chạy theo
+`Time.deltaTime` (anim chạy unscaled thì không dùng được cách này). Thư mục ảnh đặt ngoài thư mục tạm của `playrun.sh`, vì runner xoá thư mục tạm
+khi xong. Ảnh có viền 4 px của `FrameSheet`: so bằng `--roi` theo phần khung.
 
 ## Đọc kết quả
 
@@ -160,6 +166,8 @@ $t_B = k\,t_A + c$ để in nhịp.
 - Mốc thời gian chỉ chính xác tới nửa frame của video, hoặc tới nửa nhịp thật khi bản quay có frame trùng.
 - Vật đổi dáng (Spine đổi attachment, chữ đổi viền) thì mẫu chỉ khớp chặng có cùng dáng. Mỗi chặng cần một `--ref` riêng.
 - Vật xoay thì không đo được góc. Pha đó đọc bằng `sheet`.
+- Nhịp của `compare` chỉ tin được khi có từ ba cặp sự kiện trở lên. Có một cặp thì `k` chỉ là điểm tương quan cao nhất: bản quay có frame
+  trùng có thể kéo `k` lệch 10% trong khi mốc từng lớp vẫn khớp. Khi đó đo mốc xuất hiện của từng lớp (màu, vùng) trên cả hai bản rồi so hiệu số.
 
 ## Đã sai một lần
 
@@ -169,6 +177,8 @@ $t_B = k\,t_A + c$ để in nhịp.
   đã cắt đỉnh thì nhún hình sin ra Linear, và chu kỳ tính từ tâm pha ra 0.87 s thay vì 1 s. Phải fit và đo từ đỉnh tới đỉnh.
 - Hạt trôi báo `lặp ~0.23s`: phép đo cũ lấy đáy ở lag ngắn nhất rồi so với lệch trung bình. Tiêu chí đúng là đáy thấp hẳn đỉnh ở các lag ngắn hơn.
 - Suy frame trùng từ kết quả `track` trùng nhau: báo khoảng 20 hình/s trên video khoảng 27 hình/s, vì scale dò theo bước 1% nên hai frame khác vẫn ra cùng số. Frame trùng chỉ đọc bằng lệch pixel ở `motion`.
+- So cả demo hai lượt với bản Unity một lượt: canh ra nhịp 1.15, không ghép được cặp sự kiện nào, vì đường độ động khớp nhầm lượt.
+  Cắt mỗi bên một lượt bằng `--a-from`, `--b-to`.
 - Mẫu nhỏ ở scale 0.09 khớp nhiễu với điểm 0.65 và tạo ra một pha "bay vào" giả. Cách sửa: `--min-score` mặc định 0.7, và mỗi đoạn thấy liền mạch được mô tả riêng.
 
 ## Nghiệm thu
