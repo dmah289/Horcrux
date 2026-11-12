@@ -19,7 +19,7 @@ dự án kèm con trỏ submodule. Không phụ thuộc Plan nào; `Horcrux_Band
   camera ortho dọc, đặt vật thể world theo mép màn và một ảnh nền phủ kín.
 - **Chỗ đặt, tên:** `Runtime/Utilities/Layout/`, namespace `Horcrux.Runtime.Utilities.Layout` (`Splitter` từ namespace cha, không cần
   `using`). `ViewportAnchor`, `ViewportCover` giữ; `GameplayViewport` → **`ViewportCamera`**, `gameplayCamera` → `targetCamera` (lý do ở
-  GĐ1). Thêm asset **`SafeAreaHeadroom`** (GĐ2). Tên đổi tuỳ ý trước khi gõ.
+  GĐ1). Thêm asset **`SafeAreaHeadroom`** và helper **`BottomInset`** (GĐ2). Tên đổi tuỳ ý trước khi gõ.
 - **Dải trống thiết kế là một asset, mọi consumer cùng mép trên của một màn kéo cùng asset đó:** panel safe area của HUD và
   `ViewportCamera` (cho anchor bật safe area). Hai bên phải dời cùng số pixel, nếu không khe HUD–world đổi theo máy. Phương án bỏ: field số
   trên mỗi consumer (hai bản buộc khớp mà không gì canh) · hằng static dự án đặt lúc boot (bước setup ẩn, quên thì im lặng về cách cũ).
@@ -27,10 +27,15 @@ dự án kèm con trỏ submodule. Không phụ thuộc Plan nào; `Horcrux_Band
 - **World và HUD cùng một luật co giãn:** canvas HUD khớp chiều cao, nên camera giữ trọn khung thiết kế (bề rộng trên màn cao hơn
   thiết kế, chiều cao trên màn rộng hơn) và offset anchor đo bằng pixel thiết kế nhân theo chiều cao màn. Hai thứ này là một quyết định:
   thiếu vế nào thì khe HUD–world đổi theo tỉ lệ màn. Lý do ở GĐ1, GĐ2.
+- **Dải đáy chừa cho banner là một nguồn inset nữa, chốt trước khi dựng màn:** `ViewportCamera` và panel safe area của HUD cùng nâng
+  mép dưới safe area qua **một hàm** `BottomInset.Raise`, đọc số pixel từ `IBottomInsetProvider` của dự án (thiếu provider thì 0).
+  Luật quảng cáo của dự án quyết dải lúc vào màn, trước khi scene dựng, nên anchor vẫn tính một lần. Banner ẩn, hiện giữa màn không
+  dời layout: world đứng yên còn HUD dời thì khe HUD–world lệch (`Horcrux_Ads_Plan.md`, Ngữ cảnh đã chốt). Phương án bỏ: anchor nghe
+  sự kiện banner rồi `ApplyLayout()` lại — bàn chơi nhảy giữa lượt chơi.
 - **Bất biến:** tính một lần ở boot, không `Update`, không constraint. Ba file `.meta` Horcrux nhận lại GUID bản tạm ở GĐ6; hai
   `*.Editor.cs` GUID tuỳ ý.
-- **Không làm:** tính lại khi màn đổi cỡ, `enum` chọn trục camera, guard null (lý do ở GĐ1) · bàn chơi theo inset banner (anchor tính một
-  lần lúc boot, banner hiện sau; cần thì host gọi lại `ApplyLayout()` khi banner đổi) · camera perspective (GĐ2) · cover co giãn không đều,
+- **Không làm:** tính lại khi màn đổi cỡ, `enum` chọn trục camera, guard null (lý do ở GĐ1) · dời bàn chơi khi banner ẩn, hiện giữa
+  màn (quyết định ở trên) · camera perspective (GĐ2) · cover co giãn không đều,
   bù scale của cha (GĐ3) · cover cho `Image` UI (đã có `UICoverFitter`, `Horcrux_UIFitters_Plan.md`) · nút `Apply Layout` trên cover (GĐ4) ·
   panel safe area cho UI (thuộc `SystemPlan.md` §6; dự án dùng panel của nó, chỉ đọc asset) · dải trống ở cạnh dưới và hai bên (chưa có
   thiết kế nào chừa).
@@ -47,7 +52,8 @@ dự án kèm con trỏ submodule. Không phụ thuộc Plan nào; `Horcrux_Band
 ```
 Unity Awake trên camera ──► ViewportCamera đọc targetCamera.aspect, đặt orthographicSize giữ trọn designResolution   GĐ1
                                         ▼
-                     safe area một lần: SafeAreaHeadroom nuốt phần inset trên nằm gọn trong dải trống thiết kế   GĐ2
+                     safe area một lần: SafeAreaHeadroom nuốt phần inset trên nằm gọn trong dải trống thiết kế,
+                     BottomInset nâng mép dưới theo dải đáy dự án chừa (banner)                                   GĐ2
                      từng ViewportAnchor theo thứ tự mảng: điểm màn (trong safe area đó nếu bật) → world, giữ z    GĐ2
                                         ▼
                      từng ViewportCover: scale đều để sprite phủ kín view, trục thừa tràn ra ngoài màn           GĐ3
@@ -64,11 +70,11 @@ Unity Awake trên camera ──► ViewportCamera đọc targetCamera.aspect, đ
   nút Apply Layout (camera) ─┘        │
   nút Apply Layout (anchor) ──────────┤  tìm ViewportCamera cùng root
                                       ├─ targetCamera.orthographicSize = designWidthUnits / 2 · max(1 / aspect, designH / designW)
-                                      ├─ safe = safeAreaHeadroom.Absorb(Screen.safeArea) / cỡ màn   SafeAreaHeadroom (asset)
+                                      ├─ safe = BottomInset.Raise(safeAreaHeadroom.Absorb(Screen.safeArea)) / cỡ màn   SafeAreaHeadroom (asset) · IBottomInsetProvider (dự án, tuỳ chọn)
                                       ├─ anchors[i].Apply(targetCamera, safe, px→viewport)  ViewportAnchor: mép (trong safe) + designPixelOffset → world, giữ z
                                       └─ covers[i].Apply(targetCamera)   ViewportCover: target.localScale = max(viewW / spriteW, viewH / spriteH)
 
-  panel safe area của HUD (dự án) ──► cùng asset SafeAreaHeadroom.Absorb ──► khung HUD dời cùng số pixel với cụm world
+  panel safe area của HUD (dự án) ──► cùng asset SafeAreaHeadroom.Absorb, cùng BottomInset.Raise ──► khung HUD dời cùng số pixel với cụm world
 ```
 
 `ViewportCamera` là cửa gọi duy nhất; không ai cache kết quả — gọi lại là tính lại từ cấu hình.
@@ -205,7 +211,8 @@ chạy ở EditMode nên test gọi `ApplyLayout()`.
 
 **Mục tiêu:** `ViewportAnchor` đặt transform của nó tại một điểm mép màn (0–1, tuỳ chọn trong safe area) cộng offset đo bằng pixel
 thiết kế, co theo chiều cao màn như canvas HUD, giữ z;
-`ViewportCamera` tính safe area **một lần** qua asset `SafeAreaHeadroom` rồi gọi từng anchor **theo thứ tự mảng** ngay sau khi đặt size.
+`ViewportCamera` tính safe area **một lần** qua asset `SafeAreaHeadroom` và dải đáy `BottomInset`, rồi gọi từng anchor **theo thứ tự
+mảng** ngay sau khi đặt size.
 Xong giai đoạn này hàng box, thanh khay, mask nằm đúng mép ở mọi tỉ lệ màn, và trên máy tai thỏ cụm trên chỉ dời phần inset vượt dải
 trống thiết kế, cùng số pixel với HUD.
 
@@ -321,15 +328,59 @@ namespace Horcrux.Runtime.Utilities.Layout
                 anchor.Apply(targetCamera, safe, designPixelToViewport);
 ```
 
+### `Runtime/Utilities/Layout/BottomInset.cs` — file mới
+
+Dải đáy nằm ngoài canvas (banner) chỉ dự án biết, và chỉ biết lúc chạy (mốc level, tập user, remove ads). Dự án đăng ký một provider;
+`ViewportCamera` ở đây và panel safe area của HUD cùng đi qua `BottomInset.Raise`, nên hai bên nâng mép dưới cùng số pixel.
+
+```csharp
+using Sisus.Init;
+using UnityEngine;
+
+namespace Horcrux.Runtime.Utilities.Layout
+{
+    /// <summary>
+    /// Screen pixels reserved at the bottom outside the canvas, such as a banner. The project registers one with
+    /// <c>[Service(typeof(IBottomInsetProvider))]</c> and fixes the value before a screen is built.
+    /// </summary>
+    public interface IBottomInsetProvider
+    {
+        float BottomInsetPixels { get; }
+    }
+
+    /// <summary>Raises the bottom edge of a safe area; the HUD safe-area panel and <see cref="ViewportCamera"/> both call it.</summary>
+    public static class BottomInset
+    {
+        /// <summary><paramref name="safeArea"/> in screen pixels, bottom raised by the registered provider; none: unchanged.</summary>
+        public static Rect Raise(Rect safeArea) =>
+            Raise(safeArea, Service.TryGet<IBottomInsetProvider>(out var provider) ? provider.BottomInsetPixels : 0f);
+
+        public static Rect Raise(Rect safeArea, float insetPixels) =>
+            Rect.MinMaxRect(safeArea.xMin, Mathf.Min(safeArea.yMin + insetPixels, safeArea.yMax), safeArea.xMax, safeArea.yMax);
+    }
+}
+```
+
+Chỗ dễ gõ sai:
+- **`TryGet`, không `Get`.** Màn không có banner, dự án không có quảng cáo thì không ai đăng ký provider; dải là 0.
+- **`Mathf.Min(yMin + inset, yMax)`.** Dải cao hơn vùng thì vùng rỗng; để `yMin` vượt `yMax` thì rect lật và anchor đáy nhảy lên đỉnh.
+- **Hàm hai tham số là cửa của test.** Hàm một tham số chỉ đọc provider rồi gọi nó.
+
+**Phương án bỏ:**
+- Ô số pixel kéo thả trên `ViewportCamera` — dải quyết lúc chạy, không biết lúc authoring.
+- `AdService` của Horcrux cài provider — dải phụ thuộc mốc level và màn nào có banner, đều là luật của dự án.
+- Đặt tên theo banner (`BannerSpace`) — tên hệ theo cơ chế; nguồn inset đáy khác (thanh điều hướng tự vẽ, quảng cáo native) dùng cùng
+  cửa.
+
 ### `ViewportCamera.cs` › region mới `Class Methods` sau `API`
 
 ```csharp
         #region Class Methods
 
-        // safe area in viewport units (0–1), top inset absorbed by the design headroom
+        // safe area in viewport units (0–1): top inset absorbed by the design headroom, bottom raised by the reserved band
         private Rect SafeViewport()
         {
-            var safe = safeAreaHeadroom.Absorb(Screen.safeArea, Screen.height);
+            var safe = BottomInset.Raise(safeAreaHeadroom.Absorb(Screen.safeArea, Screen.height));
             return new Rect(safe.x / Screen.width, safe.y / Screen.height, safe.width / Screen.width, safe.height / Screen.height);
         }
 
@@ -384,7 +435,7 @@ lệch nhau thì khe giữa chúng đổi theo máy; một asset là một ngu�
 
 | Consumes | Produces |
 |---|---|
-| GĐ1 · `Camera.ViewportToWorldPoint` · `Screen.safeArea` | `SafeAreaHeadroom.Absorb(Rect, float)` · `ViewportAnchor.Apply(Camera, Rect, Vector2)` · `ViewportAnchor.ViewportPoint(Rect, Vector2, Vector2, Vector2)` · `ViewportCamera.anchors`, `safeAreaHeadroom` |
+| GĐ1 · `Camera.ViewportToWorldPoint` · `Screen.safeArea` · `IBottomInsetProvider` của dự án (tuỳ chọn) | `SafeAreaHeadroom.Absorb(Rect, float)` · `BottomInset.Raise(Rect)`, `Raise(Rect, float)` · `ViewportAnchor.Apply(Camera, Rect, Vector2)` · `ViewportAnchor.ViewportPoint(Rect, Vector2, Vector2, Vector2)` · `ViewportCamera.anchors`, `safeAreaHeadroom` |
 
 **Sơ đồ tương tác sau GĐ2**
 
@@ -392,6 +443,7 @@ lệch nhau thì khe giữa chúng đổi theo máy; một asset là một ngu�
   Unity Awake ──► ViewportCamera ──orthographicSize──► targetCamera
                         │
                         ├──SafeViewport()+ ──Absorb(Screen.safeArea)+──► SafeAreaHeadroom+ (asset)
+                        │                   └─BottomInset.Raise+ ──BottomInsetPixels──► IBottomInsetProvider (dự án, thiếu = 0)
                         └──anchors[i].Apply(targetCamera, safe, designPixelToViewport)+──► ViewportAnchor+ ──transform.position──► vật thể world
 ```
 
@@ -434,6 +486,10 @@ thẳng `Apply(camera, rect, Vector2.zero)`; ca offset gọi `ViewportPoint`.
 | inset vượt dải | inset 110 | `2400 − yMax` = 110 − 96.7 ≈ 13.3 (±1e-3) |
 | dải 0 | `top 0`, inset 110 | `2400 − yMax` = 110: bằng safe area thô |
 | cạnh khác giữ | `(12, 48, 1050, 2152)`, inset 200 | `xMin` 12, `yMin` 48, `xMax` 1062 |
+| dải đáy | `Raise((0, 34, 1080, 2306), 168)` | `yMin` 202; `xMin`, `xMax`, `yMax` giữ |
+| dải đáy 0 | `Raise(rect, 0)` | bằng `rect` |
+| dải cao hơn vùng | `Raise((0, 0, 1080, 100), 168)` | `yMin` = `yMax` = 100: vùng rỗng, không lật |
+| không provider | `Raise(rect)` khi chưa đăng ký `IBottomInsetProvider` | bằng `rect` |
 
 `Screen.safeArea` lệch không dựng được ở EditMode (chỉ đọc): `SafeViewport` kiểm ở GĐ6 trên Device Simulator với máy tai thỏ.
 
@@ -676,7 +732,7 @@ khi Play).
 
 **Mục tiêu:** `GameplayRoot.prefab` chạy trên ba component Horcrux với 11 component giữ nguyên tham chiếu; hai asset dải trống của dự án
 (`SafeAreaHeadroom_Game`, `SafeAreaHeadroom_Menu`) chạy trên `SafeAreaHeadroom` của Horcrux, giữ nguyên số và mọi ô đã kéo; 6 file bản
-tạm, test bản tạm và `.meta` xoá; tài liệu dự án đổi tên theo.
+tạm, `BannerSpace.cs`, test bản tạm và `.meta` xoá; tài liệu dự án đổi tên theo.
 
 **Dự án đã đi trước một phần (2026-11-09):** bản tạm `SafeAreaHeadroom` đã là ScriptableObject cùng chữ ký `Absorb(Rect, float)`, bản
 tạm `ViewportAnchor.Apply(Camera, Rect, Vector2)`, `ViewportPoint`, `GameplayViewport.OrthographicSize` và `SafeViewport()` đã như GĐ1–2; `HeadroomSafeArea` có ô `headroom`; hai asset
@@ -690,8 +746,9 @@ GĐ6 vì thế chỉ đổi type dưới asset (giữ GUID), không tạo, khôn
 | 1 | Xoá 6 file ở `Assets/_CategoryJam/Scripts/Utilities/` (`GameplayViewport.cs`, `GameplayViewport.Editor.cs`, `ViewportAnchor.cs`, `ViewportAnchor.Editor.cs`, `ViewportCover.cs`, `SafeAreaHeadroom.cs`), `Tests/EditMode/SafeAreaHeadroomTests.cs`, `Tests/EditMode/GameplayViewportTests.cs` (case đã sang `ViewportLayoutTests` ở GĐ1–2) và các `.meta` | hai asset cùng GUID sau bước 2: Unity cấp GUID mới cho một bản, prefab báo 11 script missing |
 | 2 | Ghi GUID bản tạm vào `.meta` Horcrux: `ViewportCamera.cs.meta` ← `3fc862fca3d20714aa53ea069560ef9f` · `ViewportAnchor.cs.meta` ← `c29c8c47f2b864541b173c28f727e131` · `ViewportCover.cs.meta` ← `233404ff652a67d4ca28f25e2e133308` · `SafeAreaHeadroom.cs.meta` ← `fb1d5289493ff0b48971e95027977c88` | prefab trỏ GUID không còn: 11 script missing · hai asset dải trống mất script: ô `headroom`, `safeAreaHeadroom` thành null, `NullReferenceException` ở `Awake`/`Start` |
 | 3 | `GameplayRoot.prefab`: key `gameplayCamera: {fileID: 5567243261129153408}` → `targetCamera: {fileID: 5567243261129153408}` | key cũ bị bỏ khi deserialize, `targetCamera` null: `NullReferenceException` ở `Awake` |
-| 4 | `Scripts/Hud/HeadroomSafeArea.cs`: `using CategoryJam.Gameplay.Utilities;` → `using Horcrux.Runtime.Utilities.Layout;` | type bản tạm đã xoá ở bước 1: lỗi compile |
-| 5 | Không file `.cs` nào khác của dự án gọi tên bốn type (grep 2026-11-09: `SafeAreaHeadroom` chỉ ở `HeadroomSafeArea.cs`, ba file bản tạm và test bản tạm) | — |
+| 4 | `Scripts/Hud/HeadroomSafeArea.cs`: `using CategoryJam.Gameplay.Utilities;` → `using Horcrux.Runtime.Utilities.Layout;`, `BannerSpace.RaiseBottom` → `BottomInset.Raise` | type bản tạm đã xoá ở bước 1: lỗi compile |
+| 4b | Dải banner: xoá `Scripts/Utilities/BannerSpace.cs` và `Tests/EditMode/BannerSpaceTests.cs` (case đã sang `ViewportLayoutTests`); `_Game/Scripts/Ads/GameplayBanner.cs` cài `IBottomInsetProvider` thay `IBannerSpace`, `ReservedPixels` → `BottomInsetPixels`, `[Service(typeof(GameplayBanner), typeof(IBottomInsetProvider))]` | đăng ký thiếu kiểu provider: dải đáy bằng 0, banner đè booster bar mà không log |
+| 5 | Không file `.cs` nào khác của dự án gọi tên bốn type (`BannerSpace`, `IBannerSpace` chỉ ở `HeadroomSafeArea.cs`, `GameplayViewport.cs`, `GameplayBanner.cs`, test bản tạm) (grep 2026-11-09: `SafeAreaHeadroom` chỉ ở `HeadroomSafeArea.cs`, ba file bản tạm và test bản tạm) | — |
 
 **Tài liệu dự án:** `Scripts/Layout.md` §1 tiêu đề và thân `GameplayViewport` → `ViewportCamera`, "aspect đọc từ `Screen`" → "từ
 `camera.aspect`", nút trên anchor là **Apply Layout** (không có nút tên khác); §2, §3, "Đã sai một lần", "Trước khi chạy" hàng 2 đổi tên type
@@ -703,7 +760,7 @@ mục "lên Horcrux". `Structure.md`: dòng `Utilities/` bỏ bốn type và dò
 
 - `bash "Assets/Horcrux/Editor/CompileCheck/Tools~/verify.sh" --csproj CategoryJam.Gameplay.csproj,CategoryJam.Editor.csproj,CategoryJam.EditModeTests.csproj,com.horcrux.runtime.csproj,com.horcrux.editor.csproj,Horcrux.EditModeTests.csproj --tests CategoryJam.EditModeTests,Horcrux.EditModeTests`
   — lỗi build ngay sau khi xoá file là lỗi tạm tới khi Editor sinh lại csproj; chạy lại trước khi kết luận.
-- grep `GameplayViewport`, `gameplayCamera`, `CategoryJam.Gameplay.Utilities.Viewport`, `TopHeadroom` trên `.cs`, `.prefab`, `.unity`,
+- grep `GameplayViewport`, `gameplayCamera`, `CategoryJam.Gameplay.Utilities.Viewport`, `TopHeadroom`, `BannerSpace`, `IBannerSpace` trên `.cs`, `.prefab`, `.unity`,
   `.md` toàn repo: 0.
 - Nhất quán chéo trước–sau: một probe (`Editor/Probe`, `playrun.sh` với `SIZES="1080x2340 1080x1920 2136x3200"`,
   `DEVICES="Poco M7 Pro 5G;iOS Notch Device"`, `PLAY_FROM_BUILD_SCENE=1`) vào level, in `ScreenBox.Of` của 9 object anchor, khung
@@ -728,6 +785,7 @@ sâu dưới dải trống · nền hở một dải ở cạnh.
 | `Runtime/Utilities/Layout/ViewportCamera.cs` | tạo | `anchors`, `safeAreaHeadroom`, `SafeViewport`, vòng gọi | `covers`, vòng gọi | | | `.meta` nhận GUID `3fc862fc…` |
 | `Runtime/Utilities/Layout/ViewportAnchor.cs` | | tạo | | | | `.meta` nhận GUID `c29c8c47…` |
 | `Runtime/Utilities/Layout/SafeAreaHeadroom.cs` | | tạo | | | | |
+| `Runtime/Utilities/Layout/BottomInset.cs` | | tạo | | | | |
 | `Runtime/Utilities/Layout/ViewportCover.cs` | | | tạo | | | `.meta` nhận GUID `233404ff…` |
 | `Runtime/Utilities/Layout/ViewportCamera.Editor.cs` (agent) | | | | tạo | | |
 | `Runtime/Utilities/Layout/ViewportAnchor.Editor.cs` (agent) | | | | tạo | | |

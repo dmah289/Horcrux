@@ -182,7 +182,7 @@ Các hệ dưới đây đã được viết plan tự chứa, có code dán-đ�
 | §23 Combo | `Plans/Horcrux_ComboTracker_Plan.md` | `ComboTracker` thuần nhận `Func<int, float> windowSeconds`, đồng hồ `Tween.Delay`, một event `Changed(count, window)`; meter là `ProgressBar` có sẵn; phản hồi nhiều kênh gọi cạnh nhau trong một hàm của dự án. 1 file | struct núm cửa sổ trên Inspector, `Multiplier(count)`, bậc, multi-track, kỷ lục, telemetry |
 | 4b Time | `docs/Runtime/TimeSystem/TimeSystem.md` | `ITimeService.UtcNowUnix` không lùi (mốc lớn nhất từng thấy, field `protected internal` trong `BasePersistenceDataCollection`). 2 file + 1 field | **toàn bộ server time** (contract `IServerTimeProvider` + `offsetSeconds` + `IsServerTimeTrusted` + `ResyncAsync` + gate cấp thưởng — thiết kế ở §4b ngay dưới), `Countdown`, `TimeFormatter`, nhịp qua Ticker |
 | 14c Reward | `docs/Runtime/RewardSystem/RewardSystem.md` | `RewardData{TypeId, Amount}` + `IRewardHandler` (1 member) + `IRewardService.Register(typeId, handler)/Grant` sync. 2 file | `GrantAsync` + fly, claim popup, `IRewardIconProvider`, 14a Currency, 14b Lives |
-| §13 Ads | `Plans/Horcrux_Ads_Plan.md` | `IAdService` một service cho rewarded và interstitial (chung cờ chiếu, đồng hồ giãn cách) · `IAdVendor` cổng SDK · bộ chuyển `Vendors/Zego`. Luật kịch bản interstitial ở game. 6 file | banner, IAP, `IRemoveAdsService`, compare chọn interstitial khi rewarded chưa sẵn |
+| §13 Ads | `Plans/Horcrux_Ads_Plan.md` | `IAdService` một service cho rewarded, interstitial và banner (chung cờ chiếu, đồng hồ giãn cách; banner là ý muốn qua một cửa đối chiếu) · `IAdVendor` cổng SDK · bộ chuyển `Vendors/Zego`. Luật kịch bản (mốc level, màn nào có banner, dải đáy) ở game. 6 file | IAP, `IRemoveAdsService`, compare chọn interstitial khi rewarded chưa sẵn, thu dải đáy khi banner tải lỗi |
 | 20 LiveOps | `docs/Runtime/LiveOpsHost/LiveOpsHost.md` | `LiveOpsModuleState` 3 trạng thái · `WeeklySchedule.Resolve` thuần · `LiveOpsModuleBase` (một thân `Refresh` cho init + tick) · `LiveOpsHost` chờ save, tick 1 Hz, `LiveOpsSecondTick`. 8 file. Module đầu: Collection (`Assets/LiveOps/Collection/Collection_Plan.md`) | `IOptionalService`, tick thích ứng, `EActivationTiming`, `#define` per module, asset preload, lịch chu kỳ N ngày, cheat-time |
 
 > ⚠️ **2/7 file plan đã bị xoá trong commit `clean` của repo Horcrux** — `TickerSystem.md` và
@@ -564,13 +564,15 @@ tích luỹ thời gian state bằng `float` mất chính xác sau vài giờ (d
 ## 6. Safe-Area & Responsive Canvas — `Foundation` · *tự viết trên bộ code đã hội tụ ở 3 repo*
 
 **Bài toán.** UI mobile phải đúng trên mọi tỉ lệ + notch + home-bar **và cả banner ads chiếm đáy màn
-hình**. Vùng an toàn **đổi lúc runtime** (xoay máy, banner hiện/ẩn) → tính một lần lúc `Start()` là sai.
+hình**. Vùng an toàn **đổi lúc runtime** (xoay máy) → tính một lần lúc `Start()` là sai. Dải banner thì ngược lại: chốt lúc vào
+màn, vì bàn chơi neo world một lần lúc dựng.
 Bằng chứng còn cho thấy vấn đề thứ hai không phải "thiếu" mà là **thừa**: mỗi repo đang chạy 2–4 bản
 safe-area song song — SDK tồn tại để mỗi dự án chỉ còn **một đường duy nhất**.
 
 **Use case.**
 - Nút không lọt dưới notch/home-bar/camera đục lỗ; layout co giãn theo aspect (tablet 4:3 ↔ phone 20:9).
-- Banner hiện → padding đáy tăng, UI đẩy lên; banner ẩn → trả lại.
+- Màn có banner → padding đáy tăng đúng chiều cao banner từ lúc vào màn; banner ẩn, hiện giữa màn (Shop, quảng cáo toàn màn, mua
+  remove ads) không dời UI, vì world đứng yên mà HUD dời thì khe HUD–world lệch.
 - Vùng **ngược lại**: background phải phủ kín cả notch, không co vào safe-area.
 - Board gameplay canh giữa vùng an toàn (quy đổi sang world bounds cho camera).
 - Preview notch trong Editor khi làm UI.
@@ -582,7 +584,8 @@ safe-area song song — SDK tồn tại để mỗi dự án chỉ còn **một 
 - **Watcher so sánh rồi mới update** (dirty): `Screen.safeArea` đổi rất ít; rebuild layout mỗi frame là
   phí lớn nhất của UGUI.
 - **Inset ngoài OS qua provider tuỳ chọn** (`IOptionalService` — §0.2): chiều cao banner chỉ hệ ads biết —
-  SDK safe-area không được phụ thuộc ads; banner chỉ là một nguồn inset nữa cộng vào padding đáy.
+  SDK safe-area không được phụ thuộc ads; banner chỉ là một nguồn inset nữa cộng vào padding đáy. Đã có hình dạng:
+  `IBottomInsetProvider` + `BottomInset.Raise` (`Horcrux_ViewportAnchor_Plan.md` GĐ2), luật quảng cáo của dự án cài provider.
 - **Vùng ngược là component riêng** — nhu cầu ngược hẳn, nhồi cờ vào một class là if/else lồng.
 - Quy đổi vùng an toàn → world bounds (bounder) cho board/camera — cùng nguồn sự thật với UI.
 - **Inset trên chỉ đẩy phần vượt dải trống thiết kế**: demo thường đã chừa dải trên cùng cho thanh trạng

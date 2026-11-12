@@ -1,33 +1,39 @@
-# Plan — Ads lên Horcrux: `AdService` (rewarded + interstitial) và bộ chuyển Zego MAX
+# Plan — Ads lên Horcrux: `AdService` (rewarded, interstitial, banner) và bộ chuyển Zego MAX
 
 Ngày 2026-11-12. Nguồn: category-jam, bản tạm `Assets/_Core/Ads/IAdService.cs` (contract), `Assets/_Modules/Sdk/Ads/ZegoAdService.cs`
-(bản cài), `Assets/_Game/Scripts/Ads/InterstitialScenarios.cs` (luật kịch bản của dự án), tài liệu `Assets/_Modules/Sdk/Ads/Ads.md`.
-Bản tạm đang chạy ở ba nút rewarded (Free của popup thêm mạng, Free của popup hồi sinh, Get x2 của popup thắng) và hai kịch bản
-interstitial (sau popup thắng, trước khi chơi lại).
+(bản cài), luật kịch bản của dự án ở `Assets/_Game/Scripts/Ads/` (`InterstitialScenarios`, `RewardedScenarios`, `AdLevelGate`,
+`GameplayBanner`), tài liệu `Assets/_Modules/Sdk/Ads/Ads.md`. Bản tạm đang chạy ở bốn nút rewarded (Free của popup thêm mạng, Free
+của popup hồi sinh, Get x2 của popup thắng, nút xem quảng cáo của popup mở thêm box), hai kịch bản interstitial (sau popup thắng,
+trước khi chơi lại) và banner đáy màn gameplay.
 
-**Phân công:** developer gõ GĐ1–4. Agent viết test theo bảng case rồi compile, làm GĐ5 (tài liệu) và GĐ6 (chuyển dự án sang bản
-Horcrux, xoá bản tạm). Ở GĐ1–3, **"chạy được, thấy được"** nghĩa là compile sạch và bảng case xanh trong
-`Tests/PlayMode/AdServiceTests.cs`, chạy với vendor giả. GĐ4 chỉ cần compile sạch, vì sự kiện MAX là static event, chỉ máy thật bắn
-được. Phần thấy trong game nằm ở GĐ6. GĐ1–5 commit trong `Assets/Horcrux`; GĐ6 commit ở dự án, kèm con trỏ submodule. Plan không
-phụ thuộc Plan nào khác. Không có `§0` vì hệ không có toán.
+**Phân công:** developer gõ GĐ1–5. Agent viết test theo bảng case rồi compile, làm GĐ6 (tài liệu) và GĐ7 (chuyển dự án sang bản
+Horcrux, xoá bản tạm). Ở GĐ1–4, **"chạy được, thấy được"** nghĩa là compile sạch và bảng case xanh trong
+`Tests/PlayMode/AdServiceTests.cs`, chạy với vendor giả. GĐ5 chỉ cần compile sạch, vì sự kiện MAX là static event, chỉ máy thật bắn
+được. Phần thấy trong game nằm ở GĐ7. GĐ1–6 commit trong `Assets/Horcrux`; GĐ7 commit ở dự án, kèm con trỏ submodule. Plan không
+phụ thuộc Plan nào khác: dải đáy chừa cho banner là `BottomInset` của `Horcrux_ViewportAnchor_Plan.md` GĐ2; chưa gõ Plan đó thì GĐ7
+giữ bản tạm `BannerSpace` của dự án. Không có `§0` vì hệ không có toán.
 
-> **Gõ liền GĐ1–4 rồi mới Play game.** `AdService` nhận `IAdVendor` qua InitArgs, mà bản cài vendor tới GĐ4 mới có. Giả định (cần
-> xác nhận ở GĐ6): Play giữa chừng thì InitArgs báo thiếu dependency lúc boot, hoặc không tạo service.
+> **Gõ liền GĐ1–5 rồi mới Play game.** `AdService` nhận `IAdVendor` qua InitArgs, mà bản cài vendor tới GĐ5 mới có. Giả định (cần
+> xác nhận ở GĐ7): Play giữa chừng thì InitArgs báo thiếu dependency lúc boot, hoặc không tạo service.
 
 ## Ngữ cảnh đã chốt
 
 - **Người dùng:**
   - popup của dự án gọi `ShowRewardedAsync` khi người chơi bấm nút xem quảng cáo nhận thưởng;
   - luật kịch bản của dự án gọi `ShowInterstitialAsync` ở chỗ chuyển cảnh, sau khi tự quyết mốc level và giãn cách;
+  - luật banner của dự án gọi `ShowBanner` khi vào màn đã qua mốc, `HideBanner` khi rời màn hay mở màn cần trống đáy (Shop), và
+    đọc `BannerHeightPixels` một lần lúc vào màn để chừa dải đáy;
   - dự án gắn một listener hiện chữ báo "không có quảng cáo";
   - dự án sau dùng Zego MAX thì không phải viết thêm gì; dự án dùng SDK khác thì chỉ tự cài `IAdVendor`.
 - **Mục tiêu:**
   - Rewarded: một lời gọi `await` trả về `Earned` / `Skipped` / `NotAvailable` sau khi quảng cáo đã **đóng**. Dữ liệu được ghi lúc
     SDK báo nhận thưởng; phần trình diễn chạy sau khi `await` trả về.
   - Interstitial: một lời gọi `await` xong khi quảng cáo đóng, hoặc xong ngay khi bỏ qua. Caller không cần biết vì sao bỏ.
+  - Banner: dự án chỉ nói **muốn** hay **không muốn** banner. Service tự ẩn nó khi quảng cáo toàn màn chiếu, khi đã remove ads, và
+    giữ ý muốn tới lúc SDK nhận lệnh được.
 - **Một service cho mọi quảng cáo toàn màn** (developer đã chốt). Rewarded và interstitial dùng chung hai thứ: cờ "đang chiếu"
   (mỗi lúc một quảng cáo) và đồng hồ giãn cách (mốc là lúc quảng cáo toàn màn gần nhất **đóng**). Tách hai service thì hai thứ
-  này phải có chủ thứ ba và hai service phải báo nhau.
+  này phải có chủ thứ ba và hai service phải báo nhau. Banner ở cùng service vì nó đọc chính cờ "đang chiếu" đó.
 - **Chỗ đặt và tên** (developer đã chốt):
   - Contract nằm ở `Runtime/Abstractions/Foundations/Ads/`, namespace `Horcrux.Runtime.Abstractions.Ads`: `IAdService`,
     `RewardedAdResult`, `IAdVendor`.
@@ -39,9 +45,9 @@ phụ thuộc Plan nào khác. Không có `§0` vì hệ không có toán.
 
   | Bên | Giữ gì |
   |---|---|
-  | Lõi | **khi nào** chiếu: mỗi lúc một quảng cáo, đồng hồ giãn cách, rewarded đợi sẵn sàng 2 s, chốt kết quả, đợi thưởng về muộn 0,5 s, bỏ thưởng về sau khi đã chốt |
-  | Vendor | **chiếu thế nào**, báo lúc quảng cáo đóng, trạng thái remove ads của SDK |
-  | Dự án | placement, chữ báo lỗi, phần thưởng, trình diễn, khởi tạo SDK, **luật kịch bản interstitial**: mốc level, số giây giãn cách, lượt nào không chiếu |
+  | Lõi | **khi nào** chiếu: mỗi lúc một quảng cáo, đồng hồ giãn cách, rewarded đợi sẵn sàng 2 s, chốt kết quả, đợi thưởng về muộn 0,5 s, bỏ thưởng về sau khi đã chốt; banner: một cửa đối chiếu ý muốn của dự án với cờ chiếu, remove ads, SDK nhận lệnh |
+  | Vendor | **chiếu thế nào**, báo lúc quảng cáo đóng, trạng thái remove ads của SDK, lúc SDK bắt đầu nhận lệnh banner, chiều cao banner |
+  | Dự án | placement, chữ báo lỗi, phần thưởng, trình diễn, khởi tạo SDK, **luật kịch bản**: mốc level của interstitial, nút rewarded và banner, số giây giãn cách, lượt nào không chiếu, màn nào muốn banner, chừa dải đáy |
 
   Phương án bỏ:
   - Dồn hết vào bộ chuyển Zego. Ít file hơn, nhưng không test được ngoài máy thật.
@@ -66,6 +72,15 @@ phụ thuộc Plan nào khác. Không có `§0` vì hệ không có toán.
     `compare_with_inter_when_show_rewarded_permission` = `"1"`, Zego chiếu interstitial thay rewarded nếu eCPM cao hơn và báo "nhận
     thưởng" lúc interstitial đóng. Chỉ nghe Rewarded thì lượt chiếu treo, và mọi nút xem quảng cáo hỏng tới khi tắt app.
   - **Kiểm sẵn sàng cùng frame ngay trước `Show`.** Zego gặp rewarded chưa sẵn thì thoát im lặng và không bắn sự kiện nào.
+  - **Banner là ý muốn, không phải lệnh.** `ShowBanner` chỉ ghi ý muốn. Banner hiện khi cả ba đúng: không có quảng cáo toàn màn,
+    chưa remove ads, SDK nhận lệnh được. Mỗi mốc đổi một điều kiện gọi cùng một cửa đối chiếu; cửa chỉ gửi SDK khi kết quả đổi.
+  - **Lệnh banner tới trước khi MAX khởi tạo xong bị Zego bỏ im lặng.** Vendor báo `BannerAvailable` **một frame** sau sự kiện khởi
+    tạo của MAX: Zego tạo banner trong handler của chính sự kiện đó, thứ tự handler không định.
+  - **`BannerHeightPixels` có trước khi banner tải.** Chiều cao adaptive chỉ phụ thuộc bề ngang màn, nên dự án chừa dải đáy lúc vào
+    màn. Dải giữ nguyên tới hết màn dù banner ẩn (Shop, quảng cáo toàn màn, mua remove ads): bàn chơi neo world một lần lúc dựng,
+    dời HUD mà world đứng yên thì hai bên lệch nhau.
+  - **Mua remove ads giữa phiên: dự án gọi `HideBanner` ở cửa ghi remove ads.** Vendor không có sự kiện đổi remove ads; lần
+    `ShowBanner` sau đó vẫn bị `IsAdsRemoved` chặn. Remove ads chặn interstitial và banner, không chặn rewarded.
 - **Cố ý KHÔNG làm:**
   - giới hạn số lần xem rewarded, số interstitial mỗi phiên — chưa có yêu cầu;
   - màn "Ad break" đếm ngược trước interstitial;
@@ -75,12 +90,11 @@ phụ thuộc Plan nào khác. Không có `§0` vì hệ không có toán.
   - hạn giờ cho một lượt chiếu — SDK không báo đóng là lỗi SDK; thêm hạn giờ thì phải đoán một con số mà mọi quảng cáo dài đều
     vượt;
   - interstitial đợi sẵn sàng — người chơi đang chuyển cảnh, bắt họ đợi để xem quảng cáo là tệ hơn mất một lượt;
-  - sửa lỗi của Zego ở chế độ compare: interstitial hiển thị lỗi cũng bị tính là nhận thưởng (mục "Lưu ý" ở GĐ4).
+  - sửa lỗi của Zego ở chế độ compare: interstitial hiển thị lỗi cũng bị tính là nhận thưởng (mục "Lưu ý" ở GĐ5);
+  - banner trên đỉnh màn, MREC, collapsible — chưa có thiết kế nào dùng;
+  - sự kiện đổi chiều cao banner — dải chốt lúc vào màn, không ai nghe nó giữa màn.
 - **Mở rộng sau:**
-  - **Banner.** Thêm vào chính `IAdService`: show, hide, `HeightPixels` và sự kiện `HeightChanged`. Zego không trả chiều cao banner,
-    nên vendor đọc thẳng từ MAX. Consumer chỉ cần chiều cao (vùng an toàn) thì `AdService` cài thêm một interface nhỏ riêng cho nó —
-    thêm, không đập. Consumer hiện có trong category-jam gọi qua `Kelsey.IAdsService` của dự án: `SafeArea`, `PopupShop`,
-    `PersistentData`.
+  - **Thu dải đáy khi banner tải lỗi.** Cần vendor báo tải xong, tải lỗi; hiện dải luôn bằng chiều cao dự kiến.
   - **Compare chọn được interstitial khi rewarded chưa sẵn.** `IsRewardedVideoReady` của Zego chỉ hỏi rewarded, nên lõi trả
     `NotAvailable` dù interstitial có thể lấp chỗ. Làm khi bật key đó.
   - **Giãn cách theo Day Active, kịch bản theo tập user** (`SystemPlan.md` §21): thuộc lớp luật của dự án, truyền số giây vào
@@ -90,15 +104,18 @@ phụ thuộc Plan nào khác. Không có `§0` vì hệ không có toán.
 
 | Nguồn | Lấy gì | Không lấy, vì sao |
 |---|---|---|
-| bản tạm `ZegoAdService` | cả cơ chế: cờ chiếu và đồng hồ chung, đợi 2 s bằng đồng hồ thật, lượt chiếu thuộc service, đợi thưởng muộn 0,5 s, bỏ thưởng về sau khi đã chốt, remove ads kiểm trước | gọi `INotificationService` của dự án → đổi thành sự kiện `RewardedNotAvailable` · rewarded chỉ nghe Rewarded → nghe thêm Interstitial · gọi thẳng Zego → tách qua `IAdVendor` |
-| bản tạm `InterstitialScenarios` (dự án) | hình dạng lời gọi: dự án quyết mốc level, đọc giãn cách, truyền placement | cả lớp: mốc level, tập user, lượt play test là domain dự án, ở lại dự án |
-| `SystemPlan.md` §13 | impl chỉ phát sự kiện, không chạm UI; thưởng idempotent theo lượt chiếu; banner lộ `HeightPixels` (Mở rộng sau) | `IRemoveAdsService`, IAP: chưa có caller; remove ads lúc này đọc từ SDK qua vendor |
+| bản tạm `ZegoAdService` | cả cơ chế: cờ chiếu và đồng hồ chung, đợi 2 s bằng đồng hồ thật, lượt chiếu thuộc service, đợi thưởng muộn 0,5 s, bỏ thưởng về sau khi đã chốt, remove ads kiểm trước; banner: ý muốn + một cửa đối chiếu, chỉ gửi khi kết quả đổi, đợi MAX khởi tạo thêm một frame, chiều cao adaptive × mật độ, Editor 168 px | gọi `INotificationService` của dự án → đổi thành sự kiện `RewardedNotAvailable` · rewarded chỉ nghe Rewarded → nghe thêm Interstitial · gọi thẳng Zego → tách qua `IAdVendor` · cửa banner nằm trong bản cài → lên lõi để test được với vendor giả |
+| bản tạm `InterstitialScenarios`, `RewardedScenarios`, `AdLevelGate` (dự án) | hình dạng lời gọi: dự án quyết mốc level, đọc giãn cách, truyền placement; popup hỏi mốc lúc mở để ẩn nút rewarded | cả lớp: mốc level, tập user, lượt play test là domain dự án, ở lại dự án |
+| bản tạm `GameplayBanner`, `BannerSpace` (dự án) | hình dạng lời gọi banner: chừa dải đáy lúc vào màn bằng `BannerHeightPixels`, `ShowBanner` khi qua mốc, `HideBanner` ở Menu và Shop, dải giữ tới hết màn | mốc `banner_level`, Shop: domain dự án · `BannerSpace` (nâng mép dưới safe area cho HUD và world) lên Horcrux theo `Horcrux_ViewportAnchor_Plan.md` GĐ2 |
+| `SystemPlan.md` §13 | impl chỉ phát sự kiện, không chạm UI; thưởng idempotent theo lượt chiếu; banner lộ chiều cao (GĐ4) | `IRemoveAdsService`, IAP: chưa có caller; remove ads lúc này đọc từ SDK qua vendor |
 | `SystemPlan.md` §21 | giãn cách interstitial là số từ remote, đổi theo tập user | `MonetizationRules`, Day Active: dự án đã có hệ phân tập riêng |
 | Zego `IAdService` (`com.zego.core`) | `IsRewardedVideoReady`, `ShowRewardedVideo(placement, onReceive)`, `IsInterstitialReady`, `ShowInterstitial(placement, onClose)`, `AdStatic.RaiseAdShowFailNotReady` | `AdFullscreenClosedEvent`: rewarded chỉ bắn khi đóng, không bắn khi hiển thị lỗi hay khi chạy nhánh compare |
 | Zego `AdServiceBase`, `InterstitialDefault`, `AdUnit` | `ShowInterstitial` gọi `onClose` cả khi remove ads, chưa sẵn, đóng, hiển thị lỗi; trả `false` khi không chiếu | — |
 | Zego `IRemoveAdsStatus` | `Exist && Global.IsRemoveAds`; dự án đăng ký bản cài | — |
 | Zego `AdMaxDefault` | nhánh compare chiếu interstitial bằng `interstitialAd.Show(onReceive)` | — |
-| `MaxSdkCallbacks` | `Rewarded`/`Interstitial` `.OnAdHiddenEvent`, `.OnAdDisplayFailedEvent`, mặc định bắn trên main thread | — |
+| `MaxSdkCallbacks` | `Rewarded`/`Interstitial` `.OnAdHiddenEvent`, `.OnAdDisplayFailedEvent`, mặc định bắn trên main thread · `OnSdkInitializedEvent` | — |
+| `MaxSdk`, `MaxSdkUtils` | `IsInitialized()` · `GetAdaptiveBannerHeight()` (dp trên Android, point trên iOS, Editor trả 50) × `GetScreenDensity()` | — |
+| Zego `IAdService` banner | `ShowBanner()`, `HideBanner()`; banner dựng trong handler `OnSdkInitializedEvent` của Zego, lệnh tới trước đó bị bỏ im lặng | `IsBannerShowing`: lõi tự nhớ thứ đã gửi |
 | Horcrux `Vendors/Firebase` | khuôn asmdef `versionDefines` + `defineConstraints`, service thuần `[Service(typeof(...))]` | — |
 | Horcrux `Bootstrap` | — | bước boot cho `Init` của Zego: `BootstrapService` chạy sau fetch remote config, còn MAX phải khởi tạo trước để có thêm thời gian tải quảng cáo |
 | InitArgs `ServiceAttribute` | service thuần nhận service khác qua `IInitializable<T>` | — |
@@ -134,22 +151,37 @@ dự án (đã qua mốc level) gọi ShowInterstitialAsync(placement, minInterv
      → caller đi tiếp
 ```
 
-Sau đó: Zego MAX cho cả hai (GĐ4) · tài liệu (GĐ5) · dự án dùng bản Horcrux, listener chữ báo lỗi, xoá bản tạm (GĐ6).
+**Banner — một màn có banner:**
+
+```
+dự án vào màn đã qua mốc: đọc BannerHeightPixels, chừa dải đáy, gọi ShowBanner                          GĐ4
+     ShowBanner | HideBanner ──► ghi ý muốn ──► ApplyBanner
+     quảng cáo toàn màn sắp hiện, vừa đóng ──► ApplyBanner                                               GĐ4
+     vendor.BannerAvailable (MAX khởi tạo xong + 1 frame) ──► ApplyBanner                                GĐ5
+ApplyBanner: ý muốn · không quảng cáo toàn màn · chưa remove ads → hiện, ngược lại ẩn
+     SDK chưa nhận lệnh, hoặc kết quả bằng lần gửi trước → không gửi; khác → vendor.ShowBanner | HideBanner
+dự án rời màn, mở Shop, ghi remove ads ──► HideBanner
+```
+
+Sau đó: Zego MAX cho cả ba (GĐ5) · tài liệu (GĐ6) · dự án dùng bản Horcrux, listener chữ báo lỗi, xoá bản tạm (GĐ7).
 
 ## Bản đồ hệ cuối
 
 ```
 popup (dự án) ─────────ShowRewardedAsync────┐
 luật kịch bản (dự án) ─ShowInterstitialAsync┤
+luật banner (dự án) ───ShowBanner · HideBanner · BannerHeightPixels
                                             ▼
                               AdService : IAdService                       [Service], InitArgs tạo
-                               │  cờ đang chiếu · mốc đóng gần nhất
+                               │  cờ đang chiếu · mốc đóng gần nhất · ý muốn banner · banner đã gửi
                                │  Init(IAdVendor) ◄──────────── ZegoAdVendor : IAdVendor        [Service]
-                               │                                 ├─ Zego IAdService: ShowRewardedVideo · ShowInterstitial
+                               │                                 ├─ Zego IAdService: ShowRewardedVideo · ShowInterstitial · ShowBanner · HideBanner
                                │                                 ├─ Zego IRemoveAdsStatus
-                               │                                 └─ MaxSdkCallbacks Rewarded|Interstitial (lượt rewarded)
+                               │                                 ├─ MaxSdkCallbacks Rewarded|Interstitial (lượt rewarded)
+                               │                                 └─ MaxSdkCallbacks.OnSdkInitializedEvent → BannerAvailable · MaxSdkUtils (chiều cao)
                                └─ event RewardedNotAvailable(placement) ──► AdNotAvailableToast (dự án, Service.unity)
                                                                               └─ INotificationService.ShowNotification
+luật banner (dự án) : IBottomInsetProvider ──► BottomInset (Horcrux Layout) ──► panel safe area HUD · ViewportCamera
 LoadingController (dự án) ──► Zego IAdService.Init()      prefab Zego.Advertisement.MaxDefault ở scene đầu
 ```
 
@@ -163,7 +195,7 @@ trùng tên với `IAdService` của Horcrux: chỉ bộ chuyển Zego cầm c�
 **Mục tiêu:** vendor sẵn sàng thì `ShowRewardedAsync` chiếu, đợi quảng cáo đóng rồi trả `Earned` hoặc `Skipped`. `onEarned` chạy
 đúng một lần, kể cả khi SDK báo thưởng sau báo đóng hoặc báo hai lần. Gọi lần hai trong lúc lượt trước chưa đóng thì bị từ chối.
 
-**Vì sao bây giờ:** đây là hợp đồng ba popup dựa vào. Ca biên chỗ này (thứ tự thưởng–đóng, thưởng trùng, huỷ giữa chừng) là nơi mất
+**Vì sao bây giờ:** đây là hợp đồng bốn popup rewarded dựa vào. Ca biên chỗ này (thứ tự thưởng–đóng, thưởng trùng, huỷ giữa chừng) là nơi mất
 tiền thật. Cờ "đang chiếu" sinh ở đây; GĐ3 cho interstitial dùng chung nó.
 
 ```
@@ -568,7 +600,7 @@ Ngược lại thì xong ngay, im lặng. Rewarded đã hiện (Earned hay Skipp
 interstitial, nên sinh ở đây cùng hai người ghi (rewarded, interstitial) và người đọc (interstitial).
 
 ```
-test ──ShowInterstitialAsync(placement, s)──► AdService ──IsInterstitialRemoved · IsInterstitialReady──► FakeVendor   [mới]
+test ──ShowInterstitialAsync(placement, s)──► AdService ──IsAdsRemoved · IsInterstitialReady──► FakeVendor   [mới]
                                                 │  cờ chiếu (GĐ1) · mốc đóng gần nhất                        [mới]
                                                 │ chưa sẵn ──ReportInterstitialNotReady──────────────────────► │  [mới]
                                                 └─ ShowInterstitialAsync ──────────────────────────────────► ┘  [mới]
@@ -578,8 +610,11 @@ test ──ShowRewardedAsync──► AdService: rewarded đóng → đặt mố
 ### `IAdVendor.cs` › dưới `ReportRewardedNotReady` — thêm
 
 ```csharp
-        /// <summary>True when the player bought remove ads; the service skips without reporting a lost opportunity.</summary>
-        bool IsInterstitialRemoved { get; }
+        /// <summary>
+        /// True when the player bought remove ads: interstitial and banner stay off, rewarded still shows. The service skips
+        /// without reporting a lost opportunity.
+        /// </summary>
+        bool IsAdsRemoved { get; }
 
         bool IsInterstitialReady { get; }
 
@@ -621,7 +656,7 @@ Interface giữ nguyên dòng summary của GĐ1 ("Fullscreen ads, one at a time
         public UniTask ShowInterstitialAsync(string placement, float minIntervalSeconds, CancellationToken ct)
         {
             // Removed before ready: a player who bought remove ads is not a lost opportunity.
-            if (_showingAd != FullscreenAd.None || _vendor.IsInterstitialRemoved || !HasIntervalPassed(minIntervalSeconds))
+            if (_showingAd != FullscreenAd.None || _vendor.IsAdsRemoved || !HasIntervalPassed(minIntervalSeconds))
                 return UniTask.CompletedTask;
 
             if (!_vendor.IsInterstitialReady)
@@ -704,7 +739,7 @@ Chỗ dễ gõ sai:
 
 ### Kiểm
 
-Vendor giả thêm `IsInterstitialRemoved`, `IsInterstitialReady` gán được; `ShowInterstitialAsync` trả task của một
+Vendor giả thêm `IsAdsRemoved`, `IsInterstitialReady` gán được; `ShowInterstitialAsync` trả task của một
 `UniTaskCompletionSource<bool>` do test điều khiển; đếm số lần `Show` và `ReportInterstitialNotReady`.
 
 | Input | Kỳ vọng |
@@ -715,7 +750,7 @@ Vendor giả thêm `IsInterstitialRemoved`, `IsInterstitialReady` gán được;
 | rewarded `Skipped` vừa đóng, gọi interstitial với 0,2 s ngay sau | `Show` 0 lần |
 | rewarded `NotAvailable` (hiển thị lỗi) vừa xong, gọi interstitial | `Show` 1 lần — lỗi hiển thị rewarded không đặt mốc |
 | vendor interstitial trả `false` rồi gọi lại ngay với 0,2 s | `Show` lần hai được gọi — `false` không đặt mốc |
-| `IsInterstitialRemoved = true`, chưa sẵn | `Show` 0 lần, `ReportInterstitialNotReady` 0 lần |
+| `IsAdsRemoved = true`, chưa sẵn | `Show` 0 lần, `ReportInterstitialNotReady` 0 lần |
 | chưa sẵn | `Show` 0 lần, `ReportInterstitialNotReady` 1 lần với đúng placement |
 | gọi interstitial khi rewarded đang chiếu | `Show` interstitial 0 lần; rewarded vẫn trả đúng |
 | gọi rewarded khi interstitial đang chiếu | rewarded trả `NotAvailable` ngay, log warning, `RewardedNotAvailable` 0 lần |
@@ -727,12 +762,228 @@ Vendor giả thêm `IsInterstitialRemoved`, `IsInterstitialReady` gán được;
 
 ---
 
-## Giai đoạn 4 — Bộ chuyển Zego MAX
+## Giai đoạn 4 — Banner: ý muốn của dự án qua một cửa đối chiếu
+
+**Mục tiêu:** dự án gọi `ShowBanner` / `HideBanner` để nói có muốn banner không, và đọc `BannerHeightPixels` để chừa dải đáy. Banner
+chỉ hiện khi dự án muốn, không có quảng cáo toàn màn đang chiếu, chưa remove ads, và vendor đã nhận lệnh được. Ý muốn đến trước lúc
+vendor sẵn sàng được giữ lại và áp khi vendor báo `BannerAvailable`. Lệnh tới vendor đúng bằng số lần quyết định đổi.
+
+**Vì sao bây giờ:** banner đọc cờ "đang chiếu" và remove ads mà GĐ1 và GĐ3 đã dựng. Cửa đối chiếu đặt trong lõi để test được bằng
+vendor giả; GĐ5 chỉ còn phần báo "SDK nhận lệnh được" của Zego.
+
+```
+test ──ShowBanner · HideBanner──► AdService: ý muốn ──► ApplyBanner ──IsBannerAvailable · IsAdsRemoved──► FakeVendor   [mới]
+                                       ▲  cờ chiếu (GĐ1)              └──ShowBanner · HideBanner──────────────────► │  [mới]
+test bắn BannerAvailable ─────────────┘◄──────────────────────────────────────────────────────────────────────────┘  [mới]
+RunRewardedAsync · RunInterstitialAsync: trước Show và trong finally ──► ApplyBanner                                  [mới]
+```
+
+### `IAdVendor.cs` › dưới `ReportInterstitialNotReady` — thêm
+
+```csharp
+        /// <summary>Banner height in screen pixels, known before the banner loads.</summary>
+        float BannerHeightPixels { get; }
+
+        /// <summary>False until the SDK accepts banner commands; commands sent earlier are dropped.</summary>
+        bool IsBannerAvailable { get; }
+
+        /// <summary>Raised once, when <see cref="IsBannerAvailable"/> turns true.</summary>
+        event Action BannerAvailable;
+
+        void ShowBanner();
+
+        void HideBanner();
+```
+
+### `IAdService.cs` › dưới `ShowInterstitialAsync` — thêm
+
+```csharp
+        /// <summary>Banner height in screen pixels, known before the banner loads: read it once to reserve the bottom band.</summary>
+        float BannerHeightPixels { get; }
+
+        /// <summary>
+        /// Wants the bottom banner. It shows only while no fullscreen ad shows and ads are not removed; a wish made before the SDK
+        /// accepts banners is applied then.
+        /// </summary>
+        void ShowBanner();
+
+        void HideBanner();
+```
+
+Summary của interface đổi thành `Fullscreen ads, one at a time, and the bottom banner they hide. Cancelling a call's token stops the
+caller's await only; a displayed ad still runs to its close.`
+
+### `AdService.cs` › region `Properties` — thêm dưới `_lastFullscreenClosedAt`
+
+```csharp
+        private bool _isBannerRequested;
+        // What the vendor was last told; only ApplyBanner writes it.
+        private bool _isBannerShown;
+```
+
+### `AdService.cs` › region `API` — thêm dưới `ShowInterstitialAsync`
+
+```csharp
+        public float BannerHeightPixels => _vendor.BannerHeightPixels;
+
+        public void ShowBanner()
+        {
+            _isBannerRequested = true;
+            ApplyBanner();
+        }
+
+        public void HideBanner()
+        {
+            _isBannerRequested = false;
+            ApplyBanner();
+        }
+```
+
+### `AdService.cs` › `RunRewardedAsync` — đoạn cũ → đoạn mới
+
+Banner ẩn ngay trước khi quảng cáo hiện, và trả lại ở mọi đường ra:
+
+```csharp
+                bool isDisplayed = await _vendor.ShowRewardedAsync(placement, OnReward);
+```
+→
+```csharp
+                ApplyBanner();
+                bool isDisplayed = await _vendor.ShowRewardedAsync(placement, OnReward);
+```
+
+```csharp
+            finally
+            {
+                _showingAd = FullscreenAd.None;
+                _onEarned = null;
+            }
+```
+→
+```csharp
+            finally
+            {
+                _showingAd = FullscreenAd.None;
+                _onEarned = null;
+                ApplyBanner();
+            }
+```
+
+### `AdService.cs` › `RunInterstitialAsync` — đoạn cũ → đoạn mới
+
+```csharp
+            _showingAd = FullscreenAd.Interstitial;
+            try
+            {
+                if (await _vendor.ShowInterstitialAsync(placement))
+                    MarkFullscreenClosed();
+            }
+            finally
+            {
+                _showingAd = FullscreenAd.None;
+            }
+```
+→
+```csharp
+            _showingAd = FullscreenAd.Interstitial;
+            try
+            {
+                ApplyBanner();
+                if (await _vendor.ShowInterstitialAsync(placement))
+                    MarkFullscreenClosed();
+            }
+            finally
+            {
+                _showingAd = FullscreenAd.None;
+                ApplyBanner();
+            }
+```
+
+### `AdService.cs` › region `Class Methods` — thêm dưới `MarkFullscreenClosed`
+
+```csharp
+        // The one gate to the vendor's banner, called whenever one of its inputs changes.
+        private void ApplyBanner()
+        {
+            bool shouldShow = _isBannerRequested && _showingAd == FullscreenAd.None && !_vendor.IsAdsRemoved;
+            if (shouldShow == _isBannerShown || !_vendor.IsBannerAvailable)
+                return;
+
+            _isBannerShown = shouldShow;
+            if (shouldShow)
+                _vendor.ShowBanner();
+            else
+                _vendor.HideBanner();
+        }
+```
+
+### `AdService.cs` › region `DI` — đoạn cũ → đoạn mới
+
+```csharp
+        public void Init(IAdVendor vendor) => _vendor = vendor;
+```
+→
+```csharp
+        public void Init(IAdVendor vendor)
+        {
+            _vendor = vendor;
+            // Service and vendor live for the whole app: no unsubscribe.
+            _vendor.BannerAvailable += ApplyBanner;
+        }
+```
+
+Chỗ dễ gõ sai:
+- **`ApplyBanner` của rewarded đứng ngay trước `_vendor.ShowRewardedAsync`, không ngay sau khi đặt `_showingAd`.** Trong 2 s đợi sẵn
+  sàng banner còn hiện; lượt hết giờ trả `NotAvailable` mà banner không chớp. `finally` vẫn gọi: kết quả bằng lần gửi trước thì
+  không gửi gì.
+- **`ApplyBanner` trong `finally` đứng sau dòng gỡ `_showingAd`.** Đặt trước thì phép so vẫn thấy quảng cáo đang chiếu, banner ẩn tới
+  lần gọi sau.
+- **Phép so đứng trước phép kiểm `IsBannerAvailable`, và `_isBannerShown` chỉ ghi sau cả hai.** Chưa available thì giữ nguyên thứ
+  đã gửi, để lúc `BannerAvailable` về phép so còn thấy chênh.
+- **`_isBannerShown` là thứ đã gửi vendor, không phải ý muốn.** Ý muốn là `_isBannerRequested`; gộp hai cờ thì `HideBanner` lúc quảng
+  cáo đang chiếu làm mất ý muốn của dự án.
+
+**Phương án bỏ:**
+- Vendor tự giữ lệnh tới khi SDK khởi tạo — ý muốn có hai chủ (lõi, vendor), và luật hoãn chỉ test được trên máy thật.
+- Dự án tự ẩn, hiện banner quanh mỗi lời gọi quảng cáo toàn màn — mọi caller lặp cùng cặp lệnh; một chỗ quên là banner nằm đè lên
+  quảng cáo.
+- Gửi lệnh mỗi lần gọi, không so với lần gửi trước — dự án gọi `ShowBanner` ở mọi lần vào màn, lần đầu sau khi vendor sẵn sàng thì cả
+  `BannerAvailable` lẫn `ShowBanner` cùng gửi; phép so giữ một lệnh cho mỗi lần đổi, test đếm được.
+- Lõi nghe remove ads để tự ẩn — vendor không có sự kiện đổi; cửa ghi remove ads ở dự án gọi `HideBanner` (xem Ngữ cảnh đã chốt).
+
+### Kiểm
+
+Vendor giả thêm `BannerHeightPixels`, `IsBannerAvailable` gán được, một hàm bắn `BannerAvailable`, và đếm `ShowBanner`, `HideBanner`
+theo thứ tự xen với `ShowRewardedAsync`, `ShowInterstitialAsync`.
+
+| Input | Kỳ vọng |
+|---|---|
+| available · `ShowBanner` | `ShowBanner` 1 lần |
+| available · `ShowBanner` hai lần | `ShowBanner` 1 lần |
+| available · `HideBanner` khi chưa từng hiện | 0 lệnh |
+| chưa available · `ShowBanner` · rồi bắn `BannerAvailable` | 0 lệnh trước sự kiện, `ShowBanner` 1 lần sau |
+| chưa available · `ShowBanner` · `HideBanner` · rồi `BannerAvailable` | 0 lệnh |
+| banner hiện · rewarded sẵn ngay, đóng | `HideBanner` trước `ShowRewardedAsync` của vendor; `ShowBanner` sau khi lượt trả |
+| banner hiện · rewarded chưa sẵn suốt 2 s | 0 lệnh banner |
+| banner hiện · interstitial chiếu, đóng | `HideBanner` trước `ShowInterstitialAsync`; `ShowBanner` sau |
+| banner hiện · interstitial bị giãn cách bỏ | 0 lệnh banner |
+| `ShowBanner` lúc rewarded đang chiếu | 0 lệnh trong lượt; `ShowBanner` 1 lần khi lượt trả |
+| `HideBanner` lúc rewarded đang chiếu | 0 lệnh sau khi lượt trả (banner đã ẩn, ý muốn là ẩn) |
+| `IsAdsRemoved = true` · `ShowBanner` | 0 lệnh |
+| banner hiện · `IsAdsRemoved` thành true · `HideBanner` | `HideBanner` 1 lần; `ShowBanner` sau đó 0 lệnh |
+| caller huỷ `ct` lúc rewarded đang chiếu | banner hiện lại khi vendor đóng, không phải lúc caller huỷ |
+| `BannerHeightPixels` | trả đúng số của vendor |
+
+**Mốc commit (submodule):** `ads: banner theo ý muốn của dự án, ẩn khi quảng cáo toàn màn`.
+
+---
+
+## Giai đoạn 5 — Bộ chuyển Zego MAX
 
 **Mục tiêu:** dự án có package `com.zego.advertisement.max` thì asmdef `com.horcrux.zego` tự bật, và `ZegoAdVendor` tự đăng ký làm
 `IAdVendor`. Dự án không viết dòng nào.
 
-**Vì sao bây giờ:** lõi đã đủ hợp đồng cho cả hai loại. Chặng này nối lõi với SDK thật để GĐ6 chuyển dự án sang.
+**Vì sao bây giờ:** lõi đã đủ hợp đồng cho cả ba loại. Chặng này nối lõi với SDK thật để GĐ7 chuyển dự án sang.
 
 ```
 AdService ──ShowRewardedAsync──► ZegoAdVendor ──ShowRewardedVideo(placement, onReward)──► Zego IAdService
@@ -740,7 +991,10 @@ AdService ──ShowRewardedAsync──► ZegoAdVendor ──ShowRewardedVideo(
                                    └ false ◄── MaxSdkCallbacks.Rewarded|Interstitial.OnAdDisplayFailedEvent
 AdService ──ShowInterstitialAsync──► ZegoAdVendor ──ShowInterstitial(placement, onClose)──► Zego IAdService
                                    ▲ true ◄── onClose (đóng hoặc hiển thị lỗi) · false ◄── Zego trả false
-AdService ──IsInterstitialRemoved──► Zego IRemoveAdsStatus (dự án đăng ký)
+AdService ──IsAdsRemoved──► Zego IRemoveAdsStatus (dự án đăng ký)
+AdService ──ShowBanner · HideBanner──► ZegoAdVendor ──► Zego IAdService.ShowBanner · HideBanner
+          ◄──BannerAvailable── ZegoAdVendor ◄── MaxSdkCallbacks.OnSdkInitializedEvent, đợi thêm 1 frame
+          ──BannerHeightPixels──► ZegoAdVendor ──► MaxSdkUtils.GetAdaptiveBannerHeight × GetScreenDensity
 ```
 
 ### `Vendors/Zego/com.horcrux.zego.asmdef` — file mới
@@ -790,19 +1044,24 @@ using System;
 using Cysharp.Threading.Tasks;
 using Horcrux.Runtime.Abstractions.Ads;
 using Sisus.Init;
+using UnityEngine;
 using Zego;
 using ZegoAds = Zego.IAdService;
 
 namespace Horcrux.Vendors.Zego
 {
     /// <summary>
-    /// Fullscreen ads through Zego MAX. Zego reports only the reward for rewarded, so its close comes straight from MAX —
-    /// interstitial too, since remote key compare_with_inter_when_show_rewarded_permission = "1" may show one instead.
+    /// Ads through Zego MAX. Zego reports only the reward for rewarded, so its close comes straight from MAX — interstitial
+    /// too, since remote key compare_with_inter_when_show_rewarded_permission = "1" may show one instead. Banner commands
+    /// before MAX initializes are dropped by Zego, hence <see cref="BannerAvailable"/>.
     /// </summary>
     [Service(typeof(IAdVendor))]
     public sealed class ZegoAdVendor : IAdVendor
     {
         #region Properties
+
+        // Editor: MAX returns 50 × 1, too thin to see the band; a 1080 px wide phone gets about 64 dp × 2.625.
+        private const float EditorBannerHeightPixels = 168f;
 
         private UniTaskCompletionSource<bool> _rewardedClosed;
         private UniTaskCompletionSource _interstitialClosed;
@@ -810,13 +1069,31 @@ namespace Horcrux.Vendors.Zego
         // Exist first: Global logs an error every call while the Zego prefab is missing, and this is polled each frame.
         public bool IsRewardedReady => ZegoAds.Exist && ZegoAds.Global.IsRewardedVideoReady;
 
-        public bool IsInterstitialRemoved => IRemoveAdsStatus.Exist && IRemoveAdsStatus.Global.IsRemoveAds;
+        public bool IsAdsRemoved => IRemoveAdsStatus.Exist && IRemoveAdsStatus.Global.IsRemoveAds;
 
         public bool IsInterstitialReady => ZegoAds.Exist && ZegoAds.Global.IsInterstitialReady;
+
+        // MAX answers in dp (Android) or points (iOS); density turns it into pixels.
+        public float BannerHeightPixels => Application.isEditor
+            ? EditorBannerHeightPixels
+            : Mathf.Max(0f, MaxSdkUtils.GetAdaptiveBannerHeight() * MaxSdkUtils.GetScreenDensity());
+
+        public bool IsBannerAvailable { get; private set; }
+
+        public event Action BannerAvailable;
 
         #endregion
 
         #region API
+
+        // InitArgs builds the vendor at boot, before the project calls Zego Init; built lazily, MAX may already be up.
+        public ZegoAdVendor()
+        {
+            if (MaxSdk.IsInitialized())
+                MarkBannerAvailableNextFrameAsync().Forget();
+            else
+                MaxSdkCallbacks.OnSdkInitializedEvent += OnSdkInitialized;
+        }
 
         public async UniTask<bool> ShowRewardedAsync(string placement, Action onReward)
         {
@@ -858,6 +1135,11 @@ namespace Horcrux.Vendors.Zego
         public void ReportInterstitialNotReady(string placement) =>
             AdStatic.RaiseAdShowFailNotReady(placement, EAdFormat.Interstitial);
 
+        // Called only after BannerAvailable: MAX is up, so the Zego prefab exists.
+        public void ShowBanner() => ZegoAds.Global.ShowBanner();
+
+        public void HideBanner() => ZegoAds.Global.HideBanner();
+
         #endregion
 
         #region Class Methods
@@ -886,6 +1168,21 @@ namespace Horcrux.Vendors.Zego
 
         private void OnInterstitialClosed() => _interstitialClosed?.TrySetResult();
 
+        // One shot: the event is static and outlives Play sessions when domain reload is off.
+        private void OnSdkInitialized(MaxSdkBase.SdkConfiguration configuration)
+        {
+            MaxSdkCallbacks.OnSdkInitializedEvent -= OnSdkInitialized;
+            MarkBannerAvailableNextFrameAsync().Forget();
+        }
+
+        // Zego builds its banner in its own handler of the same event; handler order is not defined.
+        private async UniTaskVoid MarkBannerAvailableNextFrameAsync()
+        {
+            await UniTask.Yield();
+            IsBannerAvailable = true;
+            BannerAvailable?.Invoke();
+        }
+
         #endregion
     }
 }
@@ -900,6 +1197,11 @@ Chỗ dễ gõ sai:
   hàm vẫn trả `false` đúng.
 - **Đăng ký trước khi gọi `ShowRewardedVideo`.** Trong Editor, quảng cáo giả của MAX có thể đóng ngay trong lời gọi đó.
 - **Interstitial không nghe MAX.** Zego gọi `onClose` ở mọi đường ra của nó; nghe thêm MAX là hai nguồn cho một sự kiện.
+- **Đăng ký `OnSdkInitializedEvent` trong constructor, gỡ ngay trong handler.** InitArgs dựng service không lazy lúc boot, trước khi
+  dự án gọi Zego `Init`, nên không lỡ sự kiện. `MaxSdk.IsInitialized()` phủ ca vendor dựng muộn.
+- **`BannerAvailable` bắn sau một frame, không trong handler.** Lệnh `ShowBanner` gửi trước khi handler của Zego dựng banner thì bị bỏ
+  im lặng: banner không bao giờ hiện, không log.
+- **Chiều cao trong Editor là hằng.** MAX trong Editor trả 50 × 1, quá thấp để thấy dải chừa đáy khi dựng màn.
 
 **Lưu ý — lỗi của Zego, không sửa ở đây:** ở chế độ compare, khi Zego chọn interstitial mà interstitial hiển thị lỗi, Zego vẫn gọi
 `onReceive`. Kết quả: lõi chạy `onEarned` (thưởng đã ghi) rồi trả `NotAvailable`. Key đang mặc định `"0"`. Bật key thì báo đội Zego,
@@ -910,13 +1212,13 @@ khi hiển thị lỗi, cũng không bắn ở nhánh compare. Vẫn phải nghe
 
 ### Kiểm
 
-Compile sạch ở dự án có Zego. Nghiệm thu hành vi nằm ở GĐ6, trên máy thật hoặc trong Editor với quảng cáo giả của MAX.
+Compile sạch ở dự án có Zego. Nghiệm thu hành vi nằm ở GĐ7, trên máy thật hoặc trong Editor với quảng cáo giả của MAX.
 
-**Mốc commit (submodule):** `ads: bộ chuyển Zego MAX cho rewarded và interstitial`.
+**Mốc commit (submodule):** `ads: bộ chuyển Zego MAX cho rewarded, interstitial và banner`.
 
 ---
 
-## Giai đoạn 5 — Tài liệu (agent)
+## Giai đoạn 6 — Tài liệu (agent)
 
 `docs/Runtime/AdsSystem/AdsSystem.md` và `AdsSystem.html`, theo skill `docs`. Mục "Trước khi chạy" gồm:
 - Prefab `Zego.Advertisement.MaxDefault` ở gốc scene đầu. Thiếu thì Zego `LogError` lúc boot, mọi rewarded trả `NotAvailable`,
@@ -926,31 +1228,39 @@ Compile sạch ở dự án có Zego. Nghiệm thu hành vi nằm ở GĐ6, trê
 - Bản cài `Zego.IRemoveAdsStatus` đăng ký lúc boot. Thiếu thì người đã mua remove ads vẫn bị báo "mất cơ hội" cho SDK (Zego vẫn
   không chiếu).
 - Một listener nghe `RewardedNotAvailable`. Thiếu thì người chơi bấm nút, đợi 2 s, rồi không thấy gì.
+- Ad unit id banner (menu Zego). Thiếu thì `ShowBanner` không hiện gì, không lỗi.
+- Màn có banner chừa dải đáy bằng `BannerHeightPixels` **trước khi dựng màn**, qua `BottomInset` (tài liệu ViewportAnchor). Thiếu thì
+  banner che nút sát đáy.
+- Cửa ghi remove ads của dự án gọi `HideBanner`. Thiếu thì banner đang hiện còn tới lúc rời màn.
 
-Ngoài ra: luồng rewarded và interstitial, bảng kết quả → caller nên làm gì, cách viết lớp luật kịch bản interstitial ở dự án (mốc,
-giãn cách, placement — ví dụ tên trung tính), các quyết định trái trực giác, lỗi Zego ở chế độ compare, và "Mở rộng sau" (banner).
+Ngoài ra: luồng rewarded, interstitial và banner, bảng kết quả → caller nên làm gì, cách viết lớp luật kịch bản ở dự án (mốc,
+giãn cách, placement, màn nào muốn banner — ví dụ tên trung tính), các quyết định trái trực giác, lỗi Zego ở chế độ compare, và
+"Mở rộng sau".
 
 **Mốc commit (submodule):** `docs: AdsSystem`.
 
 ---
 
-## Giai đoạn 6 — Dự án dùng bản Horcrux (agent)
+## Giai đoạn 7 — Dự án dùng bản Horcrux (agent)
 
-1. **Ba popup rewarded** — `LiveSystem_PopupRefillLiveOffer`, `PopupOfferRevive`, `PopupWin`: đổi `Service.Get<IAdService>()` thành
-   `IAdService.Service`. Thêm `using Horcrux.Runtime.Abstractions.Ads;`; giữ `using Core;` nếu file còn dùng thứ khác trong đó.
-   Placement giữ nguyên chuỗi `refill_live`, `revive`, `win_x2`.
-2. **`InterstitialScenarios`** ở lại dự án (mốc level, tập user, lượt play test là luật của dự án): đổi
-   `Service.Get<IAdService>()` thành `IAdService.Service`, thêm cùng `using`. Chỗ gọi ở `PopupWin.EndExit` và
-   `MainController.RetryLevel` không đổi.
-3. **`AdNotAvailableToast`** (dự án, `Assets/_Modules/Sdk/Ads/`) là `MonoBehaviour<IAdService>`. Đăng ký `RewardedNotAvailable` ở
+1. **Bốn popup rewarded** — `LiveSystem_PopupRefillLiveOffer`, `PopupOfferRevive`, `PopupWin`, `PopupAddBox`: đổi
+   `Service.Get<IAdService>()` thành `IAdService.Service`. Thêm `using Horcrux.Runtime.Abstractions.Ads;`; giữ `using Core;` nếu file
+   còn dùng thứ khác trong đó. Placement giữ nguyên chuỗi `refill_live`, `revive`, `win_x2`, `add_box`.
+2. **`InterstitialScenarios`, `RewardedScenarios`, `AdLevelGate`** ở lại dự án (mốc level, tập user, lượt play test là luật của dự
+   án): `InterstitialScenarios` đổi `Service.Get<IAdService>()` thành `IAdService.Service`, thêm cùng `using`. Chỗ gọi ở
+   `PopupWin.EndExit` và `MainController.RetryLevel` không đổi.
+3. **Banner** — `GameplayBanner` (bốn chỗ `Service.Get<IAdService>()`) đổi thành `IAdService.Service`; `PersistentData.RemoveAds`
+   đổi `Service.TryGet<Core.IAdService>(out var ads)` thành `IAdService.TryGet(out var ads)`. `PopupShop`, `MainController` gọi
+   `GameplayBanner`, không đổi. Dải đáy: `Horcrux_ViewportAnchor_Plan.md` GĐ6 (đã gõ Plan đó) hoặc giữ `BannerSpace` của dự án.
+4. **`AdNotAvailableToast`** (dự án, `Assets/_Modules/Sdk/Ads/`) là `MonoBehaviour<IAdService>`. Đăng ký `RewardedNotAvailable` ở
    `OnEnable` và gỡ ở `OnDisable`, cùng một file. Khi có sự kiện: `INotificationService.TryGet(out var n)` rồi
    `n.ShowNotification("Ad not available")`; thiếu service thì `LogError`.
-4. **Xoá bản tạm:** `Assets/_Core/Ads/IAdService.cs` và `Assets/_Modules/Sdk/Ads/ZegoAdService.cs`. Không asset nào gắn hai file
+5. **Xoá bản tạm:** `Assets/_Core/Ads/IAdService.cs` và `Assets/_Modules/Sdk/Ads/ZegoAdService.cs`. Không asset nào gắn hai file
    này, nên không cần giữ GUID.
-5. **`Assets/_Modules/Sdk/Ads/Ads.md`** rút gọn còn phần của dự án: bảng placement rewarded → `onEarned` → sau khi đóng; bảng kịch
-   bản interstitial → chỗ chèn → cột mốc level của tập user; chỗ gọi `Init`; vị trí listener. Phần cơ chế trỏ sang
+6. **`Assets/_Modules/Sdk/Ads/Ads.md`** rút gọn còn phần của dự án: bảng placement rewarded → mốc → `onEarned` → sau khi đóng; bảng
+   kịch bản interstitial → chỗ chèn → cột mốc level của tập user; banner theo màn, Shop, dải đáy; chỗ gọi `Init`; vị trí listener. Phần cơ chế trỏ sang
    `docs/Runtime/AdsSystem/AdsSystem.md`.
-6. **Nghiệm thu:**
+7. **Nghiệm thu:**
    - grep không còn `ZegoAdService` và `Core.IAdService`;
    - compile sạch;
    - Console lúc boot không có lỗi InitArgs về `IAdVendor`.
@@ -971,7 +1281,13 @@ Lưu scene. Thiếu bước này thì hết quảng cáo, người chơi không 
 | Win | tập Ads, level ≥ `inter_lv` → thắng → Continue | coin bay, popup đóng, interstitial, rồi level kế | kẹt màn sau popup thắng |
 | Win liền | thắng tiếp level kế trong < `inter_cd` giây | không interstitial | interstitial lần hai |
 | Retry | tập Ads, level ≥ `inter_retry_lv` → Retry từ popup thua, popup pause, lose flow | interstitial rồi loading | kẹt trước loading |
-| Remove ads | đã mua remove ads → thắng, Retry, bấm rewarded | không interstitial; rewarded vẫn chạy | interstitial hiện |
+| Remove ads | đã mua remove ads → thắng, Retry, bấm rewarded | không interstitial, không banner; rewarded vẫn chạy | interstitial hiện |
+| Mở thêm box | bấm slot box khoá → xem quảng cáo hết | popup đóng, slot mở sau khi quảng cáo đóng | slot mở lúc quảng cáo còn che màn, hoặc không mở |
+| Banner | level ≥ `banner_level` → vào level | banner ở đáy, booster bar ngay trên banner | banner đè booster bar, hoặc dải trống mà không banner |
+| Banner khởi động muộn | mở app, vào thẳng level có banner | banner hiện sau khi MAX khởi tạo xong | banner không bao giờ hiện trong phiên đó |
+| Banner và quảng cáo toàn màn | có banner → xem rewarded, hoặc thắng ra interstitial | banner ẩn lúc quảng cáo chiếu, hiện lại khi đóng | banner nằm trên quảng cáo, hoặc mất tới level sau |
+| Banner và Shop | có banner → mở Shop, đóng Shop | banner ẩn khi Shop mở, hiện lại khi đóng | banner che nút mua |
+| Remove ads giữa level | có banner → mua remove ads trong Shop → đóng Shop | banner ẩn ngay, không hiện lại; dải đáy còn tới level sau | banner hiện lại |
 
 **Mốc commit (dự án):** `Ads dùng bản Horcrux, xoá bản tạm`, kèm con trỏ `Assets/Horcrux`.
 
@@ -982,11 +1298,11 @@ Lưu scene. Thiếu bước này thì hết quảng cáo, người chơi không 
 | File | GĐ |
 |---|---|
 | `Runtime/Abstractions/Foundations/Ads/RewardedAdResult.cs` | 1 |
-| `Runtime/Abstractions/Foundations/Ads/IAdVendor.cs` | 1, 2, 3 |
-| `Runtime/Abstractions/Foundations/Ads/IAdService.cs` | 1, 2, 3 |
-| `Runtime/Implementations/Foundations/Ads/AdService.cs` | 1, 2, 3 |
-| `Tests/PlayMode/AdServiceTests.cs` (agent) | 1, 2, 3 |
-| `Vendors/Zego/com.horcrux.zego.asmdef` | 4 |
-| `Vendors/Zego/ZegoAdVendor.cs` | 4 |
-| `docs/Runtime/AdsSystem/AdsSystem.md`, `.html` (agent) | 5 |
-| dự án: 3 popup, `InterstitialScenarios.cs`, `AdNotAvailableToast.cs`, `Service.unity`, xoá 2 file bản tạm, `Ads.md` (agent) | 6 |
+| `Runtime/Abstractions/Foundations/Ads/IAdVendor.cs` | 1, 2, 3, 4 |
+| `Runtime/Abstractions/Foundations/Ads/IAdService.cs` | 1, 2, 3, 4 |
+| `Runtime/Implementations/Foundations/Ads/AdService.cs` | 1, 2, 3, 4 |
+| `Tests/PlayMode/AdServiceTests.cs` (agent) | 1, 2, 3, 4 |
+| `Vendors/Zego/com.horcrux.zego.asmdef` | 5 |
+| `Vendors/Zego/ZegoAdVendor.cs` | 5 |
+| `docs/Runtime/AdsSystem/AdsSystem.md`, `.html` (agent) | 6 |
+| dự án: 4 popup, `InterstitialScenarios.cs`, `GameplayBanner.cs`, `PersistentData.cs`, `AdNotAvailableToast.cs`, `Service.unity`, xoá 2 file bản tạm, `Ads.md` (agent) | 7 |
