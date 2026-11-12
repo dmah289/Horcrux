@@ -31,7 +31,7 @@ Khi nào được vào Play và khi nào giao developer chơi thử: `workflow` 
 | GC, batches, renderer bật mà không vẽ lúc diễn | `feeltrace.sh --gc`, `stat <file> M0 --cols 0` | có |
 | một hàm có cấp phát dưới vài chục KB | test PlayMode `Is.Not.AllocatingGCMemory`, **không** đọc từ M0 — GC mỗi frame trong Editor có nền nhiễu ≈ 100 KB | có |
 | trạng thái nội bộ sau một chuỗi thao tác | `playrun.sh` + `PlayProbe.Run` | có |
-| luồng dừng giữa chừng, Editor còn giữ nguyên (không chuyển màn, popup kẹt) | **không dừng Play**: console phiên đó tới dòng cuối trước khi im, rồi `PlayProbe.Field` đọc trạng thái hai bên chỗ đứt (hệ ngoài đã trả chưa, bên chờ còn sống không) | đang Play |
+| luồng dừng giữa chừng, Editor còn giữ nguyên (không chuyển màn, popup kẹt) | **không dừng Play**: `console_digest.py` tới dòng cuối trước khi im, rồi `PlayProbe.Field` đọc trạng thái hai bên chỗ đứt (hệ ngoài đã trả chưa, bên chờ còn sống không) | đang Play |
 | sửa xong, tái hiện luồng (thắng → quảng cáo → chuyển màn) | `playrun.sh`: `WaitForSceneAsync` trước mọi service, `Call` handler nút hay `Click`, đóng quảng cáo giả (`docs/Editor/Probe.md` › Bẫy), ghi số trước–sau | có |
 | mất hình, lệch lớp, nháy ở một frame | `FrameSheet` trong probe hay `Act` của kịch bản, một PNG | có |
 | một look ở vài giá trị thông số (lớp vẽ có bị che, độ toả, offset, scale đỉnh) | `UICapture.Variants` qua `script eval` (`docs/Editor/UIReskin.md`) | không |
@@ -42,6 +42,9 @@ Khi nào được vào Play và khi nào giao developer chơi thử: `workflow` 
 ```bash
 # Không vào Play: dump một nhánh prefab
 unity cmd --project-path <project> --result-only script eval --code 'return Horcrux.Editor.Probe.PrefabDump.DumpAsset("<prefab>", "<nhánh>");'
+
+# Luồng dừng giữa chừng trong phiên developer để nguyên: tóm console, đọc dòng cuối trước khi im
+PROJECT_PATH=<project> python -X utf8 -I "<horcrux>/Editor/Probe/Tools~/console_digest.py" --drop "^Tween" [--level error] [--since <cursor>]
 
 # Chạy một probe trong Play, in kết quả
 bash "<horcrux>/Editor/Probe/Tools~/playrun.sh" <probe.cs> <file ra>

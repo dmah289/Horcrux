@@ -12,7 +12,7 @@ kiểm tĩnh trước: `PrefabDump` không cần vào Play.
 | Mục | Chốt |
 |---|---|
 | Người dùng | agent, khi chỉnh feeling, dò lỗi trình diễn, đo hiệu năng, dò một luồng runtime treo bằng trạng thái nội bộ; quy trình chọn công cụ ở `Skills/feel-tune/SKILL.md` |
-| Ranh giới | Horcrux giữ runner, ghi kết quả, reflection, chờ scene, bấm nút, dump prefab, ghép ảnh, cỡ Game view, máy trên Device Simulator, chạy lần lượt nhiều cỡ hay nhiều máy, file máy thật (`Editor/Probe/Devices/`), đo khung object trên màn, vào Play từ scene đầu. Dự án giữ **đường tắt vào trạng thái cần đo** (bấm menu, chờ level, chọn entity), một class Editor của dự án |
+| Ranh giới | Horcrux giữ runner, ghi kết quả, tóm console của phiên đang mở, reflection, chờ scene, bấm nút, dump prefab, ghép ảnh, cỡ Game view, máy trên Device Simulator, chạy lần lượt nhiều cỡ hay nhiều máy, file máy thật (`Editor/Probe/Devices/`), đo khung object trên màn, vào Play từ scene đầu. Dự án giữ **đường tắt vào trạng thái cần đo** (bấm menu, chờ level, chọn entity), một class Editor của dự án |
 | Chỗ đặt | C# ở `Editor/Probe/` (assembly `com.horcrux.editor`). Shell ở `Editor/Probe/Tools~/`: Unity không import, không vào build |
 | Quan hệ với FeelTrace | `feeltrace.sh` chạy qua `playrun.sh`; `FeelTraceRecorder` dùng chung cờ `.done` |
 
@@ -112,6 +112,31 @@ máy và bỏ máy đó. Có cả `SIZES` thì chạy các cỡ Game view trư�
 ```bash
 SIZES="1080x2340" DEVICES="Poco M7 Pro 5G" bash "Assets/Horcrux/Editor/Probe/Tools~/playrun.sh" probe.cs out.txt
 ```
+
+### Shell — `Editor/Probe/Tools~/console_digest.py`
+
+Tóm console của Editor đang mở (hay JSON của `console get` đã lưu) thành dòng thời gian vài KB: dùng khi luồng dừng giữa chừng mà phiên
+Play **không do `playrun.sh` chạy** — developer để nguyên Editor đang treo. Mỗi dòng `#seq giờ mức message` kèm frame của dự án
+(`Type.Method @File.cs:dòng`, bỏ frame package và engine); dòng liền nhau trùng gộp `×n`; khoảng im từ `--gap` giây in `··· im Ns ···`;
+cuối là bảng `LẶP` và `CUỐI` (dòng cuối, im bao lâu tới lúc đọc).
+
+```bash
+PROJECT_PATH=<project> python -X utf8 -I "Assets/Horcrux/Editor/Probe/Tools~/console_digest.py" --drop "^Tween" --drop "<log nhịp>"
+python -X utf8 -I "Assets/Horcrux/Editor/Probe/Tools~/console_digest.py" <console_get.json> --level error --frames 3
+```
+
+| Tham số | Mặc định | Nghĩa |
+|---|---|---|
+| `file` | — | JSON của `console get` (MCP lưu khi kết quả quá cỡ, CLI `--result-only`); bỏ trống thì gọi `unity cmd console get` với `UNITY_CLI`, `PROJECT_PATH` như `playrun.sh` |
+| `--tail` | `300` | số entry lấy khi gọi CLI |
+| `--level` | `log` | mức thấp nhất giữ lại: `log`, `warn`, `error` |
+| `--since` | — | chỉ entry có `seq` lớn hơn: đặt `cursor` của lần đọc trước để chỉ xem phần mới |
+| `--drop` | — | regex trên message, khớp thì bỏ; lặp được |
+| `--frames` | `2` | số frame của dự án dưới mỗi dòng |
+| `--width` · `--gap` · `--max` | `160` · `5` · `120` | cắt message · giây im thì in mốc · giữ chừng ấy dòng cuối |
+
+Đọc chỗ đứt: dòng cuối có nghĩa trước khoảng im dài là bước cuối còn chạy; bước kế không có log thì chuỗi chết ở giữa hai bước đó. Log
+nhịp đều (đồng hồ phút, heartbeat) che mất `CUỐI`: bỏ bằng `--drop`.
 
 ## Thêm máy thật cho Simulator
 
