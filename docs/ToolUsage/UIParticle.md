@@ -24,15 +24,18 @@ trước khi thêm UIParticle.
 | `Auto Scaling Mode` | xem bảng dưới | quyết hạt co theo màn thế nào |
 | offset | vị trí tâm hiệu ứng đo trên demo, quy về unit của hiệu ứng | hiệu ứng tác giả đặt quanh tâm camera của họ, không quanh gốc prefab |
 
-**Auto Scaling Mode** (theo mã nguồn):
+**Auto Scaling Mode:**
 
 | Chế độ | Làm gì | Hệ quả khi màn khác cỡ thiết kế |
 |---|---|---|
-| `Transform` (mặc định) | ép `lossyScale` của node về (1, 1, 1) | `scale` tính theo pixel màn thật: màn thấp hơn thiết kế thì hạt to hơn so với bố cục, màn cao hơn thì nhỏ hơn |
-| `UIParticle` | chỉnh `scale` theo hệ số của canvas | hạt co cùng bố cục canvas |
+| `Transform` (mặc định) | ép `lossyScale` của node về (1, 1, 1), nhưng lúc bake nhân lại `lossyScale` của cha (gồm hệ số canvas) | hạt co cùng bố cục canvas. Đã đo: khung bao mesh hạt tính theo đơn vị canvas trùng nhau ở 1080×2340, 1080×1920, 1440×3120, 1536×2048 |
+| `UIParticle` | nhân `scale` với nghịch đảo scale của canvas gốc, thêm hệ số canvas khi hệ hạt dùng Scaling Mode `Local` | chưa đo; đổi sang chế độ này thì đo lại như dòng trên |
 | `None` | không làm gì | scale theo cây node như thường |
 
-Hiệu ứng phải giữ tỉ lệ với bố cục trên mọi máy thì kiểm chế độ này ở vài cỡ màn (`demo-compare`), không chỉ ở cỡ thiết kế.
+Hiệu ứng phải giữ tỉ lệ với bố cục trên mọi máy thì đo ở vài cỡ màn (`demo-compare`), không chỉ ở cỡ thiết kế. **Sổ tay** —
+cố định `randomSeed` mọi hệ hạt, khoá `Time.captureFramerate`, đọc `_lastBounds` của từng `UIParticleRenderer` (reflection), đổi
+sang đơn vị canvas tương đối với một mốc bố cục; mỗi cỡ màn ra cùng số là hạt co theo canvas. Vùng phát hạt dựng theo bề rộng
+thiết kế thì màn rộng hơn (tablet) để trống hai bên dù cỡ hạt đúng.
 
 ## Điều khiển
 
