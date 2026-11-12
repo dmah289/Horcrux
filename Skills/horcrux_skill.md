@@ -27,7 +27,7 @@ từ gốc Horcrux: skill `Skills/`, Plan `Plans/`, tài liệu hệ `docs/Runti
 
 | Skill công cụ | Nói về |
 |---|---|
-| `feel-tune` | chỉnh, refactor, dò lỗi feeling; đo GC, batches lúc trình diễn |
+| `feel-tune` | chỉnh, refactor, dò lỗi feeling; đo GC, batches lúc trình diễn; dò luồng runtime trong Play bằng trạng thái nội bộ |
 | `build-size` | build nặng vì sao, giảm, so trước–sau |
 | `compile-check` | kiểm sau mỗi task sửa code bằng một lệnh |
 | `ui-reskin` | dựng, reskin UI theo demo: tổ chức prefab, chữ art theo lớp, chia atlas, làm việc qua Editor tool, bẫy UGUI |
@@ -40,7 +40,7 @@ từ gốc Horcrux: skill `Skills/`, Plan `Plans/`, tài liệu hệ `docs/Runti
 |---|---|---|
 | Mọi tác vụ — đầu và cuối chat | `workflow`, `reuse-gate` › Đặt ở đâu (săn chức năng) | |
 | Sinh code mới, hệ mới, tính năng mới | `reuse-gate` → `code-design` | `async-presentation` khi có async, tween, vòng đời · `editor-first` khi có cấu hình, wire, tool |
-| Sửa lỗi, refactor code runtime | `code-design` | `async-presentation` |
+| Sửa lỗi, refactor code runtime | `code-design` | `async-presentation` · `feel-tune` › Chọn công cụ khi phải tái hiện hay đọc trạng thái trong Play |
 | Tool Editor, import/export, cấu hình nội dung, setup scene và prefab | `editor-first` | `code-design` |
 | Hệ có công thức toán, vật lý | `math-physics`, `code-design` | `docs` khi phải dẫn giải |
 | Viết hoặc cập nhật tài liệu, Plan, Manual, skill | `docs` | `math-physics` khi có công thức |

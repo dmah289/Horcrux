@@ -61,6 +61,9 @@ field serialize kèm property. Ngoài ba ca, class phải chia file mới đọc
 > `[InitAfter]`. Editor và tooling không bắt buộc InitArgs. Đổi resolve lười sang sớm là dịch cửa sổ thất bại — hỏi *lúc
 > đó thứ cần đã tồn tại chưa?* Bỏ phụ thuộc `Init` của component có `*Initializer` trong prefab, scene: gỡ component
 > Initializer trong Editor **lúc script còn compile**, rồi mới xoá file và đổi base — xoá trước thì asset giữ một script missing.
+> **Một class một `[Service]`**: attribute thứ hai bị bỏ, chỉ một cảnh báo lúc boot — gộp `[Service(typeof(A), typeof(IA), …)]`.
+> Service `FindFromScene` + `LazyInit` bị hỏi trước khi scene chứa nó nạp thì báo không thấy và **không tìm lại cả phiên**;
+> client sau đó thiếu phụ thuộc ở chỗ không liên quan.
 
 > **Nền tảng** — region cố định: `Properties` · `Unity Callbacks` · `API` · `Class Methods` · `DI`. Thứ tự
 > `Awake`/`OnEnable` giữa object do engine chọn, Script Execution Order là cấu hình ẩn. Engine bảo đảm: trong cây object

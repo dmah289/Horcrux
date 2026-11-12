@@ -12,6 +12,10 @@ quanh từng callback trong vòng dispatch).
 
 - **Mỗi loop chỉ ra token của nó là đời của ai, dài đúng bằng nhịp.** Token của pha ngắn hơn đời loop thì loop **chết im
   lặng** (huỷ là hợp đồng, không log). Loop không chủ thì ở Editor tắt domain reload mỗi lần Play xếp thêm một loop.
+- **Bước sau một lượt chờ thuộc chủ sống qua cả lượt.** Caller tự huỷ khi đóng (popup `Destroy` ở cuối exit) mà còn chờ
+  bằng token của chính nó thì bước sau (chuyển màn) chết im lặng: `Forget`, `UniTaskVoid` nuốt `OperationCanceledException`.
+  Cặp "chờ rồi làm" vào chủ đời dài (điều phối màn), caller gọi một hàm. *Đã sai một lần:* lượt chờ chỉ có từ một mốc
+  (quảng cáo theo level) — dưới mốc hàm chờ trả ngay trước khi caller huỷ, lỗi chỉ lộ khi mốc mở.
 - **Hàm mở tiến trình sở hữu trạng thái cuối ở mọi đường ra** (xong, huỷ, thời lượng 0) qua **một** `try/finally` bọc toàn
   thân — trạng thái cuối và callback đúng một lần. Caller chỉ `await`, ghép `WhenAll`.
 - **Chạm object Unity thì `finally` và callback guard `if (x != null)`**, không `?.`/`??` (bỏ qua so null của Unity).

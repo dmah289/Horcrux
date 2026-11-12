@@ -11,7 +11,7 @@ kiểm tĩnh trước: `PrefabDump` không cần vào Play.
 
 | Mục | Chốt |
 |---|---|
-| Người dùng | agent, khi chỉnh feeling, dò lỗi trình diễn, đo hiệu năng; quy trình chọn công cụ ở `Skills/feel-tune/SKILL.md` |
+| Người dùng | agent, khi chỉnh feeling, dò lỗi trình diễn, đo hiệu năng, dò một luồng runtime treo bằng trạng thái nội bộ; quy trình chọn công cụ ở `Skills/feel-tune/SKILL.md` |
 | Ranh giới | Horcrux giữ runner, ghi kết quả, reflection, chờ scene, bấm nút, dump prefab, ghép ảnh, cỡ Game view, máy trên Device Simulator, chạy lần lượt nhiều cỡ hay nhiều máy, file máy thật (`Editor/Probe/Devices/`), đo khung object trên màn, vào Play từ scene đầu. Dự án giữ **đường tắt vào trạng thái cần đo** (bấm menu, chờ level, chọn entity), một class Editor của dự án |
 | Chỗ đặt | C# ở `Editor/Probe/` (assembly `com.horcrux.editor`). Shell ở `Editor/Probe/Tools~/`: Unity không import, không vào build |
 | Quan hệ với FeelTrace | `feeltrace.sh` chạy qua `playrun.sh`; `FeelTraceRecorder` dùng chung cờ `.done` |
@@ -178,6 +178,13 @@ header/txt_title on p=20,-105,0 s=1,1,1 r=0 | rt a=20,8 sd=660,130 anc=0.5,0.5-0
 Run In Background và auto-tick runner tự bật, và trả lại khi thoát ở mọi đường ra (override ghi vào `ProjectSettings/Packages/com.unity.pipeline`).
 
 ## Bẫy
+
+- **Gọi `Service.Get`, `TryGet` trong script trước `WaitForSceneAsync`**: service `FindFromScene` + `LazyInit` chưa có scene thì InitArgs
+  ghi nhận không thấy và không tìm lại cả phiên Play. Lỗi sau đó (thiếu phụ thuộc, `NullReferenceException` ở client khác) là của
+  script đo, không của game. Kết quả lạ ngay sau một lần thăm dò thì chạy lại phiên Play sạch trước khi kết luận.
+- **Đóng quảng cáo giả khi dự án dùng AppLovin MAX**: Editor dựng canvas `Interstitial(Clone)`, `Rewarded(Clone)`, `BannerBottom(Clone)`
+  ở DontDestroyOnLoad; đóng bằng `Button.onClick` của `MaxInterstitialCloseButton`, rewarded bấm `MaxRewardButton` rồi
+  `MaxRewardedCloseButton`. Có canvas `BannerBottom(Clone)` là banner đang hiện.
 
 - **Eval hay rớt ngay sau khi vào Play** ("domain reloading" hay chưa có kết quả): runner thử lại tới 10 lần. Script có tác dụng phụ trước
   `PlayProbe.Run` (ghi file, đổi state) thì phải chịu được chạy hai lần.

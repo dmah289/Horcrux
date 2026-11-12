@@ -1,6 +1,6 @@
 ---
 name: feel-tune
-description: Dùng khi chỉnh, refactor hay dò lỗi feeling của game Unity — tween, trình diễn, hiệu ứng, nhịp, juice — hoặc đo GC, batches trong lúc trình diễn. Chọn công cụ đo dựng sẵn trong Horcrux theo câu hỏi, thay vì viết script chạy ngầm mới mỗi lần.
+description: Dùng khi chỉnh, refactor hay dò lỗi feeling của game Unity — tween, trình diễn, hiệu ứng, nhịp, juice — hoặc đo GC, batches trong lúc trình diễn, hoặc dò một luồng runtime trong Play (treo, không chuyển màn, quảng cáo, popup kẹt) bằng trạng thái nội bộ. Chọn công cụ đo dựng sẵn trong Horcrux theo câu hỏi, thay vì viết script chạy ngầm mới mỗi lần.
 ---
 
 # feel-tune — chỉnh feeling với công cụ dựng sẵn
@@ -11,7 +11,9 @@ Khi nào được vào Play và khi nào giao developer chơi thử: `workflow` 
 ## Luật
 
 1. **Không viết script khung mới** (vào Play, thử lại eval, bắt log, ghi file, khoá fps, chụp, ghép ảnh). Thiếu thì mở
-   rộng công cụ trong Horcrux hoặc class đường tắt của dự án, rồi dùng.
+   rộng công cụ trong Horcrux hoặc class đường tắt của dự án, rồi dùng. *Đã sai một lần:* dò luồng quảng cáo treo bằng vài
+   chục eval MCP rời (vào Play, chờ, đọc field private, bấm nút, đóng quảng cáo) và đọc console thô hàng trăm KB, trong khi
+   `playrun.sh` + `PlayProbe` làm cả chuỗi trong một lệnh và in `LOG` đã gọn.
 2. **Không đọc dữ liệu thô vào ngữ cảnh.** Trace đọc qua `stat`, `diff`, `sig`; kết quả probe tóm tắt dưới 4 KB; ảnh là
    một sheet đã cắt và thu nhỏ.
 3. **Refactor phải giữ chuyển động thì chứng minh bằng trace**, không bằng mắt: quay mỗi frame ở cuối frame với frame rate
@@ -29,6 +31,8 @@ Khi nào được vào Play và khi nào giao developer chơi thử: `workflow` 
 | GC, batches, renderer bật mà không vẽ lúc diễn | `feeltrace.sh --gc`, `stat <file> M0 --cols 0` | có |
 | một hàm có cấp phát dưới vài chục KB | test PlayMode `Is.Not.AllocatingGCMemory`, **không** đọc từ M0 — GC mỗi frame trong Editor có nền nhiễu ≈ 100 KB | có |
 | trạng thái nội bộ sau một chuỗi thao tác | `playrun.sh` + `PlayProbe.Run` | có |
+| luồng dừng giữa chừng, Editor còn giữ nguyên (không chuyển màn, popup kẹt) | **không dừng Play**: console phiên đó tới dòng cuối trước khi im, rồi `PlayProbe.Field` đọc trạng thái hai bên chỗ đứt (hệ ngoài đã trả chưa, bên chờ còn sống không) | đang Play |
+| sửa xong, tái hiện luồng (thắng → quảng cáo → chuyển màn) | `playrun.sh`: `WaitForSceneAsync` trước mọi service, `Call` handler nút hay `Click`, đóng quảng cáo giả (`docs/Editor/Probe.md` › Bẫy), ghi số trước–sau | có |
 | mất hình, lệch lớp, nháy ở một frame | `FrameSheet` trong probe hay `Act` của kịch bản, một PNG | có |
 | một look ở vài giá trị thông số (lớp vẽ có bị che, độ toả, offset, scale đỉnh) | `UICapture.Variants` qua `script eval` (`docs/Editor/UIReskin.md`) | không |
 | cảm giác, nhịp, "đã tay" | developer chơi thử | — |
