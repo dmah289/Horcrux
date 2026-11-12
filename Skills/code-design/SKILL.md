@@ -33,6 +33,9 @@ lỗi, điểm thoát khi huỷ) chỉ có **một bản**; nhân vòng lặp ha
 service dùng chung → **consumer mới** đưa nội dung qua tham số, không mọc cờ trên service (gom domain mọi consumer về một
 class) · component dùng ở nhiều host **không có cờ chế độ trên instance** — ô quên tick không để lại dấu vết.
 
+**Hiệu ứng không mang giá:** cửa chạy hiệu ứng không trừ kho, tiền hay lượt; mỗi nguồn trả (nút dùng, phần thưởng, hồi sinh, mua
+xong dùng ngay) trừ ở chỗ của nó rồi gọi cùng cửa. Nguồn mới không phải mọc cờ "miễn phí" trên cửa.
+
 **Đóng gói ở đâu** (hỏi sau khi biết cần class): trả lời từ tham số, không giữ gì → **class thuần static** · trả lời từ dữ
 liệu của chính nó → **`ScriptableObject`** · làm gì đó theo thời gian (loop, chờ, subscribe, ghi ra ngoài) →
 **`MonoBehaviour`** hoặc class thuần do nó sở hữu — cần **mốc chết tin được** để tắt.
@@ -56,7 +59,8 @@ field serialize kèm property. Ngoài ba ca, class phải chia file mới đọc
 > cần `*Initializer` kéo tay. Base gọi `Init` trước `OnAwake` — con viết `OnAwake`, `Awake` riêng che bước tiêm. Initializer
 > không phụ thuộc nhau xếp theo assembly → namespace → `FullName`: **đổi tên là đổi thứ tự `Awake`**; cần thứ tự thật thì
 > `[InitAfter]`. Editor và tooling không bắt buộc InitArgs. Đổi resolve lười sang sớm là dịch cửa sổ thất bại — hỏi *lúc
-> đó thứ cần đã tồn tại chưa?*
+> đó thứ cần đã tồn tại chưa?* Bỏ phụ thuộc `Init` của component có `*Initializer` trong prefab, scene: gỡ component
+> Initializer trong Editor **lúc script còn compile**, rồi mới xoá file và đổi base — xoá trước thì asset giữ một script missing.
 
 > **Nền tảng** — region cố định: `Properties` · `Unity Callbacks` · `API` · `Class Methods` · `DI`. Thứ tự
 > `Awake`/`OnEnable` giữa object do engine chọn, Script Execution Order là cấu hình ẩn. Engine bảo đảm: trong cây object
@@ -140,13 +144,15 @@ duyệt ngược hoặc deferred removal.
 
 **Lý do là "phải nhớ đừng…" thì chỗ đặt sai** — tìm chỗ đặt làm việc "đừng" bất khả thi. *Đã sai một lần:* helper cùng tên
 trong class con che **mọi** overload của `UnityEngine.Object`; đưa ra extension method thì hết, vì extension không che
-instance method.
+instance method. *Đã sai một lần:* hành động trả xong dùng ngay (không số dư, không nút) nằm chung enum với hàng có số
+dư; vòng tặng quà duyệt cả enum nên nó nhận số dư không ai đọc. Tập "tất cả X" chỉ gom phần tử cùng hành vi.
 
 | Luật | Nghĩa là |
 |---|---|
 | **Một sự thật = một chủ sở hữu** | một nơi giữ bản gốc; cache chỉ ra ai dựng lại, khi nào, bám bất biến **đã có** (dirty flag, version). Một cờ tiêu thụ ở **một** nơi. Sự kiện đổi giá trị mang `(old, new)` — consumer tự giữ bản cũ là bản sao thứ hai |
 | **Hai bản buộc khớp thì suy từ MỘT nguồn** | đo–vẽ, vẽ–hit-test, điều kiện ẩn–hiện: một hàm · chuỗi định danh hai hệ: khai một lần phía phát, phía nhận trỏ symbol · định danh số chia sẻ với asset: `enum` tường minh từ `= 1`, số đã vào asset là wire format, chỉ thêm ở cuối · vật kề nhau ở world và canvas: neo cùng mép, cùng luật co giãn — cả cỡ camera lẫn đơn vị khoảng cách (`demo-compare` › Tỉ lệ màn) · phản hồi nhiều kênh một khoảnh khắc (tiếng, rung, hình): gọi cạnh nhau trong **một hàm** — kênh nghe event riêng sẽ bắn cả ca đã chặn |
-| **Một trạng thái = một cửa ghi, một chủ gọi** | mở, huỷ, chốt trong **một** class; nơi khác chỉ **phát sự thật** (sự kiện tên theo điều đã xảy ra, đồng bộ, một người nghe hành động; cần mốc mới thì thêm sự kiện). Hệ quả luôn xảy ra, rẻ, không ném → trong **setter**. Hai lời gọi luôn đi cùng nhau thì gộp vào trong cửa public |
+| **Một trạng thái = một cửa ghi, một chủ gọi** | mở, huỷ, chốt trong **một** class; nơi khác chỉ **phát sự thật** (sự kiện tên theo điều đã xảy ra, đồng bộ, một người nghe hành động; cần mốc mới thì thêm sự kiện). Hệ quả luôn xảy ra, rẻ, không ném → trong **setter**. Hai lời gọi luôn đi cùng nhau thì gộp vào trong cửa public; thiếu điều kiện cho một vế thì hoãn cả hai — cờ đã bật cho vế đầu làm vế sau mất vĩnh viễn |
+| **Lệnh tới hệ ngoài là ý muốn, đối chiếu ở một cửa** | hệ ngoài bỏ im lặng lệnh tới lúc nó chưa sẵn sàng hay đang bị che: giữ **ý muốn** của caller tách khỏi **thứ đã gửi**; mọi mốc đổi điều kiện gọi **một** hàm đối chiếu, hàm chỉ gửi khi kết quả khác lần gửi trước. Gộp hai cờ thì lệnh tạm ẩn xoá luôn ý muốn |
 | **Lý do của trạng thái ghi ở cùng cửa với trạng thái** | cờ bật được từ nhiều đường (khoá, đóng, huỷ) mà người đọc cần biết vì sao → lưu lý do ngay ở cửa ghi, lý do đầu thắng, cờ suy từ lý do. Suy ngược từ field khác sai khi một đường phụ (cheat, sự kiện về muộn) vẫn ghi field đó |
 | **Một bảo đảm phủ MỌI đường vào** | mọi cửa ghi đi qua chỗ tạo bảo đảm; **đếm cửa trước, đọc thân sau** — grep mọi API ghi |
 | **Một phép biến đổi chỉ áp ở MỘT tầng** | runner đã ease thì thân nhận `t` đã ease; hai tầng cùng ease thì một tầng `Linear` |
