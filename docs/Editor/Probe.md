@@ -80,6 +80,7 @@ playrun.sh: thấy .done → playmode stop → chuyển file về <file ra> → 
 | `FrameSheet.CaptureAsync(CancellationToken ct)` | chờ cuối frame hiện tại rồi chụp Game view (gồm UI overlay). Gọi trong `Act` của FeelTrace là chụp đúng frame đó |
 | `FrameSheet.Save(string pngPath, int columns)` · `Count` · `Dispose()` | ghép lưới: ảnh 0 trên trái, đi theo hàng, khe 4 px xám; `Dispose` huỷ texture đã chụp |
 | `FrameSheet.Shrink(...)` · `Compose(...)` | static, dùng khi ghép từ texture có sẵn; texture trả về do người gọi huỷ |
+| `FrameRecorder.RecordAsync(string directory, int frameCount, Action begin, CancellationToken ct)` | khoá `Time.captureFramerate` = `FrameRecorder.Framerate` (30), gọi `begin`, chụp `frameCount` frame liền cỡ đủ Game view ra `<directory>/f_0000.png…` (frame 0 là frame `begin` chạy), trả `captureFramerate` về giá trị cũ ở mọi đường ra. Xoá `f_####.png` cũ trong thư mục trước khi ghi. Trả đường dẫn mẫu `…/f_%04d.png` cho `video_demo.py` (`docs/Editor/VideoDemo.md`). `directory` tuyệt đối, ngoài thư mục tạm của `playrun.sh` |
 
 ### Shell — `Editor/Probe/Tools~/playrun.sh`
 
@@ -224,7 +225,7 @@ Run In Background và auto-tick runner tự bật, và trả lại khi thoát �
   với máy có inset; kiểm cả hai trước khi build.
 - **`FindObjectsByType` mỗi frame cấp phát**: trong script đo GC, gom danh sách một lần lúc vào level.
 - **`Time.captureFramerate` còn khoá sau khi script tự đặt**: `PlayProbe.Run` không trả về 0; script đặt thì tự trả, hoặc dùng
-  `FeelTraceRecorder` (tự trả ở mọi đường ra).
+  `FeelTraceRecorder`, `FrameRecorder` (tự trả về giá trị trước đó ở mọi đường ra).
 
 ## Kiểm thử
 

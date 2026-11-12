@@ -7,7 +7,8 @@ description: Dùng khi so màn game với ảnh demo hay ảnh chụp máy thậ
 
 Skill công cụ dưới `Skills/horcrux_skill.md` (NT, ba tầng, ký hiệu định nghĩa ở đó). Tool: `docs/Editor/Probe.md` (chạy nhiều cỡ,
 nhiều máy, chọn máy Simulator, thêm máy thật, đo khung object) · `docs/Editor/UIReskin.md` (dò dải màu, ghép ảnh cạnh nhau, số lệch `Diff`, fit shader vầng sáng) ·
-`docs/Editor/VideoDemo.md` (video demo: lưới khung hình, đoạn động, bám vật ra thời lượng và ease, so nhịp với bản quay Unity). Dựng
+`docs/Editor/VideoDemo.md` (video demo: lưới khung hình, đoạn động, bám vật ra thời lượng và ease, mốc xuất hiện từng lớp, so nhịp
+với bản quay Unity; quay bản Unity bằng `FrameRecorder` của Probe). Dựng
 prefab UI theo demo: `ui-reskin`.
 
 ## Demo là video
@@ -82,5 +83,6 @@ lần demo, dải bàn chơi còn nửa và scale fit kẹt sàn; developer nghi
 | Kết quả Simulator mang tên máy mới mà số là của máy cũ | chọn máy hỏng (tên sai) mà vẫn chạy · runner dừng khi chọn máy hỏng; đọc dòng chọn máy trong kết quả |
 | Simulator cùng cỡ mà không giống máy | máy mẫu của Unity là máy chung chung, inset và cutout khác máy thật · thêm file máy thật, kiểm bằng ảnh chụp máy |
 | Gradient shader dựng theo demo đúng màu tâm và mép mà sai nhịp tắt | hệ số đo ở sRGB của ảnh, shader nội suy ở Linear · `DemoCompare.FitRadialGlow` fit theo không gian màu project kèm số lệch mô phỏng; giao số chỉ sau khi chụp trong Play đúng chế độ canvas và `Diff` với demo |
+| Lớp tối alpha cao mà màn chơi phía sau vẫn rõ hơn demo nhiều | project Linear trộn alpha trước khi đổi về sRGB: alpha 0.88 còn khoảng 38% độ sáng nhìn thấy, không phải 12% · so độ sáng nền sau lớp tối đo trên cả hai ảnh, không so alpha |
 | `max` lệch lớn ở mép, góc ảnh demo dù nền đã khớp | demo xuất kèm khung viền, mỗi cạnh dày khác nhau · `Runs` ở mép tìm viền, đưa vào `exclude` trước khi tin số |
 | Đổi cỡ Game view thì bật thêm một cửa sổ Game nổi | Simulator đang chiếm chỗ view Play · công cụ đổi cỡ tự đưa Game view về; swap tay thì trả lại |

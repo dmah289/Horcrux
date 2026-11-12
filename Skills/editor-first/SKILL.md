@@ -55,6 +55,10 @@ mình hiểu** — export clone dữ liệu gốc rồi ghi đè đúng khoá to
 đối tượng**, không tra lại theo toạ độ hay vị trí mảng · **Import và Export sống cạnh nhau** trong một file, nghiệm thu bằng
 round-trip.
 
+**Gói asset từ ngoài chỉ nhập phần thứ cần dùng kéo theo.** Gói của hoạ sĩ, của store hay đóng kèm runtime, plugin và mẫu
+mà dự án đã có bản khác; nhập cả gói là đè bản đang chạy bằng bản lệch, không lỗi nào báo. Đọc phụ thuộc từ prefab, scene
+đích trước, so phần còn lại với file dự án đang có, rồi mới tick. Tool: `docs/Editor/UnityPackageAudit.md`.
+
 ## Editor tool
 
 Tiêu chí: **một tool là một đơn vị gói kín** · **thứ dùng chung sống một chỗ** (`Editor/Common/` của Horcrux) · **thứ không

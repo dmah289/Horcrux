@@ -190,6 +190,14 @@ ASMR đặc thù cho game puzzle: đến từ **tactile (chạm), order (trật 
 
 #### `CompletionSequence` — chuỗi thắng màn
 - Dàn feedback tuần tự khi giải xong: sáng dần, âm thanh crescendo, particle.
+- Bản chạy thật đầu tiên ở dự án: `WinCelebration` của category-jam (tài liệu module `Assets/_CategoryJam/Bridge/Bridge.md` › Màn thắng). Hình dạng đã chốt:
+  - ghi thắng ở mốc vật cuối rời đi;
+  - lớp tối chặn chạm tối dần;
+  - logo Spine `Appear` rồi n vòng `Idle`, cùng hạt qua UIParticle;
+  - hết logo thì mở popup thắng. Popup dùng lại lớp tối, hạt bắn tiếp phía sau và dừng khi popup đóng.
+- Phụ thuộc Spine và UIParticle nằm ngoài stack Horcrux. Đưa vào Horcrux cần assembly có define constraint theo hai package.
+  Chỗ đặt (dự án hay Horcrux) chưa chốt, đang chờ developer quyết.
+- Âm thắng đang gọi thẳng audio service. Khi Feedback Orchestrator có (`SystemPlan.md` §22) thì chuyển sang bắn cue.
 
 ### Combo "ASMR puzzle đã nhất"
 > **MagneticSnap + GridSnapFeedback (tick) + StaggerHelper (clear chuỗi) + pitch ramp**

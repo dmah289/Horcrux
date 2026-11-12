@@ -7,7 +7,7 @@ description: Dùng khi dựng hoặc reskin UI theo ảnh demo, hay thêm art UI
 
 Skill công cụ dưới `Skills/horcrux_skill.md` (NT, ba tầng, ký hiệu định nghĩa ở đó). Tool: `docs/Editor/TmpToUniText.md` (chuyển chữ TMP sang UniText, giữ kiểu viền bóng) · `docs/Editor/UIReskin.md` (dựng,
 soát, chụp, đo) · `docs/Editor/Probe.md` (cỡ Game view, vào Play, chờ scene, bấm) · `docs/Editor/SpriteAtlasBuilder.md` (soát, dựng
-atlas).
+atlas) · `docs/ToolUsage/UIParticle.md`, `docs/ToolUsage/Spine.md` (hạt và Spine trên canvas, khi dự án dùng hai thư viện đó).
 
 Mục dưới là **tiêu chí và lý do**, không phải trình tự. Bài nào có đường ngắn hơn mà vẫn đạt tiêu chí thì đi đường đó (NT6),
 nói lý do và phép kiểm.

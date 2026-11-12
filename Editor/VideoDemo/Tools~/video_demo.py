@@ -5,6 +5,7 @@
   video_demo.py motion  <video> [--from s] [--to s] [--roi R] [--bin s] [--threshold v]
   video_demo.py track   <video> --roi R --ref t [--bg t] [--from s] [--to s] [--csv <file>]
   video_demo.py compare <a> <b> [--roi R] [--out <png>] [--count N] [--max-lag s] [--tempo k]
+  video_demo.py layers  <a> [<b>] --layer tên:R:màu [--layer …] [--a-from s] [--a-zero s] [--b-from s] [--b-zero s]
   video_demo.py selftest
 
 R là vùng x,y,w,h gốc trên trái: số nguyên là pixel của video, cả bốn số <= 1 là phần của khung (dùng chung cho hai video khác cỡ).
@@ -36,7 +37,7 @@ DUP_EPS = 0.05           # lệch trung bình dưới mức này: frame lặp l�
 class Video:
     def __init__(self, path):
         self.path = path
-        cap = cv2.VideoCapture(path)
+        cap = open_capture(path)
         if not cap.isOpened():
             sys.exit('video_demo: không mở được %s' % path)
         # Chuỗi ảnh (f_%04d.png) không mang fps, OpenCV trả -1: coi là 30, nhịp quay Unity khoá bằng captureFramerate 30.
@@ -69,7 +70,7 @@ class Video:
         if not wanted:
             return out
         last = max(wanted)
-        cap = cv2.VideoCapture(self.path)
+        cap = open_capture(self.path)
         i = 0
         while i <= last:
             ok, frame = cap.read()
@@ -83,7 +84,7 @@ class Video:
 
     def scan(self, a, b, fn):
         """Gọi fn(index, frame) cho mọi frame trong [a, b], tuần tự."""
-        cap = cv2.VideoCapture(self.path)
+        cap = open_capture(self.path)
         i = 0
         while i <= b:
             ok, frame = cap.read()
@@ -93,6 +94,11 @@ class Video:
                 fn(i, to_bgr(frame))
             i += 1
         cap.release()
+
+
+def open_capture(path):
+    """Chuỗi ảnh (đường dẫn có %d) mở bằng backend ảnh: backend mặc định thử ffmpeg trước, in lỗi giải mã PNG rồi mới lùi."""
+    return cv2.VideoCapture(path, cv2.CAP_IMAGES) if '%' in os.path.basename(path) else cv2.VideoCapture(path)
 
 
 def to_bgr(frame):
@@ -997,6 +1003,171 @@ def cmd_compare(args):
     print('sheet: %s  hàng trên A, hàng dưới B cùng mốc sau khi canh, %d mốc, %dx%d' % (args.out, count, sheet.shape[1], sheet.shape[0]))
 
 
+# ---------------------------------------------------------------- mốc từng lớp
+
+def parse_color(text):
+    """Bộ lọc pixel của một lớp: (mô tả, fn(px, base) → mặt nạ bool). px, base là vùng BGR float32 cùng cỡ; base là frame đầu đoạn."""
+    kind, _, arg = text.partition('/')
+    try:
+        val = float(arg) if arg else None
+    except ValueError:
+        sys.exit('video_demo: màu "%s" sai, số sau / không đọc được' % text)
+    if kind.startswith('#') and len(kind) == 7:
+        try:
+            r, g, b = (int(kind[k:k + 2], 16) for k in (1, 3, 5))
+        except ValueError:
+            sys.exit('video_demo: màu "%s" không phải #rrggbb' % kind)
+        tol = 60.0 if val is None else val
+        target = np.array([b, g, r], np.float32)
+        return '%s ±%g' % (kind, tol), lambda px, base: np.linalg.norm(px - target, axis=2) <= tol
+    if kind == 'white':
+        lo = 235.0 if val is None else val
+        return 'trắng ≥%g' % lo, lambda px, base: px.min(axis=2) >= lo
+    if kind == 'sat':
+        lo = 150.0 if val is None else val
+        return 'đậm màu ≥%g' % lo, lambda px, base: px.max(axis=2) - px.min(axis=2) >= lo
+    if kind == 'diff':
+        lo = 40.0 if val is None else val
+        return 'khác frame đầu ≥%g' % lo, lambda px, base: np.abs(px - base).max(axis=2) >= lo
+    sys.exit('video_demo: màu "%s" không hiểu; dùng #rrggbb[/sai số], white[/mức], sat[/độ đậm] hoặc diff[/mức]' % text)
+
+
+def parse_layer(text):
+    parts = text.split(':')
+    if len(parts) != 3 or not parts[0]:
+        sys.exit('video_demo: --layer cần dạng tên:x,y,w,h:màu, nhận "%s"' % text)
+    return parts[0], parts[1], parse_color(parts[2])
+
+
+def layer_coverage(v, a, b, layers):
+    """Phần trăm pixel của vùng mỗi lớp lọt bộ lọc màu, mỗi frame trong [a, b]: mảng (lớp, frame)."""
+    rois = [parse_roi(roi, v.w, v.h) for _, roi, _ in layers]
+    base = {}
+    rows = []
+
+    def fn(i, frame):
+        row = []
+        for k, (_, _, (_, mask)) in enumerate(layers):
+            px = crop(frame, rois[k]).astype(np.float32)
+            if k not in base:
+                base[k] = px
+            row.append(100.0 * float(mask(px, base[k]).mean()))
+        rows.append(row)
+
+    v.scan(a, b, fn)
+    return np.array(rows, np.float32).T, rois
+
+
+def layer_events(t, cov, rise_min):
+    """Mốc bắt đầu, đỉnh, tắt của một lớp theo độ phủ tăng so với frame đầu; None nếu tăng chưa tới rise_min điểm phần trăm.
+    Ngưỡng là số tuyệt đối, không là phần của đỉnh: lớp phóng to dần từ cỡ nhỏ sẽ bị tính bắt đầu trễ nếu ngưỡng tỉ lệ với đỉnh."""
+    rise = cov - cov[0]
+    peak = int(np.argmax(rise))
+    if rise[peak] < rise_min:
+        return None
+    on = int(np.argmax(rise >= rise_min))
+    below = np.nonzero(rise[peak:] < rise_min)[0]
+    off = peak + int(below[0]) if len(below) else None
+    return dict(on=t[on], peak=t[peak], off=None if off is None else t[off], top=float(cov[peak]), base=float(cov[0]))
+
+
+def measure_layers(path, t_from, t_to, zero, layers, rise_min):
+    v = Video(path)
+    a, b = v.range(t_from, t_to)
+    t0 = a / v.fps if zero is None else zero
+    cov, rois = layer_coverage(v, a, b, layers)
+    t = (a + np.arange(cov.shape[1])) / v.fps - t0
+    return v, (a, b, t0), rois, [layer_events(t, c, rise_min) for c in cov]
+
+
+def fmt_s(x):
+    return '%6.2f' % x if x is not None else '     —'
+
+
+def cmd_layers(args):
+    layers = [parse_layer(x) for x in args.layer]
+    sides = [('A', args.a, args.a_from, args.a_to, args.a_zero)]
+    if args.b:
+        sides.append(('B', args.b, args.b_from, args.b_to, args.b_zero))
+    results = []
+    for tag, path, t_from, t_to, zero in sides:
+        v, (a, b, t0), rois, evs = measure_layers(path, t_from, t_to, zero, layers, args.rise)
+        print('%s %s' % (tag, v.header()))
+        print('  đoạn %.2f–%.2fs · mốc 0 = %.2fs · một frame = %.3fs' % (a / v.fps, b / v.fps, t0, 1.0 / v.fps))
+        results.append(evs)
+    print('lớp (giây tính từ mốc 0 của mỗi video; độ phủ = % pixel của vùng lọt bộ lọc màu):')
+    for k, (name, roi, (desc, _)) in enumerate(layers):
+        print('  %s · vùng %s · %s' % (name, roi, desc))
+        for tag, evs in zip([s[0] for s in sides], results):
+            e = evs[k]
+            if e is None:
+                print('    %s không thấy (độ phủ tăng dưới %.2f điểm %%)' % (tag, args.rise))
+                continue
+            print('    %s bắt đầu %s · đỉnh %s · tắt %s · độ phủ %.1f → %.1f%%' % (
+                tag, fmt_s(e['on']), fmt_s(e['peak']), fmt_s(e['off']), e['base'], e['top']))
+        if len(results) == 2 and results[0][k] and results[1][k]:
+            print('    B − A: bắt đầu %+.2fs · đỉnh %+.2fs' % (results[1][k]['on'] - results[0][k]['on'], results[1][k]['peak'] - results[0][k]['peak']))
+    first = next((k for k in range(len(layers)) if all(r[k] for r in results)), None)
+    if first is None or len(layers) < 2:
+        return
+    print('khoảng cách bắt đầu tới lớp "%s" (nhịp giữa các lớp, không phụ thuộc mốc 0):' % layers[first][0])
+    for k, (name, _, _) in enumerate(layers):
+        if k == first or not all(r[k] for r in results):
+            continue
+        gaps = [r[k]['on'] - r[first]['on'] for r in results]
+        line = '  %-16s ' % name + ' · '.join('%s %+.2fs' % (tag, g) for tag, g in zip([s[0] for s in sides], gaps))
+        if len(gaps) == 2:
+            line += ' · lệch %+.2fs' % (gaps[1] - gaps[0])
+        print(line)
+
+
+def test_layers():
+    """Hai lớp màu đã biết mốc: A là mp4 30 fps, B là chuỗi PNG 30 fps trễ 0.20 s và lớp thứ hai trễ thêm 0.10 s."""
+    import tempfile
+    root = tempfile.mkdtemp(prefix='video_demo_layers_')
+    w, h, fps = 200, 300, 30
+
+    def frame(t, t_yellow, t_blue):
+        f = np.full((h, w, 3), (50, 30, 20), np.uint8)
+        if t >= t_yellow:
+            size = int(min(1.0, (t - t_yellow) / 0.3) * 60) + 4
+            cv2.rectangle(f, (100 - size, 80 - size // 2), (100 + size, 80 + size // 2), (40, 210, 250), -1)
+        if t >= t_blue:
+            cv2.rectangle(f, (20, 200), (180, 260), (230, 160, 30), -1)
+        return f
+
+    a_path = os.path.join(root, 'a.mp4')
+    out = cv2.VideoWriter(a_path, cv2.VideoWriter_fourcc(*'mp4v'), fps, (w, h))
+    for i in range(60):
+        out.write(frame(i / fps, 0.40, 1.00))
+    out.release()
+    os.makedirs(os.path.join(root, 'b'))
+    for i in range(70):
+        cv2.imwrite(os.path.join(root, 'b', 'f_%04d.png' % i), frame(i / fps, 0.60, 1.30))
+    b_path = os.path.join(root, 'b', 'f_%04d.png')
+    layers = [parse_layer('vàng:0,0,1.0,0.5:#fad228'), parse_layer('xanh:0,0.6,1.0,0.4:#1ea0e6')]
+    fails = []
+
+    def check(cond, msg):
+        print('  %s %s' % ('ok  ' if cond else 'SAI ', msg))
+        if not cond:
+            fails.append(msg)
+
+    _, _, _, ea = measure_layers(a_path, None, None, None, layers, 0.1)
+    _, _, _, eb = measure_layers(b_path, None, None, None, layers, 0.1)
+    frame_s = 1.0 / fps + 1e-6
+    check(bool(ea[0]) and abs(ea[0]['on'] - 0.40) <= frame_s, 'A vàng bắt đầu 0.40s ± 1 frame (%s)' % (fmt_s(ea[0]['on']) if ea[0] else '—'))
+    check(bool(ea[1]) and abs(ea[1]['on'] - 1.00) <= frame_s, 'A xanh bắt đầu 1.00s ± 1 frame (%s)' % (fmt_s(ea[1]['on']) if ea[1] else '—'))
+    check(bool(eb[0]) and abs(eb[0]['on'] - 0.60) <= frame_s, 'B (chuỗi PNG) vàng bắt đầu 0.60s ± 1 frame (%s)' % (fmt_s(eb[0]['on']) if eb[0] else '—'))
+    if all(ea) and all(eb):
+        gap = (eb[1]['on'] - eb[0]['on']) - (ea[1]['on'] - ea[0]['on'])
+        check(abs(gap - 0.10) <= frame_s, 'lệch khoảng cách giữa hai lớp +0.10s ± 1 frame (%+.2f)' % gap)
+    check(bool(ea[0]) and ea[0]['off'] is None, 'vàng không tắt (%s)' % (fmt_s(ea[0]['off']) if ea[0] else '—'))
+    if fails:
+        sys.exit('layers: %d phép kiểm sai' % len(fails))
+    print('layers: mọi phép kiểm khớp đáp án dựng sẵn')
+
+
 # ---------------------------------------------------------------- CLI
 
 def main():
@@ -1061,8 +1232,21 @@ def main():
         sp.add_argument('--%s-to' % side, dest='%s_to' % side, type=float, default=None, help='giây kết thúc đoạn so của %s' % side.upper())
     sp.set_defaults(fn=cmd_compare)
 
+    sp = sub.add_parser('layers', help='mốc bắt đầu, đỉnh, tắt của từng lớp theo vùng và màu, trên một hoặc hai video')
+    sp.add_argument('a')
+    sp.add_argument('b', nargs='?', default=None)
+    sp.add_argument('--layer', action='append', required=True,
+                    help='tên:x,y,w,h:màu; màu là #rrggbb[/sai số], white[/mức], sat[/độ đậm] hoặc diff[/mức]; lặp lại cho mỗi lớp')
+    sp.add_argument('--rise', type=float, default=0.1, help='độ phủ tăng dưới mức này (điểm %%) coi là lớp không xuất hiện')
+    for side in ('a', 'b'):
+        sp.add_argument('--%s-from' % side, dest='%s_from' % side, type=float, default=None, help='giây bắt đầu đoạn đo của %s' % side.upper())
+        sp.add_argument('--%s-to' % side, dest='%s_to' % side, type=float, default=None, help='giây kết thúc đoạn đo của %s' % side.upper())
+        sp.add_argument('--%s-zero' % side, dest='%s_zero' % side, type=float, default=None,
+                        help='giây làm mốc 0 của %s (mặc định là đầu đoạn đo)' % side.upper())
+    sp.set_defaults(fn=cmd_layers)
+
     sp = sub.add_parser('selftest', help='đối chiếu bảng ease với PrimeTween, rồi đo video tổng hợp đã biết đáp án')
-    sp.set_defaults(fn=lambda a: (test_eases(), test_video()))
+    sp.set_defaults(fn=lambda a: (test_eases(), test_video(), test_layers()))
 
     args = p.parse_args()
     args.fn(args)
