@@ -1,13 +1,26 @@
 ---
 name: demo-compare
-description: Dùng khi so màn game với ảnh demo hay ảnh chụp máy thật, khi bố cục trên máy khác Editor, hoặc trước khi build để xem màn trên máy có tai thỏ, thanh home, tỉ lệ khác. Đo ở hai chế độ — Game view đúng cỡ demo và Device Simulator theo máy — bằng số trên ảnh chụp, không bằng mắt.
+description: Dùng khi so màn game với ảnh demo hay ảnh chụp máy thật, khi bố cục trên máy khác Editor, trước khi build để xem màn trên máy có tai thỏ, thanh home, tỉ lệ khác, hoặc khi demo là video (mp4) cần dựng, chỉnh anim, hiệu ứng theo. Đo bằng số trên ảnh chụp và trên video, không bằng mắt.
 ---
 
 # demo-compare — so demo ở Game view và trên máy giả lập
 
 Skill công cụ dưới `Skills/horcrux_skill.md` (NT, ba tầng, ký hiệu định nghĩa ở đó). Tool: `docs/Editor/Probe.md` (chạy nhiều cỡ,
-nhiều máy, chọn máy Simulator, thêm máy thật, đo khung object) · `docs/Editor/UIReskin.md` (dò dải màu, ghép ảnh cạnh nhau, số lệch `Diff`, fit shader vầng sáng). Dựng
+nhiều máy, chọn máy Simulator, thêm máy thật, đo khung object) · `docs/Editor/UIReskin.md` (dò dải màu, ghép ảnh cạnh nhau, số lệch `Diff`, fit shader vầng sáng) ·
+`docs/Editor/VideoDemo.md` (video demo: lưới khung hình, đoạn động, bám vật ra thời lượng và ease, so nhịp với bản quay Unity). Dựng
 prefab UI theo demo: `ui-reskin`.
+
+## Demo là video
+
+**Đọc nhịp ra số trước khi dựng.** Video cho biết thứ ảnh tĩnh không có: thứ tự các lớp xuất hiện, thời lượng, ease, độ vượt, chu
+kỳ idle. Lấy chúng bằng đo, không bằng xem rồi ước: mắt người đoán thời lượng lệch vài chục phần trăm, và đoán sai ease thì cảm
+giác khác hẳn dù khung cuối khớp. Số đo là điểm xuất phát cho tham số; cảm giác vẫn do developer chơi thử (`workflow` › Nghiệm thu).
+
+**Video quay màn chưa phải nhịp gốc.** Bản quay có thể lặp frame, chậm hoặc nhanh hơn máy dựng; đọc nhịp thật của bản quay trước khi
+tin một thời lượng. Một vật đổi dáng giữa chừng (Spine đổi attachment, chữ đổi viền) là nhiều chặng, mỗi chặng đo với mẫu của nó.
+
+**So bản dựng bằng cùng phép đo, trên bản quay cùng điều kiện.** Quay Game view ở fps cố định, cùng tỉ lệ demo, rồi so nhịp hai
+video bằng số (trễ, nhanh chậm, sự kiện lệch). Hai video đặt cạnh nhau xem bằng mắt chỉ để tìm chỗ cần đo.
 
 ## Hai chế độ, hai câu hỏi
 
