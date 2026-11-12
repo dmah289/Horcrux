@@ -28,12 +28,14 @@ làm điều kiện commit.
 | Giữ cả `dotnet build` dù Unity recompile đã đủ | dotnet báo đủ mọi lỗi của một assembly trong một lần và in chúng ra stdout; Unity dừng ở assembly đầu tiên hỏng và chỉ ghi console |
 | Đọc JSON của Unity CLI bằng `raw_decode`, không `json.load` | CLI in thêm một dòng hint của plugin sau JSON; `json.load` ném "Extra data" |
 | Lỗi `dotnet` lọc bằng `sort -u` | MSBuild in mỗi lỗi hai lần (một của compiler, một của tổng kết) |
+| `AssetDatabase.Refresh` qua `script eval` trước `script recompile` | Editor không focus thì chưa nạp file sửa từ ngoài; recompile trả `up_to_date` trên bản cũ và bước này báo xanh giả |
+| Đợi `unity status` ra `ready` (tối đa 60 s) giữa recompile và test | recompile xong còn domain reload, Pipeline ngắt vài giây; `test run` gửi lúc đó trả `EDITOR_NOT_RUNNING` |
 
 ## Luồng dữ liệu
 
 ```
 --csproj a,b ──► dotnet build -v q -clp:ErrorsOnly ──► "build a: ok" | dòng lỗi CS/MSB không trùng
---project   ──► unity status ready? ──► script recompile ──► poll recompile_status tới completed|up_to_date ──► errors[]
+--project   ──► unity status ready? ──► AssetDatabase.Refresh ──► script recompile ──► poll recompile_status tới completed|up_to_date ──► errors[]
 --tests X,Y ──► test run --mode EditMode --filter_type assembly --filter X ──► (in_progress? poll test status) ──► Summary + test fail
                                                                                                           └──► "verify: OK" | "verify: FAIL build recompile tests"
 ```

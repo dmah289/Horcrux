@@ -59,6 +59,8 @@ done
 
 # 2. Unity recompile: hỏi trạng thái tới khi completed hoặc up_to_date; lỗi biên dịch nằm trong errors.
 "$U" status --project-path "$W" 2>&1 | grep -q "ready" || { echo "unity: Editor chưa mở project (unity status không ready)"; FAIL="$FAIL unity"; finish; }
+# Editor không focus thì chưa thấy file sửa từ ngoài: recompile trả up_to_date trên bản cũ. Refresh trước để nạp file mới.
+"$U" cmd --project-path "$W" --result-only script eval --code "UnityEditor.AssetDatabase.Refresh(); return 0;" >/dev/null 2>&1
 "$U" cmd --project-path "$W" --result-only script recompile >/dev/null 2>&1
 status=""; raw=""
 for i in $(seq 1 60); do
@@ -78,6 +80,9 @@ for e in json.loads(sys.stdin.read() or "[]")[:40]:
 else echo "recompile: $status"; fi
 
 { [ $RUN_TESTS -eq 1 ] && [ -z "$FAIL" ]; } || finish
+
+# Recompile xong còn domain reload: Pipeline ngắt vài giây, test run gửi lúc đó trả EDITOR_NOT_RUNNING. Đợi ready lại.
+for i in $(seq 1 30); do "$U" status --project-path "$W" 2>&1 | grep -q "ready" && break; sleep 2; done
 
 # 3. Test EditMode theo assembly: in Summary; lệnh trả in_progress thì hỏi test status tới khi xong.
 IFS=',' read -ra ASMS <<< "$TESTS"
