@@ -33,6 +33,10 @@ và chỉ tick phần hiệu ứng cần.
   `Spine/Runtime/spine-unity/Materials/UI-StraightAlphaTex/SkeletonGraphicDefault-Straight.mat`, material của atlas có
   `_StraightAlphaInput: 1`. Atlas nhân sẵn alpha (PMA) dùng bộ `UI-PMATexture`. Lệch hai bên thì viền ảnh tối hoặc sáng quầng.
   Đầu file `.atlas.txt` có dòng `pma:true` khi nhân sẵn alpha; không có dòng đó là straight.
+- **Texture straight trong project Linear phải bật sRGB.** Spine nhập texture theo preset ở ô `textureSettingsReference` của
+  `SpineSettings.asset`; ô trống là preset PMA, tắt sRGB. Texture màu bị đọc như số linear thì màu nhạt đi rõ (kênh 99 hiện thành
+  khoảng 166). Đặt ô đó trỏ `StraightAlphaPreset` trước khi nhập dữ liệu straight; texture đã nhập thì bật lại sRGB và Alpha Is
+  Transparency. *Đã sai một lần:* logo nhập bằng preset mặc định, màu nhạt hơn demo; số đo trên texture gốc vẫn đúng màu demo.
 - Khung dữ liệu xuất bằng cỡ màn thiết kế (ví dụ 1080×2340) thì RectTransform của skeleton đặt đúng cỡ đó, gốc skeleton ở tâm,
   để vị trí trong Spine Editor khớp màn.
 
