@@ -44,6 +44,8 @@ quanh từng callback trong vòng dispatch).
 > - Anim UI dùng `Time.unscaledDeltaTime` (popup chạy khi `timeScale` = 0) · data lớn cho GPU, Job: `NativeArray` · tài
 >   nguyên nặng (`RenderTexture`, `Texture2D`) cache, dọn ở `OnDestroy()`.
 > - Tham số mặc định của method `virtual` lấy theo kiểu khai báo lúc gọi, không theo override.
+> - Mobile không có mốc rời phiên tin được: `OnApplicationPause(true)` bắn cả khi hộp thoại hệ thống (ATT), quảng cáo, share
+>   sheet che app; crash, kill không bắn gì. Việc dở dang lúc app chết phải để lại trạng thái vô hại, không chốt ở pause.
 
 ## Trình diễn một thay đổi cho người chơi
 

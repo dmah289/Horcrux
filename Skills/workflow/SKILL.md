@@ -41,6 +41,11 @@ xoá dữ liệu đã author (level, save, asset) · migration schema, wire form
 nghĩ tới thì nêu **một dòng kèm giá**, không tự đưa vào output; kéo sang hệ khác thì để "Mở rộng sau". Thứ developer tự
 nêu thì hỏi lại một lần để cân đắt–lợi, rồi theo developer.
 
+**Yêu cầu đổi vai của một input** (chỉ là khởi điểm, về sau thứ khác đè) **là đổi mô hình:** soát mọi khái niệm sinh ra từ vai
+cũ — cờ, khoá, tên field, nhánh riêng — rồi đề xuất trên mô hình mới. Đổi tên mà giữ cơ chế cũ là chưa đổi. *Đã sai một lần:*
+developer muốn bỏ khoá vì input đầu chỉ là khởi điểm; agent đề xuất giữ khoá dưới tên mới cùng field mang tên một kịch bản,
+developer phải bác rồi brainstorm lại.
+
 ## Đối chiếu với developer
 
 Code cho biết cái gì chạy, không cho biết vì sao; developer không nhất thiết nắm từng ngóc ngách. Với **mỗi phát hiện ảnh

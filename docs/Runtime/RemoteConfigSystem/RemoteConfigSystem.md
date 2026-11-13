@@ -257,6 +257,7 @@ dạng đường truyền.
 | **Ô import là `[NonSerialized]`** | `[SerializeField]` bọc `#if UNITY_EDITOR` làm Editor ghi field vào asset mà build strip nó → layout lệch → **crash native** khi đọc asset (`Read N bytes but expected M bytes`). Hiện trong Inspector mà không serialize: `[NonSerialized, ShowInInspector]` |
 | **Play trong Editor ghi giá trị remote lên chính asset** | collection load qua `Resources` là asset thật; apply đổi **Value** trong memory, thoát Play vẫn còn. Sửa một ô khác của asset rồi lưu thì giá trị remote thành mặc định. Soát diff asset trước khi commit |
 | **`implicit operator T` bất đối xứng khi so sánh** | `variable == null` so **tham chiếu** (literal `null` không có kiểu, `RemoteConfig<T>` không khai `operator ==`). So với toán hạng **có kiểu `T`** thì `T.op_Equality` vào tập ứng viên và variable bị convert: với `RemoteConfig<string>` có `Value` null, `variable == null` ra `false`, `variable == s` (`s` là `string` null) ra `true` |
+| **Đổi hình JSON của key đã phát hành** | build đang chạy vẫn đọc key đó theo hình cũ: parse hỏng, rơi về cache rồi Inspector. Đổi hình thì sang key mới; xoá key cũ khi không build nào còn đọc. Gốc giá trị có cấu trúc là object, không mảng trần: thêm khoá sau vẫn đọc được ở build cũ vì key thừa bị bỏ qua |
 | **Một lần parse hỏng ra nhiều dòng log** | `TryParseValueFromString` tự `LogError`, `ApplyRemoteValue` log thêm một dòng mỗi bậc trượt |
 
 ## 10. Quyết định
