@@ -10,9 +10,10 @@ using UnityEngine;
 namespace Horcrux.Vendors.Adjust
 {
     /// <summary>
-    /// Feeds the Adjust campaign into the segmentation host. Polls <see cref="AdjustSdk.Adjust.GetAttribution"/> because
+    /// Feeds the Adjust campaign into the segmentation host, in the first session only. Polls <see cref="AdjustSdk.Adjust.GetAttribution"/> because
     /// the SDK offers no event once another system (the project's Adjust wrapper) owns the init config.
-    /// First session waits up to <see cref="firstSessionWaitSeconds"/>; later sessions only poll in the background.
+    /// Waits up to <see cref="firstSessionWaitSeconds"/>, then polls in the background up to <see cref="lateArrivalPollSeconds"/>;
+    /// still nothing locks the campaign as NoAttribution. Quit or crash before that leaves it open, and no later session polls.
     /// </summary>
     public sealed class AdjustCampaignBootStep : ABootStep
     {
@@ -25,7 +26,7 @@ namespace Horcrux.Vendors.Adjust
         [Splitter("Configs")]
         [SerializeField, Min(0f), Tooltip("First session: wait for attribution at most this long before entering the game")]
         private float firstSessionWaitSeconds = 3f;
-        [SerializeField, Min(0f), Tooltip("Keep polling in the background at most this long per session while the campaign is not locked")]
+        [SerializeField, Min(0f), Tooltip("First session, after the blocking wait: keep polling in the background at most this long, then lock as NoAttribution")]
         private float lateArrivalPollSeconds = 10f;
 
         private AdjustAttribution _attribution;
@@ -47,10 +48,10 @@ namespace Horcrux.Vendors.Adjust
                 return;
             }
 
-            if (segmentation.IsCampaignLocked)
+            if (!segmentation.IsFirstSession || segmentation.IsCampaignLocked)
                 return;
 
-            if (segmentation.IsFirstSession && await PollAsync(firstSessionWaitSeconds, ct))
+            if (await PollAsync(firstSessionWaitSeconds, ct))
                 return;
 
             // Own lifetime, not the boot token: the boot phase ends when this step returns.
@@ -94,7 +95,7 @@ namespace Horcrux.Vendors.Adjust
             _hasAttribution = attribution != null;
         }
 
-        /// <summary>Late attribution: polls up to <see cref="lateArrivalPollSeconds"/>; not locked by then means the next session retries.</summary>
+        /// <summary>Late attribution: polls up to <see cref="lateArrivalPollSeconds"/>; not locked by then locks as NoAttribution.</summary>
         private async UniTaskVoid PollInBackgroundAsync(CancellationToken ct)
         {
             try
@@ -102,7 +103,8 @@ namespace Horcrux.Vendors.Adjust
                 if (await PollAsync(lateArrivalPollSeconds, ct))
                     return;
 
-                Debug.Log(LogPrefix + $"no attribution within {lateArrivalPollSeconds}s; next session retries", this);
+                Debug.Log(LogPrefix + $"no attribution within {firstSessionWaitSeconds + lateArrivalPollSeconds}s; locking, segment stays {segmentation.CurrSegmentId}", this);
+                segmentation.ReportNoAttribution();
             }
             catch (OperationCanceledException)
             {

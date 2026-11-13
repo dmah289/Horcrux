@@ -37,11 +37,12 @@ boot     BootstrapService, theo Order
          ├─ host.InitializeAsync     state = entry.Value
          │                           ValidateConfigs()  ─► LogError từng dòng dữ liệu sai, không sửa
          │                           Decider.OnBoot     ─► Commit(force)
-         └─ AdjustCampaignBootStep   đã khoá? xong
-                                     phiên 1: GetAttribution mỗi 0.5 s, chặn boot tối đa firstSessionWaitSeconds
-                                     chưa có: poll nền tối đa lateArrivalPollSeconds, phiên sau thử lại
+         └─ AdjustCampaignBootStep   không phải phiên 1, hoặc đã khoá? xong
+                                     GetAttribution mỗi 0.5 s, chặn boot tối đa firstSessionWaitSeconds
+                                     chưa có: poll nền tối đa lateArrivalPollSeconds
                                      có attribution ─► host.ReportCampaign(Campaign ?? "")
                                                          Matcher.TryMatch ─► Decider.OnCampaign ─► Commit
+                                     hết hạn ─► host.ReportNoAttribution() ─► Decider.OnNoAttribution ─► Commit
 
 chơi     mua thật ─► host.ReportPurchase() ─► Decider.OnPurchase ─► Commit
 
@@ -61,8 +62,8 @@ Nhịp: mọi phép tính chạy theo sự kiện (boot, campaign, mua), không 
 | Sự kiện | Điều kiện | Kết quả |
 |---|---|---|
 | `OnBoot` | `CurrSegmentId == 0` | `curr = default`, thay đổi `Initial` |
-| `OnBoot` | `!IsCampaignLocked && SessionCount >= max(1, resegmentMaxSessions)` | khoá `SessionWindow`, giữ tập |
-| `OnBoot` | luôn, sau hai dòng trên | `SessionCount++` |
+| `OnBoot` | luôn, sau dòng trên | `SessionCount++`; không bao giờ khoá |
+| `OnNoAttribution` | luôn | khoá `NoAttribution`, giữ tập |
 | `OnCampaign(camp)` | luôn, trước mọi dòng dưới | `LastCampaign = camp` |
 | `OnCampaign(camp)` | `IsCampaignLocked` | không đổi |
 | `OnCampaign(camp)` | `curr == purchased` | khoá `Attribution`, không đổi |
@@ -75,7 +76,8 @@ Nhịp: mọi phép tính chạy theo sự kiện (boot, campaign, mua), không 
 | đọc config | `curr == purchased` | `hàng purchased.InheritFrom(hàng prev)`; `prev == 0` thì hàng `default` |
 
 **Khoá.** `IsCampaignLocked` là `LockReason != None`, không lưu riêng. `LockReason` là lý do **đầu tiên** cửa sổ phân lại
-đóng: `Attribution` (Adjust trả lời, kể cả camp rỗng) · `Purchase` · `SessionWindow` (hết N phiên chưa có attribution).
+đóng: `Attribution` (Adjust trả lời, kể cả camp rỗng) · `Purchase` · `NoAttribution` (poll phiên 1 hết hạn chưa có attribution). Thoát hay crash trước khi poll hết hạn thì
+`LockReason` ở `None` mãi, nhưng phiên sau không poll nên tập đã chốt.
 
 **Phiên.** Một phiên là một lần mở app: tiến trình khởi động, `BootstrapService` cold boot đúng một lần, host chạy `OnBoot`
 và `SessionCount++`. Phiên kết thúc khi tiến trình chết: user vuốt tắt app, hệ điều hành kill, hay crash. State lưu qua
@@ -85,12 +87,11 @@ bao nhiêu cũng vậy.
 
 | Lần mở app | `OnBoot` | Attribution chưa về thì |
 |---|---|---|
-| 1, vừa cài | `SessionCount` 0 → 1, `curr = default` | bước Adjust chặn boot, chờ tối đa `firstSessionWaitSeconds`; chưa có thì poll nền tối đa `lateArrivalPollSeconds` |
-| 2 … N | `SessionCount` tăng 1 | chỉ poll nền tối đa `lateArrivalPollSeconds` |
-| N + 1 | `SessionCount` = N ≥ N: khoá, rồi tăng 1 | bước Adjust thoát ngay; tập giữ nguyên, thường là `default` |
+| 1, vừa cài | `SessionCount` 0 → 1, `curr = default` | bước Adjust chặn boot, chờ tối đa `firstSessionWaitSeconds`; chưa có thì poll nền tối đa `lateArrivalPollSeconds`; hết hạn thì khoá `NoAttribution` |
+| 2 trở đi | `SessionCount` tăng 1 | bước Adjust thoát ngay; tập giữ nguyên |
 
-Phiên 1…N còn phân lại được; cửa sổ đóng ở đầu phiên N+1 (N = `ResegmentMaxSessions`, mặc định 3 trong code, không qua remote config). `IsFirstSession` là
-`SessionCount == 1`: lần mở đầu tiên sau khi cài.
+Chỉ phiên 1 phân lại được. `IsFirstSession` là `SessionCount == 1`: lần mở đầu tiên sau khi cài; bước Adjust gác bằng nó,
+không bằng khoá, nên phiên 1 thoát sớm (state chưa khoá) cũng không được poll lại.
 
 **Khớp keyword.** Một hàng khớp khi camp chứa **bất kỳ** keyword nào của hàng (`IndexOf(keyword, OrdinalIgnoreCase) >= 0`).
 Hàng đầu bảng khớp thì thắng; keyword báo ra là keyword đầu trong **mảng** khớp được, không theo thứ tự trong camp.
@@ -181,7 +182,7 @@ internal sealed class MySegmentationHostInitializer : Initializer<MySegmentation
 | Cùng scene: GameObject có `AdjustCampaignBootStep`; ô **Segmentation** kéo host. Hai ô **First Session Wait Seconds**, **Late Arrival Poll Seconds** giữ mặc định nếu chưa có số đo | ô trống: `LogError` "segmentation is empty", không campaign nào về, mọi user ở `default` |
 | List **Steps** của `BootstrapService` có cả ba bước, ô **Order**: `SaveBootstep` < host < `AdjustCampaignBootStep` | host trước save: `LogError` "SaveBootstep must have a lower order"; bước Adjust trước host: `LogError` "its order must be lower than this step"; host vắng khỏi list: `CurrConfig` null cả phiên |
 | Remote config của dự án fetch xong (có thời hạn) **trước** khi `BootstrapService` chạy | phiên này chạy bằng giá trị asset; bản về muộn chỉ có hiệu lực phiên sau |
-| Package `com.adjust.sdk` ≥ 5.0.0 có trong dự án, và wrapper Adjust của dự án init SDK | thiếu package: assembly `com.horcrux.adjust` không biên dịch, component thành "missing script"; SDK chưa init: không attribution nào về, cửa sổ đóng sau N phiên ở `default` |
+| Package `com.adjust.sdk` ≥ 5.0.0 có trong dự án, và wrapper Adjust của dự án init SDK | thiếu package: assembly `com.horcrux.adjust` không biên dịch, component thành "missing script"; SDK chưa init: không attribution nào về, poll phiên 1 hết hạn, khoá ở `default` |
 | Code xác nhận mua của dự án gọi `host.ReportPurchase()`, chỉ cho giao dịch thật: không restore, không refund, không gói chỉ bỏ quảng cáo | user mua không sang tập `purchased` |
 
 **Reset để thử lại từ chưa quyết:** ngoài Play, **Horcrux → User Segmentation → Simulator** → **Xoá save phân tập**; hoặc menu
@@ -209,22 +210,23 @@ host sang `IUserSegmentationDebug`; `IsReady` false thì `LogError` rồi thoát
 | `ResetState()` | state mới (chưa quyết), ghi vào entry, `FlushNow`, log một dòng. Không publish `UserSegmentChanged` | thoát app ngay: `CurrConfig` giữ hàng cũ, việc chỉ chạy lúc boot (grant của dự án) không chạy lại |
 
 Lệnh còn lại của cheat là cửa ghi thật `ReportPurchase()`. Camp của cheat không đi qua `ReportCampaign`: lệnh thật bỏ qua camp
-khi đã khoá, mà máy thật khoá `Attribution` ngay phiên đầu (organic cũng là attribution), Editor khoá `SessionWindow` sau N lần
-Play. `ForceCampaign` để `PrevSegmentId` nguyên khi rời `purchased`: field chỉ được đọc khi đang ở `purchased`, và
+khi đã khoá, mà máy thật khoá `Attribution` ngay phiên đầu (organic cũng là attribution), Editor khoá `NoAttribution` khi poll
+phiên 1 hết hạn. `ForceCampaign` để `PrevSegmentId` nguyên khi rời `purchased`: field chỉ được đọc khi đang ở `purchased`, và
 `OnPurchase` ghi lại nó.
 
 ## Quyết định trái trực giác
 
 | Chỗ | Vì |
 |---|---|
-| Attribution về là khoá ngay, kể cả `Campaign` rỗng | Adjust đã trả lời xong; organic cũng về dạng này. Cửa sổ N phiên chỉ dành cho user Adjust chưa bao giờ trả lời |
+| Attribution về là khoá ngay, kể cả `Campaign` rỗng | Adjust đã trả lời xong; organic cũng về dạng này. Chỉ chờ trong phiên 1: user không có mạng ở phiên 1 ở `default` vĩnh viễn |
 | `-1` nghĩa là kế thừa, không có cột `inherit` | kế thừa là thuộc tính của từng ô; bảng một cột một số |
 | `PrevSegmentId` chỉ ghi lúc mua | nó chỉ phục vụ kế thừa của tập `purchased` |
 | Hàng keyword trỏ vào `purchased` bị coi là không khớp | tập `purchased` không có đường ra; một hàng gõ nhầm trên console sẽ nhốt user vĩnh viễn |
 | Thiếu cả hàng `default` thì ném, không trả hàng rỗng | hàng rỗng là kinh tế bằng 0 chạy im lặng; pool rỗng là lỗi authoring, phải nổ |
 | Field public của `UserSegmentState` viết PascalCase | tên field là khoá JSON của save, đã chốt từ save đầu tiên |
-| `ResegmentMaxSessions < 1` kẹp về 1, kèm `LogWarning` | 0 sẽ khoá ngay lúc boot đầu, trước khi Adjust kịp trả lời: mọi user thành `default` vĩnh viễn |
-| Lý do khoá lưu trong save, lý do đầu thắng; `IsCampaignLocked` suy từ nó | suy từ `LastCampaign` sai khi khoá vì hết cửa sổ rồi camp về muộn (hay cheat báo camp): `OnCampaign` vẫn ghi `LastCampaign`. Mua sau khi Adjust trả lời vẫn là `Attribution`: tập `purchased` đã nói việc mua |
+| Khoá `NoAttribution` chỉ khi poll hết hạn, không khi app xuống nền | mobile không có callback thoát đáng tin; pause còn bắn khi hiện ATT iOS, quảng cáo, share sheet, khoá lúc đó đẩy user vào `default` trước khi Adjust kịp trả lời |
+| Phiên 1 thoát sớm để state chưa khoá, phiên sau không khoá bù | phiên sau không poll nên không gì đổi được tập; khoá bù là logic phiên 2 mà chỉ đổi nhãn |
+| Lý do khoá lưu trong save, lý do đầu thắng; `IsCampaignLocked` suy từ nó | suy từ `LastCampaign` sai khi khoá `NoAttribution` rồi cheat báo camp (hay cheat báo camp): `OnCampaign` vẫn ghi `LastCampaign`. Mua sau khi Adjust trả lời vẫn là `Attribution`: tập `purchased` đã nói việc mua |
 | `ResetState` thay cả `_state` lẫn giá trị entry | Commit muộn (poll Adjust nền) ghi `_entry.Value = _state`; giữ `_state` cũ thì bản cũ đè bản reset |
 | `ResetState` là explicit interface | gọi nhầm là mất save im lặng |
 | Base không generic giữ toàn bộ cơ chế, lớp generic chỉ tra config | bước Adjust và tool Editor cần một kiểu kéo thả được; bảng keyword không mang kiểu dự án |
@@ -232,7 +234,7 @@ Play. `ForceCampaign` để `PrevSegmentId` nguyên khi rời `purchased`: field
 | Một hàng keyword mang **mảng** keyword | bảng trên console đọc một dòng một tập. Giá: CSV importer của RemoteConfigSystem chỉ nhận ô phẳng, nên bảng keyword nhập bằng Inspector hoặc nút **Import Json** trên asset remote config; pool vẫn đi CSV |
 | Bước Adjust poll `GetAttribution` thay vì nhận callback | SDK không phát event khi wrapper khác của dự án giữ cấu hình init |
 | Poll nền dùng `destroyCancellationToken`, không dùng token của boot | pha boot kết thúc ngay khi bước trả về |
-| Bước Adjust không có nhánh Editor | trong Editor `GetAttribution` không gọi callback: phiên đầu chờ hết `firstSessionWaitSeconds` rồi poll nền vô ích; chậm, không sai. Camp giả cho Editor thuộc cheat |
+| Bước Adjust không có nhánh Editor | trong Editor `GetAttribution` không gọi callback: phiên đầu chờ hết `firstSessionWaitSeconds`, poll nền vô ích rồi khoá `NoAttribution`; chậm, không sai. Camp giả cho Editor thuộc cheat |
 
 ## Cố ý không làm
 
@@ -260,8 +262,8 @@ Play. `ForceCampaign` để `PrevSegmentId` nguyên khi rời `purchased`: field
 - **Collection giả trong test** phải điền `Key` cho `userSegmentState` như mọi entry base tự khai (`Persistence.md`, mục
   Bẫy và quyết định).
 - **"Phiên" ở đây không phải session của Adjust hay Firebase.** Hai SDK đó mặc định tính phiên mới khi app ở nền quá 30 phút;
-  hệ này chỉ đếm lần mở app (cold boot). Số session trên dashboard thường lớn hơn `SessionCount`: đặt `ResegmentMaxSessions`
-  theo số lần mở app, không theo số session dashboard.
+  hệ này chỉ đếm lần mở app (cold boot). Số session trên dashboard thường lớn hơn `SessionCount`; "phiên 1" của hệ này là lần
+  mở app đầu tiên sau khi cài.
 
 ## Kiểm thử
 
@@ -272,7 +274,7 @@ Play. `ForceCampaign` để `PrevSegmentId` nguyên khi rời `purchased`: field
 | `UserSegmentKeywordMatcherTests` | guard `null`, rỗng · hoa thường · keyword thứ ba của hàng · thứ tự mảng thắng thứ tự camp · hai hàng cùng tập không ambiguous · hai tập khớp: thứ tự bảng thắng, ambiguous · keyword và hàng rỗng bị bỏ · keyword ngắn trên camp chứa `Android` |
 | `UserSegmentInheritanceTests` | `Pick` với `-1`, giá trị thường, `-1` ở cả hai, `0` |
 | `UserSegmentConfigTableTests` | `Find`: có, trùng id, vắng, `null` · `Validate`: từng dòng kiểm ở mục Luật, mỗi lỗi đúng một dòng, không ném với input `null` |
-| `UserSegmentDeciderTests` | mọi dòng bảng Luật, kể cả kẹp `max 0`, khớp vào `purchased`, mua rồi camp mới về · lý do khoá từng đường, lý do đầu thắng · `OnForcedCampaign`: đổi sau khoá `Attribution`, `SessionWindow`, rời `purchased`, không khớp về `default`, cùng tập không đổi · wire format qua `PersistenceDataEntry`: có `LockReason`, không có `IsCampaignLocked`, save cũ đọc ra chưa khoá |
+| `UserSegmentDeciderTests` | mọi dòng bảng Luật, kể cả phiên sau không khoá, `OnNoAttribution` sau `Attribution` và sau mua, khớp vào `purchased`, mua rồi camp mới về · lý do khoá từng đường, lý do đầu thắng · `OnForcedCampaign`: đổi sau khoá `Attribution`, `NoAttribution`, rời `purchased`, không khớp về `default`, cùng tập không đổi · wire format qua `PersistenceDataEntry`: có `LockReason`, không có `IsCampaignLocked`, save cũ đọc ra chưa khoá |
 
 `InheritFrom` là code dự án: test ở dự án, bằng reflection trên mọi field `int` public để bắt cột mới thiếu dòng `Pick`.
 Host và bước Adjust không có test tự động (MonoBehaviour gắn chuỗi boot và SDK); kiểm bằng biên dịch.
@@ -283,14 +285,14 @@ Namespace `Horcrux.Runtime.Abstractions.UserSegmentation`:
 
 | Type | Thành viên |
 |---|---|
-| `AUserSegmentationHost` | `abstract partial`, `ABootStep`, `IInitializable<BasePersistenceDataCollection>`, `IUserSegmentationDebug` (explicit) · `bool IsReady` · `int CurrSegmentId` · `int PrevSegmentId` · `bool IsCampaignLocked` · `UserSegmentLockReason LockReason` · `int SessionCount` · `bool IsFirstSession` · `string LastCampaign` · `void ReportCampaign(string)` · `void ReportPurchase()` · abstract `DefaultSegmentId` · `PurchasedSegmentId` · `IReadOnlyList<IUserSegmentKeywordRule> KeywordRules` · virtual `int ResegmentMaxSessions` (mặc định 3) |
+| `AUserSegmentationHost` | `abstract partial`, `ABootStep`, `IInitializable<BasePersistenceDataCollection>`, `IUserSegmentationDebug` (explicit) · `bool IsReady` · `int CurrSegmentId` · `int PrevSegmentId` · `bool IsCampaignLocked` · `UserSegmentLockReason LockReason` · `int SessionCount` · `bool IsFirstSession` · `string LastCampaign` · `void ReportCampaign(string)` · `void ReportNoAttribution()` · `void ReportPurchase()` · abstract `DefaultSegmentId` · `PurchasedSegmentId` · `IReadOnlyList<IUserSegmentKeywordRule> KeywordRules` |
 | `AUserSegmentationHost<TConfig>` | `where TConfig : class, IUserSegmentConfig<TConfig>` · `TConfig CurrConfig` · abstract `IReadOnlyList<TConfig> Configs` |
 | `IUserSegmentConfig` · `IUserSegmentConfig<TSelf>` | `int Id` · `TSelf InheritFrom(TSelf prev)` |
 | `IUserSegmentKeywordRule` | `int SegmentId` · `IReadOnlyList<string> Keywords` |
 | `UserSegmentState` | `[Serializable]` · `int CurrSegmentId` · `int PrevSegmentId` · `UserSegmentLockReason LockReason` · `int SessionCount` · `string LastCampaign` · `[JsonIgnore] bool IsCampaignLocked` (suy từ `LockReason`, không lưu) |
-| `UserSegmentLockReason` | `None = 0`, `Attribution = 1`, `Purchase = 2`, `SessionWindow = 3`; số là wire format của save |
+| `UserSegmentLockReason` | `None = 0`, `Attribution = 1`, `Purchase = 2`, `NoAttribution = 3` (tên cũ `SessionWindow`); số là wire format của save |
 | `IUserSegmentationDebug` | `void ResetState()` · `void ForceCampaign(string campaign)` |
-| `UserSegmentDecider` | `Change OnBoot(state, defaultId, maxSessions)` · `Change OnCampaign(state, campaign, matchedId, keyword, isAmbiguous, defaultId, purchasedId)` · `Change OnPurchase(state, defaultId, purchasedId)` · `Change OnForcedCampaign(state, campaign, matchedId, keyword, isAmbiguous, defaultId)` (chỉ cho cheat) · `readonly struct Change { HasChange, PrevSegmentId, CurrSegmentId, Reason, MatchedKeyword, IsAmbiguous; static None }` |
+| `UserSegmentDecider` | `Change OnBoot(state, defaultId)` · `Change OnNoAttribution(state)` · `Change OnCampaign(state, campaign, matchedId, keyword, isAmbiguous, defaultId, purchasedId)` · `Change OnPurchase(state, defaultId, purchasedId)` · `Change OnForcedCampaign(state, campaign, matchedId, keyword, isAmbiguous, defaultId)` (chỉ cho cheat) · `readonly struct Change { HasChange, PrevSegmentId, CurrSegmentId, Reason, MatchedKeyword, IsAmbiguous; static None }` |
 | `UserSegmentKeywordMatcher` | `bool TryMatch(string campaign, IReadOnlyList<IUserSegmentKeywordRule>, out int segmentId, out string keyword, out bool isAmbiguous)` |
 | `UserSegmentInheritance` | `const int InheritValue = -1` · `int Pick(int target, int prev)` |
 | `UserSegmentConfigTable` | `TConfig Find<TConfig>(IReadOnlyList<TConfig>, int id)` · `bool Validate<TConfig>(configs, rules, int defaultSegmentId, List<string> errors)` |

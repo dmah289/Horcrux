@@ -11,10 +11,9 @@ namespace Horcrux.Tests
         private const int Iap = 2;
         private const int Purchased = 3;
         private const int Ads = 4;
-        private const int MaxSessions = 3;
 
-        private static UserSegmentDecider.Change Boot(UserSegmentState state, int maxSessions = MaxSessions)
-            => UserSegmentDecider.OnBoot(state, Default, maxSessions);
+        private static UserSegmentDecider.Change Boot(UserSegmentState state)
+            => UserSegmentDecider.OnBoot(state, Default);
 
         private static UserSegmentDecider.Change Campaign(UserSegmentState state, string campaign, int matchedSegmentId,
             string matchedKeyword = null, bool isAmbiguous = false)
@@ -28,6 +27,14 @@ namespace Horcrux.Tests
         {
             UserSegmentState state = new UserSegmentState();
             Boot(state);
+            return state;
+        }
+
+        /// <summary>Session 1 whose attribution poll ran out.</summary>
+        private static UserSegmentState TimedOut()
+        {
+            UserSegmentState state = Booted();
+            UserSegmentDecider.OnNoAttribution(state);
             return state;
         }
 
@@ -50,31 +57,18 @@ namespace Horcrux.Tests
         }
 
         [Test]
-        public void OnBoot_SessionsTwoAndThree_WindowStillOpenNoChange()
+        public void OnBoot_LaterSessions_NeverLockNoChange()
         {
+            // Session 1 quit before the poll ran out: the state stays open, and no boot closes it.
             UserSegmentState state = Booted();
 
-            for (int session = 2; session <= MaxSessions; session++)
+            for (int session = 2; session <= 5; session++)
             {
                 Assert.IsFalse(Boot(state).HasChange, $"session {session}");
                 Assert.IsFalse(state.IsCampaignLocked, $"session {session}");
             }
 
-            Assert.AreEqual(MaxSessions, state.SessionCount);
-        }
-
-        [Test]
-        public void OnBoot_SessionAfterMax_LocksWithoutChange()
-        {
-            UserSegmentState state = new UserSegmentState { CurrSegmentId = Iap, SessionCount = MaxSessions };
-
-            UserSegmentDecider.Change change = Boot(state);
-
-            Assert.IsFalse(change.HasChange);
-            Assert.IsTrue(state.IsCampaignLocked);
-            Assert.AreEqual(UserSegmentLockReason.SessionWindow, state.LockReason);
-            Assert.AreEqual(Iap, state.CurrSegmentId);
-            Assert.AreEqual(MaxSessions + 1, state.SessionCount);
+            Assert.AreEqual(5, state.SessionCount);
         }
 
         [Test]
@@ -82,7 +76,7 @@ namespace Horcrux.Tests
         {
             UserSegmentState state = new UserSegmentState
             {
-                CurrSegmentId = Ads, LockReason = UserSegmentLockReason.Attribution, SessionCount = MaxSessions
+                CurrSegmentId = Ads, LockReason = UserSegmentLockReason.Attribution, SessionCount = 3
             };
 
             Assert.IsFalse(Boot(state).HasChange);
@@ -91,17 +85,41 @@ namespace Horcrux.Tests
             Assert.AreEqual(Ads, state.CurrSegmentId);
         }
 
+        #endregion
+
+        #region OnNoAttribution
         [Test]
-        public void OnBoot_MaxZero_ClampedToOne()
+        public void OnNoAttribution_Open_LocksWithoutChange()
         {
-            // 0 would lock on the very first boot, before Adjust can answer: every user default forever.
-            UserSegmentState state = new UserSegmentState();
+            UserSegmentState state = Booted();
 
-            Boot(state, 0);
-            Assert.IsFalse(state.IsCampaignLocked, "session 1");
+            Assert.IsFalse(UserSegmentDecider.OnNoAttribution(state).HasChange);
+            Assert.AreEqual(UserSegmentLockReason.NoAttribution, state.LockReason);
+            Assert.AreEqual(Default, state.CurrSegmentId);
+        }
 
-            Boot(state, 0);
-            Assert.IsTrue(state.IsCampaignLocked, "session 2");
+        [Test]
+        public void OnNoAttribution_AfterAttribution_FirstReasonKept()
+        {
+            UserSegmentState state = Booted();
+            Campaign(state, "IAP_US", Iap, "IAP");
+
+            UserSegmentDecider.OnNoAttribution(state);
+
+            Assert.AreEqual(UserSegmentLockReason.Attribution, state.LockReason);
+            Assert.AreEqual(Iap, state.CurrSegmentId);
+        }
+
+        [Test]
+        public void OnNoAttribution_AfterPurchase_StaysPurchasedFirstReasonKept()
+        {
+            UserSegmentState state = Booted();
+            Purchase(state);
+
+            UserSegmentDecider.OnNoAttribution(state);
+
+            Assert.AreEqual(UserSegmentLockReason.Purchase, state.LockReason);
+            Assert.AreEqual(Purchased, state.CurrSegmentId);
         }
         #endregion
 
@@ -149,15 +167,14 @@ namespace Horcrux.Tests
         }
 
         [Test]
-        public void OnCampaign_WindowClosed_NoChangeLastCampaignWrittenReasonKept()
+        public void OnCampaign_AfterNoAttribution_NoChangeLastCampaignWrittenReasonKept()
         {
-            UserSegmentState state = new UserSegmentState { CurrSegmentId = Default, SessionCount = MaxSessions };
-            Boot(state);
+            UserSegmentState state = TimedOut();
 
             Assert.IsFalse(Campaign(state, "IAP_US", Iap, "IAP").HasChange);
             Assert.AreEqual(Default, state.CurrSegmentId);
             Assert.AreEqual("IAP_US", state.LastCampaign);
-            Assert.AreEqual(UserSegmentLockReason.SessionWindow, state.LockReason);
+            Assert.AreEqual(UserSegmentLockReason.NoAttribution, state.LockReason);
         }
 
         [Test]
@@ -250,15 +267,14 @@ namespace Horcrux.Tests
         }
 
         [Test]
-        public void LockReason_WindowClosedThenPurchase_FirstReasonKept()
+        public void LockReason_NoAttributionThenPurchase_FirstReasonKept()
         {
-            UserSegmentState state = new UserSegmentState { CurrSegmentId = Default, SessionCount = MaxSessions };
-            Boot(state);
+            UserSegmentState state = TimedOut();
 
             Purchase(state);
 
             Assert.AreEqual(Purchased, state.CurrSegmentId);
-            Assert.AreEqual(UserSegmentLockReason.SessionWindow, state.LockReason);
+            Assert.AreEqual(UserSegmentLockReason.NoAttribution, state.LockReason);
         }
         #endregion
 
@@ -298,15 +314,14 @@ namespace Horcrux.Tests
         }
 
         [Test]
-        public void OnForcedCampaign_WindowClosed_ChangesKeepsFirstLockReason()
+        public void OnForcedCampaign_AfterNoAttribution_ChangesKeepsFirstLockReason()
         {
-            UserSegmentState state = new UserSegmentState { CurrSegmentId = Default, SessionCount = MaxSessions };
-            Boot(state);
+            UserSegmentState state = TimedOut();
 
             ForcedCampaign(state, "promo_Ads", Ads, "Ads");
 
             Assert.AreEqual(Ads, state.CurrSegmentId);
-            Assert.AreEqual(UserSegmentLockReason.SessionWindow, state.LockReason);
+            Assert.AreEqual(UserSegmentLockReason.NoAttribution, state.LockReason);
         }
 
         [Test]

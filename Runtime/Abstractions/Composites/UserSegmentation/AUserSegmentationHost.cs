@@ -11,7 +11,7 @@ using UnityEngine;
 namespace Horcrux.Runtime.Abstractions.UserSegmentation
 {
     /// <summary>
-    /// Boot step owning the segment state. Two write gates: <see cref="ReportCampaign"/> and <see cref="ReportPurchase"/>.
+    /// Boot step owning the segment state. Write gates: <see cref="ReportCampaign"/>, <see cref="ReportNoAttribution"/>, <see cref="ReportPurchase"/>.
     /// Must run after <c>SaveBootstep</c>. Not generic so vendor steps and Editor tools can reference it.
     /// Segment ids are ints from the project's data; the base only knows the default and the purchased roles.
     /// </summary>
@@ -41,8 +41,6 @@ namespace Horcrux.Runtime.Abstractions.UserSegmentation
         protected abstract int PurchasedSegmentId { get; }
         /// <summary>Row order is priority. Read at boot and on each campaign report, never cached here.</summary>
         protected abstract IReadOnlyList<IUserSegmentKeywordRule> KeywordRules { get; }
-        /// <summary>Cold boots that may still resegment while attribution has not answered. Override only for a reason; values below 1 clamp to 1.</summary>
-        protected virtual int ResegmentMaxSessions => 3;
 
         #endregion
 
@@ -54,7 +52,9 @@ namespace Horcrux.Runtime.Abstractions.UserSegmentation
             return UniTask.CompletedTask;
         }
 
-        /// <summary>Attribution answered. Pass empty for organic. Locks the campaign; ignored (but recorded) once locked.</summary>
+        /// <summary>
+        /// Attribution answered. Pass empty for organic. Locks the campaign; ignored (but recorded) once locked.
+        /// </summary>
         public void ReportCampaign(string campaign)
         {
             if (!IsReady)
@@ -75,7 +75,23 @@ namespace Horcrux.Runtime.Abstractions.UserSegmentation
             Commit(change);
         }
 
-        /// <summary>A real purchase. The project decides what counts (not restore, not refund, not remove-ads only).</summary>
+        /// <summary>
+        /// The first session's attribution poll ran out. Locks without changing the segment; no-op once locked.
+        /// </summary>
+        public void ReportNoAttribution()
+        {
+            if (!IsReady)
+            {
+                Debug.LogError(LogPrefix + "ReportNoAttribution before InitializeAsync; check step order", this);
+                return;
+            }
+            
+            Commit(UserSegmentDecider.OnNoAttribution(_state));
+        }
+
+        /// <summary>
+        /// A real purchase. The project decides what counts (not restore, not refund, not remove-ads only).
+        /// </summary>
         public void ReportPurchase()
         {
             if (!IsReady)
@@ -91,7 +107,9 @@ namespace Horcrux.Runtime.Abstractions.UserSegmentation
 
         #region Class Methods
 
-        /// <summary>Typed side: LogError every invalid row once at boot (<see cref="UserSegmentConfigTable.Validate{TConfig}"/>). Never fix the data.</summary>
+        /// <summary>
+        /// Typed side: LogError every invalid row once at boot (<see cref="UserSegmentConfigTable.Validate{TConfig}"/>). Never fix the data.
+        /// </summary>
         protected abstract void ValidateConfigs();
 
         /// <summary>Called after boot and after every change of segment: rebuild the resolved config.</summary>
@@ -111,14 +129,11 @@ namespace Horcrux.Runtime.Abstractions.UserSegmentation
                 return;
             }
 
-            if (ResegmentMaxSessions < 1)
-                Debug.LogWarning(LogPrefix + $"ResegmentMaxSessions = {ResegmentMaxSessions}, clamped to 1", this);
-
             _state = _entry.Value;
             
             ValidateConfigs();
             // Forced: a warm boot changes nothing, yet CurrConfig starts null every launch and must be built.
-            Commit(UserSegmentDecider.OnBoot(_state, DefaultSegmentId, ResegmentMaxSessions), forceApply: true);
+            Commit(UserSegmentDecider.OnBoot(_state, DefaultSegmentId), forceApply: true);
         }
 
         /// <summary>Saves the state, rebuilds the config when needed, logs and publishes <see cref="UserSegmentChanged"/> only when the segment changed.</summary>

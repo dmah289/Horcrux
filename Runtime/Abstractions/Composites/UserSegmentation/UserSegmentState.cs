@@ -9,7 +9,8 @@ namespace Horcrux.Runtime.Abstractions.UserSegmentation
         None = 0,
         Attribution = 1,
         Purchase = 2,
-        SessionWindow = 3
+        /// <summary>The first session's attribution poll ran out. Was SessionWindow; same int, old saves read as this.</summary>
+        NoAttribution = 3
     }
 
     /// <summary>

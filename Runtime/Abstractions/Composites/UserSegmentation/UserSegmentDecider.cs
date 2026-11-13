@@ -1,6 +1,4 @@
-﻿using System;
-
-namespace Horcrux.Runtime.Abstractions.UserSegmentation
+﻿namespace Horcrux.Runtime.Abstractions.UserSegmentation
 {
     /// <summary>Every business rule, as static functions that mutate the given state and return the change. Segment ids are ints; 0 means undecided.</summary>
     public static class UserSegmentDecider
@@ -29,9 +27,10 @@ namespace Horcrux.Runtime.Abstractions.UserSegmentation
         }
 
         /// <summary>
-        /// Cold boot: decide the default once, close the resegment window after N sessions, count the session.
+        /// Cold boot: decide the default once, count the session. Never locks: the window closes inside session 1
+        /// (attribution, purchase or <see cref="OnNoAttribution"/>).
         /// </summary>
-        public static Change OnBoot(UserSegmentState state, int defaultSegmentId, int resegmentMaxSessions)
+        public static Change OnBoot(UserSegmentState state, int defaultSegmentId)
         {
             Change change = Change.None;
 
@@ -41,14 +40,17 @@ namespace Horcrux.Runtime.Abstractions.UserSegmentation
                 change = new Change(0, defaultSegmentId, UserSegmentChangeReason.Initial, null, false);
             }
 
-            // Checked before the increment: sessions 1..N can still resegment, the window closes at the start of N+1.
-            int maxSessions = Math.Max(1, resegmentMaxSessions);
-
-            if (!state.IsCampaignLocked && state.SessionCount >= maxSessions)
-                Lock(state, UserSegmentLockReason.SessionWindow);
-
             state.SessionCount++;
             return change;
+        }
+
+        /// <summary>
+        /// The first session's poll ran out without attribution: close the window, keep the segment.
+        /// </summary>
+        public static Change OnNoAttribution(UserSegmentState state)
+        {
+            Lock(state, UserSegmentLockReason.NoAttribution);
+            return Change.None;
         }
 
         /// <summary>
