@@ -1,7 +1,7 @@
 # Plan — `Slot<TOccupant>` và `SlotGroup<TSlot, TOccupant>` lên Horcrux
 
 Ngày 2026-11-06. Nguồn: category-jam `Entities/TileSlot/TileSlot.cs`, `Entities/TileSlotGroup.cs`, đã chạy với `Box`,
-`CacheTileSlots`, `ShoppingCart`. Lên Horcrux phần cơ chế đặt chỗ → đáp → rời; từ vựng tile ở lại `TileSlot` của dự án.
+`CacheTileSlots`, `PackBooster`. Lên Horcrux phần cơ chế đặt chỗ → đáp → rời; từ vựng tile ở lại `TileSlot` của dự án.
 
 **Phân công:** GĐ1–4 developer gõ, agent viết test theo bảng case rồi compile · GĐ5 (tài liệu), GĐ6 (dự án chuyển sang bản
 Horcrux) agent làm. **Chạy được, thấy được** ở GĐ1–4 = compile sạch + bảng case xanh trong `Tests/EditMode/SlotGroupTests.cs`;
@@ -16,7 +16,7 @@ thấy trong game ở GĐ6. GĐ1–5 commit trong `Assets/Horcrux`, GĐ6 commit 
 - **Không làm:** từ vựng tile trong base (GĐ6) · `ISlot` (một implementation, base class đủ) · `SlotGroup` là `MonoBehaviour`,
   `FindFreeSlot(predicate)` (lý do ở GĐ1) · `ReservedCount` (thêm khi có chủ thứ hai hỏi).
 - **Đã khảo sát:** `TileSlot`, `TileSlotGroup` (lấy cả cơ chế) · `Tile.cs` (thứ tự `Reserve` → `Land`, `Vacate`) · `Box`,
-  `CacheTileSlots`, `ShoppingCart` (cách gọi nhóm, handler đọc `State`) · Horcrux `DeferredSet`, `Pooling` (không hợp: không có
+  `CacheTileSlots`, `PackBooster` (cách gọi nhóm, handler đọc `State`) · Horcrux `DeferredSet`, `Pooling` (không hợp: không có
   ô–vật).
 
 ## Luồng mô tả — một vật đi qua ô
@@ -550,7 +550,7 @@ nguyên tên. Hai `Clear` override giữ nguyên, đã gọi `base.Clear()`.
 | `Box.cs` | `TileSlotGroup<BoxTileSlot> _slots` · `HandleSlotChanged(TileSlot slot)` · `TileSlotState.Occupied` | `SlotGroup<BoxTileSlot, Tile>` · `HandleSlotChanged(Slot<Tile> slot)` · `SlotState.Occupied` |
 | `CategoryBox.cs` | `HandleSlotChanged(TileSlot slot)` · `TileSlotState.Occupied` | `Slot<Tile>` · `SlotState.Occupied` |
 | `CacheTileSlots.cs` | `TileSlotGroup<CacheTileSlot> _group` · `HandleSlotChanged(TileSlot slot)` · `<see cref="TileSlotGroup{T}.FreeCount"/>` | `SlotGroup<CacheTileSlot, Tile>` · `Slot<Tile>` · `<see cref="SlotGroup{TSlot,TOccupant}.FreeCount"/>` |
-| `ShoppingCart.cs` | `TileSlotGroup<TileSlot> _group` · `HandleSlotChanged(TileSlot slot)` · `TileSlotState.Occupied` | `SlotGroup<TileSlot, Tile>` · `Slot<Tile>` · `SlotState.Occupied` |
+| `PackBooster.cs` | `TileSlotGroup<TileSlot> _group` · `HandleSlotChanged(TileSlot slot)` · `TileSlotState.Occupied` | `SlotGroup<TileSlot, Tile>` · `Slot<Tile>` · `SlotState.Occupied` |
 
 Thêm `using Horcrux.Runtime.Utilities.Slots;` ở năm file trên và `TileSlot.cs`. Xoá `Entities/TileSlotGroup.cs` + `.meta`.
 
@@ -573,4 +573,4 @@ dấu hiệu hỏng: box không đóng nắp khi đủ, khay báo "còn 1 ô" sa
 | `Runtime/Utilities/Slots/SlotGroup.cs` | tạo | `OccupiedCount`, `Changed`, đếm lại | | `Attach` tái nhập, `ResetAll` | | |
 | `Tests/EditMode/SlotGroupTests.cs` (agent) | tạo | thêm case | thêm case | thêm case | | |
 | `docs/Runtime/SlotGroup/SlotGroup.md`, `.html` (agent) | | | | | tạo | |
-| dự án: `TileSlot.cs`, `BoxTileSlot.cs`, `CacheTileSlot.cs`, `Box.cs`, `CategoryBox.cs`, `CacheTileSlots.cs`, `ShoppingCart.cs`, xoá `TileSlotGroup.cs` | | | | | | đổi |
+| dự án: `TileSlot.cs`, `BoxTileSlot.cs`, `CacheTileSlot.cs`, `Box.cs`, `CategoryBox.cs`, `CacheTileSlots.cs`, `PackBooster.cs`, xoá `TileSlotGroup.cs` | | | | | | đổi |

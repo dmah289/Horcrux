@@ -912,7 +912,7 @@ Với hai bộ số (mặc định C# của `TileFinaleTuning` và một bộ b�
 | File dự án | Đổi |
 |---|---|
 | `Director/IAnimate.cs` | **xoá** (cả `.meta`) |
-| `Tile.cs`, `Box.cs`, `BoxesContainer.cs`, `PreviewBox.cs`, `CacheTileSlots.cs`, `ShoppingCart.cs`, `Shelf.cs` | `IAnimate` → `IAnimating` ở khai báo class; thêm `using Horcrux.Runtime.Utilities.Common;`; `IsAnimating` của từng class giữ nguyên |
+| `Tile.cs`, `Box.cs`, `BoxesContainer.cs`, `PreviewBox.cs`, `CacheTileSlots.cs`, `PackBooster.cs`, `Shelf.cs` | `IAnimate` → `IAnimating` ở khai báo class; thêm `using Horcrux.Runtime.Utilities.Common;`; `IsAnimating` của từng class giữ nguyên |
 | `Director/AnimatingSystem.cs` | đoạn cũ → đoạn mới bên dưới |
 
 `AnimatingSystem.cs` — Cũ: field `List<IAnimate> _animates = new();`, `IsAnimating()` duyệt `foreach` bỏ `null`, `Register` với
@@ -1005,11 +1005,11 @@ chưa có. `Entities/Box/CategoryBox.cs` giữ `s_counterTexts` (nhãn hai số)
 
 | Vào đâu | Làm gì | Nhìn gì | Dấu hiệu hỏng |
 |---|---|---|---|
-| một level, chơi tới tile cuối (tap, hoặc từ cache, cart, nam châm) | để tile cuối được giao ô box | đúng một tile nhấc lên, bóng nằm lại, lắc 5 nhịp giảm dần, nhún rồi bay; vệt bật lúc rời chỗ; popup thắng sau khi hết hoạt ảnh | tile co lại lúc cất cánh · thân nhảy khung ở chỗ nối tada → bay · hai tile cùng diễn · popup thắng không chờ tada |
+| một level, chơi tới tile cuối (tap, hoặc từ cache, PackBooster, nam châm) | để tile cuối được giao ô box | đúng một tile nhấc lên, bóng nằm lại, lắc 5 nhịp giảm dần, nhún rồi bay; vệt bật lúc rời chỗ; popup thắng sau khi hết hoạt ảnh | tile co lại lúc cất cánh · thân nhảy khung ở chỗ nối tada → bay · hai tile cùng diễn · popup thắng không chờ tada |
 | Prefab Mode của `Tile.prefab`, Inspector của `Tile` | bấm **Preview Finale** | ba pha diễn tại chỗ trong Scene view rồi tile trả về nguyên | tile kẹt nghiêng hay to sau preview · nút báo lỗi |
 | giữa tada | bấm Replay | level mới sạch | tile kẹt nghiêng, to, trong pool |
 | HUD combo | đóng hai box liên tiếp trong cửa sổ; rồi để hết cửa sổ | pill "Combo x2" nạp đầy lại rồi trôi; hết cửa sổ về rỗng, nhãn tắt | pill không nạp lại · không về 0 · nhãn còn khi rỗng |
-| Revive AddBoxAndClear3 | kích booster khi box đang hoàn thành | hệ chờ yên rồi mới đẩy tile sang cart | đẩy tile khi box còn bay |
+| Revive AddBoxAndClear3 | kích booster khi box đang hoàn thành | hệ chờ yên rồi mới đẩy tile sang PackBooster | đẩy tile khi box còn bay |
 | kệ Single có thanh đếm | tap tile hàng trước | số lớp giảm đúng và nảy | số không đổi · số sai |
 | Console lúc vào level | — | không `NullReferenceException` trỏ `SetAlpha` | có: ô `SpriteRenderer` thiếu trên prefab (`TileView`, `BoxAnimation`, `BoxSlot`, `BoxTileSlot`, `CacheTileSlot`) |
 
