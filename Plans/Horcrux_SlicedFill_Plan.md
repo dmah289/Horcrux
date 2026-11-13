@@ -3,8 +3,8 @@
 Nguồn: bản tạm của một dự án game, dùng cho thanh số lượng trên kệ và thanh tiến độ trên box, đã chơi thử. Utility thuần: bốn hàm
 static tính và ghi bề rộng ruột của thanh vẽ bằng `SpriteRenderer` Sliced.
 
-**Phân công:** GĐ1 developer gõ, agent viết test theo bảng case rồi compile · GĐ2 (dự án chuyển sang bản Horcrux) agent làm. GĐ1 commit
-trong `Assets/Horcrux`, GĐ2 commit ở dự án kèm con trỏ submodule. Không phụ thuộc Plan nào, không có `§0`: hai công thức một dòng nằm ở GĐ1.
+**Phân công:** GĐ1 developer gõ, agent viết test theo bảng case rồi compile · GĐ2 (dự án chuyển sang bản Horcrux) và GĐ3 (tài liệu hệ, xoá
+Plan) agent làm. GĐ1, GĐ3 commit trong `Assets/Horcrux`, GĐ2 commit ở dự án; mỗi lần đều kèm con trỏ submodule. Không phụ thuộc Plan nào, không có `§0`: hai công thức một dòng nằm ở GĐ1.
 
 ## Ngữ cảnh đã chốt
 
