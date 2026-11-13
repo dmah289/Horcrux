@@ -127,6 +127,14 @@ lúc dựng là bề rộng đầy. Thiếu pivot trái: ruột co về tâm. Th
 
 **Kiểm:** grep tên type kèm namespace cũ ra 0; compile sạch; test xanh. **Mốc commit:** một commit ở dự án kèm con trỏ submodule.
 
+## Giai đoạn 3 — Tài liệu hệ `docs/Runtime/SlicedFill/SlicedFill.md` và `.html` (agent)
+
+`SlicedFill.md` mở đầu `Code: Runtime/Utilities/Sprites/`. Mục: luồng `Awake → MinWidth` rồi `FillWidth → Apply → VisibleWidth` ASCII (luồng mô tả ở trên) · bảng API (`FillWidth`, `MinWidth`, `VisibleWidth`, `Apply`) · "Design decisions" gom các điều đã chốt ở Ngữ cảnh đã chốt (đổi `size.x` không đổi scale, pivot trái, không tween, không trục dọc) · "Dùng trong dự án": chụp `full` và `min` một lần ở `Awake`, gọi `Apply` mỗi lần dữ liệu đổi hoặc mỗi frame của tween · Editor setup phía caller (Sliced, border trái/phải > 0, pivot trái). `SlicedFill.html` theo `docs` › `.html`: Kịch bản (đầy, nửa, rất nhỏ, rỗng) · Cách dùng · Flow · Lưu ý (thiếu pivot trái, thiếu Sliced, sprite đổi lúc chạy)
+
+Xong thì **xoá Plan này** (`Horcrux_SlicedFill_Plan.md` cùng `.meta`): hệ đã dựng và đã có tài liệu.
+
+**Mốc commit:** `docs(sliced-fill): SlicedFill.md, SlicedFill.html`, xoá Plan.
+
 ## Use case
 
 Thanh máu trên đầu quái (world) · thanh tiến độ trên vật thể: box, kệ.
@@ -138,3 +146,4 @@ Thanh máu trên đầu quái (world) · thanh tiến độ trên vật thể: b
 | `Runtime/Utilities/Sprites/SlicedFill.cs` | 1 |
 | Test EditMode `SlicedFillTests` | 1 (viết), 2 (chuyển) |
 | Caller và bản tạm của dự án | 2 |
+| `docs/Runtime/SlicedFill/SlicedFill.md`, `SlicedFill.html` (agent) | 3 |
