@@ -30,7 +30,7 @@ Ngoài Play có một nút xoá save phân tập để lần Play sau chạy nh�
 
 | Không làm | Vì |
 |---|---|
-| Mô phỏng `UserSegmentDecider` (khoá camp, số phiên, đã mua) | ô Camp chỉ trả lời "camp này khớp keyword nào"; luật chuyển tập đã có test EditMode và log `[UserSegmentation]` lúc chạy |
+| Mô phỏng `UserSegmentDecider` (lý do đổi tập, số phiên, đã mua) | ô Camp chỉ trả lời "camp này khớp keyword nào"; luật chuyển tập đã có test EditMode và log `[UserSegmentation]` lúc chạy |
 | Ghi vào host | thử chuyển tập thật thuộc cheat của dự án (`ReportCampaign`, `ReportPurchase`) |
 | Kiểm nền mỗi lần dữ liệu đổi | kiểm chạy khi bấm |
 

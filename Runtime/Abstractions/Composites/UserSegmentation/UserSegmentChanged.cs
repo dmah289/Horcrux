@@ -2,8 +2,10 @@
 
 namespace Horcrux.Runtime.Abstractions.UserSegmentation
 {
+    /// <summary>Also saved as <see cref="UserSegmentState.LastChangeReason"/>: ints are the save wire format, append only.</summary>
     public enum UserSegmentChangeReason
     {
+        None = 0,
         Initial = 1,
         CampaignResolved = 2,
         Purchase = 3

@@ -11,7 +11,7 @@ using UnityEngine;
 namespace Horcrux.Runtime.Abstractions.UserSegmentation
 {
     /// <summary>
-    /// Boot step owning the segment state. Write gates: <see cref="ReportCampaign"/>, <see cref="ReportNoAttribution"/>, <see cref="ReportPurchase"/>.
+    /// Boot step owning the segment state. Write gates: <see cref="ReportCampaign"/>, <see cref="ReportPurchase"/>.
     /// Must run after <c>SaveBootstep</c>. Not generic so vendor steps and Editor tools can reference it.
     /// Segment ids are ints from the project's data; the base only knows the default and the purchased roles.
     /// </summary>
@@ -24,16 +24,21 @@ namespace Horcrux.Runtime.Abstractions.UserSegmentation
 
         #region Properties
 
-        /// <summary>False until <see cref="InitializeAsync"/> ran with an initialized collection. While false, derived config is null: a missing setup must surface, not run at a default.</summary>
+        /// <summary>
+        /// False until <see cref="InitializeAsync"/> ran with an initialized collection.
+        /// While false, derived config is null: a missing setup must surface, not run at a default.
+        /// </summary>
         public bool IsReady => _state != null;
         public int CurrSegmentId => _state?.CurrSegmentId ?? 0;
+        /// <summary>
+        /// Segment right before the last change.
+        /// </summary>
         public int PrevSegmentId => _state?.PrevSegmentId ?? 0;
-        public bool IsCampaignLocked => _state != null && _state.IsCampaignLocked;
         public bool IsFirstSession => _state != null && _state.SessionCount == 1;
         public string LastCampaign => _state?.LastCampaign;
         /// <summary>Cold boots since install, this one included; 0 before <see cref="InitializeAsync"/>.</summary>
         public int SessionCount => _state?.SessionCount ?? 0;
-        public UserSegmentLockReason LockReason => _state?.LockReason ?? UserSegmentLockReason.None;
+        public UserSegmentChangeReason LastChangeReason => _state?.LastChangeReason ?? UserSegmentChangeReason.None;
 
         /// <summary>Segment a user lands in without a matching campaign. Must have a pool row.</summary>
         protected abstract int DefaultSegmentId { get; }
@@ -53,7 +58,8 @@ namespace Horcrux.Runtime.Abstractions.UserSegmentation
         }
 
         /// <summary>
-        /// Attribution answered. Pass empty for organic. Locks the campaign; ignored (but recorded) once locked.
+        /// Attribution answered. Pass empty for organic.
+        /// Changes the segment only while the initial input decides it; always recorded.
         /// </summary>
         public void ReportCampaign(string campaign)
         {
@@ -63,30 +69,16 @@ namespace Horcrux.Runtime.Abstractions.UserSegmentation
                 return;
             }
 
-            bool wasLocked = _state.IsCampaignLocked;
+            bool accepted = UserSegmentDecider.AcceptsCampaign(_state);
             UserSegmentKeywordMatcher.TryMatch(campaign, KeywordRules, out int segmentId, out string keyword,
                 out bool isAmbiguous);
             UserSegmentDecider.Change change = UserSegmentDecider.OnCampaign(_state, campaign, segmentId, keyword,
                 isAmbiguous, DefaultSegmentId, PurchasedSegmentId);
             
-            if(wasLocked)
-                Debug.Log(LogPrefix + $"campaign '{campaign}' arrived after lock, segment stays {_state.CurrSegmentId}", this);
+            if(!accepted)
+                Debug.Log(LogPrefix + $"campaign '{campaign}' arrived after {_state.LastChangeReason}, segment stays {_state.CurrSegmentId}", this);
             
             Commit(change);
-        }
-
-        /// <summary>
-        /// The first session's attribution poll ran out. Locks without changing the segment; no-op once locked.
-        /// </summary>
-        public void ReportNoAttribution()
-        {
-            if (!IsReady)
-            {
-                Debug.LogError(LogPrefix + "ReportNoAttribution before InitializeAsync; check step order", this);
-                return;
-            }
-            
-            Commit(UserSegmentDecider.OnNoAttribution(_state));
         }
 
         /// <summary>
@@ -100,7 +92,7 @@ namespace Horcrux.Runtime.Abstractions.UserSegmentation
                 return;
             }
 
-            Commit(UserSegmentDecider.OnPurchase(_state, DefaultSegmentId, PurchasedSegmentId));
+            Commit(UserSegmentDecider.OnPurchase(_state, PurchasedSegmentId));
         }
 
         #endregion

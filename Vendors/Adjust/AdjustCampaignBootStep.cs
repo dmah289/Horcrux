@@ -13,7 +13,7 @@ namespace Horcrux.Vendors.Adjust
     /// Feeds the Adjust campaign into the segmentation host, in the first session only. Polls <see cref="AdjustSdk.Adjust.GetAttribution"/> because
     /// the SDK offers no event once another system (the project's Adjust wrapper) owns the init config.
     /// Waits up to <see cref="firstSessionWaitSeconds"/>, then polls in the background up to <see cref="lateArrivalPollSeconds"/>;
-    /// still nothing locks the campaign as NoAttribution. Quit or crash before that leaves it open, and no later session polls.
+    /// still nothing only logs. Keeps polling after a purchase: tracking needs the real campaign. No later session polls.
     /// </summary>
     public sealed class AdjustCampaignBootStep : ABootStep
     {
@@ -26,7 +26,7 @@ namespace Horcrux.Vendors.Adjust
         [Splitter("Configs")]
         [SerializeField, Min(0f), Tooltip("First session: wait for attribution at most this long before entering the game")]
         private float firstSessionWaitSeconds = 3f;
-        [SerializeField, Min(0f), Tooltip("First session, after the blocking wait: keep polling in the background at most this long, then lock as NoAttribution")]
+        [SerializeField, Min(0f), Tooltip("First session, after the blocking wait: keep polling in the background at most this long, then give up")]
         private float lateArrivalPollSeconds = 10f;
 
         private AdjustAttribution _attribution;
@@ -48,7 +48,7 @@ namespace Horcrux.Vendors.Adjust
                 return;
             }
 
-            if (!segmentation.IsFirstSession || segmentation.IsCampaignLocked)
+            if (!segmentation.IsFirstSession)
                 return;
 
             if (await PollAsync(firstSessionWaitSeconds, ct))
@@ -62,16 +62,13 @@ namespace Horcrux.Vendors.Adjust
 
         #region Class Methods
 
-        /// <summary>True when the campaign got locked, by this poll or by another report, within <paramref name="maxSeconds"/>.</summary>
+        /// <summary>True when attribution arrived and was reported within <paramref name="maxSeconds"/>.</summary>
         private async UniTask<bool> PollAsync(float maxSeconds, CancellationToken ct)
         {
             float deadline = Time.realtimeSinceStartup + maxSeconds;
 
             while (Time.realtimeSinceStartup < deadline)
             {
-                if (segmentation.IsCampaignLocked)
-                    return true;
-
                 // Fully qualified: inside Horcrux.Vendors.Adjust, "Adjust" resolves to the namespace.
                 // Method group into a field, never awaited: the SDK may skip the callback while it has no attribution.
                 AdjustSdk.Adjust.GetAttribution(OnAttribution);
@@ -95,7 +92,7 @@ namespace Horcrux.Vendors.Adjust
             _hasAttribution = attribution != null;
         }
 
-        /// <summary>Late attribution: polls up to <see cref="lateArrivalPollSeconds"/>; not locked by then locks as NoAttribution.</summary>
+        /// <summary>Late attribution: polls up to <see cref="lateArrivalPollSeconds"/>, then logs and gives up.</summary>
         private async UniTaskVoid PollInBackgroundAsync(CancellationToken ct)
         {
             try
@@ -103,8 +100,8 @@ namespace Horcrux.Vendors.Adjust
                 if (await PollAsync(lateArrivalPollSeconds, ct))
                     return;
 
-                Debug.Log(LogPrefix + $"no attribution within {firstSessionWaitSeconds + lateArrivalPollSeconds}s; locking, segment stays {segmentation.CurrSegmentId}", this);
-                segmentation.ReportNoAttribution();
+                Debug.Log(LogPrefix + $"no attribution within " +
+                          $"{firstSessionWaitSeconds + lateArrivalPollSeconds}s; segment stays {segmentation.CurrSegmentId}", this);
             }
             catch (OperationCanceledException)
             {

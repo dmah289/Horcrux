@@ -1,18 +1,7 @@
 ﻿using System;
-using Newtonsoft.Json;
 
 namespace Horcrux.Runtime.Abstractions.UserSegmentation
 {
-    /// <summary>Why the campaign window closed. Ints are the save wire format: append only.</summary>
-    public enum UserSegmentLockReason
-    {
-        None = 0,
-        Attribution = 1,
-        Purchase = 2,
-        /// <summary>The first session's attribution poll ran out. Was SessionWindow; same int, old saves read as this.</summary>
-        NoAttribution = 3
-    }
-
     /// <summary>
     /// Save model. Field names are the wire format; 0 in <see cref="CurrSegmentId"/> means undecided.
     /// </summary>
@@ -20,14 +9,13 @@ namespace Horcrux.Runtime.Abstractions.UserSegmentation
     public sealed class UserSegmentState
     {
         public int CurrSegmentId;
-        /// <summary>Segment the user was in right before the purchased segment; only written on purchase.</summary>
+        /// <summary>
+        /// Segment right before the last change; 0 until the first change after Initial.
+        /// </summary>
         public int PrevSegmentId;
-        /// <summary>First reason the campaign window closed; None while it is open.</summary>
-        public UserSegmentLockReason LockReason;
+        /// <summary>Rule that set the current segment; None in saves older than this field.</summary>
+        public UserSegmentChangeReason LastChangeReason;
         public int SessionCount;
         public string LastCampaign;
-
-        /// <summary>Derived from <see cref="LockReason"/>; not saved.</summary>
-        [JsonIgnore] public bool IsCampaignLocked => LockReason != UserSegmentLockReason.None;
     }
 }

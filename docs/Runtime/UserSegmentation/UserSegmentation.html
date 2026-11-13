@@ -105,7 +105,7 @@ footer{text-align:center;padding:2.5rem 1rem;color:var(--tx3);font-size:.82rem;b
 <!-- ============ TỔNG QUAN ============ -->
 <section id="tong-quan">
   <h2>Tổng quan</h2>
-  <p>Mỗi user ở đúng <strong>một tập</strong>. Tập là <code>segment_id</code> kiểu <code>int</code> lấy từ dữ liệu của dự án; <code>0</code> nghĩa là chưa quyết. Campaign Adjust lúc cài quyết tập, mua IAP thật chuyển user sang tập "đã mua" và ở đó vĩnh viễn. Consumer (Ads, IAP, kinh tế) đọc <code>CurrConfig</code>: hàng của tập hiện tại trong <strong>pool</strong>, đã ép kiểu thành DTO của dự án. Hàng của tập "đã mua" kế thừa mọi ô <code>-1</code> từ hàng của tập ngay trước đó.</p>
+  <p>Mỗi user ở đúng <strong>một tập</strong>. Tập là <code>segment_id</code> kiểu <code>int</code> lấy từ dữ liệu của dự án; <code>0</code> nghĩa là chưa quyết. Campaign Adjust lúc cài là input <strong>ban đầu</strong>: nó chỉ đổi tập khi chưa luật hành vi nào quyết tập. Mua IAP thật là luật hành vi, chuyển user sang tập "đã mua". Tập đổi được ở <strong>mọi phiên</strong>. Consumer (Ads, IAP, kinh tế) đọc <code>CurrConfig</code>: hàng của tập hiện tại trong <strong>pool</strong>, đã ép kiểu thành DTO của dự án. Hàng của tập "đã mua" kế thừa mọi ô <code>-1</code> từ hàng của tập ngay trước đó.</p>
 
   <div class="hero"><div class="big">Thêm tập là thêm hàng dữ liệu, không build.</div>
   <p style="margin:.5rem 0 0">Một hàng pool và một hàng keyword trên remote config.</p></div>
@@ -131,14 +131,14 @@ footer{text-align:center;padding:2.5rem 1rem;color:var(--tx3);font-size:.82rem;b
     <text x="535" y="66" class="sv-s" text-anchor="middle">CampaignResolved</text>
 
     <path d="M250 154 C250 205 320 205 320 160" class="sv-ln"/><path d="M320 156 l-6 10 h12 z" class="sv-ac"/>
-    <text x="300" y="228" class="sv-s">không khớp, camp rỗng: giữ default, vẫn khoá</text>
+    <text x="300" y="228" class="sv-s">không khớp, camp rỗng: giữ default</text>
 
     <path d="M610 52 L700 106" class="sv-lngr"/><path d="M702 108 l-12 -1 l6 -10 z" class="sv-gr"/>
     <path d="M350 130 L696 130" class="sv-lngr"/><path d="M696 130 l-10 -6 v12 z" class="sv-gr"/>
     <text x="520" y="148" class="sv-m" text-anchor="middle">ReportPurchase · Purchase</text>
     <rect x="700" y="96" width="150" height="70" rx="8" class="sv-ok"/>
     <text x="775" y="122" class="sv-tb" text-anchor="middle">purchased</text>
-    <text x="775" y="142" class="sv-s" text-anchor="middle">không đường ra</text>
+    <text x="775" y="142" class="sv-s" text-anchor="middle">camp không đổi nữa</text>
     <text x="775" y="158" class="sv-s" text-anchor="middle">ô -1 lấy từ prev</text>
   </svg></div>
 </section>
@@ -146,48 +146,47 @@ footer{text-align:center;padding:2.5rem 1rem;color:var(--tx3);font-size:.82rem;b
 <!-- ============ KỊCH BẢN ============ -->
 <section id="kich-ban">
   <h2>Kịch bản</h2>
-  <p>Chỉ phiên 1 (lần mở app đầu tiên sau khi cài) chờ attribution. Cột <strong>Khoá</strong> là <code>LockReason</code> sau tình huống; đã khoá thì tập không còn đổi theo campaign.</p>
+  <p>Chỉ phiên 1 (lần mở app đầu tiên sau khi cài) chờ attribution. Cột <strong>Lý do</strong> là <code>LastChangeReason</code> sau tình huống: luật đã đặt tập hiện tại. Campaign chỉ đổi tập khi lý do là <code>Initial</code> hay <code>CampaignResolved</code> (input ban đầu); lý do khác là hành vi và thắng campaign.</p>
   <div class="tw"><table>
-    <thead><tr><th>Tình huống</th><th>User ở tập</th><th>Khoá</th></tr></thead>
+    <thead><tr><th>Tình huống</th><th>User ở tập</th><th>Lý do</th></tr></thead>
     <tbody>
-      <tr><td>Lần mở app đầu tiên, Adjust chưa trả lời</td><td><code>default</code></td><td><code>None</code>: còn chờ</td></tr>
-      <tr><td>Cài từ camp có tên chứa keyword của tập A; Adjust trả lời trong phiên 1</td><td>A; <code>CurrConfig</code> đổi ngay, phát <code>UserSegmentChanged</code></td><td><code>Attribution</code></td></tr>
-      <tr><td>Organic, hoặc camp không chứa keyword nào</td><td><code>default</code></td><td><code>Attribution</code>: Adjust đã trả lời, không chờ thêm</td></tr>
-      <tr><td>Adjust không trả lời trong lúc poll phiên 1</td><td><code>default</code> vĩnh viễn; phiên sau không poll</td><td><code>NoAttribution</code>, ngay khi poll hết hạn</td></tr>
-      <tr><td>Thoát app hay crash ở phiên 1 trước khi poll hết hạn</td><td>tập lúc đó, thường là <code>default</code>; phiên sau không poll nên không đổi nữa</td><td><code>None</code> mãi; không ảnh hưởng gì ngoài nhãn</td></tr>
-      <tr><td>Mua IAP thật, đang ở tập nào cũng vậy</td><td><code>purchased</code> vĩnh viễn; ô <code>-1</code> lấy từ hàng của tập ngay trước khi mua (mua lúc chưa quyết thì từ <code>default</code>)</td><td><code>Purchase</code> nếu chưa khoá; đã khoá thì giữ lý do cũ</td></tr>
-      <tr><td>Đã mua, rồi camp mới về</td><td><code>purchased</code>, không đổi</td><td>giữ nguyên</td></tr>
-      <tr><td>Camp chứa keyword của hai tập khác nhau</td><td>tập của hàng đứng trước trong bảng keyword; log và event báo <code>IsAmbiguous</code></td><td><code>Attribution</code></td></tr>
-      <tr><td>Camp chỉ khớp hàng keyword trỏ vào <code>purchased</code></td><td><code>default</code>: coi như không khớp, vì <code>purchased</code> không có đường ra</td><td><code>Attribution</code></td></tr>
+      <tr><td>Lần mở app đầu tiên, Adjust chưa trả lời</td><td><code>default</code></td><td><code>Initial</code></td></tr>
+      <tr><td>Cài từ camp có tên chứa keyword của tập A; Adjust trả lời trong phiên 1</td><td>A; <code>CurrConfig</code> đổi ngay, phát <code>UserSegmentChanged</code></td><td><code>CampaignResolved</code></td></tr>
+      <tr><td>Organic, hoặc camp không chứa keyword nào</td><td><code>default</code></td><td><code>Initial</code>: tập không đổi</td></tr>
+      <tr><td>Adjust không trả lời trong lúc poll phiên 1</td><td><code>default</code>; phiên sau không poll; chỉ có một dòng log</td><td><code>Initial</code></td></tr>
+      <tr><td>Mua IAP thật, đang ở tập nào cũng vậy</td><td><code>purchased</code>; ô <code>-1</code> lấy từ hàng của tập ngay trước khi mua (mua lúc chưa quyết thì từ <code>default</code>)</td><td><code>Purchase</code></td></tr>
+      <tr><td>Đã mua, rồi camp mới về (mua trong vài giây đầu phiên 1)</td><td><code>purchased</code>, không đổi; <code>LastCampaign</code> vẫn ghi camp thật cho tracking</td><td>giữ <code>Purchase</code></td></tr>
+      <tr><td>Camp chứa keyword của hai tập khác nhau</td><td>tập của hàng đứng trước trong bảng keyword; log và event báo <code>IsAmbiguous</code></td><td><code>CampaignResolved</code></td></tr>
+      <tr><td>Camp chỉ khớp hàng keyword trỏ vào <code>purchased</code></td><td><code>default</code>: coi như không khớp, vì chỉ mua thật mới vào <code>purchased</code></td><td><code>Initial</code></td></tr>
     </tbody>
   </table></div>
-  <p><code>LockReason</code> là lý do <strong>đầu tiên</strong> cửa sổ phân lại đóng, không bao giờ bị ghi đè.</p>
+  <p><code>PrevSegmentId</code> là tập ngay trước lần đổi gần nhất, ghi ở mọi lần đổi. Luật hành vi về sau thêm lý do mới ở cuối enum; lý do mới mặc định thắng campaign.</p>
 
   <h3>Phiên</h3>
   <p>Một phiên là một lần mở app (cold boot). Phiên kết thúc khi tiến trình chết: user vuốt tắt app, hệ điều hành kill, hay crash. Xuống nền rồi trở lại, chuyển scene, load level: vẫn là phiên cũ, ở nền lâu bao nhiêu cũng vậy. <code>SessionCount</code> là số lần mở app kể từ khi cài; <code>IsFirstSession</code> là lần mở đầu tiên.</p>
   <div class="tw"><table>
     <thead><tr><th>Lần mở app</th><th><code>OnBoot</code></th><th>Attribution chưa về thì</th></tr></thead>
     <tbody>
-      <tr><td>1, vừa cài</td><td><code>SessionCount</code> 0 → 1, <code>curr = default</code></td><td>bước Adjust chặn boot, chờ tối đa <code>firstSessionWaitSeconds</code>; chưa có thì poll nền tối đa <code>lateArrivalPollSeconds</code>; hết hạn thì khoá <code>NoAttribution</code></td></tr>
-      <tr><td>2 trở đi</td><td><code>SessionCount</code> tăng 1; không bao giờ khoá</td><td>bước Adjust thoát ngay; tập giữ nguyên</td></tr>
+      <tr><td>1, vừa cài</td><td><code>SessionCount</code> 0 → 1, <code>curr = default</code></td><td>bước Adjust chặn boot, chờ tối đa <code>firstSessionWaitSeconds</code>; chưa có thì poll nền tối đa <code>lateArrivalPollSeconds</code>; hết hạn thì log, thôi</td></tr>
+      <tr><td>2 trở đi</td><td><code>SessionCount</code> tăng 1</td><td>bước Adjust thoát ngay; tập giữ nguyên</td></tr>
     </tbody>
   </table></div>
-  <p>Chỉ phiên 1 phân lại được. Bước Adjust gác bằng <code>IsFirstSession</code>, không bằng khoá, nên phiên 1 thoát sớm (state chưa khoá) cũng không được poll lại.</p>
+  <p>Chỉ phiên 1 nhận campaign. Bước Adjust gác bằng <code>IsFirstSession</code>, nên phiên 1 thoát sớm cũng không được poll lại. Nó poll tới khi có attribution kể cả khi user đã mua, để tracking có tên camp thật.</p>
 
-  <div class="fig"><div class="cap">Cửa sổ phân lại: chỉ trong phiên 1</div>
-  <svg viewBox="0 0 860 150" role="img" aria-label="Cửa sổ phân lại trong phiên 1">
+  <div class="fig"><div class="cap">Thời gian chờ campaign: chỉ trong phiên 1</div>
+  <svg viewBox="0 0 860 150" role="img" aria-label="Thời gian chờ campaign trong phiên 1">
     <rect x="30" y="40" width="120" height="40" rx="6" class="sv-ok"/>
     <text x="90" y="65" class="sv-t" text-anchor="middle">chặn boot</text>
     <rect x="150" y="40" width="240" height="40" rx="6" class="sv-ok"/>
     <text x="270" y="65" class="sv-t" text-anchor="middle">poll nền</text>
     <rect x="390" y="40" width="450" height="40" rx="6" class="sv-bad"/>
-    <text x="615" y="65" class="sv-t" text-anchor="middle">khoá: tập giữ nguyên, phiên sau không poll</text>
+    <text x="615" y="65" class="sv-t" text-anchor="middle">không còn chờ: phiên sau không poll</text>
     <text x="90" y="24" class="sv-s" text-anchor="middle">≤ firstSessionWaitSeconds</text>
     <text x="270" y="24" class="sv-s" text-anchor="middle">≤ lateArrivalPollSeconds</text>
     <text x="210" y="104" class="sv-m" text-anchor="middle">phiên 1</text>
     <text x="615" y="104" class="sv-m" text-anchor="middle">phần còn lại của phiên 1 · phiên 2 trở đi</text>
     <line x1="390" y1="30" x2="390" y2="90" class="sv-lnrd"/>
-    <text x="390" y="128" class="sv-s sv-rd" text-anchor="middle">attribution về → Attribution · hết hạn → NoAttribution</text>
+    <text x="390" y="128" class="sv-s sv-rd" text-anchor="middle">attribution về → ReportCampaign · hết hạn → log</text>
   </svg></div>
 
   <h3>Khớp keyword</h3>
@@ -258,7 +257,7 @@ internal sealed class MySegmentationHostInitializer : Initializer&lt;MySegmentat
           <tr><td>Cùng scene: GameObject có <code>AdjustCampaignBootStep</code>; ô <strong>Segmentation</strong> kéo host. Hai ô <strong>First Session Wait Seconds</strong>, <strong>Late Arrival Poll Seconds</strong> giữ mặc định nếu chưa có số đo</td><td>ô trống: <code>LogError</code> "segmentation is empty", không campaign nào về, mọi user ở <code>default</code></td></tr>
           <tr><td>List <strong>Steps</strong> của <code>BootstrapService</code> có cả ba bước, ô <strong>Order</strong>: <code>SaveBootstep</code> &lt; host &lt; <code>AdjustCampaignBootStep</code></td><td>host trước save: <code>LogError</code> "SaveBootstep must have a lower order"; bước Adjust trước host: <code>LogError</code> "its order must be lower than this step"; host vắng khỏi list: <code>CurrConfig</code> null cả phiên</td></tr>
           <tr><td>Remote config của dự án fetch xong (có thời hạn) <strong>trước</strong> khi <code>BootstrapService</code> chạy</td><td>phiên này chạy bằng giá trị asset; bản về muộn chỉ có hiệu lực phiên sau</td></tr>
-          <tr><td>Package <code>com.adjust.sdk</code> ≥ 5.0.0 có trong dự án, và wrapper Adjust của dự án init SDK</td><td>thiếu package: assembly <code>com.horcrux.adjust</code> không biên dịch, component thành "missing script"; SDK chưa init: không attribution nào về, poll phiên 1 hết hạn, khoá ở <code>default</code></td></tr>
+          <tr><td>Package <code>com.adjust.sdk</code> ≥ 5.0.0 có trong dự án, và wrapper Adjust của dự án init SDK</td><td>thiếu package: assembly <code>com.horcrux.adjust</code> không biên dịch, component thành "missing script"; SDK chưa init: không attribution nào về, poll phiên 1 hết hạn, user ở <code>default</code></td></tr>
           <tr><td>Code xác nhận mua của dự án gọi <code>host.ReportPurchase()</code>, chỉ cho giao dịch thật: không restore, không refund, không gói chỉ bỏ quảng cáo</td><td>user mua không sang tập <code>purchased</code></td></tr>
         </tbody>
       </table></div></li>
@@ -278,10 +277,11 @@ internal sealed class MySegmentationHostInitializer : Initializer&lt;MySegmentat
     <thead><tr><th>Đọc</th><th>Nghĩa</th></tr></thead>
     <tbody>
       <tr><td><code>CurrConfig</code></td><td>hàng đã giải của tập hiện tại; <code>null</code> khi host chưa chạy hoặc setup thiếu. Consumer không tự đỡ <code>null</code>: setup thiếu phải nổ ở lần Play đầu</td></tr>
-      <tr><td><code>IsReady</code> · <code>CurrSegmentId</code> · <code>PrevSegmentId</code> · <code>IsCampaignLocked</code> · <code>LockReason</code> · <code>SessionCount</code> · <code>IsFirstSession</code> · <code>LastCampaign</code></td><td>đọc thẳng từ state; trước khi host chạy trả 0, false, <code>None</code>, <code>null</code></td></tr>
+      <tr><td><code>IsReady</code> · <code>CurrSegmentId</code> · <code>PrevSegmentId</code> · <code>LastChangeReason</code> · <code>SessionCount</code> · <code>IsFirstSession</code> · <code>LastCampaign</code></td><td>đọc thẳng từ state; trước khi host chạy trả 0, false, <code>None</code>, <code>null</code></td></tr>
       <tr><td><code>EventBus&lt;UserSegmentChanged&gt;</code></td><td>phát đồng bộ sau khi state đã ghi vào entry, chỉ khi tập đổi. Field: <code>PrevSegmentId</code> · <code>CurrentSegmentId</code> · <code>Reason</code> · <code>MatchedKeyword</code> (null với <code>Initial</code>, <code>Purchase</code>) · <code>IsAmbiguous</code></td></tr>
     </tbody>
   </table></div>
+  <p>Tập đổi được ở mọi phiên, giữa level cũng vậy. Đọc <code>CurrConfig</code> lúc cần, không giữ bản sao; cần phản ứng thì nghe <code>UserSegmentChanged</code>.</p>
   <p>Log mỗi lần đổi tập, một dòng:</p>
   <pre><code>[UserSegmentation]: CampaignResolved: segment 1 -&gt; 2 by keyword 'X', another segment's keyword also matched</code></pre>
 
@@ -290,7 +290,7 @@ internal sealed class MySegmentationHostInitializer : Initializer&lt;MySegmentat
   <div class="tw"><table>
     <thead><tr><th>Lệnh</th><th>Làm</th><th>Sau đó</th></tr></thead>
     <tbody>
-      <tr><td><code>IUserSegmentationDebug.ForceCampaign(camp)</code> (cast host sang interface)</td><td>tập theo keyword của camp, bỏ qua khoá và tập <code>purchased</code>; không khớp thì về <code>default</code>. Ghi <code>LastCampaign</code>, khoá <code>Attribution</code> nếu chưa khoá</td><td>tập đổi thì <code>CurrConfig</code> dựng lại và phát <code>UserSegmentChanged</code> ngay; grant chỉ chạy lúc boot thì không chạy lại</td></tr>
+      <tr><td><code>IUserSegmentationDebug.ForceCampaign(camp)</code> (cast host sang interface)</td><td>tập theo keyword của camp, kể cả sau hành vi và khi đang ở <code>purchased</code>; không khớp thì về <code>default</code>. Ghi <code>LastCampaign</code>, lý do <code>CampaignResolved</code></td><td>tập đổi thì <code>CurrConfig</code> dựng lại và phát <code>UserSegmentChanged</code> ngay; grant chỉ chạy lúc boot thì không chạy lại</td></tr>
       <tr><td><code>ReportPurchase()</code></td><td>như mua thật</td><td>theo đúng bảng Kịch bản</td></tr>
       <tr><td><code>IUserSegmentationDebug.ResetState()</code> (cast host sang interface)</td><td>đưa save về chưa quyết, ghi đĩa ngay; không phát <code>UserSegmentChanged</code>. Host chưa sẵn sàng thì <code>LogError</code> rồi thôi</td><td>thoát app ngay: <code>CurrConfig</code> giữ hàng cũ, việc chỉ chạy lúc boot (grant của dự án) không chạy lại</td></tr>
     </tbody>
@@ -318,11 +318,11 @@ internal sealed class MySegmentationHostInitializer : Initializer&lt;MySegmentat
 
     <rect x="560" y="10" width="290" height="126" rx="8" class="sv-prj"/>
     <text x="574" y="36" class="sv-tb">AdjustCampaignBootStep</text>
-    <text x="574" y="58" class="sv-s">không phải phiên 1, hoặc đã khoá? xong</text>
+    <text x="574" y="58" class="sv-s">không phải phiên 1? xong</text>
     <text x="574" y="78" class="sv-s">GetAttribution mỗi 0.5 s,</text>
     <text x="574" y="94" class="sv-s">chặn boot ≤ firstSessionWaitSeconds</text>
     <text x="574" y="114" class="sv-s">chưa có: poll nền ≤ lateArrivalPollSeconds</text>
-    <text x="574" y="130" class="sv-s">hết hạn: host.ReportNoAttribution()</text>
+    <text x="574" y="130" class="sv-s">hết hạn: log, thôi</text>
 
     <rect x="400" y="166" width="450" height="56" rx="8" class="sv-prj"/>
     <text x="414" y="190" class="sv-tb">host.ReportCampaign(Campaign ?? "")</text>
@@ -351,12 +351,12 @@ internal sealed class MySegmentationHostInitializer : Initializer&lt;MySegmentat
          ├─ host.InitializeAsync     state = entry.Value
          │                           ValidateConfigs()  ─► LogError từng dòng dữ liệu sai, không sửa
          │                           Decider.OnBoot     ─► Commit(force)
-         └─ AdjustCampaignBootStep   không phải phiên 1, hoặc đã khoá? xong
+         └─ AdjustCampaignBootStep   không phải phiên 1? xong
                                      GetAttribution mỗi 0.5 s, chặn boot tối đa firstSessionWaitSeconds
                                      chưa có: poll nền tối đa lateArrivalPollSeconds
                                      có attribution ─► host.ReportCampaign(Campaign ?? "")
                                                          Matcher.TryMatch ─► Decider.OnCampaign ─► Commit
-                                     hết hạn ─► host.ReportNoAttribution() ─► Decider.OnNoAttribution ─► Commit
+                                     hết hạn ─► log, thôi
 
 chơi     mua thật ─► host.ReportPurchase() ─► Decider.OnPurchase ─► Commit
 
@@ -376,9 +376,9 @@ Commit   entry.Value = state                     luôn: SessionCount, LastCampai
   <div class="note bad"><strong>Keyword là substring.</strong> Keyword ngắn khớp chữ nằm giữa từ khác: <code>Ad</code> khớp <code>Broad_US</code>, <code>Lead_01</code>. Chọn keyword không xuất hiện trong tên camp khác, kiểm trên danh sách camp thật trước khi lên console. Kiểm bằng chạy <code>TryMatch</code>, không suy bằng mắt: <code>Ad</code> <strong>không</strong> khớp <code>Android</code> (chuỗi đó không chứa <code>ad</code>).</div>
   <div class="note bad"><strong>"Phiên" ở đây không phải session của Adjust hay Firebase.</strong> Hai SDK đó mặc định tính phiên mới khi app ở nền quá 30 phút; hệ này chỉ đếm lần mở app (cold boot). Số session trên dashboard thường lớn hơn <code>SessionCount</code>; "phiên 1" của hệ này là lần mở app đầu tiên sau khi cài.</div>
   <div class="note bad"><strong>Pool rỗng hoặc thiếu hàng <code>default</code>.</strong> Host ném lúc boot: <code>IsReady</code> là true nhưng <code>CurrConfig</code> vẫn <code>null</code>, game vẫn vào, consumer đầu tiên đọc config ném NRE. Chỉ thiếu hàng của một tập thì hệ dùng hàng <code>default</code> kèm <code>LogError</code>.</div>
-  <div class="note bad"><strong>Chỉ chờ trong phiên 1.</strong> User không có mạng ở lần mở đầu tiên ở <code>default</code> vĩnh viễn. Khoá chỉ khi poll hết hạn, không khi app xuống nền: pause còn bắn khi hiện ATT iOS, quảng cáo, share sheet, khoá lúc đó đẩy user vào <code>default</code> trước khi Adjust kịp trả lời.</div>
-  <div class="note"><strong>Trong Editor Adjust không trả lời:</strong> phiên đầu chờ hết <code>firstSessionWaitSeconds</code>, poll nền vô ích rồi khoá <code>NoAttribution</code>; chậm, không sai. Thử tập theo camp bằng cheat <code>ForceCampaign</code>.</div>
-  <div class="note bad"><strong>Cheat không đi qua <code>ReportCampaign</code>.</strong> Lệnh thật bỏ qua camp khi đã khoá, mà khoá tới rất sớm: máy thật nhận attribution organic ngay phiên đầu, Editor khoá <code>NoAttribution</code> khi poll phiên 1 hết hạn. Khoá nằm trong save nên mở lại app vẫn khoá.</div>
+  <div class="note bad"><strong>Chỉ chờ trong phiên 1.</strong> User không có mạng ở lần mở đầu tiên ở <code>default</code> tới khi có luật hành vi.</div>
+  <div class="note"><strong>Trong Editor Adjust không trả lời:</strong> phiên đầu chờ hết <code>firstSessionWaitSeconds</code>, poll nền vô ích rồi log; chậm, không sai. Thử tập theo camp bằng cheat <code>ForceCampaign</code>.</div>
+  <div class="note bad"><strong>Cheat không đi qua <code>ReportCampaign</code>.</strong> Lệnh thật bỏ qua camp khi hành vi đã quyết tập, mà QA cần thử camp cả lúc đang ở <code>purchased</code>; trong Editor Adjust không trả lời nên cheat là đường duy nhất.</div>
   <div class="note"><strong>Thiếu package Adjust</strong> thì hệ vẫn chạy: mọi user ở tập <code>default</code>.</div>
   <div class="note"><strong>Lỗi "order must be lower" của bước Adjust</strong> cũng hiện khi host thiếu Initializer: đọc dòng lỗi của host in trước nó.</div>
   <div class="note bad"><strong>Thêm một cột là bốn chỗ cùng lần:</strong> field và dòng <code>Pick</code> · mọi hàng trong asset · mọi hàng trên console · danh sách cột trong test. DTO đòi đủ khoá nên một hàng console thiếu cột mới làm <strong>cả pool</strong> bị từ chối: game chạy bằng giá trị asset, chỉ một dòng <code>LogError</code> lúc boot. Lên console trước khi phát hành bản có cột đó.</div>

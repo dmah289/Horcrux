@@ -11,7 +11,7 @@ namespace Horcrux.Runtime.Abstractions.UserSegmentation
         void ResetState();
 
         /// <summary>
-        /// Segment from the campaign's keywords, past the lock and out of purchased. Config rebuilt and change published at once.
+        /// Segment from the campaign's keywords, even after behavior, out of purchased too. Config rebuilt and change published at once.
         /// </summary>
         void ForceCampaign(string campaign);
     }

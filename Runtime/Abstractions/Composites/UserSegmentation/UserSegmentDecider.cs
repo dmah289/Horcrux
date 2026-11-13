@@ -27,47 +27,36 @@
         }
 
         /// <summary>
-        /// Cold boot: decide the default once, count the session. Never locks: the window closes inside session 1
-        /// (attribution, purchase or <see cref="OnNoAttribution"/>).
+        /// Cold boot: decide the default once, count the session.
         /// </summary>
         public static Change OnBoot(UserSegmentState state, int defaultSegmentId)
         {
-            Change change = Change.None;
-
-            if (state.CurrSegmentId == 0)
-            {
-                state.CurrSegmentId = defaultSegmentId;
-                change = new Change(0, defaultSegmentId, UserSegmentChangeReason.Initial, null, false);
-            }
+            Change change = state.CurrSegmentId == 0 ? MoveTo(state, defaultSegmentId, UserSegmentChangeReason.Initial,
+                null, false) : Change.None;
 
             state.SessionCount++;
             return change;
         }
 
         /// <summary>
-        /// The first session's poll ran out without attribution: close the window, keep the segment.
+        /// True while the initial input still decides the segment.
+        /// Any other reason, present or future, is behavior and wins over a campaign.
         /// </summary>
-        public static Change OnNoAttribution(UserSegmentState state)
-        {
-            Lock(state, UserSegmentLockReason.NoAttribution);
-            return Change.None;
-        }
+        public static bool AcceptsCampaign(UserSegmentState state) => state.LastChangeReason is 
+            UserSegmentChangeReason.None or UserSegmentChangeReason.CampaignResolved 
+            or UserSegmentChangeReason.Initial;
 
         /// <summary>
         /// Attribution answered. <paramref name="matchedSegmentId"/> is 0 when no row matched.
+        /// Ignored (but recorded) once behavior set the segment.
         /// </summary>
         public static Change OnCampaign(UserSegmentState state, string campaign, int matchedSegmentId,
             string matchedKeyword, bool isAmbiguous, int defaultSegmentId, int purchasedSegmentId)
         {
-            // Written even when locked: tracking needs the user's real campaign.
+            // Written even when ignored: tracking needs the user's real campaign.
             state.LastCampaign = campaign;
 
-            if (state.IsCampaignLocked)
-                return Change.None;
-
-            Lock(state, UserSegmentLockReason.Attribution);
-
-            if (state.CurrSegmentId == purchasedSegmentId)
+            if (!AcceptsCampaign(state))
                 return Change.None;
 
             // A keyword row pointing at the purchased segment is a data error (the project's Simulator reports it; the core validator knows no roles): a campaign never grants that segment.
@@ -76,54 +65,38 @@
 
             int target = matchedSegmentId != 0 ? matchedSegmentId : defaultSegmentId;
 
-            if (target == state.CurrSegmentId)
-                return Change.None;
-
-            int prev = state.CurrSegmentId;
-            state.CurrSegmentId = target;
-            return new Change(prev, target, UserSegmentChangeReason.CampaignResolved, matchedKeyword, isAmbiguous);
+            return MoveTo(state, target, UserSegmentChangeReason.CampaignResolved, matchedKeyword, isAmbiguous);
         }
 
         /// <summary>
         /// A real purchase (not restore, not refund, not a remove-ads-only pack: the project filters those).
         /// </summary>
-        public static Change OnPurchase(UserSegmentState state, int defaultSegmentId, int purchasedSegmentId)
-        {
-            if (state.CurrSegmentId == purchasedSegmentId)
-                return Change.None;
-
-            int prev = state.CurrSegmentId != 0 ? state.CurrSegmentId : defaultSegmentId;
-            state.PrevSegmentId = prev;
-            state.CurrSegmentId = purchasedSegmentId;
-            Lock(state, UserSegmentLockReason.Purchase);
-
-            return new Change(prev, purchasedSegmentId, UserSegmentChangeReason.Purchase, null, false);
-        }
+        public static Change OnPurchase(UserSegmentState state, int purchasedSegmentId)
+            => MoveTo(state, purchasedSegmentId, UserSegmentChangeReason.Purchase, null, false);
 
         /// <summary>
-        /// Debug only: the campaign sets the segment past the lock and out of purchased. No match lands on the default, like organic.
+        /// Debug only: the campaign sets the segment even after behavior, out of purchased too. No match lands on the default, like organic.
         /// </summary>
         public static Change OnForcedCampaign(UserSegmentState state, string campaign, int matchedSegmentId,
             string matchedKeyword, bool isAmbiguous, int defaultSegmentId)
         {
             state.LastCampaign = campaign;
-            Lock(state, UserSegmentLockReason.Attribution);
             int target = matchedSegmentId != 0 ? matchedSegmentId : defaultSegmentId;
-            if(target == state.CurrSegmentId)
+            return MoveTo(state, target, UserSegmentChangeReason.CampaignResolved, matchedKeyword, isAmbiguous);
+        }
+
+        /// <summary>The one write of the segment: prev, curr and reason move together. No-op when already there.</summary>
+        private static Change MoveTo(UserSegmentState state, int target, UserSegmentChangeReason reason,
+            string matchedKeyword, bool isAmbiguous)
+        {
+            if (target == state.CurrSegmentId)
                 return Change.None;
             
             int prev = state.CurrSegmentId;
+            state.PrevSegmentId = prev;
             state.CurrSegmentId = target;
-            return new Change(prev, target, UserSegmentChangeReason.CampaignResolved, matchedKeyword, isAmbiguous);
-        }
-
-        /// <summary>
-        /// The first reason wins: a lock means the resegment window closed, later causes do not rewrite why.
-        /// </summary>
-        private static void Lock(UserSegmentState state, UserSegmentLockReason reason)
-        {
-            if (state.LockReason == UserSegmentLockReason.None)
-                state.LockReason = reason;
+            state.LastChangeReason = reason;
+            return new Change(prev, target, reason, matchedKeyword, isAmbiguous);
         }
     }
 }
