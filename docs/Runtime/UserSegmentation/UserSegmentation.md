@@ -62,7 +62,7 @@ Nhịp: mọi phép tính chạy theo sự kiện (boot, campaign, mua), không 
 
 | Sự kiện | Điều kiện | Kết quả |
 |---|---|---|
-| `OnBoot` | `CurrSegmentId == 0` | chuyển tới `default`, lý do `Initial` |
+| `OnBoot` | `CurrSegmentId == 0` | `LastCampaign = null`, chuyển tới `default`, lý do `Initial` |
 | `OnBoot` | luôn, sau dòng trên | `SessionCount++` |
 | `OnCampaign(camp)` | luôn, trước mọi dòng dưới | `LastCampaign = camp` |
 | `OnCampaign(camp)` | `!AcceptsCampaign`: `LastChangeReason` không phải `None`, `Initial`, `CampaignResolved` | không đổi |
@@ -232,6 +232,7 @@ duy nhất thử tập theo camp.
 | Thiếu cả hàng `default` thì ném, không trả hàng rỗng | hàng rỗng là kinh tế bằng 0 chạy im lặng; pool rỗng là lỗi authoring, phải nổ |
 | Field public của `UserSegmentState` viết PascalCase | tên field là khoá JSON của save, đã chốt từ save đầu tiên |
 | Poll hết hạn chỉ log, không ghi gì vào state | `LastCampaign` null đã nói "chưa có attribution"; ghi thêm là một nhãn không luật nào đọc |
+| `OnBoot` của state chưa quyết đặt `LastCampaign = null` | save cài mới lấy `Default Value` của entry trên asset, mà Unity không serialize chuỗi `null`: không đặt lại thì cài mới đọc ra `""`, trùng với camp organic. Chưa quyết thì chưa campaign nào được báo, vì bước Adjust chạy sau host |
 | `ResetState` thay cả `_state` lẫn giá trị entry | Commit muộn (poll Adjust nền) ghi `_entry.Value = _state`; giữ `_state` cũ thì bản cũ đè bản reset |
 | `ResetState` là explicit interface | gọi nhầm là mất save im lặng |
 | Base không generic giữ toàn bộ cơ chế, lớp generic chỉ tra config | bước Adjust và tool Editor cần một kiểu kéo thả được; bảng keyword không mang kiểu dự án |
@@ -279,7 +280,7 @@ duy nhất thử tập theo camp.
 | `UserSegmentKeywordMatcherTests` | guard `null`, rỗng · hoa thường · keyword thứ ba của hàng · thứ tự mảng thắng thứ tự camp · hai hàng cùng tập không ambiguous · hai tập khớp: thứ tự bảng thắng, ambiguous · keyword và hàng rỗng bị bỏ · keyword ngắn trên camp chứa `Android` |
 | `UserSegmentInheritanceTests` | `Pick` với `-1`, giá trị thường, `-1` ở cả hai, `0` |
 | `UserSegmentConfigTableTests` | `Find`: có, trùng id, vắng, `null` · `Validate`: từng dòng kiểm ở mục Luật, mỗi lỗi đúng một dòng, không ném với input `null` |
-| `UserSegmentDeciderTests` | mọi dòng bảng Luật · `AcceptsCampaign` từng lý do, kể cả lý do chưa có tên · `PrevSegmentId` sau camp, mua, mua lại, mua lúc chưa quyết · camp sau camp, sau mua, save chưa có lý do · `OnForcedCampaign`: rời `purchased`, không khớp về `default`, cùng tập không đổi · wire format qua `PersistenceDataEntry`: `LastChangeReason` ghi dạng số, save cũ có `LockReason` đọc ra `None` |
+| `UserSegmentDeciderTests` | mọi dòng bảng Luật · `OnBoot` xoá `""` của state chưa quyết, giữ `""` organic của state đã quyết · `AcceptsCampaign` từng lý do, kể cả lý do chưa có tên · `PrevSegmentId` sau camp, mua, mua lại, mua lúc chưa quyết · camp sau camp, sau mua, save chưa có lý do · `OnForcedCampaign`: rời `purchased`, không khớp về `default`, cùng tập không đổi · wire format qua `PersistenceDataEntry`: `LastChangeReason` ghi dạng số, save cũ có `LockReason` đọc ra `None` |
 
 `InheritFrom` là code dự án: test ở dự án, bằng reflection trên mọi field `int` public để bắt cột mới thiếu dòng `Pick`.
 Host và bước Adjust không có test tự động (MonoBehaviour gắn chuỗi boot và SDK); kiểm bằng biên dịch.

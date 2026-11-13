@@ -150,10 +150,10 @@ footer{text-align:center;padding:2.5rem 1rem;color:var(--tx3);font-size:.82rem;b
   <div class="tw"><table>
     <thead><tr><th>Tình huống</th><th>User ở tập</th><th>Lý do</th></tr></thead>
     <tbody>
-      <tr><td>Lần mở app đầu tiên, Adjust chưa trả lời</td><td><code>default</code></td><td><code>Initial</code></td></tr>
+      <tr><td>Lần mở app đầu tiên, Adjust chưa trả lời</td><td><code>default</code>; <code>LastCampaign</code> là <code>null</code> (chưa có attribution), khác <code>""</code> của camp organic</td><td><code>Initial</code></td></tr>
       <tr><td>Cài từ camp có tên chứa keyword của tập A; Adjust trả lời trong phiên 1</td><td>A; <code>CurrConfig</code> đổi ngay, phát <code>UserSegmentChanged</code></td><td><code>CampaignResolved</code></td></tr>
       <tr><td>Organic, hoặc camp không chứa keyword nào</td><td><code>default</code></td><td><code>Initial</code>: tập không đổi</td></tr>
-      <tr><td>Adjust không trả lời trong lúc poll phiên 1</td><td><code>default</code>; phiên sau không poll; chỉ có một dòng log</td><td><code>Initial</code></td></tr>
+      <tr><td>Adjust không trả lời trong lúc poll phiên 1</td><td><code>default</code>; <code>LastCampaign</code> vẫn <code>null</code>; phiên sau không poll; chỉ có một dòng log</td><td><code>Initial</code></td></tr>
       <tr><td>Mua IAP thật, đang ở tập nào cũng vậy</td><td><code>purchased</code>; ô <code>-1</code> lấy từ hàng của tập ngay trước khi mua (mua lúc chưa quyết thì từ <code>default</code>)</td><td><code>Purchase</code></td></tr>
       <tr><td>Đã mua, rồi camp mới về (mua trong vài giây đầu phiên 1)</td><td><code>purchased</code>, không đổi; <code>LastCampaign</code> vẫn ghi camp thật cho tracking</td><td>giữ <code>Purchase</code></td></tr>
       <tr><td>Camp chứa keyword của hai tập khác nhau</td><td>tập của hàng đứng trước trong bảng keyword; log và event báo <code>IsAmbiguous</code></td><td><code>CampaignResolved</code></td></tr>

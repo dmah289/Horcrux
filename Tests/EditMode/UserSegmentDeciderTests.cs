@@ -78,6 +78,28 @@ namespace Horcrux.Tests
             Assert.AreEqual(Default, state.PrevSegmentId);
             Assert.AreEqual(UserSegmentChangeReason.CampaignResolved, state.LastChangeReason);
         }
+
+        [Test]
+        public void OnBoot_UndecidedWithEmptyCampaign_CampaignNotReported()
+        {
+            // A save default authored in a Unity asset: Unity writes "" for the string, never null.
+            UserSegmentState state = new UserSegmentState { LastCampaign = string.Empty };
+
+            Boot(state);
+
+            Assert.IsNull(state.LastCampaign);
+        }
+
+        [Test]
+        public void OnBoot_DecidedOrganic_EmptyCampaignKept()
+        {
+            UserSegmentState state = Booted();
+            Campaign(state, string.Empty, 0);
+
+            Boot(state);
+
+            Assert.AreEqual(string.Empty, state.LastCampaign);
+        }
         #endregion
 
         #region AcceptsCampaign

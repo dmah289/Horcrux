@@ -31,8 +31,14 @@
         /// </summary>
         public static Change OnBoot(UserSegmentState state, int defaultSegmentId)
         {
-            Change change = state.CurrSegmentId == 0 ? MoveTo(state, defaultSegmentId, UserSegmentChangeReason.Initial,
-                null, false) : Change.None;
+            Change change = Change.None;
+
+            if (state.CurrSegmentId == 0)
+            {
+                // Unity never serializes a null string: an asset-authored save default holds "". Undecided means not reported yet.
+                state.LastCampaign = null;
+                change = MoveTo(state, defaultSegmentId, UserSegmentChangeReason.Initial, null, false);
+            }
 
             state.SessionCount++;
             return change;
