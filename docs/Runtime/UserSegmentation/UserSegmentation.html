@@ -290,7 +290,7 @@ internal sealed class MySegmentationHostInitializer : Initializer&lt;MySegmentat
   <div class="tw"><table>
     <thead><tr><th>Lệnh</th><th>Làm</th><th>Sau đó</th></tr></thead>
     <tbody>
-      <tr><td><code>ReportCampaign(camp)</code></td><td>báo camp giả như Adjust trả lời; dùng trong Editor, nơi Adjust không trả lời</td><td>theo đúng bảng Kịch bản</td></tr>
+      <tr><td><code>IUserSegmentationDebug.ForceCampaign(camp)</code> (cast host sang interface)</td><td>tập theo keyword của camp, bỏ qua khoá và tập <code>purchased</code>; không khớp thì về <code>default</code>. Ghi <code>LastCampaign</code>, khoá <code>Attribution</code> nếu chưa khoá</td><td>tập đổi thì <code>CurrConfig</code> dựng lại và phát <code>UserSegmentChanged</code> ngay; grant chỉ chạy lúc boot thì không chạy lại</td></tr>
       <tr><td><code>ReportPurchase()</code></td><td>như mua thật</td><td>theo đúng bảng Kịch bản</td></tr>
       <tr><td><code>IUserSegmentationDebug.ResetState()</code> (cast host sang interface)</td><td>đưa save về chưa quyết, ghi đĩa ngay; không phát <code>UserSegmentChanged</code>. Host chưa sẵn sàng thì <code>LogError</code> rồi thôi</td><td>thoát app ngay: <code>CurrConfig</code> giữ hàng cũ, việc chỉ chạy lúc boot (grant của dự án) không chạy lại</td></tr>
     </tbody>
@@ -376,7 +376,8 @@ Commit   entry.Value = state                     luôn: SessionCount, LastCampai
   <div class="note bad"><strong>"Phiên" ở đây không phải session của Adjust hay Firebase.</strong> Hai SDK đó mặc định tính phiên mới khi app ở nền quá 30 phút; hệ này chỉ đếm lần mở app (cold boot). Số session trên dashboard thường lớn hơn <code>SessionCount</code>: đặt <code>ResegmentMaxSessions</code> theo số lần mở app, không theo số session dashboard.</div>
   <div class="note bad"><strong>Pool rỗng hoặc thiếu hàng <code>default</code>.</strong> Host ném lúc boot: <code>IsReady</code> là true nhưng <code>CurrConfig</code> vẫn <code>null</code>, game vẫn vào, consumer đầu tiên đọc config ném NRE. Chỉ thiếu hàng của một tập thì hệ dùng hàng <code>default</code> kèm <code>LogError</code>.</div>
   <div class="note"><strong><code>ResegmentMaxSessions &lt; 1</code></strong> kẹp về 1, kèm <code>LogWarning</code>: 0 sẽ khoá ngay lúc boot đầu, trước khi Adjust kịp trả lời, mọi user thành <code>default</code> vĩnh viễn.</div>
-  <div class="note"><strong>Trong Editor Adjust không trả lời:</strong> phiên đầu chờ hết <code>firstSessionWaitSeconds</code> rồi poll nền vô ích; chậm, không sai. Thử tập theo camp bằng cheat <code>ReportCampaign</code>.</div>
+  <div class="note"><strong>Trong Editor Adjust không trả lời:</strong> phiên đầu chờ hết <code>firstSessionWaitSeconds</code> rồi poll nền vô ích; chậm, không sai. Thử tập theo camp bằng cheat <code>ForceCampaign</code>.</div>
+  <div class="note bad"><strong>Cheat không đi qua <code>ReportCampaign</code>.</strong> Lệnh thật bỏ qua camp khi đã khoá, mà khoá tới rất sớm: máy thật nhận attribution organic ngay phiên đầu, Editor hết cửa sổ sau N lần Play. Khoá nằm trong save nên mở lại app vẫn khoá.</div>
   <div class="note"><strong>Thiếu package Adjust</strong> thì hệ vẫn chạy: mọi user ở tập <code>default</code>.</div>
   <div class="note"><strong>Lỗi "order must be lower" của bước Adjust</strong> cũng hiện khi host thiếu Initializer: đọc dòng lỗi của host in trước nó.</div>
   <div class="note bad"><strong>Thêm một cột là bốn chỗ cùng lần:</strong> field và dòng <code>Pick</code> · mọi hàng trong asset · mọi hàng trên console · danh sách cột trong test. DTO đòi đủ khoá nên một hàng console thiếu cột mới làm <strong>cả pool</strong> bị từ chối: game chạy bằng giá trị asset, chỉ một dòng <code>LogError</code> lúc boot. Lên console trước khi phát hành bản có cột đó.</div>

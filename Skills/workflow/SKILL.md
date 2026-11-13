@@ -119,7 +119,9 @@ bản buộc khớp; trước–sau refactor phải trùng). Không dấu hiệu
 **Cheat — mở đường tới kịch bản, không mở nắp kỹ thuật.** Chính đáng khi kịch bản **không tới được bằng đường người chơi
 trong thời gian hợp lý**: thời gian (hết tuần) · khối lượng (đủ điểm mốc cuối) · trạng thái đầu (save mới). Mỗi nút là một
 dòng phải giữ đúng mãi. Hàng đọc chỉ cho thứ màn hình không hiện, qua API sẵn có, không bọc thứ đã public; lệnh riêng chỉ khi
-phải chạm `private`, gọi đúng lệnh thật của hệ. Lệnh rời trạng thái giữa chừng đi đường người chơi rời nó; popup còn mở
+phải chạm `private`, gọi đúng lệnh thật của hệ. Lệnh thật có cổng (khoá, cửa sổ thời gian) mà đường thật đóng cổng trước khi
+QA kịp bấm thì cheat là lệnh riêng vượt cổng, đặt trong hệ: gọi lệnh thật chỉ chạm vào cổng. *Đã sai một lần:* cheat báo
+campaign qua cửa thật; SDK trả organic ngay phiên đầu nên cửa đã khoá, nút không đổi gì kể cả sau khi mở lại app. Lệnh rời trạng thái giữa chừng đi đường người chơi rời nó; popup còn mở
 lúc chuyển màn bị đóng theo nhánh huỷ của chính nó — đếm hệ quả nhánh đó tự làm trước khi gọi thêm. Panel có trong **build chính thức, không `#if`** — QA kiểm bản người chơi cầm.
 Lệnh, cửa đọc `private` và suy luận thuộc **hệ**, không phụ thuộc công cụ debug — hệ framework mang được sang dự án dùng
 panel khác; lớp nối với panel thuộc dự án. **Đưa về trạng thái đầu** đi qua chủ giữ state: thay bản trong RAM lẫn bản lưu,

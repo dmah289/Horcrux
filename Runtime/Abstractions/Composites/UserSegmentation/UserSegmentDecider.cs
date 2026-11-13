@@ -28,7 +28,9 @@ namespace Horcrux.Runtime.Abstractions.UserSegmentation
             }
         }
 
-        /// <summary>Cold boot: decide the default once, close the resegment window after N sessions, count the session.</summary>
+        /// <summary>
+        /// Cold boot: decide the default once, close the resegment window after N sessions, count the session.
+        /// </summary>
         public static Change OnBoot(UserSegmentState state, int defaultSegmentId, int resegmentMaxSessions)
         {
             Change change = Change.None;
@@ -49,7 +51,9 @@ namespace Horcrux.Runtime.Abstractions.UserSegmentation
             return change;
         }
 
-        /// <summary>Attribution answered. <paramref name="matchedSegmentId"/> is 0 when no row matched.</summary>
+        /// <summary>
+        /// Attribution answered. <paramref name="matchedSegmentId"/> is 0 when no row matched.
+        /// </summary>
         public static Change OnCampaign(UserSegmentState state, string campaign, int matchedSegmentId,
             string matchedKeyword, bool isAmbiguous, int defaultSegmentId, int purchasedSegmentId)
         {
@@ -78,7 +82,9 @@ namespace Horcrux.Runtime.Abstractions.UserSegmentation
             return new Change(prev, target, UserSegmentChangeReason.CampaignResolved, matchedKeyword, isAmbiguous);
         }
 
-        /// <summary>A real purchase (not restore, not refund, not a remove-ads-only pack: the project filters those).</summary>
+        /// <summary>
+        /// A real purchase (not restore, not refund, not a remove-ads-only pack: the project filters those).
+        /// </summary>
         public static Change OnPurchase(UserSegmentState state, int defaultSegmentId, int purchasedSegmentId)
         {
             if (state.CurrSegmentId == purchasedSegmentId)
@@ -92,7 +98,26 @@ namespace Horcrux.Runtime.Abstractions.UserSegmentation
             return new Change(prev, purchasedSegmentId, UserSegmentChangeReason.Purchase, null, false);
         }
 
-        /// <summary>The first reason wins: a lock means the resegment window closed, later causes do not rewrite why.</summary>
+        /// <summary>
+        /// Debug only: the campaign sets the segment past the lock and out of purchased. No match lands on the default, like organic.
+        /// </summary>
+        public static Change OnForcedCampaign(UserSegmentState state, string campaign, int matchedSegmentId,
+            string matchedKeyword, bool isAmbiguous, int defaultSegmentId)
+        {
+            state.LastCampaign = campaign;
+            Lock(state, UserSegmentLockReason.Attribution);
+            int target = matchedSegmentId != 0 ? matchedSegmentId : defaultSegmentId;
+            if(target == state.CurrSegmentId)
+                return Change.None;
+            
+            int prev = state.CurrSegmentId;
+            state.CurrSegmentId = target;
+            return new Change(prev, target, UserSegmentChangeReason.CampaignResolved, matchedKeyword, isAmbiguous);
+        }
+
+        /// <summary>
+        /// The first reason wins: a lock means the resegment window closed, later causes do not rewrite why.
+        /// </summary>
         private static void Lock(UserSegmentState state, UserSegmentLockReason reason)
         {
             if (state.LockReason == UserSegmentLockReason.None)

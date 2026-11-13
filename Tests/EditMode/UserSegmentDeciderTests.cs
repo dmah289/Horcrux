@@ -260,7 +260,95 @@ namespace Horcrux.Tests
             Assert.AreEqual(Purchased, state.CurrSegmentId);
             Assert.AreEqual(UserSegmentLockReason.SessionWindow, state.LockReason);
         }
+        #endregion
 
+        #region OnForcedCampaign
+        private static UserSegmentDecider.Change ForcedCampaign(UserSegmentState state, string campaign,
+            int matchedSegmentId, string matchedKeyword = null, bool isAmbiguous = false)
+            => UserSegmentDecider.OnForcedCampaign(state, campaign, matchedSegmentId, matchedKeyword, isAmbiguous, Default);
+
+        [Test]
+        public void OnForcedCampaign_Open_ChangesAndLocksAttribution()
+        {
+            UserSegmentState state = Booted();
+
+            UserSegmentDecider.Change change = ForcedCampaign(state, "promo_Ads", Ads, "Ads", true);
+
+            Assert.IsTrue(change.HasChange);
+            Assert.AreEqual(Default, change.PrevSegmentId);
+            Assert.AreEqual(Ads, change.CurrSegmentId);
+            Assert.AreEqual(UserSegmentChangeReason.CampaignResolved, change.Reason);
+            Assert.AreEqual("Ads", change.MatchedKeyword);
+            Assert.IsTrue(change.IsAmbiguous);
+            Assert.AreEqual(UserSegmentLockReason.Attribution, state.LockReason);
+            Assert.AreEqual("promo_Ads", state.LastCampaign);
+        }
+
+        [Test]
+        public void OnForcedCampaign_AfterAttributionLock_ChangesAgain()
+        {
+            UserSegmentState state = Booted();
+            Campaign(state, "", 0);
+
+            UserSegmentDecider.Change change = ForcedCampaign(state, "test_IAP", Iap, "IAP");
+
+            Assert.IsTrue(change.HasChange);
+            Assert.AreEqual(Iap, state.CurrSegmentId);
+            Assert.AreEqual(UserSegmentLockReason.Attribution, state.LockReason);
+        }
+
+        [Test]
+        public void OnForcedCampaign_WindowClosed_ChangesKeepsFirstLockReason()
+        {
+            UserSegmentState state = new UserSegmentState { CurrSegmentId = Default, SessionCount = MaxSessions };
+            Boot(state);
+
+            ForcedCampaign(state, "promo_Ads", Ads, "Ads");
+
+            Assert.AreEqual(Ads, state.CurrSegmentId);
+            Assert.AreEqual(UserSegmentLockReason.SessionWindow, state.LockReason);
+        }
+
+        [Test]
+        public void OnForcedCampaign_FromPurchased_LeavesPurchased()
+        {
+            UserSegmentState state = Booted();
+            Purchase(state);
+
+            UserSegmentDecider.Change change = ForcedCampaign(state, "promo_Ads", Ads, "Ads");
+
+            Assert.IsTrue(change.HasChange);
+            Assert.AreEqual(Purchased, change.PrevSegmentId);
+            Assert.AreEqual(Ads, state.CurrSegmentId);
+            Assert.AreEqual(UserSegmentLockReason.Purchase, state.LockReason);
+        }
+
+        [Test]
+        public void OnForcedCampaign_NoMatch_LandsOnDefault()
+        {
+            UserSegmentState state = Booted();
+            ForcedCampaign(state, "promo_Ads", Ads, "Ads");
+
+            UserSegmentDecider.Change change = ForcedCampaign(state, "unknown_camp", 0);
+
+            Assert.IsTrue(change.HasChange);
+            Assert.AreEqual(Default, state.CurrSegmentId);
+            Assert.IsNull(change.MatchedKeyword);
+            Assert.AreEqual("unknown_camp", state.LastCampaign);
+        }
+
+        [Test]
+        public void OnForcedCampaign_SameSegment_NoChangeCampaignRecorded()
+        {
+            UserSegmentState state = Booted();
+            ForcedCampaign(state, "promo_Ads", Ads, "Ads");
+
+            Assert.IsFalse(ForcedCampaign(state, "other_Ads", Ads, "Ads").HasChange);
+            Assert.AreEqual("other_Ads", state.LastCampaign);
+        }
+        #endregion
+
+        #region WireFormat
         // Wire format goes through the entry the save uses, so the test sees the real serializer settings.
         private static UserSegmentState ReadSave(string payload)
         {

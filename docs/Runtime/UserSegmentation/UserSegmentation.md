@@ -200,14 +200,18 @@ keyword also matched`.
 
 ## Debug
 
-Panel cheat do dự án dựng; host phơi cho nó các cửa đọc ở mục Consumer và một lệnh chạm state `private`:
+Panel cheat do dự án dựng; host phơi cho nó các cửa đọc ở mục Consumer và hai lệnh chạm state `private` (cài explicit, cast
+host sang `IUserSegmentationDebug`; `IsReady` false thì `LogError` rồi thoát):
 
 | Lệnh | Làm | Caller phải |
 |---|---|---|
-| `IUserSegmentationDebug.ResetState()` (cài explicit, cast host sang interface) | `IsReady` false thì `LogError` rồi thoát. Còn lại: state mới (chưa quyết), ghi vào entry, `FlushNow`, log một dòng. Không publish `UserSegmentChanged` | thoát app ngay: `CurrConfig` giữ hàng cũ, việc chỉ chạy lúc boot (grant của dự án) không chạy lại |
+| `ForceCampaign(camp)` | `TryMatch` rồi `Decider.OnForcedCampaign`: `LastCampaign = camp`, khoá `Attribution` (lý do đầu thắng), `curr` = tập khớp hoặc `default`, bỏ qua khoá và tập `purchased` · `Commit` như lệnh thật: tập đổi thì `CurrConfig` dựng lại, log, publish `CampaignResolved`; không đổi thì log một dòng | không gì; grant chỉ chạy lúc boot thì không chạy lại |
+| `ResetState()` | state mới (chưa quyết), ghi vào entry, `FlushNow`, log một dòng. Không publish `UserSegmentChanged` | thoát app ngay: `CurrConfig` giữ hàng cũ, việc chỉ chạy lúc boot (grant của dự án) không chạy lại |
 
-Hai lệnh còn lại của cheat là cửa ghi thật: `ReportCampaign(camp)` (camp giả cho Editor, nơi Adjust không trả lời) và
-`ReportPurchase()`.
+Lệnh còn lại của cheat là cửa ghi thật `ReportPurchase()`. Camp của cheat không đi qua `ReportCampaign`: lệnh thật bỏ qua camp
+khi đã khoá, mà máy thật khoá `Attribution` ngay phiên đầu (organic cũng là attribution), Editor khoá `SessionWindow` sau N lần
+Play. `ForceCampaign` để `PrevSegmentId` nguyên khi rời `purchased`: field chỉ được đọc khi đang ở `purchased`, và
+`OnPurchase` ghi lại nó.
 
 ## Quyết định trái trực giác
 
@@ -268,7 +272,7 @@ Hai lệnh còn lại của cheat là cửa ghi thật: `ReportCampaign(camp)` (
 | `UserSegmentKeywordMatcherTests` | guard `null`, rỗng · hoa thường · keyword thứ ba của hàng · thứ tự mảng thắng thứ tự camp · hai hàng cùng tập không ambiguous · hai tập khớp: thứ tự bảng thắng, ambiguous · keyword và hàng rỗng bị bỏ · keyword ngắn trên camp chứa `Android` |
 | `UserSegmentInheritanceTests` | `Pick` với `-1`, giá trị thường, `-1` ở cả hai, `0` |
 | `UserSegmentConfigTableTests` | `Find`: có, trùng id, vắng, `null` · `Validate`: từng dòng kiểm ở mục Luật, mỗi lỗi đúng một dòng, không ném với input `null` |
-| `UserSegmentDeciderTests` | mọi dòng bảng Luật, kể cả kẹp `max 0`, khớp vào `purchased`, mua rồi camp mới về · lý do khoá từng đường, lý do đầu thắng · wire format qua `PersistenceDataEntry`: có `LockReason`, không có `IsCampaignLocked`, save cũ đọc ra chưa khoá |
+| `UserSegmentDeciderTests` | mọi dòng bảng Luật, kể cả kẹp `max 0`, khớp vào `purchased`, mua rồi camp mới về · lý do khoá từng đường, lý do đầu thắng · `OnForcedCampaign`: đổi sau khoá `Attribution`, `SessionWindow`, rời `purchased`, không khớp về `default`, cùng tập không đổi · wire format qua `PersistenceDataEntry`: có `LockReason`, không có `IsCampaignLocked`, save cũ đọc ra chưa khoá |
 
 `InheritFrom` là code dự án: test ở dự án, bằng reflection trên mọi field `int` public để bắt cột mới thiếu dòng `Pick`.
 Host và bước Adjust không có test tự động (MonoBehaviour gắn chuỗi boot và SDK); kiểm bằng biên dịch.
@@ -285,8 +289,8 @@ Namespace `Horcrux.Runtime.Abstractions.UserSegmentation`:
 | `IUserSegmentKeywordRule` | `int SegmentId` · `IReadOnlyList<string> Keywords` |
 | `UserSegmentState` | `[Serializable]` · `int CurrSegmentId` · `int PrevSegmentId` · `UserSegmentLockReason LockReason` · `int SessionCount` · `string LastCampaign` · `[JsonIgnore] bool IsCampaignLocked` (suy từ `LockReason`, không lưu) |
 | `UserSegmentLockReason` | `None = 0`, `Attribution = 1`, `Purchase = 2`, `SessionWindow = 3`; số là wire format của save |
-| `IUserSegmentationDebug` | `void ResetState()` |
-| `UserSegmentDecider` | `Change OnBoot(state, defaultId, maxSessions)` · `Change OnCampaign(state, campaign, matchedId, keyword, isAmbiguous, defaultId, purchasedId)` · `Change OnPurchase(state, defaultId, purchasedId)` · `readonly struct Change { HasChange, PrevSegmentId, CurrSegmentId, Reason, MatchedKeyword, IsAmbiguous; static None }` |
+| `IUserSegmentationDebug` | `void ResetState()` · `void ForceCampaign(string campaign)` |
+| `UserSegmentDecider` | `Change OnBoot(state, defaultId, maxSessions)` · `Change OnCampaign(state, campaign, matchedId, keyword, isAmbiguous, defaultId, purchasedId)` · `Change OnPurchase(state, defaultId, purchasedId)` · `Change OnForcedCampaign(state, campaign, matchedId, keyword, isAmbiguous, defaultId)` (chỉ cho cheat) · `readonly struct Change { HasChange, PrevSegmentId, CurrSegmentId, Reason, MatchedKeyword, IsAmbiguous; static None }` |
 | `UserSegmentKeywordMatcher` | `bool TryMatch(string campaign, IReadOnlyList<IUserSegmentKeywordRule>, out int segmentId, out string keyword, out bool isAmbiguous)` |
 | `UserSegmentInheritance` | `const int InheritValue = -1` · `int Pick(int target, int prev)` |
 | `UserSegmentConfigTable` | `TConfig Find<TConfig>(IReadOnlyList<TConfig>, int id)` · `bool Validate<TConfig>(configs, rules, int defaultSegmentId, List<string> errors)` |
@@ -300,7 +304,7 @@ Namespace `Horcrux.Runtime.Abstractions.Persistence`: `BasePersistenceDataCollec
 ```
 Runtime/Abstractions/Composites/UserSegmentation/
 ├── AUserSegmentationHost.cs · AUserSegmentationHost.Generic.cs   cơ chế · tra và cache config
-├── AUserSegmentationHost.Debug.cs                                 IUserSegmentationDebug: reset cho cheat
+├── AUserSegmentationHost.Debug.cs                                 IUserSegmentationDebug: ép camp, reset cho cheat
 ├── IUserSegmentConfig.cs · IUserSegmentKeywordRule.cs             contract hai DTO
 ├── UserSegmentDecider.cs · UserSegmentKeywordMatcher.cs           luật · khớp keyword
 ├── UserSegmentInheritance.cs · UserSegmentConfigTable.cs          kế thừa · tra và guard dữ liệu
