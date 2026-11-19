@@ -21,6 +21,8 @@ quanh từng callback trong vòng dispatch).
 - **Chạm object Unity thì `finally` và callback guard `if (x != null)`**, không `?.`/`??` (bỏ qua so null của Unity).
   `onComplete` một chủ. Về pool giữa chừng cũng là đường ra: bỏ liên kết **trước** khi dừng tween, sau `await` kiểm liên kết
   còn là của mình mới ghi.
+- **Vật thật nhường chỗ cho bản sao lúc diễn thì ẩn hình, không tắt GameObject:** vòng dọn của chủ hay duyệt theo `activeSelf`,
+  huỷ giữa lượt diễn thì vật tắt rơi khỏi đường về pool. Bản sao không nằm trong danh sách của chủ thì `finally` của lượt diễn tự trả.
 - **Object về pool không chứa con tự huỷ theo đồng hồ riêng** — hệ hạt Stop Action `None`, không `Destroy(go, t)`; kéo dài
   trình diễn thì soát mọi đồng hồ ẩn của prefab.
 - **Gộp hai tween vào một slot chỉ khi cùng thuộc tính** — khác thuộc tính thì dừng là cắt ngang chuyển động đang hiện.

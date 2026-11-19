@@ -20,6 +20,13 @@ giác khác hẳn dù khung cuối khớp. Số đo là điểm xuất phát cho
 **Video quay màn chưa phải nhịp gốc.** Bản quay có thể lặp frame, chậm hoặc nhanh hơn máy dựng; đọc nhịp thật của bản quay trước khi
 tin một thời lượng. Một vật đổi dáng giữa chừng (Spine đổi attachment, chữ đổi viền) là nhiều chặng, mỗi chặng đo với mẫu của nó.
 
+**Video hoạ sĩ quay từ preview thì tách preview khỏi thứ game dùng.** Chu kỳ lặp của video trùng thời lượng một clip, một prefab hạt
+là dấu hiệu preview: clip ghép sẵn và hạt để lặp, `startDelay` của hạt là nhịp so với một event trong clip. Game nối các clip lẻ, neo hạt
+vào event đó, chuyển hạt sang phát một lần; đo mốc trên video để tìm event neo, không để chép delay.
+
+**Cỡ vật world đo theo vật world đứng cạnh, không theo bề ngang màn.** Camera có thể đổi theo bố cục từng màn: tỉ lệ với màn đúng ở
+một màn, tỉ lệ với vật kề (ô, hộp) đúng ở mọi màn.
+
 **So bản dựng bằng cùng phép đo, trên bản quay cùng điều kiện.** Quay Game view ở fps cố định, cùng tỉ lệ demo, rồi so nhịp hai
 video bằng số (trễ, nhanh chậm, sự kiện lệch). Hai video đặt cạnh nhau xem bằng mắt chỉ để tìm chỗ cần đo.
 
