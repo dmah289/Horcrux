@@ -150,6 +150,7 @@ sách file của task, không `add` cả thư mục.
 | Gọi service trong Play làm game kẹt ở màn chờ | gọi trước khi scene chứa service nạp · `PlayProbe.WaitForSceneAsync` |
 | Ảnh chụp ngay sau đổi cỡ Game view vẫn bố cục cũ | layout và fitter cập nhật vài frame sau · chờ vài frame, hoặc chụp canvas ngoài Play |
 | Diff prefab sau khi lưu qua `PrefabEdit` có dòng mình không sửa | Unity ghi lại field mới có mặc định, cờ nội bộ (`m_WasSpriteAssigned`) · đọc diff trước khi commit để biết, không gỡ tay |
+| Đổi `SpriteRenderer` từ Sliced, Tiled sang Simple qua script, sprite phóng méo gấp nhiều lần | Editor quy `size` cũ vào `localScale` khi đổi `drawMode` · đặt scale sau khi đổi mode, đọc `bounds` trước khi lưu |
 | Ghi giá trị vào SerializedProperty ném lỗi kiểu, hoặc lưu xong giá trị vẫn như cũ | property là Float mà ghi `intValue`; Vector2 mà ghi `vector3Value` thì bỏ qua im lặng, lần lưu prefab vẫn kéo theo nhiễu serialize · đọc `propertyType` trước, đọc lại giá trị sau khi lưu |
 | `manage_camera` không ghi ảnh ra ngoài project, ảnh xuất hiện muộn | lệnh ghi bất đồng bộ vào `Assets/` · `UICapture` ghi đường dẫn bất kỳ |
 | Eval thất bại không dữ liệu ngay sau khi vào Play | Editor đang domain reload · thử lại |

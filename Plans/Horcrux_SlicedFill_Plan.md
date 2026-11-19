@@ -1,6 +1,7 @@
 # Plan — `SlicedFill` lên Horcrux
 
-Nguồn: bản tạm của một dự án game, dùng cho thanh số lượng trên kệ và thanh tiến độ trên box, đã chơi thử. Utility thuần: bốn hàm
+Nguồn: bản tạm của một dự án game, dùng cho thanh tiến độ trên box, đã chơi thử. Thanh cần đầu cắt phẳng thì dùng
+`Horcrux_SpriteHorizontalFill_Plan.md`. Utility thuần: bốn hàm
 static tính và ghi bề rộng ruột của thanh vẽ bằng `SpriteRenderer` Sliced.
 
 **Phân công:** GĐ1 developer gõ, agent viết test theo bảng case rồi compile · GĐ2 (dự án chuyển sang bản Horcrux) và GĐ3 (tài liệu hệ, xoá
@@ -119,8 +120,8 @@ lúc dựng là bề rộng đầy. Thiếu pivot trái: ruột co về tâm. Th
 
 **Mục tiêu:** dự án dùng bản Horcrux, bản tạm biến mất. **Vì sao cuối:** cần bản Horcrux compile được và test xanh trước.
 
-- Đổi `using` từ namespace của bản tạm sang `Horcrux.Runtime.Utilities` ở mọi caller (thanh số lượng kệ, thanh tiến độ box, view
-  thiết kế level trong tool Editor).
+- Đổi `using` từ namespace của bản tạm sang `Horcrux.Runtime.Utilities` ở mọi caller (thanh tiến độ box, view thiết kế level trong
+  tool Editor).
 - Xoá file bản tạm cùng `.meta`.
 - Chuyển test của bản tạm sang `Horcrux.EditModeTests`, xoá bản cũ.
 - Cập nhật tài liệu dự án nhắc bản tạm (bảng "chờ Horcrux", chỗ ghi đường dẫn bản tạm).
