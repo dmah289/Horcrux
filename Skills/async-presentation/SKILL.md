@@ -108,3 +108,5 @@ Chất liệu quyết *cái gì được biến dạng*; phần vui đến từ 
 > trong preset xếp sau phủ trắng cả mặt chữ. `SpriteMask` không bật Custom Range
 > ghi stencil cho **mọi** tầng dưới nó — giới hạn dải về đúng tầng nó phục vụ. `SpriteRenderer` Sliced, Tiled vẽ theo
 > `size`; `sprite.bounds` vẫn là cỡ gốc của ảnh — đo phần nhìn thấy theo `drawMode`, đổi art sang Sliced là đổi số đo.
+> Hai renderer cùng layer, cùng order trong một `SortingGroup` thì thứ tự giữa hai object không cố định, đẩy z về phía camera
+> cũng không quyết được: lớp phải đè renderer của **object kề bên** (miếng nối hai vật) cần order riêng, giãn bậc của lớp dưới.
