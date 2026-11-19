@@ -13,7 +13,7 @@ submodule. Không phụ thuộc Plan nào. Không có `§0`: hai công thức m�
 
 ## Ngữ cảnh đã chốt
 
-- **Người dùng:** cột Shop và khung popup dùng `DesignWidthFitter`; ảnh nền Home dùng `HomeBackgroundFitter` · dự án sau có UI dọc dựng
+- **Người dùng:** cột Shop, khung popup và popup toàn màn mở khoá booster (có `height`, GĐ2b) dùng `DesignWidthFitter`; ảnh nền Home dùng `HomeBackgroundFitter` · dự án sau có UI dọc dựng
   1:1 theo demo cỡ cố định, chạy cả điện thoại dài lẫn tablet.
 - **Mục tiêu:** khối UI giữ bề rộng thiết kế, thu đều khi khung hẹp hơn · ảnh nền phủ kín khung, đổi ảnh tablet khi khung rộng hơn ảnh
   chính, con đặt theo pixel ảnh · không làm bẩn asset khi đổi Game view.
@@ -271,6 +271,82 @@ Phương án bỏ: `UIBehaviour` để nhận `OnRectTransformDimensionsChange` 
 | cha về 0 giữa chừng | cha 1080 → 0, gọi `Update` | giá trị cũ giữ nguyên, không ném |
 
 **Mốc commit:** `feat(ui): DesignWidthFitter theo cỡ cha mỗi frame`.
+
+---
+
+## Giai đoạn 2b — Khối toàn màn vừa cả chiều cao cha
+
+**Mục tiêu:** khối có chiều cao thiết kế (popup toàn màn dựng 1080×2340) thu thêm khi cha thấp hơn thiết kế. Xong giai đoạn này popup
+toàn màn trên tablet nằm trọn trong khung, có lề hai bên; khối chỉ có `width` chạy y như GĐ2.
+
+**Vì sao bây giờ:** canvas popup không match height (Match 0.416 ở dự án nguồn): tablet 1536×2048 cho khung cao ~1762 đơn vị, khối cao 2340
+tràn cả hai mép — tiêu đề và nút ra khỏi màn. Người dùng thật: popup mở khoá booster của dự án nguồn.
+
+### `DesignWidthFitter.cs` › field › thêm sau `width`
+
+```csharp
+        [SerializeField] private float width = 1080f;
+        [Tooltip("Chiều cao thiết kế: > 0 thì khối thu thêm cho vừa chiều cao cha (canvas thấp hơn trên tablet). 0: chỉ xét bề rộng.")]
+        [SerializeField, Min(0f)] private float height;
+```
+
+và sau `_lastParentWidth`:
+
+```csharp
+        private float _lastParentWidth;
+        private float _lastParentHeight;
+```
+
+### `DesignWidthFitter.cs` › `Update` — đoạn cũ → đoạn mới
+
+Cũ:
+
+```csharp
+            if (_rect != null && _rect.parent is RectTransform parent && parent.rect.width != _lastParentWidth)
+                Fit();
+```
+
+Mới — chiều cao chỉ theo dõi khi khối có chiều cao thiết kế:
+
+```csharp
+            if (_rect != null && _rect.parent is RectTransform parent
+                              && (parent.rect.width != _lastParentWidth || height > 0f && parent.rect.height != _lastParentHeight))
+                Fit();
+```
+
+### `DesignWidthFitter.cs` › `Fit` — hai chỗ thêm
+
+```csharp
+            var area = parent.rect.width;
+            _lastParentWidth = area;
+            _lastParentHeight = parent.rect.height;
+            if (area <= 0f) return;
+```
+
+```csharp
+            var scale = Mathf.Min(1f, area / width);
+            if (height > 0f && _lastParentHeight > 0f) scale = Mathf.Min(scale, _lastParentHeight / height);
+```
+
+**Công thức → code:** `scale = min(1, cha.x / width, cha.y / height)` — khối vừa trọn khung theo trục chật hơn, không phóng. Chiều cao
+khối không driven: author đặt Size Delta Y = `height` (khối neo giữa) như mọi ô cỡ khác.
+
+**Quyết định** — thêm ô vào fitter có sẵn thay vì component mới: cùng lý do thay đổi (khối thiết kế theo một cỡ demo), `height` 0 giữ nguyên
+hành vi cũ nên prefab đã gắn không đổi. Phương án bỏ: neo từng phần tử theo % chiều cao — khe giữa các phần tử co lại còn phần tử giữ cỡ,
+quầng sáng sau icon đè lên tiêu đề trên tablet.
+
+**Editor setup:** khối popup toàn màn › Rect Transform neo giữa, Size Delta = `1080 × 2340` · **Design Width Fitter** › Height `2340`.
+Thiếu Height thì trên tablet khối tràn mép trên dưới, không log.
+
+| Case | Input | Kỳ vọng |
+|---|---|---|
+| height 0 | `width 1080`, `height 0`, cha 1322×1762 | scale 1 (như GĐ2) |
+| tablet | `height 2340`, cha 1322×1762 | scale 0.7530 |
+| máy demo | `height 2340`, cha 1080×2340 | scale 1 |
+| máy dài hẹp | `height 2340`, cha 1053×2340 | scale 0.975 (bề rộng chật hơn) |
+| cha đổi chiều cao | cha 1322×2340 → 1322×1762, gọi `Update` | scale 1 → 0.7530 |
+
+**Mốc commit:** `feat(ui): DesignWidthFitter vừa cả chiều cao khi có height`.
 
 ---
 
@@ -549,7 +625,7 @@ khung popup rộng hơn màn · bục lệch bóng · tablet thấy mép trên d
 
 | File | GĐ1 | GĐ2 | GĐ3 | GĐ4 | GĐ5 | GĐ6 |
 |---|---|---|---|---|---|---|
-| `Runtime/Utilities/UI/DesignWidthFitter.cs` (+ `.meta`) | tạo | `Update`, `OnTransformParentChanged`, `_lastParentWidth` | | | | `.meta` nhận GUID tạm |
+| `Runtime/Utilities/UI/DesignWidthFitter.cs` (+ `.meta`) | tạo | `Update`, `OnTransformParentChanged`, `_lastParentWidth`; GĐ2b: `height`, `_lastParentHeight` | | | | `.meta` nhận GUID tạm |
 | `Runtime/Utilities/UI/UICoverFitter.cs` (+ `.meta`) | | | tạo | `Update`, `OnRectTransformDimensionsChange`, `OnTransformParentChanged`, `_lastParentSize` | | `.meta` nhận GUID tạm |
 | `Tests/EditMode/UIFitterTests.cs` (agent) | tạo | thêm case | thêm case | thêm case | | |
 | `docs/Runtime/UIFitters/UIFitters.md`, `.html` (agent) | | | | | tạo | |
