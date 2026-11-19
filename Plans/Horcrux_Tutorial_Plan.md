@@ -139,7 +139,7 @@ Code đã nằm trong file dời ở GĐ1 — developer đọc lại đúng ba c
 
 | Chỗ | Nội dung |
 |---|---|
-| `ITutorialService.cs` › `ITutorialSpotlight.Lift(Canvas target, bool passesInput)`, `ILiftedCanvas.Drop()` | hợp đồng; doc của `DimAsync`: alpha 0 thả mọi canvas đã nâng |
+| `ITutorialService.cs` › `ITutorialSpotlight.Lift(Canvas target, bool passesInput, int tier = 0)` (bậc: cùng sorting order thì Unity vẽ không cố định thứ tự), `ILiftedCanvas.Drop()` | hợp đồng; doc của `DimAsync`: alpha 0 thả mọi canvas đã nâng |
 | `TutorialSpotlight.cs` › `LiftedCanvas`, `Lift`, `DropLift`, `DropAllLifts` | tối đa 4 canvas; sorting = sorting canvas lớp phủ + 1; raycaster đặt theo `passesInput` **trước** `overrideSorting`; target đã huỷ thì bỏ qua lúc trả |
 | `TutorialSpotlight.cs` › `DimAsync(0)`, `ResetNow` | gọi `DropAllLifts` |
 
