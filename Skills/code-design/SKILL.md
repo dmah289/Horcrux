@@ -208,6 +208,9 @@ khi viết ở chỗ người vi phạm đang nhìn** (Tooltip, XML doc, tài li
 - **Một từ = một nghĩa toàn hệ.** **Tên hệ, field, lý do theo cơ chế, không theo người dùng hay kịch bản đầu tiên** —
   kịch bản thứ hai tới thì tên nói sai. Trùng tên lớp di sản dự án:
   framework giữ tên, dự án giải bằng alias `using` ở lớp nối.
+- **Đoạn tên namespace không trùng type hay gọi của engine, runtime** (`Time`, `Random`, `Debug`, `Input`, `Object`): mọi
+  code nằm trong namespace anh em gõ `Time.` sẽ trỏ vào namespace đó (CS0234), buộc viết đủ `UnityEngine.Time` ở mọi hệ sau.
+  Tên hệ thêm hậu tố (`TimeSystem`) hay danh từ khác.
 - **Đổi tên là đổi cả hệ** (NT10): code, comment, chuỗi debug, tài liệu cùng lần, kiểm bằng grep; `.cs` và thư mục đổi
   trong Project window để giữ GUID. Khoá wire format, dữ liệu ngoài repo không đổi theo. Asset trong repo đổi key YAML cùng
   lần, không `FormerlySerializedAs` — attribute đó chỉ là cầu cho asset không sửa tay được, gỡ sau khi asset đã lưu tên mới.

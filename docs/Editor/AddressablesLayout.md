@@ -77,3 +77,5 @@ Headless: `Unity.exe -batchmode -quit -projectPath <p> -executeMethod <Namespace
 
 Áp hai lần liên tiếp: lần hai `git diff` trên `AddressableAssetsData/` rỗng. Đổi packing trong bảng rồi áp: chỉ dòng `m_BundleMode`
 của group đó đổi. Xoá một dòng khỏi bảng không gỡ entry: entry là của dự án tới khi bảng nói gỡ qua `RemoveEntriesByAddress`.
+Mọi `AssetReference` còn trỏ đúng entry: menu `Horcrux > Addressables > Reference Audit` báo 0 lỗi
+(`docs/Editor/AddressableReferenceAudit.md`).

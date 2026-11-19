@@ -56,6 +56,10 @@ Khối thiết kế theo một bề rộng thì giữ bề rộng đó: màn h�
 (bóng sàn, khe) thì con đặt theo pixel của ảnh và phóng cùng ảnh. Fitter chạy trong Editor khai giá trị nó ghi là driven
 (`DrivenRectTransformTracker`, `overrideSprite`) để đổi Game view không làm bẩn asset.
 
+**Khung nổi (bubble, tooltip) xếp ràng buộc cứng trước, thẩm mỹ sau.** Nằm trọn trong vùng an toàn và chỉ đúng vật được nói
+tới là cứng; phía ưu tiên, mũi tên giữa hộp là đẹp. Thiếu chỗ thì phần đẹp nhường: đổi sang phía còn chỗ, hộp trượt vào trong
+màn, mũi tên rời giữa hộp nhưng vẫn chỉ đúng vật.
+
 **9-slice là dữ liệu của art.** Đọc border hiện có trước khi ghi; art hai màu (thân và chân khác màu) chỉ đổi cạnh trên, dưới
 để vạch chia không bị kéo giãn. Chân thẻ dày mỏng khác art thì chỉnh `pixelsPerUnitMultiplier` trên Image, không sửa border.
 

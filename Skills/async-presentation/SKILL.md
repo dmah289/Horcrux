@@ -36,7 +36,8 @@ quanh từng callback trong vòng dispatch).
 >   khi mọi caller có token. `finally` trong `while` chạy mỗi vòng. `UniTask.Yield(ct)` **ném** khi huỷ — kiểm
 >   `IsCancellationRequested` sau nó là code chết. `UniTask` là struct: field chưa gán báo **Succeeded**, `await` trả ngay.
 > - **Addressables** qua `AssetReference` cho đơn vị nạp theo nhu cầu (màn, popup): không string key, giữ handle để
->   `Release()`. Prefab con trong cha đã nạp thì kéo thẳng — nhưng con chia đời với cha.
+>   `Release()`. Prefab con trong cha đã nạp thì kéo thẳng — nhưng con chia đời với cha. Reference gãy (GUID mất, asset
+>   chưa là entry) chỉ lộ ở lần nạp: sau khi chép, đổi tên, xoá asset thì soát bằng `docs/Editor/AddressableReferenceAudit.md`.
 > - **PrimeTween**, không tự viết runner: UI đặt `useUnscaledTime`; object huỷ hay về pool thì dừng tween; exception trong
 >   callback bị bọc thành log chung — `PRIME_TWEEN_SAFETY_CHECKS` để biết tween nào. `startDelay` lặp ở **mỗi** cycle; trễ
 >   một lần thì `ChainDelay` trong Sequence. `await` tween hay Sequence đã `Stop()` trả về như chạy xong — huỷ theo token
@@ -63,7 +64,10 @@ Dữ liệu đổi ở một nơi, người chơi thấy ở nơi khác, có khi
   engine dựng sau (layout UI, bounds), và ẩn vật tới lúc đặt xong.
 - **Nhiều lớp chung một nhịp (scale, độ sáng, màu) ghép một Sequence, chung thời lượng và ease** — đỉnh trùng nhau dù
   chỉnh số nào; căn bằng delay rời thì lệch ở lần chỉnh sau. Cú bùng (hạt, loé) bắn lúc nhịp **bắt đầu**: chờ tới đỉnh
-  mới bắn, mắt đọc thành trễ.
+  mới bắn, mắt đọc thành trễ. Nhịp nằm trong anim của hoạ sĩ (Spine, Animator) thì hiệu ứng neo vào **event đặt trong anim**
+  ở đúng khoảnh khắc; delay đo tay lệch ngay khi anim đổi clip, đổi tốc độ.
+- **Chỉ dẫn nhường ngay cho hành động của người chơi.** Tay chỉ, viền sáng bám vật người chơi sắp tác động thì tắt ngay frame
+  người chơi tác động, không fade: vật bắt đầu di chuyển kéo chỉ dẫn theo, và chỉ dẫn còn lại đọc thành trễ.
 - **Kết cục có hai mốc: sự thật ghi ngay, trình diễn neo vào thứ người chơi thấy.** Thắng, thua ghi save và báo hệ khác ở
   mốc xảy ra rồi mới diễn, để rời màn giữa lúc diễn không mất kết quả. Màn kết bắt đầu theo sự kiện nhìn thấy (vật cuối rời
   đi, chạm đích), không theo delay cố định: delay chỉ đúng với nhịp anim lúc chỉnh. *Đã sai một lần:* delay mở popup thắng

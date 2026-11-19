@@ -47,6 +47,12 @@ hình rơi dữ liệu của field đã xoá khỏi code. Lưu prefab bằng `Sa
 thừa trên prefab lồng nhau: gỡ một component thì sửa YAML từ bản đã commit (dòng `- component:` và khối `--- !u!114 &id`),
 diff chỉ còn đúng khối đó.
 
+> **Nền tảng** — hai asset trùng GUID (thư mục chép kèm `.meta` ngoài Editor) thì Unity giữ GUID cho bản nhập trước, cấp GUID
+> mới cho bản sau và ghi lại `.meta` của nó. `.meta` đổi trong `git status` là Unity tự vá; khôi phục là tạo trùng lần nữa.
+> Reference cũ vẫn trỏ bản gốc, nên thứ chép theo (atlas, ô trong asset cấu hình, entry Addressables) vẫn trỏ thư mục gốc:
+> trỏ lại chúng vào bản chép là việc phải làm, rồi soát `AssetReference` gãy (`docs/Editor/AddressableReferenceAudit.md`).
+> *Đã sai một lần:* `.meta` đổi được báo là vỡ reference; khôi phục xong Unity đổi lại, và atlas chép vẫn pack thư mục cũ.
+
 ## Import/export — dữ liệu đi qua tool
 
 File tool đọc–ghi là **của người dùng và hệ khác**. **Không sửa giá trị import** — ngoài tầm hợp lệ thì từ chối cả file hoặc

@@ -29,10 +29,18 @@ và chỉ tick phần hiệu ứng cần.
 - **Một object mang cả `SkeletonGraphic` và `SkeletonAnimation`.** Dựng bằng code Editor thì
   `SkeletonGraphic.AddSkeletonGraphicAnimationComponents(gameObject, skeletonDataAsset, material)`; component trả về đã nối với nhau.
   Ô tham chiếu trong script kiểu `SkeletonAnimation`: đó là thứ gọi anim.
+- **Dựng tay:** bản này không có menu `GameObject › Spine`. Kéo asset `SkeletonData` từ Project thả lên một object nằm trong
+  Canvas ở Hierarchy, hoặc Create Empty dưới Canvas rồi Add Component `Spine › SkeletonGraphic (Unity UI Canvas)` và
+  `Spine › SkeletonAnimation`, gán `SkeletonData` vào ô của `SkeletonGraphic`. Tên anim, Loop, Unscaled Time nằm ở
+  `SkeletonAnimation`, không ở `SkeletonGraphic`; UI chạy khi `timeScale` = 0 thì bật Unscaled Time.
 - **Material theo atlas.** Bản 4.3 mặc định atlas không nhân sẵn alpha (straight). Atlas straight dùng
   `Spine/Runtime/spine-unity/Materials/UI-StraightAlphaTex/SkeletonGraphicDefault-Straight.mat`, material của atlas có
   `_StraightAlphaInput: 1`. Atlas nhân sẵn alpha (PMA) dùng bộ `UI-PMATexture`. Lệch hai bên thì viền ảnh tối hoặc sáng quầng.
   Đầu file `.atlas.txt` có dòng `pma:true` khi nhân sẵn alpha; không có dòng đó là straight.
+  Skeleton mờ dần theo `CanvasGroup` cha thì dùng bản trong thư mục con `CanvasGroup/` (ví dụ
+  `UI-StraightAlphaTex/CanvasGroup/SkeletonGraphicDefault-CanvasGroupStraight.mat`). `CanvasGroup` chỉ hạ alpha của màu
+  đỉnh mà không nhân vào RGB; material thường coi màu đỉnh đã nhân sẵn nên lúc mờ, skeleton sáng loá thay vì nhạt dần.
+  Bản `CanvasGroup` bật `_CANVAS_GROUP_COMPATIBLE` để tự nhân.
 - **Texture straight trong project Linear phải bật sRGB.** Spine nhập texture theo preset ở ô `textureSettingsReference` của
   `SpineSettings.asset`; ô trống là preset PMA, tắt sRGB. Texture màu bị đọc như số linear thì màu nhạt đi rõ (kênh 99 hiện thành
   khoảng 166). Đặt ô đó trỏ `StraightAlphaPreset` trước khi nhập dữ liệu straight; texture đã nhập thì bật lại sRGB và Alpha Is
@@ -53,5 +61,23 @@ skeletonAnimation.Update(0f);   // đặt pose frame 0 ngay; thiếu thì frame 
 
 - Thời lượng lấy từ dữ liệu: `skeleton.Data.FindAnimation(name).Duration`. Spine và `UniTask.Delay` cùng chạy theo
   `Time.deltaTime`, nên chờ đúng số giây đó là khớp nhịp anim, không cần nghe sự kiện complete.
+- Track đang chạy: `AnimationState.GetTrack(0)` (4.3 không có `GetCurrent`); thời điểm trong anim là
+  `TrackEntry.AnimationTime`.
 - Ô tên anim trong Inspector: `[SpineAnimation(dataField: nameof(<ô SkeletonAnimation>))]` cho dropdown tên có thật.
 - Đo nhịp anim theo video demo: `docs/Editor/VideoDemo.md`; quay bản Unity bằng `FrameRecorder` (`docs/Editor/Probe.md`).
+
+## Event trong anim — neo hiệu ứng vào khoảnh khắc của anim
+
+Hiệu ứng ăn theo một khoảnh khắc trong anim (tay chạm xuống, chân chạm đất) neo vào event Spine đặt ở khoảnh khắc đó, không vào
+delay đo tay.
+
+- **Đặt event:** đúng chỗ là trong project Spine của hoạ sĩ. Sửa tay json được để thử: khối `"events": { "<tên>": {} }` ở gốc
+  (trước `"animations"`), và trong từng anim một mảng `"events": [ { "time": <giây>, "name": "<tên>" } ]`. Xuất lại từ Spine
+  Editor là mất phần sửa tay, nên bàn giao tên và thời điểm cho hoạ sĩ.
+- **Nghe event:** `AnimationState.Event += (TrackEntry entry, Spine.Event e) => …`, lọc theo `e.Data.Name`. `AnimationState` lấy
+  ở `Start`, chưa chắc có ở `Awake`. Skeleton dựng lại (đổi `SkeletonData` trong Inspector, reload) thay `AnimationState` mới:
+  đăng ký lại trong `SkeletonAnimation.OnAnimationRebuild`, gỡ ở bản cũ.
+- **Anim chưa có event:** đọc `TrackEntry.AnimationTime` mỗi `LateUpdate` (sau khi Spine đã tiến frame) và bắn khi mốc nằm trong
+  khoảng (frame trước, frame này]. Anim lặp thì thời điểm quay về đầu: khoảng bị cắt làm hai. Có event thật thì bỏ đường đọc
+  thời điểm, không bắn hai lần. Biết anim có event chưa: duyệt `animation.Timelines` tìm `EventTimeline` có event cùng tên.
+- File có cả `using Spine;` lẫn `using UnityEngine;` thì `Animation` mơ hồ (CS0104): viết đủ `Spine.Animation`, `Spine.Event`.
