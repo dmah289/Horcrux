@@ -78,6 +78,7 @@ lần demo, dải bàn chơi còn nửa và scale fit kẹt sàn; developer nghi
 | Ảnh chụp khớp demo mà vào chơi khối đè HUD | chụp lúc phần tử hiện theo gameplay chưa hiện · ép hiện với nội dung dài nhất rồi mới đo |
 | Số khung object lệch pixel demo vài px dù hình đã khớp | bounds gồm viền trong suốt và bóng của art · khung chỉ để tìm cột; số so với demo lấy bằng dải màu cùng cột trên cả hai ảnh |
 | Developer đè demo mờ lên Game view thấy lệch hàng chục px, đo thật chỉ vài px | Game view khác tỉ lệ demo · đọc cỡ Game view trước khi tin ảnh đè; so demo chỉ ở đúng cỡ demo |
+| Khối toàn màn (popup) khớp demo trên điện thoại, trên tablet tiêu đề và nút tràn hai mép | canvas của nó match khác canvas HUD (popup không match height): khung thấp hơn khối thiết kế · khối toàn màn thu theo trục chật hơn, `min(1, rộng/thiết kế, cao/thiết kế)`; đọc Match của **đúng canvas chứa khối**, chụp thêm một cỡ tablet |
 | Tablet hay 16:9: khối world xa HUD, vật world nhỏ hơn vật cùng cỡ ở khối khác | camera giữ một trục khác trục canvas · camera giữ trọn khung thiết kế, khoảng cách đo pixel thiết kế (mục Tỉ lệ màn) |
 | Đúng ở Editor, lệch trên máy; lệch đều mọi khối cùng một mép | inset của máy, Game view không có · tái hiện trên Simulator với file máy đó |
 | Kết quả Simulator mang tên máy mới mà số là của máy cũ | chọn máy hỏng (tên sai) mà vẫn chạy · runner dừng khi chọn máy hỏng; đọc dòng chọn máy trong kết quả |

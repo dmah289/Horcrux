@@ -205,6 +205,8 @@ Run In Background và auto-tick runner tự bật, và trả lại khi thoát �
 
 ## Bẫy
 
+- **Ảnh chụp đặt cạnh file ra (`Path.GetDirectoryName(outPath)`) mất sau lượt chạy**: `__OUT__` là đường dẫn trong thư mục tạm của
+  `playrun.sh`, chỉ file ra được chép về rồi thư mục tạm bị dọn. Ảnh, trace phụ ghi vào đường dẫn tuyệt đối viết thẳng trong script.
 - **Gọi `Service.Get`, `TryGet` trong script trước `WaitForSceneAsync`**: service `FindFromScene` + `LazyInit` chưa có scene thì InitArgs
   ghi nhận không thấy và không tìm lại cả phiên Play. Lỗi sau đó (thiếu phụ thuộc, `NullReferenceException` ở client khác) là của
   script đo, không của game. Kết quả lạ ngay sau một lần thăm dò thì chạy lại phiên Play sạch trước khi kết luận.
