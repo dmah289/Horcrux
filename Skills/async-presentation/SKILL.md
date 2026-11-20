@@ -70,6 +70,10 @@ Dữ liệu đổi ở một nơi, người chơi thấy ở nơi khác, có khi
   ở đúng khoảnh khắc; delay đo tay lệch ngay khi anim đổi clip, đổi tốc độ.
 - **Chỉ dẫn nhường ngay cho hành động của người chơi.** Tay chỉ, viền sáng bám vật người chơi sắp tác động thì tắt ngay frame
   người chơi tác động, không fade: vật bắt đầu di chuyển kéo chỉ dẫn theo, và chỉ dẫn còn lại đọc thành trễ.
+- **Ép dùng một hành động ngẫu nhiên trên trạng thái đã thiết kế: dựng trạng thái "trước" từ trạng thái đích, hành động đưa về
+  đúng đích.** Chạy ngẫu nhiên thật thì ý đồ của người thiết kế mất ngay lượt dạy. Trạng thái "trước" dựng sau mọi thứ đọc bản
+  thiết kế lúc vào (mục tiêu, gợi ý được chọn theo nó), trước lần vẽ đầu, và khoá input tới khi hành động xong; đường không chạy
+  được chỉ dẫn thì trả về đích ngay, không diễn.
 - **Kết cục có hai mốc: sự thật ghi ngay, trình diễn neo vào thứ người chơi thấy.** Thắng, thua ghi save và báo hệ khác ở
   mốc xảy ra rồi mới diễn, để rời màn giữa lúc diễn không mất kết quả. Màn kết bắt đầu theo sự kiện nhìn thấy (vật cuối rời
   đi, chạm đích), không theo delay cố định: delay chỉ đúng với nhịp anim lúc chỉnh. *Đã sai một lần:* delay mở popup thắng
