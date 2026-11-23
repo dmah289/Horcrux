@@ -25,13 +25,15 @@ GĐ10 của Plan đó có hai dòng `BoosterFlight.cs`: làm GĐ3 ở đây trư
 - **API nhận đích world:** hai caller đều tự quy chỗ đáp và bề ngang world ra màn hình bằng cùng sáu dòng; quy đổi vào
   `UIProxyFlight`, caller truyền camera, điểm, bề ngang world.
 - **Cố ý KHÔNG làm, kèm lý do:**
-  - overload nhận đích màn hình — không caller nào có sẵn đích màn hình.
+  - overload nhận đích màn hình — caller UI→UI duy nhất (`Bridge/BoosterUnlockTutorial.FlyIconAsync`: icon popup nảy tại chỗ, đứng,
+    rồi bay thẳng về nút HUD, cỡ theo bề ngang nút trên màn hình) khác hình bay: không vồng, không nghiêng, ease kiểu In để icon đập
+    vào nút. Gộp khi có caller thứ hai cùng lý do thay đổi; lúc đó thêm hình bay `Straight` và pha nảy–đứng trước khi bay.
   - gộp với `FlyRewardItem` — khác lý do thay đổi: icon thưởng bay UI→UI, mờ dần, nổ hạt ở mốc; bản sao này nhường chỗ cho vật world.
   - hỗ trợ canvas Screen Space Camera hay World Space — `visual.position = điểm màn hình` chỉ đúng ở Overlay; chưa có người dùng khác.
   - đuôi tuỳ chọn trong framework (`ParticleSystem` field) — `UIParticle` của dự án không có `ParticleSystem` ở gốc; hook rẻ hơn.
 - **Huỷ ném `OperationCanceledException`:** `await` một `Sequence` gắn `SetCancellationToken(ct)` mà token bị huỷ thì ném;
   `finally` vẫn tắt bản sao và gọi hook kết thúc. Comment hiện tại "huỷ thì await vẫn xong bình thường" là sai, không chép.
-- **Mở rộng sau:** overload đích màn hình khi có caller UI→UI · canvas Camera khi dự án có HUD ở chế độ đó.
+- **Mở rộng sau:** overload đích màn hình khi có caller UI→UI thứ hai cùng hình bay (mục trên) · canvas Camera khi dự án có HUD ở chế độ đó.
 
 ## Đã khảo sát
 

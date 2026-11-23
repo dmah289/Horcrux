@@ -107,7 +107,7 @@ Neo khi phân vân: **công sức đắt nhất là của developer.**
 
 | Tiêu chí | Bằng chứng | Ai chạy |
 |---|---|---|
-| thuật toán tất định, công thức, parser, serialize | phép kiểm chạy được; wire format kiểm qua đúng cửa đọc–ghi hệ dùng, không gọi serializer trực tiếp — setting của serializer là một phần của format | agent |
+| thuật toán tất định, công thức, parser, serialize | phép kiểm chạy được; wire format kiểm qua đúng cửa đọc–ghi hệ dùng, không gọi serializer trực tiếp — setting của serializer là một phần của format; state đầu (cài mới, save cũ) dựng qua đúng đường hệ tạo ra nó, không `new` trong test | agent |
 | tên, tham chiếu, đồng bộ tài liệu | grep quét | agent |
 | hiệu năng | số trước–sau tại chỗ đo | agent |
 | đúng–sai xác định được mà làm tay chậm, sót | vét cạn | agent, **tự đề xuất** |

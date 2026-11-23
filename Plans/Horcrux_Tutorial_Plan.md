@@ -23,8 +23,10 @@ com.horcrux.runtime.csproj,CategoryJam.Gameplay.csproj,Assembly-CSharp.csproj --
   (`HighlightConfig.HandDirection` của `CanvasSpotlight`): tay của hệ chung bám neo, chưa có consumer cần hướng khác (mục Mở rộng sau).
 - **Quyết định trái trực giác:** canvas lồng của đích **để raycaster bật lúc nghỉ** (khác hợp đồng `CanvasSpotlight` §3.2). Graphic thuộc
   canvas gần nhất đang bật, và raycaster của canvas cha không quét graphic của canvas lồng — tắt raycaster lúc nghỉ là nút không bấm được
-  ngoài tutorial. `Lift` nhớ trạng thái raycaster, đặt theo `passesInput`, `Drop` trả lại. (Cần kiểm trên consumer `CanvasSpotlight` hiện
-  có: nếu widget của nó vẫn bấm được lúc nghỉ với raycaster tắt thì ghi lại lý do ở đây.)
+  ngoài tutorial. `Lift` nhớ trạng thái raycaster, đặt theo `passesInput`, `Drop` trả lại. Bằng chứng ở source UGUI:
+  `Graphic.CacheCanvas` gán graphic vào canvas tổ tiên **đầu tiên đang bật**, `GraphicRaycaster.Raycast` chỉ duyệt
+  `GraphicRegistry.GetRaycastableGraphicsForCanvas(canvas)` của chính nó. Widget của `CanvasSpotlight` bấm được lúc nghỉ với raycaster
+  tắt chỉ khi component `Canvas` lồng của nó đang tắt — graphic khi đó thuộc canvas cha.
 - **`TutorialGate` nhiều chủ:** `Restrict` trả `Restriction` của chủ gọi (`Change` đổi luật tại chỗ, `Drop` gỡ đúng luật đó), item
   qua khi mọi luật đang giữ đều nhận. Cửa nhặt có hai chủ thật — kịch bản dạy nhặt và lớp khoá của bàn dựng sẵn cho một lượt dạy —
   một khe chung thì chủ ghi sau đè luật chủ trước, và nhả của bên này gỡ luôn luật bên kia.
@@ -142,13 +144,22 @@ Code đã nằm trong file dời ở GĐ1 — developer đọc lại đúng ba c
 
 | Chỗ | Nội dung |
 |---|---|
-| `ITutorialService.cs` › `ITutorialSpotlight.Lift(Canvas target, bool passesInput, int tier = 0)` (bậc: cùng sorting order thì Unity vẽ không cố định thứ tự), `ILiftedCanvas.Drop()` | hợp đồng; doc của `DimAsync`: alpha 0 thả mọi canvas đã nâng |
-| `TutorialSpotlight.cs` › `LiftedCanvas`, `Lift`, `DropLift`, `DropAllLifts` | tối đa 4 canvas; sorting = sorting canvas lớp phủ + 1; raycaster đặt theo `passesInput` **trước** `overrideSorting`; target đã huỷ thì bỏ qua lúc trả |
+| `ITutorialService.cs` › `ITutorialSpotlight.Lift(Canvas target, bool passesInput, int tier = 0)`, `ILiftedCanvas.Drop()` | hợp đồng; doc của `DimAsync`: alpha 0 thả mọi canvas đã nâng. Target **đang bật** lúc `Lift` và lúc `Drop`: consumer bật rồi mới nâng, thả rồi mới tắt |
+| `TutorialSpotlight.cs` › `LiftedCanvas`, `Lift`, `DropLift`, `DropAllLifts` | tối đa 4 canvas; sorting = sorting canvas lớp phủ + 1 + `tier`; target tắt lúc `Lift` thì `LogError` rồi vẫn nâng; raycaster đặt theo `passesInput` **trước** `overrideSorting`; target đã huỷ thì bỏ qua lúc trả |
 | `TutorialSpotlight.cs` › `DimAsync(0)`, `ResetNow` | gọi `DropAllLifts` |
 
 **Quyết định** — sorting suy từ canvas lớp phủ (`rootCanvas.sortingOrder + 1`), không phải số cấu hình: nút nâng luôn ngay trên lớp tối và
 dưới popup (lớp phủ 8, popup 10 ở dự án nguồn); một số cố định như 3103 của `CanvasSpotlight` vượt cả popup. — Trả về trong `finally` của
 service: kịch bản bị huỷ giữa chừng không để nút kẹt sorting cao.
+
+**Quyết định** — `tier` thay vì để Unity chọn: hai canvas Overlay cùng sorting order vẽ theo thứ tự engine tự chọn, đổi theo instance
+(vật bay vào nút đè ba nút, chui dưới nút thứ tư). Thứ phải đè một canvas nâng khác lấy bậc cao hơn. **Giới hạn:** lớp phủ + 1 + `tier`
+phải nhỏ hơn sorting của popup, không thì hoà với popup và lại không cố định thứ tự; ở dự án nguồn bậc 1 đã bằng popup (10) — chỉ an
+toàn vì popup đóng trước khi bậc 1 được nâng. Dự án cần bậc cao hơn khi popup còn mở thì giãn sorting giữa lớp phủ và popup.
+
+**Quyết định** — `Lift` nhận target tắt chỉ `LogError`, không tự bật: sorting đặt lên canvas lồng đang tắt không ăn (bật lên vẫn vẽ dưới
+lớp tối), nhưng bật hộ là đổi hành vi quan sát được của consumer. `Drop` không log: `DimAsync(0)`, `ResetNow` dọn cả target đã bị chủ tắt
+hợp lệ.
 
 | Case (agent viết, EditMode) | Input | Kỳ vọng |
 |---|---|---|
@@ -160,6 +171,9 @@ service: kịch bản bị huỷ giữa chừng không để nút kẹt sorting 
 | target đã huỷ | `DestroyImmediate` target rồi `ResetNow` | không ném, slot dùng lại được |
 | quá 4 | `Lift` lần 5 | `LogError`, trả null |
 | thiếu raycaster | `Lift(c, true)` trên canvas không raycaster | `LogError`, vẫn nâng |
+| bậc | `Lift(a, false)`, `Lift(b, false, tier: 1)` | sorting `b` = sorting `a` + 1 |
+| bậc âm | `Lift(c, false, tier: -3)` | sorting = lớp phủ + 1 |
+| target tắt | `SetActive(false)` rồi `Lift(c, false)` | `LogError` nêu tên canvas; slot vẫn chiếm, `Drop` trả được |
 
 **Mốc commit:** Horcrux `test(tutorial): case Lift`.
 

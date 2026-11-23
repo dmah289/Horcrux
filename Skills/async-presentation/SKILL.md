@@ -85,7 +85,9 @@ Dữ liệu đổi ở một nơi, người chơi thấy ở nơi khác, có khi
   theo nó), trước lần vẽ đầu, và khoá input tới khi hành động xong; đường không chạy được chỉ dẫn thì trả về đích ngay, không diễn.
 - **Trạng thái tạm có một nghĩa vụ trả, nghĩa vụ đi theo bên đang cầm.** Bên dựng trả nó trên mọi đường ra cho tới mốc bàn giao
   cho bên khác trả; `finally` quyết theo biến cục bộ ghi ngay sau mốc đó, không đọc trạng thái ngoài bật sau vài bước. *Đã sai
-  một lần:* kịch bản huỷ trước bước bật cờ ngoài, `finally` đọc cờ đó thành "đã bàn giao", trạng thái tạm kẹt lại.
+  một lần:* kịch bản huỷ trước bước bật cờ ngoài, `finally` đọc cờ đó thành "đã bàn giao", trạng thái tạm kẹt lại. **Trả theo
+  thứ tự ngược lúc dựng:** bước dựng sau hay cần điều kiện bước trước tạo ra; gỡ bước trước trước thì bước sau trả không ăn, không
+  gì báo. *Đã sai một lần:* tắt canvas lồng rồi mới trả sorting, canvas giữ sorting đã nâng.
 - **Kết cục có hai mốc: sự thật ghi ngay, trình diễn neo vào thứ người chơi thấy.** Thắng, thua ghi save và báo hệ khác ở
   mốc xảy ra rồi mới diễn, để rời màn giữa lúc diễn không mất kết quả. Màn kết bắt đầu theo sự kiện nhìn thấy (vật cuối rời
   đi, chạm đích), không theo delay cố định: delay chỉ đúng với nhịp anim lúc chỉnh. *Đã sai một lần:* delay mở popup thắng
@@ -109,7 +111,8 @@ Chất liệu quyết *cái gì được biến dạng*; phần vui đến từ 
 - **Sprite có cạnh dày (2.5D): tách gốc và thân, bóng là con của gốc** — gốc giữ vị trí và scale chủ đặt, hiệu ứng ghi lên
   thân; reset thân là về nghỉ.
 - **Vật bay giữa hai chủ: một node mang toàn bộ cỡ nhìn thấy;** rời cha giữ cỡ thế giới, mỗi frame một hàm đường cong đặt
-  cỡ, chủ mới chia lại cỡ ở một chỗ lúc đáp.
+  cỡ, chủ mới chia lại cỡ ở một chỗ lúc đáp. Điểm cất cánh chụp lúc nguồn còn đứng chỗ người chơi thấy, trước khi chủ nguồn
+  bắt đầu rời đi (anim đóng thu nhỏ, trượt ra).
 - **Đích chuyến bay đọc lại mỗi frame, không chốt lúc cất cánh:** chủ mới có thể đang trượt, lún, căn lại; chốt thì vật đáp
   chỗ cũ rồi giật. Giá là một lần đọc vị trí mỗi frame — rẻ hơn mọi cờ chọn vật nào được bám.
 - **Cú thu thập:** đích cỡ theo lòng vật chứa, nhỏ hơn đỉnh chuyến bay, cỡ về 0 tốc độ lúc chạm.
@@ -132,3 +135,6 @@ Chất liệu quyết *cái gì được biến dạng*; phần vui đến từ 
 > `size`; `sprite.bounds` vẫn là cỡ gốc của ảnh — đo phần nhìn thấy theo `drawMode`, đổi art sang Sliced là đổi số đo.
 > Hai renderer cùng layer, cùng order trong một `SortingGroup` thì thứ tự giữa hai object không cố định, đẩy z về phía camera
 > cũng không quyết được: lớp phải đè renderer của **object kề bên** (miếng nối hai vật) cần order riêng, giãn bậc của lớp dưới.
+> Hai canvas Overlay cùng sorting order cũng vậy: thứ phải đè lấy order cao hơn hẳn, và order suy từ một mốc (+1, +bậc) phải còn
+> dưới lớp kế trên. Lỗi lớp vẽ chỉ hiện ở một trong n instance dựng giống nhau là dấu hiệu hoà thứ tự. `overrideSorting`,
+> `sortingOrder` đặt lên canvas lồng đang tắt không ăn: bật rồi mới đặt, trả rồi mới tắt.
