@@ -49,7 +49,9 @@ trừu tượng chỉ nhận về hai câu cũ.
 Giả định chỉ vá khe hở giữa chừng, đủ cả ba: **nhỏ** · **đảo ngược được** · nhãn tại chỗ dùng. Khó đảo ngược: ghi đè hay
 xoá dữ liệu đã author (level, save, asset) · migration schema, wire format · thứ ngoài version control. Hướng developer chưa
 nghĩ tới thì nêu **một dòng kèm giá**, không tự đưa vào output; kéo sang hệ khác thì để "Mở rộng sau". Thứ developer tự
-nêu thì hỏi lại một lần để cân đắt–lợi, rồi theo developer.
+nêu thì hỏi lại một lần để cân đắt–lợi, rồi theo developer. **Chữ người chơi thấy (nhãn nút, toast) là hành vi quan sát được:**
+đổi logic không kéo theo đổi chữ, kể cả khi chữ cũ nghe lệch nghĩa — nêu một dòng. *Đã sai một lần:* nút đổi từ nạp đầy sang
+cộng một, agent đổi luôn nhãn, developer bắt trả lại.
 
 **Yêu cầu đổi vai của một input** (chỉ là khởi điểm, về sau thứ khác đè) **là đổi mô hình:** soát mọi khái niệm sinh ra từ vai
 cũ — cờ, khoá, tên field, nhánh riêng — rồi đề xuất trên mô hình mới. Đổi tên mà giữ cơ chế cũ là chưa đổi. *Đã sai một lần:*
@@ -63,7 +65,9 @@ hưởng quyết định đang bàn**: **thấy gì** (đường dẫn, dòng) �
 · **developer biết chưa** — chủ ý hay đã trôi. Không kể lại code. Mỗi lượt review đọc lại file hiện tại: báo lại lỗi đã sửa
 làm mất tin vào phát hiện còn đúng. Số đọc từ hai file YAML chỉ so được khi quy về một kiểu, hoặc đọc qua API engine. Code
 có nhánh `#if` thì nhánh đang chạy đọc trên assembly đã compile, không suy từ source: define toàn cục và define theo phiên
-bản package chồng nhau chọn nhánh khác điều source gợi ý. **Hành vi đọc giá trị sống ngoài repo (remote config, server) thì bản đang chạy là bản ngoài**,
+bản package chồng nhau chọn nhánh khác điều source gợi ý. **Sắp thay hay dựa vào một hiệu ứng có sẵn thì soát nó có hiện thật
+không:** code gọi mà asset không vẽ (object tắt, thiếu sprite, sai lớp) không lỗi nào báo — đó là phát hiện phải nêu trước khi
+thiết kế bản mới đứng trên nó. **Hành vi đọc giá trị sống ngoài repo (remote config, server) thì bản đang chạy là bản ngoài**,
 bản trong repo chỉ là lưới đỡ: sửa số trong repo chưa phải sửa hành vi. Phát hiện nêu cả hai bản; nghiệm thu giao developer
 đối chiếu bằng công cụ so. *Đã sai một lần:* hệ số nhân giá hạ về 1 trong asset được coi là đã sửa giá, trong khi console vẫn
 có thể giữ số cũ.
@@ -132,7 +136,9 @@ mới lấy mẫu; mắt developer trái số đo thì nghi chỗ đo trước. 
 *nhìn gì* · *khác trước ra sao* · *dấu hiệu hỏng*. **Developer chơi là cảm được thì agent không vào Play qua công cụ**: dừng
 ở phần tĩnh (code, YAML, eval không vào Play), chỉ ra nguyên nhân, sửa, giao kịch bản. Play qua công cụ chỉ cho thứ
 developer **không cảm được**: trace chứng minh refactor giữ chuyển động, số đo, trạng thái nội bộ (`feel-tune`). Play qua
-công cụ chạy trên save thật của developer: sao lưu đúng các key sẽ chạm trước khi vào, trả lại và so khớp trước khi báo.
+công cụ chạy trên save thật của developer: sao lưu đúng các key sẽ chạm trước khi vào, trả lại và so khớp trước khi báo
+(`playrun.sh` tự làm với PlayerPrefs; eval rời thì `PrefsSnapshot`, `docs/Editor/Probe.md`). *Đã sai một lần:* vài lượt dò luồng
+bằng eval rời thắng liền năm level trên save của developer, cộng cả tiền.
 
 **Hướng dẫn developer tự làm là output phải nghiệm thu:** mỗi giá trị, thứ tự, tên ô đã dựng thử trên engine, ở đúng điều kiện
 nơi dùng thật (chế độ render, đơn vị, quality). Số trong tài liệu mang theo đơn vị và điều kiện nó được đo. Công cụ kiểm đổi điều

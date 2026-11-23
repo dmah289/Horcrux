@@ -38,6 +38,10 @@ cờ "chuyển tab", trong màn chơi không có tab nên bấm không ra gì, k
 **Hiệu ứng không mang giá:** cửa chạy hiệu ứng không trừ kho, tiền hay lượt; mỗi nguồn trả (nút dùng, phần thưởng, hồi sinh, mua
 xong dùng ngay) trừ ở chỗ của nó rồi gọi cùng cửa. Nguồn mới không phải mọc cờ "miễn phí" trên cửa.
 
+**Cửa trả giá kiểm chỗ nhận trước khi trừ:** bên nhận bỏ qua im lặng khi đầy (mạng, kho, ô) thì người chơi mất giá mà không gì
+báo. Kiểm lúc bấm, không lúc mở màn mua — đầy có thể tới giữa chừng (hồi theo giờ, quà về); hết chỗ thì từ chối kèm phản hồi,
+không trừ, không chiếu quảng cáo.
+
 **Giá theo kết cục mà người chơi rời được giữa chừng thì đặt cọc trong save:** ghi cọc ở mốc cam kết (lần tác động đầu, không
 lúc vào màn), tất toán ở mọi đường ra — kết cục, bỏ có xác nhận, boot thấy cọc còn (phiên chết giữa chừng). Chưa có cọc thì rời
 không giá, không hỏi; hỏi xác nhận chỉ khi có giá thật. Trừ thật và xoá cọc cùng một cửa ghi — chết giữa hai bước là trừ hai lần.
@@ -78,7 +82,10 @@ field serialize kèm property. Ngoài ba ca, class phải chia file mới đọc
 **Gọi tường minh, không giao thứ tự cho callback Unity.** Callback Unity là cửa mỏng: **một** callback của **một chủ** gọi
 lần lượt các hàm có tên — thứ tự nằm ở một chỗ, đọc từ trên xuống là biết, không phụ thuộc engine chọn ai trước. Rải việc
 vào callback riêng của từng object chỉ khi gọi tường minh **đắt hơn hẳn** (kéo reference xuyên hệ, đảo chiều phụ thuộc) —
-nói giá tại chỗ.
+nói giá tại chỗ. **Dọn cũng vậy:** trả tài nguyên cho hệ khác (pool, service, đăng ký) nằm ở đường rời chủ động, chủ gọi trước
+khi unload; `OnDestroy` chỉ dừng việc của chính nó. Dọn "dự phòng" ở `OnDestroy` chạy cả lúc thoát app, khi các hệ kia đã tự dọn
+trước. *Đã sai một lần:* dừng Play ra một lỗi thiếu service; vá lỗi đó thì lộ hàng chục lỗi "không có trong pool" — đường dọn
+không nên chạy, không phải chỗ ném sai.
 
 **Sổ tay** — `*.Editor.cs` partial bọc `#if UNITY_EDITOR` · `IInitializable<T>` khi base không phải `MonoBehaviour<T>` ·
 không service locator trong hệ; object sinh lúc chạy tự nhận service qua `Init`, không truyền qua nơi `Instantiate` ·

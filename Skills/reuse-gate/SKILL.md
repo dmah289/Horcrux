@@ -14,6 +14,11 @@ Khảo sát **toàn bộ**, theo thứ tự: **hệ đang chạm và module nó 
 → **phần còn lại của dự án** → **package đã cài**. Cả hai cùng có thì **dùng Horcrux**, bản dự án là bản thứ hai cần đề xuất
 gộp. Nói rõ đã khảo sát đâu; trong Plan là bảng **"Đã khảo sát"**: *nguồn · lấy gì · không lấy, vì sao*.
 
+Khảo sát gồm cả **quyết định đã ghi** của dự án (bố cục, lớp vẽ, cấu trúc): thiết kế trái quyết định cũ không compile error nào
+bắt, chỉ lộ khi viết Plan hay khi developer đọc. Dự án có **đường di sản song song** cho cùng việc (hệ cũ còn sống cạnh hệ mới)
+thì đếm call site đường cũ trước khi thêm vào đường mới — nhánh sót lại vẫn chạy, chỉ lệch cấu hình. *Đã sai một lần:* tiếng thua
+đã qua hệ mới, tiếng thắng còn đi hệ cũ — không chỉnh được ở catalog, to nhỏ lệch nhau.
+
 Có sẵn đáp ứng → dùng lại · gần đúng → mở rộng nếu **thêm được mà không sửa cái cũ** · phải **bẻ cong bài toán** → viết mới.
 **Không dùng bản Horcrux thì đề xuất cải thiện Horcrux** (cái thiếu, cách sửa, công); bản dự án chỉ có lý do "chưa kịp tiến
 độ" và là **bản tạm**. *Đã sai một lần:* viết vòng tween và công thức scale riêng trong khi Horcrux đã có runner tween và
@@ -72,7 +77,8 @@ không mang domain → `Composites/` · gọi domain dự án → dự án · l�
 **Developer duyệt thì chọn đường theo tiến độ** (code runtime). Không gấp: Plan → developer gõ vào Horcrux → dự án dùng
 bản Horcrux. **Ưu tiên tiến độ thì dự án trước, Horcrux sau**, bốn bước:
 1. Agent viết **bản tạm** trong dự án, gom một chỗ, chữ ký theo Plan.
-2. Agent viết **Plan** (`docs` › Plan) vào `Plans/`; bản tạm ghi ở "Mở rộng sau" kèm đường dẫn Plan.
+2. Agent viết **Plan** (`docs` › Plan) vào `Plans/`; bản tạm ghi ở "Mở rộng sau" kèm đường dẫn Plan. Tới khi developer gõ, bản
+   tạm còn sửa (lỗi, kịch bản mới) thì Plan sửa **cùng lượt**: Plan là thứ được gõ, lệch là gõ lại lỗi đã sửa.
 3. **Developer tự gõ** vào Horcrux.
 4. Agent **chuyển dự án sang bản Horcrux và xoá bản tạm** cùng một lần; gõ lệch Plan thì theo code thật. Nghiệm thu: grep
    không còn tên bản tạm, compile sạch. Bản tạm đã gắn trong asset thì `.meta` bản Horcrux nhận lại GUID của bản tạm.

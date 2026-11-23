@@ -31,10 +31,12 @@ Khi nào được vào Play và khi nào giao developer chơi thử: `workflow` 
 | GC, batches, renderer bật mà không vẽ lúc diễn | `feeltrace.sh --gc`, `stat <file> M0 --cols 0` | có |
 | một hàm có cấp phát dưới vài chục KB | test PlayMode `Is.Not.AllocatingGCMemory`, **không** đọc từ M0 — GC mỗi frame trong Editor có nền nhiễu ≈ 100 KB | có |
 | trạng thái nội bộ sau một chuỗi thao tác | `playrun.sh` + `PlayProbe.Run` | có |
+| developer giao kiểm kịch bản hành vi (thiếu tiền thì mở cửa hàng, đủ thì trừ đúng) | một probe chạy hết các ca: dựng dữ liệu, `Click`, đọc số trước–sau; runner trả PlayerPrefs, save ngoài PlayerPrefs thì probe tự trả (`docs/Editor/Probe.md` › Bẫy); mỗi ngữ cảnh cửa tự chọn (menu, màn chơi) là một ca | có |
 | luồng dừng giữa chừng, Editor còn giữ nguyên (không chuyển màn, popup kẹt) | **không dừng Play**: `console_digest.py` tới dòng cuối trước khi im, rồi `PlayProbe.Field` đọc trạng thái hai bên chỗ đứt (hệ ngoài đã trả chưa, bên chờ còn sống không) | đang Play |
 | sửa xong, tái hiện luồng (thắng → quảng cáo → chuyển màn) | `playrun.sh`: `WaitForSceneAsync` trước mọi service, `Call` handler nút hay `Click`, đóng quảng cáo giả (`docs/Editor/Probe.md` › Bẫy), ghi số trước–sau | có |
 | mất hình, lệch lớp, nháy ở một frame | `FrameSheet` trong probe hay `Act` của kịch bản, một PNG | có |
 | một look ở vài giá trị thông số (lớp vẽ có bị che, độ toả, offset, scale đỉnh) | `UICapture.Variants` qua `script eval` (`docs/Editor/UIReskin.md`) | không |
+| tiếng "không phát", to nhỏ lệch giữa các tiếng | nguồn đang phát chưa (`PlayProbe.Field`), rồi nút `Audit Loudness` của catalog audio (`docs/Runtime/AudioSystem/AudioSystem.md`): file nhỏ hơn mặt bằng hàng chục dB nghe như không phát — sửa file, không sửa code | không (audit) |
 | cảm giác, nhịp, "đã tay" | developer chơi thử | — |
 
 ## Lệnh

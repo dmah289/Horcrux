@@ -33,7 +33,9 @@ xong **trước tín hiệu cần tới nó** — tín hiệu phát ngay sau khi
 `Awake`/`OnDestroy`; view tự ẩn bằng tắt chính nó thì cặp bật/tắt gỡ nó khỏi chủ ngay lần ẩn đầu.
 
 > **Nền tảng** — lúc thoát app, `OnApplicationQuit` của mọi object chạy trước `OnDestroy`: service tự quản đời (singleton
-> bên thứ ba) có thể đã trả `null` khi vế huỷ chạy. Vế huỷ của object sống suốt phiên kiểm `null` trước khi gỡ.
+> bên thứ ba) có thể đã trả `null` khi vế huỷ chạy. Vế huỷ của object sống suốt phiên kiểm `null` trước khi gỡ. Cờ "đang thoát"
+> có sẵn: `Application.exitCancellationToken` huỷ trước cả `Application.quitting`, lúc mọi object còn sống (đo khi dừng Play trong
+> Editor) — không cần tự bật cờ ở `OnApplicationQuit`.
 
 **Điều kiện dựng hệ ghi vào tài liệu, không sinh code canh.** Tạo asset, dựng GameObject, gán reference, đặt layer, thêm
 scene vào build là mục **"Trước khi chạy"** của tài liệu module (`docs` › `.md`); thiếu thì xử lý theo bảng guard
@@ -50,7 +52,9 @@ File mới do package tự sinh khi Editor chạm
 hai giá trị rồi hỏi commit. *Đã sai một lần:* lưu scene làm asset cấu
 hình rơi dữ liệu của field đã xoá khỏi code. Lưu prefab bằng `SaveAsPrefabAsset` ghi lại cả field chưa serialize và override
 thừa trên prefab lồng nhau: gỡ một component thì sửa YAML từ bản đã commit (dòng `- component:` và khối `--- !u!114 &id`),
-diff chỉ còn đúng khối đó.
+diff chỉ còn đúng khối đó. Lệnh dựng lỗi giữa chừng mà asset chưa lưu thì mở lại để bỏ phần dở rồi dựng từ đầu, không vá tiếp
+trên trạng thái không ai biết. **Sửa text YAML khi developer cũng đang làm:** kiểm asset có đang mở, đang bẩn trong Editor (Editor
+lưu sau sẽ đè); neo theo nội dung, không theo số dòng; giá trị developer đổi giữa hai lượt là quyết định của họ, giữ nguyên.
 
 > **Nền tảng** — hai asset trùng GUID (thư mục chép kèm `.meta` ngoài Editor) thì Unity giữ GUID cho bản nhập trước, cấp GUID
 > mới cho bản sau và ghi lại `.meta` của nó. `.meta` đổi trong `git status` là Unity tự vá; khôi phục là tạo trùng lần nữa.

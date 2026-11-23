@@ -75,7 +75,11 @@ Dữ liệu đổi ở một nơi, người chơi thấy ở nơi khác, có khi
   chỉnh số nào; căn bằng delay rời thì lệch ở lần chỉnh sau. Cú bùng (hạt, loé) bắn lúc nhịp **bắt đầu**: chờ tới đỉnh
   mới bắn, mắt đọc thành trễ. Nhịp nằm trong anim của hoạ sĩ (Spine, Animator) thì hiệu ứng neo vào **event đặt trong anim**
   ở đúng khoảnh khắc; delay đo tay lệch ngay khi anim đổi clip, đổi tốc độ. Chặng code chạy song song với anim (vật bay tới đích
-  trong lúc clip chạy) lấy thời lượng từ chính dữ liệu anim, vì cùng lý do.
+  trong lúc clip chạy) lấy thời lượng từ chính dữ liệu anim, vì cùng lý do. Nhịp do code dựng thì tiếng, rung vào **mốc bên
+  trong** chuyển động bằng callback chèn vào chính Sequence đó, mốc lấy từ hàm định nghĩa pha — chỉnh núm thì tiếng dời theo.
+- **Phản hồi kéo dài (nhạc, tiếng loop) thuộc chủ có cùng đời:** nhạc suốt phiên phát từ thứ sống suốt phiên, không bật lại ở
+  mỗi màn. Tiếng bắt đầu, dừng, tắt lúc nào là một câu của kịch bản — hỏi, không suy từ chỗ tiện gọi. *Đã sai một lần:* nhạc nền
+  gắn vào lúc vào level, track đặt tên theo level.
 - **Chỉ dẫn nhường ngay cho hành động của người chơi.** Tay chỉ, viền sáng bám vật người chơi sắp tác động thì tắt ngay frame
   người chơi tác động, không fade: vật bắt đầu di chuyển kéo chỉ dẫn theo, và chỉ dẫn còn lại đọc thành trễ.
 - **Ép dùng một hành động ngẫu nhiên trên trạng thái đã thiết kế: dựng trạng thái "trước" từ trạng thái đích, hành động đưa về
@@ -114,7 +118,8 @@ Chất liệu quyết *cái gì được biến dạng*; phần vui đến từ 
   cỡ, chủ mới chia lại cỡ ở một chỗ lúc đáp. Điểm cất cánh chụp lúc nguồn còn đứng chỗ người chơi thấy, trước khi chủ nguồn
   bắt đầu rời đi (anim đóng thu nhỏ, trượt ra).
 - **Đích chuyến bay đọc lại mỗi frame, không chốt lúc cất cánh:** chủ mới có thể đang trượt, lún, căn lại; chốt thì vật đáp
-  chỗ cũ rồi giật. Giá là một lần đọc vị trí mỗi frame — rẻ hơn mọi cờ chọn vật nào được bám.
+  chỗ cũ rồi giật. Giá là một lần đọc vị trí mỗi frame — rẻ hơn mọi cờ chọn vật nào được bám. Đích là chỗ **chưa có** (ô sắp
+  mở, hàng đang giãn) thì hỏi chính hàm bố cục hàng dùng để xếp, với số phần tử sau thay đổi.
 - **Cú thu thập:** đích cỡ theo lòng vật chứa, nhỏ hơn đỉnh chuyến bay, cỡ về 0 tốc độ lúc chạm.
 - **Vật chui vào vật chứa:** vật chứa tách mép trước khỏi thân; vật vào bay trên cả vật chứa, lúc đáp mới xuống giữa lòng và
   mép rồi chìm dưới mép. Nắp và mép nằm ngoài vùng vật chiếm lúc đáp — đo bằng số trên prefab trước khi giao chơi thử.
@@ -122,6 +127,12 @@ Chất liệu quyết *cái gì được biến dạng*; phần vui đến từ 
   chứa rút lui tại chỗ, không bay ngược về nguồn tranh chú ý với thứ vừa nhận.
 - **Một nhóm cùng chịu một tác động:** cả nhóm cùng báo trước để người chơi thấy ai bị nhắm; chuyển động sau đó lệch nhau theo
   vị trí (thời điểm, biên độ, số vòng) để đọc được nguồn lực và không thành một tấm cứng — demo cho cả nhóm đi cùng lúc thì theo demo.
+- **Lực của cú đáp đọc từ gia tốc cuối chuyến:** "đập vào" là tốc độ lớn nhất lúc chạm (pha cuối tăng tốc) rồi vật nhận đáp lại;
+  "đặt xuống" là chậm dần tới đích. **Một cử chỉ một hình dạng ở mọi nơi** — vật vào chỗ chứa dùng chung một hàm đường cong dù bay
+  trong world hay trên UI; mỗi bên chỉ quy đổi hệ toạ độ.
+- **Bản sao UI bay tới vật world:** cỡ quy từ bề ngang đích trên màn hình, tới nơi nhường vật thật cùng frame. Lớp vẽ chọn trong
+  cây canvas sẵn có trước khi mở canvas mới (bố cục là quyết định đã chốt của dự án). Đổi cỡ bằng khung, không scale, khi có con
+  phải giữ cỡ riêng (đuôi hạt).
 - **Sprite giữ tỉ lệ hoạ sĩ vẽ;** cỡ và vị trí đo pixel trên ảnh đích, quy về phần đặc của sprite.
 
 > **Nền tảng** — autosize TextMeshPro chỉ co khi tràn **chiều cao**; từ rộng hơn bề ngang bị ngắt giữa từ. "Tối đa n dòng"
