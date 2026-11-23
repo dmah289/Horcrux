@@ -107,7 +107,7 @@ Neo khi phân vân: **công sức đắt nhất là của developer.**
 
 | Tiêu chí | Bằng chứng | Ai chạy |
 |---|---|---|
-| thuật toán tất định, công thức, parser, serialize | phép kiểm chạy được; wire format kiểm qua đúng cửa đọc–ghi hệ dùng, không gọi serializer trực tiếp — setting của serializer là một phần của format | agent |
+| thuật toán tất định, công thức, parser, serialize | phép kiểm chạy được; wire format kiểm qua đúng cửa đọc–ghi hệ dùng, không gọi serializer trực tiếp — setting của serializer là một phần của format; state đầu (cài mới, save cũ) dựng qua đúng đường hệ tạo ra nó, không `new` trong test | agent |
 | tên, tham chiếu, đồng bộ tài liệu | grep quét | agent |
 | hiệu năng | số trước–sau tại chỗ đo | agent |
 | đúng–sai xác định được mà làm tay chậm, sót | vét cạn | agent, **tự đề xuất** |
@@ -125,7 +125,8 @@ mới lấy mẫu; mắt developer trái số đo thì nghi chỗ đo trước. 
 **Cảm giác — dừng và giao, không dựng proxy.** Báo *"cần chơi thử"* kèm kịch bản: *vào đâu* · *làm gì* (chuỗi ngắn nhất) ·
 *nhìn gì* · *khác trước ra sao* · *dấu hiệu hỏng*. **Developer chơi là cảm được thì agent không vào Play qua công cụ**: dừng
 ở phần tĩnh (code, YAML, eval không vào Play), chỉ ra nguyên nhân, sửa, giao kịch bản. Play qua công cụ chỉ cho thứ
-developer **không cảm được**: trace chứng minh refactor giữ chuyển động, số đo, trạng thái nội bộ (`feel-tune`).
+developer **không cảm được**: trace chứng minh refactor giữ chuyển động, số đo, trạng thái nội bộ (`feel-tune`). Play qua
+công cụ chạy trên save thật của developer: sao lưu đúng các key sẽ chạm trước khi vào, trả lại và so khớp trước khi báo.
 
 **Hướng dẫn developer tự làm là output phải nghiệm thu:** mỗi giá trị, thứ tự, tên ô đã dựng thử trên engine, ở đúng điều kiện
 nơi dùng thật (chế độ render, đơn vị, quality). Số trong tài liệu mang theo đơn vị và điều kiện nó được đo. Công cụ kiểm đổi điều
@@ -137,7 +138,9 @@ vào vật ngoài canvas, không vẽ gì.
 *sức* (không gian đầu vào lớn, lặp nhiều) · *thiên kiến* (ca biên khó nghĩ hết — **liệt kê biên trước khi chạy**: rỗng,
 một phần tử, chạm giới hạn, trùng, ngoài dải, thứ tự đảo, hai sự kiện cùng lúc, frame đầu, object huỷ giữa chừng) · *tầm
 nhìn* (chứng minh **vắng mặt**; state nội bộ sai khi màn hình đúng; rò rỉ sau hàng nghìn vòng) · *nhất quán chéo* (nhiều
-bản buộc khớp; trước–sau refactor phải trùng). Không dấu hiệu nào thì đọc code là xong.
+bản buộc khớp; trước–sau refactor phải trùng). Không dấu hiệu nào thì đọc code là xong. **Đổi mô hình của hệ thì chạy lại
+mọi dòng kịch bản đã chốt** trên dữ liệu asset thật — test dựng dữ liệu riêng không thấy config đã trôi; luật thuần chạy
+qua eval không vào Play, Play chỉ còn cho wiring và đường host.
 
 **Cheat — mở đường tới kịch bản, không mở nắp kỹ thuật.** Chính đáng khi kịch bản **không tới được bằng đường người chơi
 trong thời gian hợp lý**: thời gian (hết tuần) · khối lượng (đủ điểm mốc cuối) · trạng thái đầu (save mới). Mỗi nút là một

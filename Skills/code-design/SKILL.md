@@ -184,6 +184,11 @@ lỗi fail-open (hệ tự đứng, hoặc thiếu nó hỏng ở cửa người
 nổ nằm trong `#if DEBUG` của thư viện · nổ trễ ở ô trống chỉ chạm khi tải cao (nút Validate ở authoring, không lọc null lúc
 chạy). *Đã sai một lần:* field khoảng thời gian không default thành 0, ghi đĩa mỗi frame, không một dòng log.
 
+> **Nền tảng** — serializer của Unity không giữ `null` cho `string` và class `[Serializable]` lồng: đọc từ asset ra `""` và
+> object rỗng. State có mặc định author trong asset thì nghĩa *"chưa có"* không đặt vào `null` của chính field đó — suy từ
+> field hệ quyết được (id 0 = chưa quyết) hoặc chuẩn hoá ở cửa quyết nghĩa. *Đã sai một lần:* luật coi `null` là "chưa báo";
+> save cài mới lấy mặc định từ asset ra `""`, panel hiện như ca có thật.
+
 **`try/catch` chỉ khi gọi được tên thứ ném ra** (I/O, parse, network, reflection, dữ liệu ngoài, code người khác trong vòng
 lặp của mình); bắt rồi phải xử lý, không nuốt. `catch (Exception)` trần chỉ ở biên trên cùng. **Quy ước chỉ thay được guard
 khi viết ở chỗ người vi phạm đang nhìn** (Tooltip, XML doc, tài liệu module).

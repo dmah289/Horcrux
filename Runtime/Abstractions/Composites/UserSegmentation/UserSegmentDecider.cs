@@ -69,7 +69,7 @@
             if (matchedSegmentId == purchasedSegmentId)
                 matchedSegmentId = 0;
 
-            int target = matchedSegmentId != 0 ? matchedSegmentId : defaultSegmentId;
+            int target = CampaignTarget(matchedSegmentId, defaultSegmentId);
 
             return MoveTo(state, target, UserSegmentChangeReason.CampaignResolved, matchedKeyword, isAmbiguous);
         }
@@ -87,9 +87,13 @@
             string matchedKeyword, bool isAmbiguous, int defaultSegmentId)
         {
             state.LastCampaign = campaign;
-            int target = matchedSegmentId != 0 ? matchedSegmentId : defaultSegmentId;
+            int target = CampaignTarget(matchedSegmentId, defaultSegmentId);
             return MoveTo(state, target, UserSegmentChangeReason.CampaignResolved, matchedKeyword, isAmbiguous);
         }
+
+        // No match lands on the default, like organic.
+        private static int CampaignTarget(int matchedSegmentId, int defaultSegmentId)
+            => matchedSegmentId != 0 ? matchedSegmentId : defaultSegmentId;
 
         /// <summary>The one write of the segment: prev, curr and reason move together. No-op when already there.</summary>
         private static Change MoveTo(UserSegmentState state, int target, UserSegmentChangeReason reason,
