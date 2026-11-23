@@ -5,7 +5,8 @@ description: Dùng khi merge hai nhánh của project Unity — nhất là khi m
 
 # merge-audit — merge nhánh Unity, chứng minh không mất gì
 
-Skill công cụ. `<horcrux>` là gốc Horcrux trong dự án. Chi tiết lệnh và cách đọc kết quả: `docs/Editor/MergeAudit.md`.
+Skill dưới `Agent/horcrux.md` (NT, tầng, ký hiệu định nghĩa ở đó).
+`<horcrux>` là gốc Horcrux trong dự án. Chi tiết lệnh và cách đọc kết quả: `docs/Editor/MergeAudit.md`.
 
 ## Luật
 

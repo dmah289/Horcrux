@@ -5,7 +5,7 @@ description: Dùng khi hệ cần công thức toán hay vật lý: quyết có 
 
 # math-physics — toán và vật lý trong hệ
 
-Skill nền dưới `Skills/horcrux_skill.md` (NT, tầng, ký hiệu định nghĩa ở đó). Skill này không có
+Rule dưới `Agent/horcrux.md` (NT, tầng, ký hiệu định nghĩa ở đó). Skill này không có
 `reference.md`.
 
 ## Khi nào dùng toán, sâu tới đâu

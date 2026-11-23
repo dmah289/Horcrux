@@ -5,7 +5,8 @@ description: Dùng khi chỉnh, refactor hay dò lỗi feeling của game Unity 
 
 # feel-tune — chỉnh feeling với công cụ dựng sẵn
 
-Skill công cụ. `<horcrux>` là gốc Horcrux trong dự án. API chi tiết: `docs/Editor/Probe.md`, `docs/Editor/FeelTrace.md`.
+Skill dưới `Agent/horcrux.md` (NT, tầng, ký hiệu định nghĩa ở đó).
+`<horcrux>` là gốc Horcrux trong dự án. API chi tiết: `docs/Editor/Probe.md`, `docs/Editor/FeelTrace.md`.
 Khi nào được vào Play và khi nào giao developer chơi thử: `workflow` › Nghiệm thu. Số tinh chỉnh là nháp: NT11.
 
 ## Luật

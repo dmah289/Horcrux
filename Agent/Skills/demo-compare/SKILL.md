@@ -5,7 +5,7 @@ description: Dùng khi so màn game với ảnh demo hay ảnh chụp máy thậ
 
 # demo-compare — so demo ở Game view và trên máy giả lập
 
-Skill công cụ dưới `Skills/horcrux_skill.md` (NT, tầng, ký hiệu định nghĩa ở đó). Tool: `docs/Editor/Probe.md` (chạy nhiều cỡ,
+Skill dưới `Agent/horcrux.md` (NT, tầng, ký hiệu định nghĩa ở đó). Tool: `docs/Editor/Probe.md` (chạy nhiều cỡ,
 nhiều máy, chọn máy Simulator, thêm máy thật, đo khung object) · `docs/Editor/UIReskin.md` (dò dải màu, ghép ảnh cạnh nhau, số lệch `Diff`, fit shader vầng sáng) ·
 `docs/Editor/VideoDemo.md` (video demo: lưới khung hình, đoạn động, bám vật ra thời lượng và ease, mốc xuất hiện từng lớp, khung vật
 để đo cỡ, so nhịp với bản quay Unity; quay bản Unity bằng `FrameRecorder` của Probe). Dựng

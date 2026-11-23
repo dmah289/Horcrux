@@ -5,7 +5,8 @@ description: Dùng sau mỗi task sửa code C# trong project Unity, trước kh
 
 # compile-check — một lệnh kiểm sau mỗi task
 
-Skill công cụ. `<horcrux>` là gốc Horcrux trong dự án. Chi tiết: `docs/Editor/CompileCheck.md`.
+Skill dưới `Agent/horcrux.md` (NT, tầng, ký hiệu định nghĩa ở đó).
+`<horcrux>` là gốc Horcrux trong dự án. Chi tiết: `docs/Editor/CompileCheck.md`.
 
 ## Luật
 

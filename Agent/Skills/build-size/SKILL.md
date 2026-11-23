@@ -5,7 +5,8 @@ description: Dùng khi developer hỏi vì sao build nặng, muốn giảm size,
 
 # build-size — tìm byte nằm ở đâu trước khi gỡ
 
-Skill công cụ. `<horcrux>` là gốc Horcrux trong dự án. Chi tiết: `docs/Editor/BuildSize.md`. Công cụ hiện mổ APK Android;
+Skill dưới `Agent/horcrux.md` (NT, tầng, ký hiệu định nghĩa ở đó).
+`<horcrux>` là gốc Horcrux trong dự án. Chi tiết: `docs/Editor/BuildSize.md`. Công cụ hiện mổ APK Android;
 platform khác thì mở rộng `apk_report.py` trước khi đo.
 
 ## Luật

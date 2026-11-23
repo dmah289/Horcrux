@@ -5,7 +5,7 @@ description: Dùng cho mọi tác vụ, từ lúc nhận việc tới báo cáo 
 
 # workflow — một việc, từ nhận việc tới báo cáo
 
-Skill nền dưới `Skills/horcrux_skill.md` (NT, tầng, ký hiệu định nghĩa ở đó).
+Rule dưới `Agent/horcrux.md` (NT, tầng, ký hiệu định nghĩa ở đó).
 
 Trình tự: **phỏng vấn tới khi chốt kịch bản** → **đối chiếu code với developer** → `reuse-gate` → làm theo kịch bản →
 **nghiệm thu đúng loại** → **quét cuối chat**.
@@ -58,21 +58,19 @@ một hướng, kèm bản tạm và Plan nếu có.
 
 ## Chưng cất tư tưởng
 
-Quyết định cho một bài toán cụ thể mang tư tưởng của developer, và trôi mất khi bài toán xong. **Quét cuối chat là bắt buộc,
-không đợi nhắc:** duyệt cả chat, tìm rule và tư tưởng dùng chung cho game Unity từ thứ developer yêu cầu, sửa, hoặc đồng ý.
-Mỗi dòng định ghi đi qua: **① khái quát** — tách tư tưởng khỏi quyết định riêng, kèm vì sao; phép kiểm *đúng cho ít nhất
-hai loại game khác nhau không?* · **② đối chiếu toàn bộ skill** — đã có thì thôi · trường hợp riêng thì trỏ về · gộp được
-vào luật đang có thì gộp · mâu thuẫn thì nêu để developer phân xử · **③ ghi theo tầng:**
+Quyết định cho một bài toán cụ thể mang tư tưởng của developer, và trôi mất khi bài toán xong. **Bài học ghi ngay lúc vấp;
+quét cuối chat là bắt buộc, không đợi nhắc:** duyệt cả chat, tìm rule, tư tưởng và bài học dùng chung cho game Unity từ thứ
+developer yêu cầu, sửa, hoặc đồng ý. Mỗi dòng định ghi đi qua: **① khái quát** — tách tư tưởng khỏi quyết định riêng, kèm
+vì sao; phép kiểm *đúng cho ít nhất hai loại game khác nhau không?* · **② cổng ghi** ở `horcrux.md` — loại nào, file nào,
+quyền gì · **③ đối chiếu toàn bộ `Agent/`** — đã có thì thôi · trường hợp riêng thì trỏ về · gộp được vào luật đang có
+thì gộp · mâu thuẫn thì nêu để developer phân xử.
 
-| Thứ định ghi | Ghi vào | Quyền |
-|---|---|---|
-| bẫy, Nền tảng, Sổ tay | `reference.md` của skill liên quan | **ghi thẳng**, liệt kê nguyên văn trong báo cáo để veto |
-| luật, tư tưởng mới hay sửa luật | `SKILL.md`, `horcrux_skill.md` | **đề xuất**, developer duyệt mới ghi |
-| quy ước chỉ chung cho một hệ | tài liệu module | ghi thẳng |
-| code thật lệch Plan | *lỗi* → báo kèm bằng chứng · *trôi* (tên, thứ tự, chi tiết không mang lý do) → sync Plan theo code · *tư tưởng* (đổi hình dạng, ranh giới, kiểu, cách tiêm) → theo hai hàng đầu | |
+**Code thật lệch Plan:** *lỗi* → báo kèm bằng chứng · *trôi* (tên, thứ tự, chi tiết không mang lý do) → sync Plan theo
+code · *tư tưởng* (đổi hình dạng, ranh giới, kiểu, cách tiêm) → qua cổng ghi.
 
-Chỉ khái quát lựa chọn có "vì sao" lặp lại được; hằng số, tên, phạm vi một task thì không. Dòng ghi vào skill **không mang
-domain dự án** (NT8), theo `docs` › Skill, không bao giờ vào mục developer.
+Chỉ khái quát lựa chọn có "vì sao" lặp lại được; hằng số, tên, phạm vi một task thì không. Dòng ghi vào `Agent/` **không
+mang domain dự án** (NT8), theo `docs` › Agent, không bao giờ vào mục developer. Báo cáo kết bằng khối *Đã ghi / Đề xuất /
+Về bạn / Không ghi* của `horcrux.md`.
 
 ## Subagent
 
@@ -112,7 +110,7 @@ Neo khi phân vân: **công sức đắt nhất là của developer.**
 
 **Việc lặp lại thì đề xuất công cụ ngay lượt đó** (lần thứ hai làm cùng chuỗi thao tác, hoặc biết sẽ làm lại): một dòng
 *việc gì · lặp mấy lần · công cụ trông thế nào · chỗ đặt · công viết · tiết kiệm mỗi lần*. Mặc định đặt ở Horcrux (tool
-Editor, script `Tools~`, skill); dự án chỉ giữ lớp nối. Developer đồng ý thì viết công cụ, tài liệu, cập nhật skill hoặc mở skill công cụ mới kèm hàng trong bảng chỉ dẫn.
+Editor, script `Tools~`, skill); dự án chỉ giữ lớp nối. Developer đồng ý thì viết công cụ, tài liệu, cập nhật skill hoặc mở skill mới kèm hàng trong bảng chỉ dẫn.
 
 **Git:** commit chỉ mang phần của việc mình, không đụng thứ developer đã stage, không `stash` khi còn đường khác · commit
 trong Horcrux thì commit luôn con trỏ submodule ở dự án · sau một lượt chờ dài, đọc lại trạng thái trước bước ghi ra ngoài

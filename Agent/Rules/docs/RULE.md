@@ -1,11 +1,11 @@
 ---
 name: docs
-description: Dùng khi viết hoặc cập nhật tài liệu: .md cho agent, .html cho developer và designer dùng hệ, Plan cho developer tự gõ, Manual cho người dùng tool, skill, và kỷ luật viết áp cho mọi loại.
+description: Dùng khi viết hoặc cập nhật tài liệu: .md cho agent, .html cho developer và designer dùng hệ, Plan cho developer tự gõ, Manual cho người dùng tool, file trong Agent/, và kỷ luật viết áp cho mọi loại.
 ---
 
-# docs — .md, .html, Plan, Manual, skill
+# docs — .md, .html, Plan, Manual, Agent
 
-Skill nền dưới `Skills/horcrux_skill.md` (NT, tầng, ký hiệu định nghĩa ở đó).
+Rule dưới `Agent/horcrux.md` (NT, tầng, ký hiệu định nghĩa ở đó).
 
 Mỗi hệ và tool có tài liệu riêng, **không đặt cạnh code**, tên theo tên hệ, `.md` mở đầu bằng dòng `Code:` trỏ thư mục code
 tính từ gốc Horcrux. **Hệ Runtime có đủ cặp** trong `docs/Runtime/<Hệ>/` — utility thuần cũng là hệ Runtime; **tool Editor
@@ -52,16 +52,17 @@ lại **cả trang**, không chỉ phần vừa đổi.
 - **Code trong Plan là code developer gõ nguyên và tin:** khớp file thật ở chỗ neo, thuật toán đã qua bản mẫu chạy được.
 - **Lõi developer viết, test agent viết.** Việc phát sinh lúc làm Plan thì đầu ra là Plan, không tạo file code.
 
-## Skill
+## Agent
 
-- **`SKILL.md` chỉ giữ luật và tư tưởng** — thứ đúng cho mọi game Unity, viết ở mức *cần đạt gì*, mỗi tư tưởng một câu,
-  không trình tự cứng. Chi tiết triển khai của luật, Nền tảng, Sổ tay, bẫy vào `reference.md`, mỗi mục có một hàng trong
-  bảng Tra cứu; skill ngắn không có `reference.md` thì giữ Sổ tay tại chỗ.
+- **`RULE.md` và `SKILL.md` chỉ giữ luật và tư tưởng** — thứ đúng cho mọi game Unity, viết ở mức *cần đạt gì*, mỗi tư
+  tưởng một câu, không trình tự cứng. Chi tiết triển khai của luật, Nền tảng, Sổ tay vào `reference.md`, mỗi mục có một
+  hàng trong bảng Tra cứu; skill ngắn không có `reference.md` thì giữ Sổ tay tại chỗ.
 - **Một luật một nơi.** Thêm dòng trước hết là **gộp vào luật đang có**; luật mới phải qua phép kiểm *đúng cho ít nhất hai
   loại game* và developer duyệt.
-- **Bẫy ghi triệu chứng, một câu, tên trung tính** — không tường thuật, không tên màn, tính năng, kịch bản của game nào.
-- **Trần:** `horcrux_skill.md` cùng bảy `SKILL.md` nền là phần đọc mỗi session — thêm vào thì cắt chỗ khác; `SKILL.md` nền
-  vượt 13 KB là dấu hiệu chi tiết chưa dời sang tra cứu.
+- **Bài học vào `Memory/`**, đúng hình dạng ở `horcrux.md` › Memory: tiêu đề là dấu hiệu, tên trung tính — không tường
+  thuật, không tên màn, tính năng, kịch bản của game nào.
+- **Trần** ở `horcrux.md` › Cổng ghi. Phần đọc đầu phiên thêm vào thì cắt chỗ khác; `RULE.md` vượt trần là dấu hiệu chi
+  tiết chưa dời sang tra cứu.
 
 ## Kỷ luật viết — mọi loại tài liệu
 

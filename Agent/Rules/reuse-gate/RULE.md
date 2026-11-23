@@ -5,7 +5,7 @@ description: Dùng ở mọi câu trả lời để săn chức năng gói lại
 
 # reuse-gate — có sẵn chưa → có cần không → đặt ở đâu
 
-Skill nền dưới `Skills/horcrux_skill.md` (NT, tầng, ký hiệu định nghĩa ở đó). Ba câu theo thứ tự, trước cả Plan hay đoạn
+Rule dưới `Agent/horcrux.md` (NT, tầng, ký hiệu định nghĩa ở đó). Ba câu theo thứ tự, trước cả Plan hay đoạn
 mẫu — code trong Plan là code developer gõ nguyên, thừa ở đó cũng là thừa.
 
 ## Có sẵn chưa (NT6)

@@ -5,7 +5,7 @@ description: Dùng khi code chạm async, CancellationToken, vòng đời object
 
 # async-presentation — async, vòng đời, trình diễn
 
-Skill nền dưới `Skills/horcrux_skill.md` (NT, tầng, ký hiệu định nghĩa ở đó).
+Rule dưới `Agent/horcrux.md` (NT, tầng, ký hiệu định nghĩa ở đó).
 
 Tiêu chí: **huỷ được** theo owner · **giải phóng được** (thứ giữ tài nguyên có đường trả) · **cô lập được lỗi** (`try/catch`
 quanh từng callback trong vòng dispatch).

@@ -1,34 +1,46 @@
-# horcrux_skill.md — bảng chỉ dẫn và tư tưởng thiết kế
+# horcrux.md — cửa vào: định nghĩa, bảng chỉ dẫn, tư tưởng thiết kế
 
-Bộ skill phát triển hệ thống game Unity, mang nguyên sang mọi dự án, không mang domain dự án nào; áp cho mọi thứ agent viết
-ra (runtime, Editor, tooling, script tạm, tài liệu). **Horcrux** là framework dùng chung đi theo mọi dự án; đường dẫn tính
-từ gốc Horcrux: skill `Skills/`, Plan `Plans/`, tài liệu hệ `docs/Runtime/<Hệ>/` và `docs/Editor/`.
+Bộ quy tắc và kinh nghiệm phát triển hệ thống game Unity, mang nguyên sang mọi dự án, không mang domain dự án nào; áp cho
+mọi thứ agent viết ra (runtime, Editor, tooling, script tạm, tài liệu). **Horcrux** là framework dùng chung đi theo mọi dự
+án; đường dẫn tính từ gốc Horcrux: bộ này `Agent/`, Plan `Plans/`, tài liệu hệ `docs/Runtime/<Hệ>/` và `docs/Editor/`.
+
+## Các loại
+
+| Loại | Là gì | Chỗ | Quyền ghi |
+|---|---|---|---|
+| **Rule** | ràng buộc — một **lựa chọn** của ta | file này · `Rules/<miền>/RULE.md` | developer duyệt |
+| **Reference** | **sự thật đã ổn định** (Nền tảng, Sổ tay), xếp theo chủ đề | `Rules/<miền>/reference.md` · `Skills/<việc>/reference.md` | chỉ qua thang nâng cấp |
+| **Memory** | **bài học đã trả giá** ở một phiên, có thể cũ đi | `Memory/<miền hoặc skill>.md` | agent ghi thẳng |
+| **Skill** | quy trình cho **một loại việc** có đầu có cuối | `Skills/<việc>/SKILL.md` | developer duyệt |
+| **Hồ sơ developer** | developer là ai, làm việc thế nào | mục cuối file này | chỉ developer |
+
+Thứ chỉ đúng cho một hệ nằm ở Plan hoặc tài liệu module; thứ chỉ đúng cho một dự án hay một máy nằm ở `CLAUDE.md` và
+memory của máy đó — không vào `Agent/`. Mỗi điều định nghĩa ở **một** nơi; nơi khác trỏ sang, không chép lại.
 
 ## Luật đọc
 
-1. Vào session: đọc **trọn** file này rồi **trọn** `SKILL.md` của bảy skill nền theo thứ tự bảng, trước mọi việc.
-2. `reference.md` cạnh skill nền giữ chi tiết của luật, Nền tảng, Sổ tay và bẫy; **không đọc sẵn**. `SKILL.md` có
-   `reference.md` thì kết bằng bảng **Tra cứu** (*chạm gì → mục nào*): việc chạm tới thì **đọc trọn mục đó trước khi làm**
-   — luật trong `SKILL.md` nói cần đạt gì, mục tra cứu nói chỗ nó hay hỏng.
-3. Skill công cụ chỉ đọc khi bảng chỉ dẫn gọi.
-4. Mỗi tác vụ tra bảng chỉ dẫn: cột *Bắt buộc* tuân thủ từng luật, *Thêm khi chạm* áp khi chạm tới; nhiều hàng thì gộp.
+1. Vào session: đọc **trọn** file này, `Rules/workflow/RULE.md`, `Rules/reuse-gate/RULE.md`, và `Memory/workflow.md`,
+   `Memory/reuse-gate.md` nếu có, trước mọi việc.
+2. Mỗi tác vụ tra **bảng chỉ dẫn**: rule và skill hàng đó gọi thì **đọc trọn trước khi chạm miền**, kèm
+   `Memory/<cùng tên>.md` nếu có. Cột *Bắt buộc* tuân thủ từng luật, *Thêm khi chạm* áp khi chạm tới; nhiều hàng thì gộp.
+3. `reference.md` cạnh `RULE.md` hay `SKILL.md` giữ chi tiết của luật, Nền tảng, Sổ tay; **không đọc sẵn**. File có
+   `reference.md` thì kết bằng bảng **Tra cứu** (*chạm gì → mục nào*): việc chạm tới thì **đọc trọn mục đó trước khi làm**.
+4. Không chắc việc đang làm có chạm một miền không thì đọc rule của miền đó — đọc thừa rẻ hơn phạm luật.
 
-## Bộ skill
+## Rule và skill
 
-`Skills/<tên>/SKILL.md`. Mỗi luật định nghĩa ở **một** nơi; nơi khác trỏ sang, không chép lại.
+| Rule | Đọc khi | Nói về |
+|---|---|---|
+| `workflow` | luôn | phỏng vấn, đối chiếu, báo cáo, ngữ cảnh đã chốt, chưng cất, subagent, nghiệm thu, git |
+| `reuse-gate` | luôn | có sẵn chưa, có cần không, đặt ở dự án hay Horcrux |
+| `code-design` | sắp viết hoặc sửa code C# | SOLID, bậc cấu trúc, module, hiệu năng, bất biến và guard, naming |
+| `async-presentation` | sắp viết `async`, token, tween, hiệu ứng, pool, vòng đời object | async, token, vòng đời, pool, tween, trình diễn |
+| `editor-first` | sắp wire, cấu hình, sửa prefab hay scene, viết tool Editor, import/export | việc của Editor thay vì code, tool Editor, import/export |
+| `math-physics` | hệ có công thức, đường cong, vật lý | khi nào cần toán, dẫn giải, đối chiếu công thức với code |
+| `docs` | sắp viết hoặc sửa `.md`, `.html`, Plan, Manual, file trong `Agent/` | hình dạng từng loại tài liệu, kỷ luật viết |
 
-| Skill nền | Nói về |
-|---|---|
-| `workflow` | phỏng vấn, đối chiếu, báo cáo, ngữ cảnh đã chốt, chưng cất, subagent, nghiệm thu, git |
-| `reuse-gate` | có sẵn chưa, có cần không, đặt ở dự án hay Horcrux |
-| `code-design` | SOLID, bậc cấu trúc, module, hiệu năng, bất biến và guard, naming |
-| `async-presentation` | async, token, vòng đời, pool, tween, trình diễn |
-| `editor-first` | việc của Editor thay vì code, tool Editor, import/export |
-| `math-physics` | khi nào cần toán, dẫn giải, đối chiếu công thức với code |
-| `docs` | `.md`, `.html`, Plan, Manual, skill, kỷ luật viết |
-
-**Skill công cụ** (bảng chỉ dẫn nói khi nào gọi): `feel-tune` · `build-size` · `compile-check` · `ui-reskin` ·
-`demo-compare` · `merge-audit`.
+**Skill** (bảng chỉ dẫn nói khi nào gọi): `feel-tune` · `build-size` · `compile-check` · `ui-reskin` · `demo-compare` ·
+`merge-audit`.
 
 ## Bảng chỉ dẫn
 
@@ -42,7 +54,7 @@ từ gốc Horcrux: skill `Skills/`, Plan `Plans/`, tài liệu hệ `docs/Runti
 | Cheat, lệnh debug cho QA | `workflow` › tra cứu › Cheat | `code-design` |
 | Tool Editor, import/export, cấu hình nội dung, setup scene và prefab | `editor-first` | `code-design` |
 | Hệ có công thức toán, vật lý | `math-physics`, `code-design` | `docs` khi phải dẫn giải |
-| Viết hoặc cập nhật tài liệu, Plan, Manual, skill | `docs` | `math-physics` khi có công thức |
+| Viết hoặc cập nhật tài liệu, Plan, Manual, file trong `Agent/` | `docs` | `math-physics` khi có công thức |
 | Chỉnh feeling, đo GC và batches lúc trình diễn | `feel-tune` | `async-presentation` |
 | Dựng, reskin UI hay art world theo demo; prefab UI; thêm art, atlas | `ui-reskin`, `editor-first` | `code-design` khi viết script UI · `build-size` khi đo byte trên build · `demo-compare` khi so với demo |
 | So màn với demo, ảnh máy thật; bố cục trên máy khác Editor; xem trên máy trước khi build; dựng anim, hiệu ứng theo video demo | `demo-compare` | `ui-reskin` khi sửa prefab UI · `editor-first` khi chỉnh scene, prefab · `feel-tune` khi chỉnh tween theo số đo |
@@ -55,14 +67,64 @@ từ gốc Horcrux: skill `Skills/`, Plan `Plans/`, tài liệu hệ `docs/Runti
 
 | Tầng | Nhận biết | Nghĩa | Agent được phép |
 |---|---|---|---|
-| **Luật** | nội dung `SKILL.md` | tiêu chí nghiệm thu: **cần đạt gì** | không bỏ; tự chọn cách đạt |
+| **Luật** | nội dung `RULE.md`, `SKILL.md` | tiêu chí nghiệm thu: **cần đạt gì** | không bỏ; tự chọn cách đạt |
 | **Nền tảng** | khối `> **Nền tảng**` | giới hạn thật của Unity, C#, renderer, hoặc stack Horcrux | không đi đường khác; dự án thiếu món nào thì quay về Luật |
 | **Sổ tay** | `**Sổ tay** —` | một cách đã chạy được | thay bằng cách hay hơn, kèm lý do và phép kiểm (NT9) |
-| **Bẫy** | `*Bẫy:*` | lỗi đã trả giá, ghi **triệu chứng** | dùng để nhận ra ca tương tự; không phải luật mới |
+| **Kinh nghiệm** | khối `###` trong `Memory/` | lỗi đã trả giá, ghi theo **dấu hiệu** | dùng để nhận ra ca tương tự; không phải luật mới |
 
 **Stack Horcrux:** InitArgs, UniTask, PrimeTween, Addressables. Công cụ ngoài stack chỉ ghi dạng *"khi dự án dùng X"*.
-**Ký hiệu:** `NT<n>` ở file này · `` `skill` › Mục `` trỏ `SKILL.md` · `` `skill` › tra cứu › Mục `` trỏ `reference.md` ·
-`mục X` trong cùng file. Số hiệu và con trỏ chỉ sống trong bộ skill; code comment, tài liệu, Plan viết lý do bằng nội dung.
+**Ký hiệu:** `NT<n>` ở file này · `` `tên` › Mục `` trỏ `RULE.md` hoặc `SKILL.md` của tên đó · `` `tên` › tra cứu › Mục ``
+trỏ `reference.md` · `mục X` trong cùng file. Số hiệu và con trỏ chỉ sống trong `Agent/`; code comment, tài liệu, Plan
+viết lý do bằng nội dung.
+
+## Memory
+
+Hai tầng. **Chung:** `Memory/` ở đây, đi theo git. **Máy và dự án:** memory riêng của máy. Phép phân tầng: *dự án khác
+dùng Horcrux có vấp cái này không?*
+
+```markdown
+### <dấu hiệu nhận ra — không phải tên giải pháp>
+`<YYYY-MM>` · vấp <n> · <đã đo | đọc tài liệu | suy luận | chuyển sang, chưa kiểm lại> · đúng với <điều kiện, nếu có>
+**Thấy:** <triệu chứng>. **Vì:** <nguyên nhân>. **Làm:** <cách làm>.
+```
+
+- **Ghi ngay lúc vấp**, không đợi cuối phiên. Trước khi ghi, tìm dấu hiệu trong `Memory/`: đã có thì sửa khối cũ.
+- **Vấp lại dù đã ghi** thì tăng số "vấp" — chỉ khi đó, không tăng mỗi lần đọc. Lên 2 thì **buộc đề xuất nâng cấp**.
+- **Thang nâng cấp**, chọn bậc cao nhất làm được; nâng xong xoá khối khỏi memory:
+  ① *sửa gốc* — đổi API, tool của Horcrux để không vấp được nữa (đề xuất) · ② *máy canh* — hook, phép kiểm trong tool
+  (đề xuất) · ③ *thành luật* — lựa chọn của ta, đúng cho ít nhất hai loại game (đề xuất) · ④ *thành tra cứu* — sự thật ổn
+  định về engine, thư viện → `reference.md` (ghi thẳng, báo để veto).
+- **Xoá** khi điều kiện "đúng với" đã hết hoặc hệ liên quan đã viết lại.
+- **Dọn** khi một file vượt 8 KB hoặc developer yêu cầu: gộp khối trùng · kiểm lại khối *suy luận* và *chuyển sang, chưa
+  kiểm lại* · khối trên sáu tháng mà vấp 1 thì xác minh hoặc xoá · xếp `inbox.md` về đúng miền. Báo bằng bảng
+  *giữ / gộp / nâng / xoá*.
+
+## Cổng ghi
+
+Một điều mới đi từ trên xuống, dừng ở câu đầu tiên trả lời "có".
+
+| # | Câu hỏi | Có → ghi vào | Quyền |
+|---|---|---|---|
+| 0 | Có "vì sao" lặp lại được không? | *Không → không ghi* (hằng số, tên, trạng thái task, thứ git đã ghi) | |
+| 1 | Chỉ đúng cho bài toán hoặc hệ đang làm? | Plan (đang dựng) · tài liệu module (đã dựng) | ghi thẳng |
+| 2 | Chỉ đúng cho dự án hoặc máy này? | *ràng buộc* → `CLAUDE.md` của dự án · *sự thật, bài học* → memory máy | đề xuất · ghi thẳng |
+| 3 | Nói về chính developer? | mục developer-only | **agent không ghi**, nêu trong báo cáo |
+| 4 | Là chuỗi bước cho một loại việc sẽ lặp lại? | `Skills/<việc>/` | đề xuất |
+| 5 | Là **lựa chọn** của ta — có phương án hợp lệ khác mà ta không chọn? | `Rules/<miền>/RULE.md` | đề xuất |
+| 6 | Là **sự thật** về engine, thư viện, công cụ? | `Memory/<miền>.md`; chưa rõ miền thì `Memory/inbox.md` | ghi thẳng |
+
+Qua cổng rồi đối chiếu: đã có thì thôi · là trường hợp riêng của luật đang có thì trỏ về · mâu thuẫn thì nêu để developer
+phân xử. **Trần:** file này 26 KB · mỗi `RULE.md` 13 KB · mỗi file memory 8 KB; vượt thì không ghi thêm cho tới khi dọn
+hoặc dời bớt. Kiểm bằng `Agent/Tools~/check_agent.py all`.
+
+**Báo cáo cuối phiên** kết bằng khối:
+
+```
+Đã ghi      <file> · "<tiêu đề>" (mới | vấp n → n+1)
+Đề xuất     <nâng bậc nào, hoặc luật mới cho file nào> — vì <lý do>
+Về bạn      <nhận xét cho mục developer-only, nếu có>
+Không ghi   <nói rõ khi phiên không có gì>
+```
 
 ---
 
@@ -163,8 +225,9 @@ dùng thật (payload cũ phải deserialize, developer yêu cầu). Lịch sử
 
 1. **Yêu cầu của developer** ở mục cuối; các yêu cầu ngang nhau, va nhau thì hỏi.
 2. **NT1–NT12**; tám yêu cầu hệ thống phân xử theo bảng, không theo số thứ tự.
-3. **Luật trong skill.** Hai skill nói khác nhau là lỗi của bộ skill: làm theo bản hợp NT hơn, nêu để developer phân xử,
-   không tự sửa cả hai.
+3. **Luật trong rule và skill.** Hai nơi nói khác nhau là lỗi của bộ này: làm theo bản hợp NT hơn, nêu để developer phân
+   xử, không tự sửa cả hai.
+4. **Memory** không thắng luật: bài học trái luật thì nêu để developer phân xử.
 
 ## Yêu cầu của developer
 

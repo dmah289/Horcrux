@@ -5,7 +5,7 @@ description: Dùng khi viết hoặc sửa code runtime: SOLID, bậc cấu trú
 
 # code-design — hình dạng, module, hiệu năng, bất biến, naming
 
-Skill nền dưới `Skills/horcrux_skill.md` (NT, tầng, ký hiệu định nghĩa ở đó).
+Rule dưới `Agent/horcrux.md` (NT, tầng, ký hiệu định nghĩa ở đó).
 
 ## Hình dạng — SOLID, bậc cấu trúc
 

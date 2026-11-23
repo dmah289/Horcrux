@@ -5,7 +5,7 @@ description: Dùng khi quyết thứ gì làm ở Editor thay vì code, khi vi�
 
 # editor-first — Editor lo cấu hình và kết nối, tool, import/export
 
-Skill nền dưới `Skills/horcrux_skill.md` (NT, tầng, ký hiệu định nghĩa ở đó).
+Rule dưới `Agent/horcrux.md` (NT, tầng, ký hiệu định nghĩa ở đó).
 
 ## Editor-first
 
@@ -16,7 +16,7 @@ nhận reference · đọc ngầm giá trị prefab ở `Start` thay vì phơi �
 
 - **Kéo thả vào `[SerializeField]` là DI** — composition root là chính cái asset. **API nhận reference là code nối**, chỉ
   khi Inspector **thật sự không kéo được**: cùng scene thì kéo được; khác scene hoặc prefab dựng lúc chạy thì không. Wiring
-  là GUID trong file serialize, không grep được — lý do **không rải** nó, không phải lý do bỏ (phân xử ở `horcrux_skill`).
+  là GUID trong file serialize, không grep được — lý do **không rải** nó, không phải lý do bỏ (phân xử ở `horcrux.md`).
 - **Thuộc tính code ghi lúc chạy không còn là ô cấu hình trên asset** — sửa ở đó không tác dụng mà không gì báo. Núm chỉnh
   nằm trên component code; asset chỉ giữ phần code không chạm, tooltip nói rõ phần nào.
 - **Bắt buộc nối bằng code thì bên đời ngắn tự trình diện với bên đời dài:** đăng ký và huỷ là **một cặp trong một file**,
