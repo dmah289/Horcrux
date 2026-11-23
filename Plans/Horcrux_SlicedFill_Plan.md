@@ -120,8 +120,7 @@ lúc dựng là bề rộng đầy. Thiếu pivot trái: ruột co về tâm. Th
 
 **Mục tiêu:** dự án dùng bản Horcrux, bản tạm biến mất. **Vì sao cuối:** cần bản Horcrux compile được và test xanh trước.
 
-- Đổi `using` từ namespace của bản tạm sang `Horcrux.Runtime.Utilities` ở mọi caller (thanh tiến độ box, view thiết kế level trong
-  tool Editor).
+- Đổi `using` từ namespace của bản tạm sang `Horcrux.Runtime.Utilities` ở mọi caller (thanh tiến độ box).
 - Xoá file bản tạm cùng `.meta`.
 - Xoá test của bản tạm: test Horcrux viết ở GĐ1 đã phủ bảng case. Trước khi xoá, case nào của bản tạm bảng GĐ1 chưa có thì
   thêm vào test Horcrux; giữ hai bản là hai nơi phải sửa khi hàm đổi.

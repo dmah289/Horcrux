@@ -24,8 +24,11 @@ Plan nào, không có `§0`: phép toán một dòng nằm ở GĐ1, GĐ2.
   nghĩa ở đầu cắt và ở `Left + t * Width` dù mesh Tight hay Full Rect. Lấy UV từ đỉnh còn vị trí từ `sprite.bounds` thì hai nguồn chỉ
   trùng khi mesh phủ trọn rect; mesh Tight trên art có lề trong suốt làm vạch lệch khỏi đầu cắt.
 - **Giá hiệu năng:** mỗi renderer một `MaterialPropertyBlock` riêng nên không batch với renderer khác; nhận vì thanh ít và đứng riêng.
+- **Chạy cả ngoài Play:** tool Editor vẽ thanh bằng chính hai component này, để bản xem trước giống game mà không chép công thức. Đo
+  mesh ở lần dùng đầu thay vì `Awake` · ghi `enabled` và vị trí vạch chỉ khi khác, vì ghi trùng ngoài Play làm scene bẩn · ngoài Play
+  không chép vạch (bản chép được lưu vào scene đang mở): prefab dùng ngoài Play đặt sẵn đủ vạch.
 - **Cố ý không làm:** trục dọc, cắt từ phải, tâm ra hai phía — chưa có người dùng · tween — caller tự `Tween.Custom` rồi ghi
-  `FillAmount` · xem trước tỉ lệ ngoài Play — tỉ lệ do code ghi lúc chạy.
+  `FillAmount`.
 
 ## Đã khảo sát
 
@@ -38,10 +41,10 @@ Plan nào, không có `§0`: phép toán một dòng nằm ở GĐ1, GĐ2.
 ## Luồng mô tả
 
 ```
-Awake     : iL, iR ← đỉnh x nhỏ nhất, lớn nhất của sprite.vertices
+Lần dùng đầu (FillAmount, Left, Width hay Awake — cái nào tới trước; ngoài Play Awake không chạy):
+            iL, iR ← đỉnh x nhỏ nhất, lớn nhất của sprite.vertices
             Left, Width ← vertices[iL].x, vertices[iR].x − Left
             uMin, uWidth ← uv[iL].x, uv[iR].x − uMin    (UV trong texture đang vẽ: trang atlas khi đã pack)
-            Apply()                                    (giá trị gán trước Awake được áp ở đây)
 FillAmount = t :
             t ← Clamp01(t)
             t = 0 → renderer.enabled = false
@@ -57,7 +60,7 @@ Dividers  : SetSegments(n) đặt vạch k ở Left + Width·k/n ; Show(t) ghi F
 |---|---|---|
 | `sprite_horizontal_fill.shader` | material trên renderer | Sprites-Default + `clip` theo `_FillU` |
 | `SpriteHorizontalFill.FillAmount` | caller mỗi lần dữ liệu đổi, mỗi frame tween | ghi `_FillU`, bật/tắt renderer |
-| `SpriteHorizontalFill.Left`, `Width` | `SpriteFillDividers`, caller khác bám đầu cắt, sau `Awake` | mép trái và bề rộng mesh sprite theo local renderer |
+| `SpriteHorizontalFill.Left`, `Width` | `SpriteFillDividers`, caller khác bám đầu cắt, lúc nào cũng được | mép trái và bề rộng mesh sprite theo local renderer |
 | `SpriteFillDividers.SetSegments` | caller khi số đoạn đổi | đặt n − 1 vạch ở k/n |
 | `SpriteFillDividers.Show` | caller thay cho `FillAmount` khi thanh có vạch | ghi tỉ lệ, bật vạch trên phần ruột |
 
@@ -127,7 +130,7 @@ Shader "Horcrux/sprite_horizontal_fill"
 ```
 
 - Thân giống Sprites-Default (`UnitySprites.cginc` lo đỉnh, màu renderer, flip, alpha ngoài), chỉ thêm dòng `clip`.
-- `_FillU` mặc định 1: renderer chưa có MPB (ngoài Play, chưa `Awake`) vẽ cả sprite, vì UV không vượt 1.
+- `_FillU` mặc định 1: renderer chưa có MPB (chưa ai gán tỉ lệ) vẽ cả sprite, vì UV không vượt 1.
 - Shader này cho built-in render pipeline; dự án URP cần bản Shader Graph hay HLSL URP — chưa có người dùng.
 
 File mới `Runtime/Utilities/Sprites/SpriteHorizontalFill.cs`:
@@ -139,6 +142,7 @@ namespace Horcrux.Runtime.Utilities
 {
     /// <summary>
     /// Cắt SpriteRenderer theo chiều ngang như Image.fillAmount: giữ phần từ mép trái tới tỉ lệ, đầu cắt phẳng, sprite không co.
+    /// Chạy cả ngoài Play: đo mesh ở lần dùng đầu, không chờ Awake.
     /// Material của renderer dùng shader Horcrux/sprite_horizontal_fill.
     /// </summary>
     public class SpriteHorizontalFill : MonoBehaviour
@@ -168,18 +172,44 @@ namespace Horcrux.Runtime.Utilities
             }
         }
 
-        /// <summary>Bề rộng mesh sprite theo đơn vị local của renderer: tỉ lệ t nằm ở x = Left + t * Width. Đọc được sau Awake.</summary>
-        public float Width => _width;
+        /// <summary>Bề rộng mesh sprite theo đơn vị local của renderer: tỉ lệ t nằm ở x = Left + t * Width.</summary>
+        public float Width
+        {
+            get
+            {
+                EnsureMeasured();
+                return _width;
+            }
+        }
 
-        /// <summary>Mép trái mesh sprite theo đơn vị local của renderer. Đọc được sau Awake.</summary>
-        public float Left => _left;
+        /// <summary>Mép trái mesh sprite theo đơn vị local của renderer.</summary>
+        public float Left
+        {
+            get
+            {
+                EnsureMeasured();
+                return _left;
+            }
+        }
 
         #endregion Properties
 
         #region Unity Callbacks
 
-        private void Awake()
+        private void Awake() => Apply();
+
+        #endregion Unity Callbacks
+
+        #region Class Methods
+
+        /// <summary>
+        /// Đo một lần ở lần dùng đầu, không ở Awake: ngoài Play Awake không chạy, và caller gán FillAmount trước Awake của
+        /// component này (hai component cùng prefab) vẫn nhận số đúng.
+        /// </summary>
+        private void EnsureMeasured()
         {
+            if (_block != null) return;
+
             _block = new MaterialPropertyBlock();
             // Đỉnh trái nhất và phải nhất của mesh cho cả vị trí lẫn UV: mesh Tight hay Full Rect thì t vẫn cùng một nghĩa ở
             // đầu cắt và ở Left + t * Width. sprite.uv là UV trên trang atlas khi đã pack; atlas phải tắt xoay để u chạy theo x.
@@ -197,19 +227,16 @@ namespace Horcrux.Runtime.Utilities
             _width = vertices[rightIndex].x - _left;
             _uMin = uv[leftIndex].x;
             _uWidth = uv[rightIndex].x - _uMin;
-            Apply();
         }
-
-        #endregion Unity Callbacks
-
-        #region Class Methods
 
         private void Apply()
         {
-            if (_block == null) return;
+            EnsureMeasured();
 
-            fillRenderer.enabled = _fillAmount > 0f;
-            if (!fillRenderer.enabled) return;
+            // Chỉ ghi khi khác: ngoài Play tool vẽ lại theo dữ liệu mỗi lần mở scene, ghi trùng làm scene bẩn.
+            var visible = _fillAmount > 0f;
+            if (fillRenderer.enabled != visible) fillRenderer.enabled = visible;
+            if (!visible) return;
 
             fillRenderer.GetPropertyBlock(_block);
             _block.SetFloat(s_fillUId, _uMin + _uWidth * _fillAmount);
@@ -221,31 +248,33 @@ namespace Horcrux.Runtime.Utilities
 }
 ```
 
-- `Awake` đọc `sprite.vertices` và `sprite.uv` một lần (mỗi cái cấp phát một mảng): mesh của sprite không đổi suốt đời renderer. Sprite
-  đổi lúc chạy thì phải đọc lại — chưa có người dùng, nên không có API.
+- `EnsureMeasured` đọc `sprite.vertices` và `sprite.uv` một lần (mỗi cái cấp phát một mảng): mesh của sprite không đổi suốt đời renderer.
+  Sprite đổi lúc chạy thì phải đọc lại — chưa có người dùng, nên không có API. `_block` khác null là cờ "đã đo".
+- Đo lười, không ở `Awake`: tool Editor gọi `Show`, `Left` ngoài Play, nơi `Awake` không chạy · caller gán `FillAmount` trước `Awake` của
+  component (hai component cùng prefab, `Awake` không định thứ tự) vẫn được áp ngay. `Awake` vẫn gọi `Apply` để renderer có MPB khi
+  chưa ai gán tỉ lệ.
 - Hai mảng cùng chỉ số: `uv[i]` là UV của `vertices[i]`. Atlas không xoay thì u tuyến tính theo x, nên hai đỉnh ở hai mép là đủ.
-- `Left`, `Width` là số chụp ở `Awake`: caller đọc trước `Awake` (component trên object chưa bật lần nào) nhận 0. Caller đặt vạch lúc
-  khởi tạo dữ liệu, sau khi prefab đã `Instantiate` và bật, nên không cần đọc lười.
-- `if (_block == null) return;` là ca hợp lệ chưa tới lượt: caller gán `FillAmount` trước `Awake` của component (hai component cùng prefab,
-  `Awake` không định thứ tự); giá trị được giữ và `Awake` áp.
+- So `enabled` trước khi ghi: ngoài Play, ghi một giá trị trùng cũng đánh dấu scene bẩn; lúc chạy một phép so không đáng kể. MPB không
+  serialize nên không làm scene bẩn.
 - `Left`, `Width` theo local renderer (đỉnh của sprite), không theo `bounds` của renderer (world, gồm scale cha): caller đặt con của
   renderer theo tỉ lệ thì đúng ở mọi scale.
 - `GetPropertyBlock` trước `SetPropertyBlock`: giữ giá trị khác caller có thể đã đặt trên cùng renderer.
 
 **Editor setup** (phía caller): material mới dùng shader `Horcrux/sprite_horizontal_fill`, gán vào renderer ruột · `drawMode` Simple ·
 thêm component, kéo renderer vào ô **Fill Renderer** · atlas chứa sprite tắt **Allow Rotation**. Thiếu material: không cắt, ruột luôn đầy.
-Thiếu ô: `NullReferenceException` ở `Awake` lần Play đầu. Atlas xoay sprite: đầu cắt chạy theo trục dọc của art.
+Thiếu ô: `NullReferenceException` ở lần dùng đầu. Atlas xoay sprite: đầu cắt chạy theo trục dọc của art.
 
-**Kiểm:** compile sạch; test PlayMode `Horcrux.PlayModeTests` (cần `Awake`; agent viết sau khi đọc code thật), sprite tạo bằng
-`Sprite.Create` trên texture 100×10, renderer có material shader trên:
+**Kiểm:** compile sạch; test EditMode `Horcrux.EditModeTests` (không cần `Awake` vì đo lười; agent viết sau khi đọc code thật), sprite tạo
+bằng `Sprite.Create` trên texture 100×10, renderer có material shader trên:
 
 | Input | Kỳ vọng |
 |---|---|
-| chưa gán `FillAmount` | `_FillU` của MPB = uMax; renderer bật |
+| chưa gán `FillAmount`, gọi `Awake` qua bật object lúc chạy | `_FillU` của MPB = uMax; renderer bật |
 | `FillAmount = 0.5` | `_FillU` = uMin + 0.5 × (uMax − uMin) |
 | `FillAmount = 0` · `-1` | renderer tắt · `FillAmount` đọc lại 0 |
 | `FillAmount = 2` | đọc lại 1, `_FillU` = uMax |
-| gán 0.3 trước `Awake` (component tắt rồi bật) | sau `Awake`, `_FillU` theo 0.3 |
+| gán 0.3 ngay sau `AddComponent`, ngoài Play | `_FillU` theo 0.3, không cần `Awake` |
+| đọc `Width` trước mọi lần gán | đã đo: số đúng, không 0 |
 | sprite là mảnh con của texture (rect lệch trái) | uMin > 0; `_FillU` nội suy trong khoảng UV của mảnh |
 | `Left`, `Width` sprite 100 px, 100 ppu, pivot giữa | −0.5, 1 |
 | sprite pivot trái (`Sprite.Create` pivot (0, 0.5)), `FillAmount = 0.25` | `Left` 0; `_FillU` = uMin + 0.25 × uWidth |
@@ -258,7 +287,7 @@ Thiếu ô: `NullReferenceException` ở `Awake` lần Play đầu. Atlas xoay s
 ghi `FillAmount` của ruột đã cắt được.
 
 ```
-SetSegments(n) : n − 1 vạch (chép thêm từ vạch mẫu khi thiếu)
+SetSegments(n) : n − 1 vạch (lúc chạy chép thêm từ vạch đầu khi thiếu; ngoài Play không chép, LogError)
                  vạch k (1…n−1) ở x = Left + Width · k / n
                  halfWidthAmount = nửa bề rộng vạch / Width
 Show(t)        : fill.FillAmount = t
@@ -279,47 +308,52 @@ namespace Horcrux.Runtime.Utilities
     /// <summary>
     /// Vạch chia trên ruột SpriteHorizontalFill: chia ruột thành n đoạn bằng nhau, vạch k ở k/n bề rộng. Tỉ lệ dừng ở bội của 1/n thì
     /// đầu cắt nằm đúng tâm một vạch; vạch chỉ hiện khi đầu cắt đã qua hết bề rộng nó, nên vạch ở đầu cắt và trên phần rỗng ẩn.
+    /// Chạy cả ngoài Play nhưng không chép vạch: prefab dùng ngoài Play đặt sẵn đủ vạch.
     /// </summary>
     public class SpriteFillDividers : MonoBehaviour
     {
         #region Properties
 
         [SerializeField] private SpriteHorizontalFill fill;
-        [Tooltip("Vạch đầu tiên, con của renderer ruột. Vạch thứ hai trở đi chép từ nó khi số đoạn cần thêm; x do code đặt, y giữ theo prefab.")]
-        [SerializeField] private SpriteRenderer dividerTemplate;
+        [Tooltip("Vạch đặt sẵn, con của renderer ruột; vạch đầu là mẫu để chép thêm lúc chạy. x do code đặt, y giữ theo prefab.")]
+        [SerializeField] private List<SpriteRenderer> dividers = new();
 
-        private readonly List<SpriteRenderer> _dividers = new();
         private float _halfWidthAmount;
         private int _segments;
 
         #endregion Properties
 
-        #region Unity Callbacks
-
-        private void Awake() => _dividers.Add(dividerTemplate);
-
-        #endregion Unity Callbacks
-
         #region API
 
-        /// <summary>Chia ruột thành segments đoạn: segments − 1 vạch, chép thêm từ vạch mẫu khi thiếu. Gọi lại khi số đoạn đổi, rồi gọi Show.</summary>
+        /// <summary>Chia ruột thành segments đoạn: segments − 1 vạch, lúc chạy chép thêm từ vạch đầu khi thiếu. Gọi lại khi số đoạn đổi, rồi gọi Show.</summary>
         public void SetSegments(int segments)
         {
             _segments = Mathf.Max(1, segments);
             var dividerCount = _segments - 1;
-            while (_dividers.Count < dividerCount)
-                _dividers.Add(Instantiate(dividerTemplate, dividerTemplate.transform.parent));
+            var template = dividers[0];
+            while (dividers.Count < dividerCount)
+            {
+                // Ngoài Play vạch chép được lưu vào scene đang mở.
+                if (!Application.isPlaying)
+                {
+                    Debug.LogError($"[SpriteFillDividers]: cần {dividerCount} vạch, prefab đặt sẵn {dividers.Count}; ngoài Play không chép thêm.", this);
+                    break;
+                }
+                dividers.Add(Instantiate(template, template.transform.parent));
+            }
 
             var left = fill.Left;
             var width = fill.Width;
             // Nửa bề rộng vạch theo tỉ lệ ruột: đầu cắt phải qua thêm chừng này mới phủ hết vạch.
-            _halfWidthAmount = dividerTemplate.sprite.bounds.extents.x * dividerTemplate.transform.localScale.x / width;
-            for (var i = 0; i < dividerCount; i++)
+            _halfWidthAmount = template.sprite.bounds.extents.x * template.transform.localScale.x / width;
+            var placedCount = Mathf.Min(dividerCount, dividers.Count);
+            for (var i = 0; i < placedCount; i++)
             {
-                var divider = _dividers[i].transform;
+                var divider = dividers[i].transform;
                 var position = divider.localPosition;
                 position.x = left + width * (i + 1) / _segments;
-                divider.localPosition = position;
+                // Chỉ ghi khi khác: ngoài Play ghi trùng làm scene bẩn.
+                if (divider.localPosition != position) divider.localPosition = position;
             }
         }
 
@@ -328,8 +362,11 @@ namespace Horcrux.Runtime.Utilities
         {
             fill.FillAmount = amount;
             var dividerCount = _segments - 1;
-            for (var i = 0; i < _dividers.Count; i++)
-                _dividers[i].enabled = i < dividerCount && amount >= (float)(i + 1) / _segments + _halfWidthAmount;
+            for (var i = 0; i < dividers.Count; i++)
+            {
+                var shown = i < dividerCount && amount >= (float)(i + 1) / _segments + _halfWidthAmount;
+                if (dividers[i].enabled != shown) dividers[i].enabled = shown;
+            }
         }
 
         #endregion API
@@ -342,20 +379,24 @@ namespace Horcrux.Runtime.Utilities
   không bao giờ đứng nửa trên ruột nửa trên phần rỗng. Ở `t = k/n` đúng, vạch k tắt: đầu cắt phẳng là ranh giới, vạch ở đó thừa.
 - `halfWidthAmount` tính một lần ở `SetSegments` theo scale local của vạch mẫu; scale vạch đổi lúc chạy thì gọi lại `SetSegments`.
 - Vạch thừa khi n giảm chỉ tắt, không huỷ: pool lấy lại thanh với tổng khác không sinh rác.
-- `Awake` thêm vạch mẫu vào danh sách: vạch mẫu nằm sẵn trong prefab, là vạch 1.
+- Danh sách vạch là ô serialize, vạch đầu là mẫu: prefab chạy ngoài Play (tool Editor) đặt sẵn đủ vạch vào ô, vì ngoài Play `Instantiate`
+  sinh object con lưu vào scene đang mở. Thiếu vạch ngoài Play thì `LogError` rồi đặt số vạch đang có — lỗi setup không nổ, nên báo đỏ.
+- So vị trí và `enabled` trước khi ghi: cùng lý do với `SpriteHorizontalFill.Apply`.
 
 **Editor setup** (phía caller): một vạch con của renderer ruột, `sortingOrder` trên ruột · thêm component lên object của ruột, kéo
-`SpriteHorizontalFill` vào ô **Fill**, vạch vào ô **Divider Template**. Thiếu ô: `NullReferenceException` ở `Awake` hay lần
-`SetSegments` đầu.
+`SpriteHorizontalFill` vào ô **Fill**, vạch vào phần tử đầu của ô **Dividers** · prefab vẽ ngoài Play: thêm sẵn vạch tới số đoạn lớn nhất
+trừ một. Thiếu ô: `NullReferenceException` ở lần `SetSegments` đầu.
 
-**Kiểm:** compile sạch; test PlayMode cùng file test GĐ1, ruột sprite 100 px (Width 1, Left −0.5), vạch 2 px:
+**Kiểm:** compile sạch; test EditMode cùng file test GĐ1, trừ hàng chép vạch là PlayMode (chỉ lúc chạy mới chép); ruột sprite 100 px
+(Width 1, Left −0.5), vạch 2 px:
 
 | Input | Kỳ vọng |
 |---|---|
 | `SetSegments(3)` | 2 vạch, x = −0.1667, 0.1667 |
 | `SetSegments(3)`, `Show(2/3f)` | vạch 1 bật, vạch 2 tắt |
 | `SetSegments(3)`, `Show(1/3f + 0.005f)` | vạch 1 tắt (chưa qua nửa bề rộng 0.01) |
-| `SetSegments(5)` rồi `SetSegments(2)`, `Show(1)` | vạch 1 bật, vạch 2…4 tắt; tổng 4 renderer |
+| PlayMode, ô một vạch: `SetSegments(5)` rồi `SetSegments(2)`, `Show(1)` | vạch 1 bật, vạch 2…4 tắt; tổng 4 renderer |
+| ngoài Play, ô một vạch: `SetSegments(3)` | `LogError` một lần, không thêm renderer, vạch 1 ở x = −0.1667 |
 | `SetSegments(1)`, `Show(1)` | không vạch nào bật |
 
 **Mốc commit:** compile sạch + bảng case xanh → commit trong `Assets/Horcrux`.
@@ -366,7 +407,7 @@ namespace Horcrux.Runtime.Utilities
 
 - `.meta` của `SpriteHorizontalFill.cs`, `SpriteFillDividers.cs` và shader bản Horcrux **nhận GUID của bản tạm** (prefab trỏ script, material trỏ shader theo GUID):
   xoá bản tạm cùng `.meta` rồi ghi GUID cũ vào `.meta` bản Horcrux, cùng một lần.
-- Đổi `using` sang `Horcrux.Runtime.Utilities` ở caller (thanh đếm lớp của kệ).
+- Đổi `using` sang `Horcrux.Runtime.Utilities` ở caller (thanh đếm lớp của kệ, view xem trước kệ trong tool thiết kế level).
 - Cập nhật tài liệu dự án nhắc bản tạm (bảng "chờ Horcrux", chỗ ghi đường dẫn bản tạm).
 
 **Kiểm:** grep tên type kèm namespace cũ ra 0; compile sạch; prefab dùng nó mở ra không có script missing, material không hồng.
@@ -395,6 +436,6 @@ theo phần trăm.
 |---|---|
 | `Shader/sprite_horizontal_fill.shader`, `Runtime/Utilities/Sprites/SpriteHorizontalFill.cs` | 1 |
 | `Runtime/Utilities/Sprites/SpriteFillDividers.cs` | 2 |
-| Test PlayMode `SpriteHorizontalFillTests` | 1, 2 |
+| Test EditMode `SpriteHorizontalFillTests` (PlayMode cho hàng chép vạch) | 1, 2 |
 | Caller, bản tạm, tài liệu của dự án | 3 |
 | `docs/Runtime/SpriteHorizontalFill/SpriteHorizontalFill.md`, `.html` (agent) | 4 |
