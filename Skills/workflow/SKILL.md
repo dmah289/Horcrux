@@ -1,115 +1,84 @@
 ---
 name: workflow
-description: Dùng cho mọi tác vụ, từ lúc nhận việc tới báo cáo hoàn thành: phỏng vấn tới khi chốt kịch bản, đối chiếu code với developer, văn phong, ngữ cảnh đã chốt, chưng cất tư tưởng, subagent, nghiệm thu đúng loại bằng chứng, đề xuất công cụ cho việc lặp lại.
+description: Dùng cho mọi tác vụ, từ lúc nhận việc tới báo cáo hoàn thành: phỏng vấn tới khi chốt kịch bản, đối chiếu code với developer, báo cáo, ngữ cảnh đã chốt, chưng cất tư tưởng, subagent, nghiệm thu đúng loại bằng chứng, đề xuất công cụ cho việc lặp lại, kỷ luật git.
 ---
 
 # workflow — một việc, từ nhận việc tới báo cáo
 
-Skill nền dưới `Skills/horcrux_skill.md` (NT, ba tầng, ký hiệu định nghĩa ở đó).
+Skill nền dưới `Skills/horcrux_skill.md` (NT, tầng, ký hiệu định nghĩa ở đó).
 
 Trình tự: **phỏng vấn tới khi chốt kịch bản** → **đối chiếu code với developer** → `reuse-gate` → làm theo kịch bản →
 **nghiệm thu đúng loại** → **quét cuối chat**.
 
-**Việc lặp lại thì đề xuất công cụ ngay lượt đó** (lần thứ hai làm cùng chuỗi thao tác, hoặc biết sẽ làm lại): một dòng
-*việc gì · lặp mấy lần · công cụ trông thế nào · chỗ đặt · công viết · tiết kiệm mỗi lần*. Mặc định đặt ở Horcrux (tool
-Editor, script `Tools~`, skill); dự án chỉ giữ lớp nối. Developer đồng ý thì viết công cụ, tài liệu, cập nhật skill hoặc
-mở skill công cụ mới kèm hàng trong bảng chỉ dẫn. *Đã sai một lần:* hàng trăm lần eval chép cùng một khung không đề xuất gom.
-
-**Commit trong Horcrux thì commit luôn con trỏ submodule ở dự án**, kể cả khi chỉ đổi skill, tài liệu hay Plan. Con trỏ là thứ
-duy nhất ghi dự án đi với bản Horcrux nào: bỏ lại thì máy khác, nhánh khác, phiên agent sau đọc bản cũ, và `git status` luôn
-bẩn che mất thay đổi thật. Submodule hay đứng ở detached HEAD: commit xong thì đưa nhánh lên commit đó, không để commit không
-nhánh nào giữ.
-
-**Working tree có sửa dở của developer thì commit chỉ mang phần của việc mình:** file trùng thì tách theo hunk qua một index
-tạm, không đụng thứ developer đã stage; soát `git show --stat` sau mỗi commit. Commit theo pathspec lấy nội dung working tree,
-bỏ qua phần đã tách vào index. Công cụ: `docs/Editor/PartialCommit.md`. Không cất (`stash`) thứ developer đã stage khi còn
-đường không cần cất (merge: `merge-audit`). **Developer thao tác git song song** (app GUI pull, push, trả stash): sau một lượt
-chờ dài, bước ghi ra ngoài (push, pop stash, commit) đọc lại `status`, `reflog`, nhánh remote trước — trạng thái đọc trước lượt
-chờ là bản chết.
-
 ## Phỏng vấn — hỏi tới khi chốt kịch bản
 
-Không đoán rồi làm (NT5): đoán thừa là hàm không caller, đoán thiếu là chữ ký chặn hướng dùng thật. Hỏi đủ năm nhóm, mỗi
-vòng gom câu hỏi lại, **hỏi nhiều vòng tới khi hết chỗ mơ hồ**; nhóm đã biết chắc thì nêu giả định để xác nhận.
+Luật ở NT1: đoán thừa là hàm không caller, đoán thiếu là chữ ký chặn hướng dùng thật. Hỏi đủ năm nhóm, mỗi vòng gom câu hỏi
+lại, **nhiều vòng tới khi hết chỗ mơ hồ**; nhóm đã biết chắc thì nêu giả định để xác nhận.
 
 | Nhóm | Với tài liệu | Với code hoặc plan |
 |---|---|---|
 | **Ai dùng** | ai đọc, để làm gì, biết sẵn tới đâu | ai gọi, ở đâu, có caller thật **ngay bây giờ** chưa |
 | **Mục tiêu** | đọc xong làm được gì | hành vi hay cảm giác gì, nghiệm thu bằng gì |
-| **Ngân sách** | sâu, dài bao nhiêu | nhịp (NT2), hot path, platform |
+| **Ngân sách** | sâu, dài bao nhiêu | nhịp (NT3), hot path, platform |
 | **Ranh giới** | giải ở đây hay trỏ đi | class này hay hệ khác; độc lập hay kết hợp; dự án hay Horcrux |
 | **Hướng thật** | hệ sắp đổi gì | **chắc chắn** sắp cần gì; *có thể* cần thì chưa |
 
 **Chốt bằng kịch bản viết lại:** *ai làm gì → hệ phản ứng gì → thấy gì* · ca biên đã thống nhất · thứ cố ý không làm ·
-nghiệm thu bằng gì. Developer xác nhận mới làm; **chưa có câu trả lời thì chưa làm**. Khi triển khai, mỗi hành vi truy về
-một dòng kịch bản; thứ kịch bản không nói thì hỏi, không tự thêm. **Hai câu trả lời trong một vòng chọi nhau** thì hỏi lại
-đúng chỗ va, kèm một ví dụ số mà hai cách hiểu cho ra hai kết quả khác nhau; không tự chọn câu nào thắng — hỏi lại bằng lời
-trừu tượng chỉ nhận về hai câu cũ.
+nghiệm thu bằng gì. Developer xác nhận mới làm; **chưa có câu trả lời thì chưa làm**.
 
-Giả định chỉ vá khe hở giữa chừng, đủ cả ba: **nhỏ** · **đảo ngược được** · nhãn tại chỗ dùng. Khó đảo ngược: ghi đè hay
-xoá dữ liệu đã author (level, save, asset) · migration schema, wire format · thứ ngoài version control. Hướng developer chưa
-nghĩ tới thì nêu **một dòng kèm giá**, không tự đưa vào output; kéo sang hệ khác thì để "Mở rộng sau". Thứ developer tự
-nêu thì hỏi lại một lần để cân đắt–lợi, rồi theo developer. **Chữ người chơi thấy (nhãn nút, toast) là hành vi quan sát được:**
-đổi logic không kéo theo đổi chữ, kể cả khi chữ cũ nghe lệch nghĩa — nêu một dòng. *Đã sai một lần:* nút đổi từ nạp đầy sang
-cộng một, agent đổi luôn nhãn, developer bắt trả lại.
-
-**Yêu cầu đổi vai của một input** (chỉ là khởi điểm, về sau thứ khác đè) **là đổi mô hình:** soát mọi khái niệm sinh ra từ vai
-cũ — cờ, khoá, tên field, nhánh riêng — rồi đề xuất trên mô hình mới. Đổi tên mà giữ cơ chế cũ là chưa đổi. *Đã sai một lần:*
-developer muốn bỏ khoá vì input đầu chỉ là khởi điểm; agent đề xuất giữ khoá dưới tên mới cùng field mang tên một kịch bản,
-developer phải bác rồi brainstorm lại.
+- **Hai câu trả lời chọi nhau** thì hỏi lại đúng chỗ va kèm một ví dụ số; không tự chọn câu nào thắng.
+- **Khó đảo ngược** (luôn hỏi): ghi đè hay xoá dữ liệu đã author (level, save, asset) · migration schema, wire format · thứ
+  ngoài version control.
+- **Hướng developer chưa nghĩ tới** thì nêu một dòng kèm giá, không tự đưa vào output; kéo sang hệ khác thì để "Mở rộng
+  sau". Thứ developer tự nêu thì hỏi lại một lần để cân đắt–lợi, rồi theo developer.
+- **Yêu cầu đổi vai của một khái niệm là đổi mô hình:** soát mọi thứ sinh ra từ vai cũ rồi đề xuất trên mô hình mới. Đổi
+  tên mà giữ cơ chế cũ là chưa đổi.
 
 ## Đối chiếu với developer
 
-Code cho biết cái gì chạy, không cho biết vì sao; developer không nhất thiết nắm từng ngóc ngách. Với **mỗi phát hiện ảnh
-hưởng quyết định đang bàn**: **thấy gì** (đường dẫn, dòng) · **hiểu ý định là gì** — phát biểu lại, hỏi khớp thiết kế không
-· **developer biết chưa** — chủ ý hay đã trôi. Không kể lại code. Mỗi lượt review đọc lại file hiện tại: báo lại lỗi đã sửa
-làm mất tin vào phát hiện còn đúng. Số đọc từ hai file YAML chỉ so được khi quy về một kiểu, hoặc đọc qua API engine. Code
-có nhánh `#if` thì nhánh đang chạy đọc trên assembly đã compile, không suy từ source: define toàn cục và define theo phiên
-bản package chồng nhau chọn nhánh khác điều source gợi ý. **Sắp thay hay dựa vào một hiệu ứng có sẵn thì soát nó có hiện thật
-không:** code gọi mà asset không vẽ (object tắt, thiếu sprite, sai lớp) không lỗi nào báo — đó là phát hiện phải nêu trước khi
-thiết kế bản mới đứng trên nó. **Hành vi đọc giá trị sống ngoài repo (remote config, server) thì bản đang chạy là bản ngoài**,
-bản trong repo chỉ là lưới đỡ: sửa số trong repo chưa phải sửa hành vi. Phát hiện nêu cả hai bản; nghiệm thu giao developer
-đối chiếu bằng công cụ so. *Đã sai một lần:* hệ số nhân giá hạ về 1 trong asset được coi là đã sửa giá, trong khi console vẫn
-có thể giữ số cũ.
+Code cho biết cái gì chạy, không cho biết vì sao. Với **mỗi phát hiện ảnh hưởng quyết định đang bàn**: **thấy gì** (đường
+dẫn, dòng) · **hiểu ý định là gì** — phát biểu lại, hỏi khớp thiết kế không · **developer biết chưa** — chủ ý hay đã trôi.
+Không kể lại code. Mỗi lượt review đọc lại file hiện tại (NT10). **Sắp thay hay dựa vào một thứ có sẵn thì soát nó có chạy
+thật không** — code gọi mà asset không vẽ thì không lỗi nào báo. **Hành vi đọc giá trị sống ngoài repo** (remote config,
+server) thì bản đang chạy là bản ngoài: phát hiện nêu cả hai bản, sửa số trong repo chưa phải sửa hành vi.
 
-## Văn phong
+## Báo cáo và trình bày
 
-NT10 áp nguyên. Thêm: một câu một ý · bỏ câu dẫn, câu chuyển, tóm tắt lại · thuật ngữ buộc dùng thì giải nghĩa lần đầu ·
-gọi khái niệm **đúng tên trong code** · câu hỏi trả lời được không cần mở code · ví dụ kiểm trên code trước khi đưa · việc
-developer làm tay trong Editor gom một mục cuối.
+NT12 áp nguyên. Thêm: một câu một ý · thuật ngữ buộc dùng thì giải nghĩa lần đầu · gọi khái niệm **đúng tên trong code** ·
+câu hỏi trả lời được không cần mở code · ví dụ kiểm trên code trước khi đưa · việc developer làm tay trong Editor gom một
+mục cuối.
 
 **Bày phương án rồi chốt một:** mỗi phương án một dòng *là gì · được gì · mất gì*, rồi chốt và nói vì sao thắng — tiêu chí
-là hợp NT1–NT4 nhất, không phải dễ làm nhất. Quyết định thuộc developer thì chỉ thu hẹp và nêu giá; tên gợi ý chưa áp vào
-code hay tài liệu trước khi developer chốt.
+là hợp tám yêu cầu hệ thống nhất, không phải dễ làm nhất. Quyết định thuộc developer thì chỉ thu hẹp và nêu giá; tên gợi ý
+chưa áp vào code hay tài liệu trước khi developer chốt.
 
-## Ngữ cảnh đã chốt và "Mở rộng sau"
-
-Plan đặt **"Ngữ cảnh đã chốt"** trước `§0`, tài liệu nêu ở mở đầu: người dùng · mục tiêu · ranh giới · chỗ đặt · **thứ cố ý
-KHÔNG làm, kèm lý do** · **quyết định trái trực giác** (để người tối ưu sau đọc trước khi đụng) · **"Mở rộng sau"** — hướng
-đã tính chưa làm, mỗi dòng một hướng, kèm bản tạm và Plan nếu có.
+**Ngữ cảnh đã chốt.** Plan đặt mục này trước `§0`, tài liệu nêu ở mở đầu: người dùng · mục tiêu · ranh giới · chỗ đặt ·
+**thứ cố ý KHÔNG làm, kèm lý do** · **quyết định trái trực giác** · **"Mở rộng sau"** — hướng đã tính chưa làm, mỗi dòng
+một hướng, kèm bản tạm và Plan nếu có.
 
 ## Chưng cất tư tưởng
 
-Quyết định cho một bài toán cụ thể mang tư tưởng của developer, và trôi mất khi bài toán xong. Mỗi dòng định ghi đi qua:
-**① khái quát** — tách tư tưởng khỏi quyết định riêng, kèm vì sao · **② đối chiếu toàn bộ skill** — đã có thì thôi ·
-trường hợp riêng thì trỏ về · gộp được vào luật đang có thì gộp · mâu thuẫn thì nêu bản hợp NT hơn để developer phân xử,
-không tự sửa dòng cũ · **③ ghi**:
+Quyết định cho một bài toán cụ thể mang tư tưởng của developer, và trôi mất khi bài toán xong. **Quét cuối chat là bắt buộc,
+không đợi nhắc:** duyệt cả chat, tìm rule và tư tưởng dùng chung cho game Unity từ thứ developer yêu cầu, sửa, hoặc đồng ý.
+Mỗi dòng định ghi đi qua: **① khái quát** — tách tư tưởng khỏi quyết định riêng, kèm vì sao; phép kiểm *đúng cho ít nhất
+hai loại game khác nhau không?* · **② đối chiếu toàn bộ skill** — đã có thì thôi · trường hợp riêng thì trỏ về · gộp được
+vào luật đang có thì gộp · mâu thuẫn thì nêu để developer phân xử · **③ ghi theo tầng:**
 
-| Nguồn | Ghi |
-|---|---|
-| câu trả lời khi brainstorm | **hỏi** developer có ghi không, vào tầng nào; chốt mới ghi |
-| code thật lệch Plan (lượt so sau mỗi giai đoạn) | *lỗi* → báo kèm bằng chứng · *trôi* (tên, thứ tự, chi tiết không mang lý do) → sync Plan theo code · *tư tưởng* (đổi hình dạng, ranh giới, kiểu, cách tiêm) → ghi thẳng, liệt kê để veto |
-| **quét cuối chat — bắt buộc, không đợi nhắc** | duyệt cả chat: rule, tư tưởng dùng chung cho game Unity từ thứ developer yêu cầu, sửa, hoặc đồng ý. **Ghi thẳng, liệt kê nguyên văn trong báo cáo** để veto |
+| Thứ định ghi | Ghi vào | Quyền |
+|---|---|---|
+| bẫy, Nền tảng, Sổ tay | `reference.md` của skill liên quan | **ghi thẳng**, liệt kê nguyên văn trong báo cáo để veto |
+| luật, tư tưởng mới hay sửa luật | `SKILL.md`, `horcrux_skill.md` | **đề xuất**, developer duyệt mới ghi |
+| quy ước chỉ chung cho một hệ | tài liệu module | ghi thẳng |
+| code thật lệch Plan | *lỗi* → báo kèm bằng chứng · *trôi* (tên, thứ tự, chi tiết không mang lý do) → sync Plan theo code · *tư tưởng* (đổi hình dạng, ranh giới, kiểu, cách tiêm) → theo hai hàng đầu | |
 
 Chỉ khái quát lựa chọn có "vì sao" lặp lại được; hằng số, tên, phạm vi một task thì không. Dòng ghi vào skill **không mang
-domain dự án**, đúng văn phong skill nhận, không bao giờ vào mục developer. Quy ước chỉ chung cho một hệ thì ghi ở tài liệu
-module.
+domain dự án** (NT8), theo `docs` › Skill, không bao giờ vào mục developer.
 
 ## Subagent
 
-Subagent là ngữ cảnh trắng; để nó tự tìm hiểu là thuế đọc nhân theo số subagent. Prompt **tự chứa như một giai đoạn của Plan**:
-trích đoạn tài liệu cần, đường dẫn file sẽ chạm, tiêu chí nghiệm thu; thiếu thì báo về, không tự đi đọc — trừ **code nó sẽ
-sửa**.
+Subagent là ngữ cảnh trắng; để nó tự tìm hiểu là thuế đọc nhân theo số subagent. Prompt **tự chứa như một giai đoạn của
+Plan**: trích đoạn tài liệu cần, đường dẫn file sẽ chạm, tiêu chí nghiệm thu; thiếu thì báo về, không tự đi đọc — trừ
+**code nó sẽ sửa**.
 
 ## Nghiệm thu — phép kiểm theo loại tiêu chí
 
@@ -117,69 +86,43 @@ Neo khi phân vân: **công sức đắt nhất là của developer.**
 
 | Tiêu chí | Bằng chứng | Ai chạy |
 |---|---|---|
-| thuật toán tất định, công thức, parser, serialize | phép kiểm chạy được; wire format kiểm qua đúng cửa đọc–ghi hệ dùng, không gọi serializer trực tiếp — setting của serializer là một phần của format; state đầu (cài mới, save cũ) dựng qua đúng đường hệ tạo ra nó, không `new` trong test | agent |
+| thuật toán tất định, công thức, parser, serialize | phép kiểm chạy được, đi qua đúng cửa hệ dùng thật | agent |
 | tên, tham chiếu, đồng bộ tài liệu | grep quét | agent |
 | hiệu năng | số trước–sau tại chỗ đo | agent |
 | đúng–sai xác định được mà làm tay chậm, sót | vét cạn | agent, **tự đề xuất** |
 | cảm giác chơi, nhịp, độ khó, hình ảnh | **chơi thử** | **developer** |
-| kịch bản hành vi trên build (event, kinh tế, save, tutorial) | chơi qua kịch bản, cheat rút đường | developer, QA |
+| kịch bản hành vi trên build | chơi qua kịch bản, cheat rút đường | developer, QA |
 
-**Phép kiểm phải đỏ được.** Case khẳng định "luôn" chọn input mà bảo đảm có hiệu lực — input ngẫu nhiên rơi vào ca biên được
-phép thì đỏ oan, và người đọc học cách bỏ qua màu đỏ. Mỗi bước của thuật toán có ít nhất một case đỏ khi bỏ bước đó; chạy đối
-chứng một lần và ghi kết quả cạnh case.
+- **Phép kiểm phải đỏ được:** mỗi bước của thuật toán có ít nhất một case đỏ khi bỏ bước đó; chạy đối chứng một lần, ghi
+  kết quả cạnh case. Case đỏ oan dạy người đọc bỏ qua màu đỏ.
+- **Số đo nằm trên đúng vật được hỏi**, ở đúng điều kiện nơi dùng thật; mắt developer trái số đo thì nghi chỗ đo trước.
+- **Cảm giác — dừng và giao, không dựng proxy.** Báo *"cần chơi thử"* kèm kịch bản: *vào đâu* · *làm gì* (chuỗi ngắn nhất) ·
+  *nhìn gì* · *khác trước ra sao* · *dấu hiệu hỏng*. Thứ developer chơi là cảm được thì agent không vào Play qua công cụ;
+  Play qua công cụ chỉ cho thứ developer **không cảm được** (trace, số đo, trạng thái nội bộ — `feel-tune`), và trả nguyên
+  save của developer sau khi chạy.
+- **Hướng dẫn developer tự làm là output phải nghiệm thu:** mỗi giá trị, thứ tự, tên ô đã dựng thử trên engine.
+- **Vét cạn** khi có đáp án xác định được và ít nhất một dấu hiệu — agent làm kể cả chưa được yêu cầu, vì đây là bằng
+  chứng: *sức* (không gian đầu vào lớn) · *thiên kiến* (ca biên khó nghĩ hết) · *tầm nhìn* (chứng minh **vắng mặt**) ·
+  *nhất quán chéo* (nhiều bản buộc khớp). Không dấu hiệu nào thì đọc code là xong. **Đổi mô hình của hệ thì chạy lại mọi
+  dòng kịch bản đã chốt** trên dữ liệu asset thật.
+- **Cheat mở đường tới kịch bản, không mở nắp kỹ thuật:** chỉ khi kịch bản không tới được bằng đường người chơi trong thời
+  gian hợp lý; gọi đúng lệnh thật của hệ, có trong build chính thức.
 
-**Số đo nằm trên đúng vật được hỏi.** Chỗ nhiều vật chồng nhau trên ảnh thì định vị vật bằng toạ độ runtime của nó ở frame đó rồi
-mới lấy mẫu; mắt developer trái số đo thì nghi chỗ đo trước. *Đã sai một lần:* lấy mẫu nút thay vì icon đang bay qua nút, báo icon
-đã sáng; icon vẫn tối như lớp phủ.
+## Việc lặp lại và git
 
-**Cảm giác — dừng và giao, không dựng proxy.** Báo *"cần chơi thử"* kèm kịch bản: *vào đâu* · *làm gì* (chuỗi ngắn nhất) ·
-*nhìn gì* · *khác trước ra sao* · *dấu hiệu hỏng*. **Developer chơi là cảm được thì agent không vào Play qua công cụ**: dừng
-ở phần tĩnh (code, YAML, eval không vào Play), chỉ ra nguyên nhân, sửa, giao kịch bản. Play qua công cụ chỉ cho thứ
-developer **không cảm được**: trace chứng minh refactor giữ chuyển động, số đo, trạng thái nội bộ (`feel-tune`). Play qua
-công cụ chạy trên save thật của developer: sao lưu đúng các key sẽ chạm trước khi vào, trả lại và so khớp trước khi báo
-(`playrun.sh` tự làm với PlayerPrefs; eval rời thì `PrefsSnapshot`, `docs/Editor/Probe.md`). *Đã sai một lần:* vài lượt dò luồng
-bằng eval rời thắng liền năm level trên save của developer, cộng cả tiền.
+**Việc lặp lại thì đề xuất công cụ ngay lượt đó** (lần thứ hai làm cùng chuỗi thao tác, hoặc biết sẽ làm lại): một dòng
+*việc gì · lặp mấy lần · công cụ trông thế nào · chỗ đặt · công viết · tiết kiệm mỗi lần*. Mặc định đặt ở Horcrux (tool
+Editor, script `Tools~`, skill); dự án chỉ giữ lớp nối. Developer đồng ý thì viết công cụ, tài liệu, cập nhật skill hoặc mở skill công cụ mới kèm hàng trong bảng chỉ dẫn.
 
-**Hướng dẫn developer tự làm là output phải nghiệm thu:** mỗi giá trị, thứ tự, tên ô đã dựng thử trên engine, ở đúng điều kiện
-nơi dùng thật (chế độ render, đơn vị, quality). Số trong tài liệu mang theo đơn vị và điều kiện nó được đo. Công cụ kiểm đổi điều
-kiện (chụp ở chế độ render khác) thì không chứng minh gì cho điều kiện kia. *Đã sai một lần:* chép bề dày viền từ tài liệu đo ở
-đơn vị khác; kiểm hiệu ứng hạt bằng ảnh chụp chế độ Camera, game chạy Overlay thì ra khối màu đặc; code mẫu trong Plan gắn prefab hạt của canvas
-vào vật ngoài canvas, không vẽ gì.
+**Git:** commit chỉ mang phần của việc mình, không đụng thứ developer đã stage, không `stash` khi còn đường khác · commit
+trong Horcrux thì commit luôn con trỏ submodule ở dự án · sau một lượt chờ dài, đọc lại trạng thái trước bước ghi ra ngoài
+(push, commit, pop stash).
 
-**Vét cạn khi có đáp án xác định được và ít nhất một dấu hiệu** — agent làm kể cả chưa được yêu cầu, vì đây là bằng chứng:
-*sức* (không gian đầu vào lớn, lặp nhiều) · *thiên kiến* (ca biên khó nghĩ hết — **liệt kê biên trước khi chạy**: rỗng,
-một phần tử, chạm giới hạn, trùng, ngoài dải, thứ tự đảo, hai sự kiện cùng lúc, frame đầu, object huỷ giữa chừng) · *tầm
-nhìn* (chứng minh **vắng mặt**; state nội bộ sai khi màn hình đúng; rò rỉ sau hàng nghìn vòng) · *nhất quán chéo* (nhiều
-bản buộc khớp; trước–sau refactor phải trùng). Không dấu hiệu nào thì đọc code là xong. **Đổi mô hình của hệ thì chạy lại
-mọi dòng kịch bản đã chốt** trên dữ liệu asset thật — test dựng dữ liệu riêng không thấy config đã trôi; luật thuần chạy
-qua eval không vào Play, Play chỉ còn cho wiring và đường host.
+## Tra cứu — `workflow/reference.md`
 
-**Cheat — mở đường tới kịch bản, không mở nắp kỹ thuật.** Chính đáng khi kịch bản **không tới được bằng đường người chơi
-trong thời gian hợp lý**: thời gian (hết tuần) · khối lượng (đủ điểm mốc cuối) · trạng thái đầu (save mới). Mỗi nút là một
-dòng phải giữ đúng mãi. Hàng đọc chỉ cho thứ màn hình không hiện, qua API sẵn có, không bọc thứ đã public; lệnh riêng chỉ khi
-phải chạm `private`, gọi đúng lệnh thật của hệ. Lệnh thật có cổng (khoá, cửa sổ thời gian) mà đường thật đóng cổng trước khi
-QA kịp bấm thì cheat là lệnh riêng vượt cổng, đặt trong hệ: gọi lệnh thật chỉ chạm vào cổng. *Đã sai một lần:* cheat báo
-campaign qua cửa thật; SDK trả organic ngay phiên đầu nên cửa đã khoá, nút không đổi gì kể cả sau khi mở lại app.
-Cheat đổi môi trường để QA kiểm một kịch bản thì lần theo kịch bản tới chỗ nó chạm hệ được đổi trước khi làm nút — kịch bản
-không đi qua hệ đó thì nút đúng mà vô nghĩa; cổng chặn im lặng dọc đường (anti-cheat, consent, cờ tắt) ghi vào kịch bản QA.
-Lệnh thật nằm sau ranh `internal` của SDK bên thứ ba thì mở công cụ debug của chính SDK: reflection hay ghi lại khoá lưu của
-SDK câm im lặng ở bản SDK sau. Lệnh rời trạng thái giữa chừng đi đường người chơi rời nó; popup còn mở
-lúc chuyển màn bị đóng theo nhánh huỷ của chính nó — đếm hệ quả nhánh đó tự làm trước khi gọi thêm. Lệnh đặt thẳng một giá
-trị bỏ qua việc đường thật làm khi giá trị đi qua ngưỡng (rời mức đầy thì bắt đồng hồ hồi): làm cùng việc đó, không thì hệ tự
-sửa lại ở nhịp sau. Cheat chọn cửa ghi không bắn tracking: số cheat lẫn vào số liệu thì không lọc ra được. Ô nhập ngoài miền
-người chơi tới được thì từ chối kèm log, không kẹp — QA thấy mình gõ sai. Panel có trong **build chính thức, không `#if`** — QA kiểm bản người chơi cầm.
-Lệnh, cửa đọc `private` và suy luận thuộc **hệ**, không phụ thuộc công cụ debug — hệ framework mang được sang dự án dùng
-panel khác; lớp nối với panel thuộc dự án. **Đưa về trạng thái đầu** đi qua chủ giữ state: thay bản trong RAM lẫn bản lưu,
-flush, rồi **thoát app** — xoá kho lưu giữa phiên bị flush lúc pause/quit ghi đè, việc chỉ chạy lúc boot (grant, cache dẫn
-xuất) không chạy lại. Lệnh đổi cấu hình chỉ đọc lúc boot cũng ghi rồi thoát; ở Editor thoát là dừng Play, `Application.Quit`
-không tác dụng. Cờ của khởi tạo lười giữ ở "đã kiểm" tới hết tiến trình: mở lại thì thứ đọc trước lúc thoát khởi tạo lại
-từ state cũ và bật lại cờ vừa xoá. "Như cài mới" xoá đúng danh sách key, không xoá cả kho (consent, prefs của SDK).
-
-> **Nền tảng** — khi dự án dùng SRDebugger: tab Options, một category mỗi hệ, trigger `Off`; cách mở panel do dự án quyết.
-> Option chỉ đọc lại getter khi bind, `OnEnable` (mở panel, đổi tab) hoặc khi được báo, không theo frame: lệnh xong phải
-> báo các hàng đọc. Panel khác mở từ một hàng mà xếp dưới panel SRDebugger thì không nhận chạm: ẩn panel SRDebugger trước.
-> **Sổ tay** — partial `<Hệ>.Debug.cs` giữ lệnh, plain class `<Hệ>DebugOptions` giữ hàng UI (nhận hệ qua constructor,
-> `Init/Dispose` ở `Awake/OnDestroy`, `internal sealed` vì SRDebugger quét mọi public member) · hàng đọc là `string`
-> read-only · lệnh có tham số = property số hoặc chuỗi + method không tham số · `INotifyPropertyChanged` bắn `null` sau mỗi
-> lệnh · hàng là delegate đọc hệ thì `DynamicOptionContainer` + `OptionDefinition.Create`/`FromMethod`, báo bằng
-> `Property.NotifyValueChanged()`, không còn class public cho SRDebugger quét.
+| Chạm | Mục |
+|---|---|
+| commit khi working tree có sửa dở, submodule, developer thao tác git song song | Git |
+| phỏng vấn, đọc code, asset, cấu hình để đối chiếu | Đối chiếu |
+| viết test, đo, Play qua công cụ, vét cạn, hướng dẫn developer, chuỗi eval lặp lại | Nghiệm thu |
+| viết cheat, lệnh debug, panel cho QA | Cheat |

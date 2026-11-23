@@ -5,11 +5,11 @@ description: Dùng khi dựng hoặc reskin UI hay art world (SpriteRenderer tr�
 
 # ui-reskin — prefab UI theo demo
 
-Skill công cụ dưới `Skills/horcrux_skill.md` (NT, ba tầng, ký hiệu định nghĩa ở đó). Tool: `docs/Editor/TmpToUniText.md` (chuyển chữ TMP sang UniText, giữ kiểu viền bóng) · `docs/Editor/UIReskin.md` (dựng,
+Skill công cụ dưới `Skills/horcrux_skill.md` (NT, tầng, ký hiệu định nghĩa ở đó). Tool: `docs/Editor/TmpToUniText.md` (chuyển chữ TMP sang UniText, giữ kiểu viền bóng) · `docs/Editor/UIReskin.md` (dựng,
 soát, chụp, đo) · `docs/Editor/Probe.md` (cỡ Game view, vào Play, chờ scene, bấm) · `docs/Editor/SpriteAtlasBuilder.md` (soát, dựng
 atlas) · `docs/ToolUsage/UIParticle.md`, `docs/ToolUsage/Spine.md` (hạt và Spine trên canvas, khi dự án dùng hai thư viện đó).
 
-Mục dưới là **tiêu chí và lý do**, không phải trình tự. Bài nào có đường ngắn hơn mà vẫn đạt tiêu chí thì đi đường đó (NT6),
+Mục dưới là **tiêu chí và lý do**, không phải trình tự. Bài nào có đường ngắn hơn mà vẫn đạt tiêu chí thì đi đường đó (NT9),
 nói lý do và phép kiểm.
 
 ## Tổ chức prefab
@@ -22,8 +22,8 @@ tắt, reference kéo thả thì không. **Cây giữ, art cũ thì gỡ** (mụ
 
 **Nguồn hình là màn tham chiếu (demo, prefab đã reskin) thì mọi thuộc tính hình lấy từ đó; prefab cũ chỉ góp hành vi.** Màu,
 nhãn mà skin cũ gán theo ý nghĩa (đỏ cho thoát, vàng cho chơi lại) cũng là skin cũ: giữ lại là trộn hai skin. Vai mà tham chiếu
-không có hình cho thì hỏi (mục cuối), không lấy từ skin cũ. *Đã sai một lần:* reskin theo popup tham chiếu nút xanh, agent giữ
-nút đỏ, vàng của popup cũ dưới nhãn giả định; developer bắt đổi.
+không có hình cho thì hỏi (mục cuối), không lấy từ skin cũ. *Bẫy:* màn tham chiếu dùng một màu nút, agent giữ màu
+theo ý nghĩa của skin cũ dưới nhãn giả định; developer bắt đổi.
 
 **Đổi art của một khối thì soát mọi nơi còn vẽ art cũ** (tìm theo GUID): bản sao hình của khối trong tool thiết kế, preview, prefab
 song song không báo lỗi khi lệch skin, chỉ lộ khi người khác mở. Nêu từng nơi cho developer quyết, không tự đổi theo.
@@ -34,10 +34,10 @@ renderer thì làm trong chính nó (shader, tham số theo renderer); mask dùn
 
 **Thứ lặp lại là một khối dùng chung; khác nhau ở dữ liệu là variant; khác hình dạng là khối riêng.** Tiêu chí: đổi kiểu (khung,
 nút, font) ở một chỗ thì mọi chỗ theo, và thêm một mục mới là *thêm* một variant hay kéo một khối vào, không chép. Số tầng
-variant theo số **lý do thay đổi** thật (kiểu chung → loại → gói), không theo cho đủ bộ (NT1). Sửa cho một nhóm variant thì
+variant theo số **lý do thay đổi** thật (kiểu chung → loại → gói), không theo cho đủ bộ (NT2). Sửa cho một nhóm variant thì
 đặt ở **prefab gốc hẹp nhất phủ đúng nhóm đó**: chép sang từng variant là n bản buộc khớp; đặt ở gốc rộng hơn kéo theo nhóm
-khác — cần thì override tại gốc tầng giữa (`PrefabAudit.ApplyOverrides`). *Đã sai một lần:* chép layout nút sang các variant anh em; developer bắt dời lên
-gốc, và giá trị cũ nằm ở gốc chung với một loại thẻ khác.
+khác — cần thì override tại gốc tầng giữa (`PrefabAudit.ApplyOverrides`). *Bẫy:* chép layout sang các variant anh em thay vì đặt ở gốc; giá
+trị cũ lại nằm ở gốc chung với một nhóm khác.
 
 **Vị trí do layout tính, số tay chỉ cho thứ demo đặt tự do.** LayoutGroup, ContentSizeFitter xếp và co theo nội dung: thêm bớt
 mục không phải đo lại. Override mà layout ghi đè mỗi lần tính là nhiễu — che thay đổi của prefab gốc và làm diff vô nghĩa;
@@ -54,7 +54,7 @@ gờ sáng, bóng, chỗ của icon. Đó không phải rect của Image, vì re
 đè lên viền. Đo vùng đó trên art (`DemoCompare.InnerRegion`), đặt rect của chữ đúng vùng, nghiệm thu bằng chuỗi dài nhất có
 thật; soát cả thư mục prefab sau mỗi lần thay art bằng `PrefabAudit.TextFit`. Khung mọc cao theo số dòng thì bề ngang chữ vẫn
 theo lòng. Mỗi loại chữ co theo
-chiều nào thì xem `async-presentation` › Trình diễn vật thể có chất liệu (khối Nền tảng về autosize). Chữ có phần chạy theo nhịp
+chiều nào thì xem `async-presentation` › tra cứu › Renderer và chữ. Chữ có phần chạy theo nhịp
 (chấm loading, số đếm) neo về phía phần đứng yên: căn giữa thì phần đứng yên trượt mỗi nhịp. Khung chữ trên demo là trạng thái dài
 nhất.
 
@@ -67,7 +67,7 @@ tương đối theo cỡ chữ thì đổi cỡ là đổi bề dày. Kiểu ch�
 sửa kiểu dùng chung là đổi mọi chữ khác đang dùng nó. **Nghiệm thu theo lớp:** cùng đường cắt trên demo và ảnh chụp ra cùng
 số dải, màu và bề dày từng dải khớp (`DemoCompare.LayerDiff`). Khung bao đo bằng màu ruột không thấy viền và bóng; lớp mỏng chiếm ít pixel nên chìm
 trong `Diff` trung bình. Màu đặt đúng số mà ảnh chụp ra khác thì tìm khâu đổi màu (không gian màu, alpha cha, tint, lớp
-đè), không chỉnh mò tới khi giống. *Đã sai một lần:* chữ dựng khớp khung và `Diff`, developer nghiệm thu thấy màu lệch,
+đè), không chỉnh mò tới khi giống. *Bẫy:* chữ dựng khớp khung và `Diff`, developer nghiệm thu thấy màu lệch,
 viền dày mỏng khác demo, bóng đổ bị bỏ hẳn.
 
 **Neo theo màn, không theo một máy.** Nền và dải màu phủ ra ngoài safe area (tai thỏ, thanh home); nội dung bấm được nằm trong.
@@ -83,7 +83,7 @@ màn, mũi tên rời giữa hộp nhưng vẫn chỉ đúng vật.
 để vạch chia không bị kéo giãn. Chân thẻ dày mỏng khác art thì chỉnh `pixelsPerUnitMultiplier` trên Image, không sửa border.
 
 **Câu hỏi về hành vi thuộc developer.** Nút trên demo chưa có logic, nút cũ không còn chỗ trên demo, chữ demo khác chữ code: hỏi
-trước khi dựng (NT5), ghi câu trả lời vào tài liệu thiết kế của màn.
+trước khi dựng (NT1), ghi câu trả lời vào tài liệu thiết kế của màn.
 
 ## Atlas
 
@@ -125,7 +125,7 @@ sai khác ~0.
 
 **Gọi hàm Horcrux, không chép khung vào eval.** Mở, sửa, lưu, dỡ prefab, dựng node, chụp, đo đã có sẵn và đã compile thật: eval
 chỉ còn phần riêng của bài, ít chỗ cho lỗi biên dịch C# 6 và API đoán tên. Khung nào eval tới lần thứ hai mà Horcrux chưa có
-thì đề xuất công cụ theo `workflow` (đầu skill đó). *Đã sai một lần:* hàng trăm eval chép cùng khung dump, sửa, chụp, so; đoạn
+thì đề xuất công cụ theo `workflow` › Việc lặp lại và git. *Bẫy:* hàng trăm eval chép cùng khung dump, sửa, chụp, so; đoạn
 code phải đào lại từ lịch sử chat nhiều lần · viết lại bộ đọc PNG và dò dải màu bằng Python ngoài Editor trong khi
 `DemoCompare.Runs` đã có — demo và ảnh chụp đo bằng cùng một hàm, cùng cột, cùng tolerance mới so được.
 
@@ -144,8 +144,7 @@ Mọi trạng thái Editor đã đổi (cỡ Game view, scene khởi động, Pl
 **Kết quả là asset đã lưu** (`editor-first` › Editor-first). Nghiệm thu bằng hình **sau khi lưu và nạp lại**: lỗi pivot, override
 mất chỉ lộ sau khi nạp. So với demo ở Game view đúng cỡ demo và trên máy giả lập theo `demo-compare`. Hình đúng hay chưa do developer chốt (`workflow` › Nghiệm thu); agent báo số lệch còn lại.
 
-**Commit chọn file.** Vào Play làm đổi file không thuộc task (config Addressables, scene khởi động, xuống dòng): stage theo danh
-sách file của task, không `add` cả thư mục.
+**Commit chọn file**, không `add` cả thư mục: `workflow` › tra cứu › Git.
 
 ## Bẫy
 

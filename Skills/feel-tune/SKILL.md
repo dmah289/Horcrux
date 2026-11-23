@@ -6,14 +6,14 @@ description: Dùng khi chỉnh, refactor hay dò lỗi feeling của game Unity 
 # feel-tune — chỉnh feeling với công cụ dựng sẵn
 
 Skill công cụ. `<horcrux>` là gốc Horcrux trong dự án. API chi tiết: `docs/Editor/Probe.md`, `docs/Editor/FeelTrace.md`.
-Khi nào được vào Play và khi nào giao developer chơi thử: `workflow` › Nghiệm thu. Số tinh chỉnh là nháp: NT9.
+Khi nào được vào Play và khi nào giao developer chơi thử: `workflow` › Nghiệm thu. Số tinh chỉnh là nháp: NT11.
 
 ## Luật
 
 1. **Không viết script khung mới** (vào Play, thử lại eval, bắt log, ghi file, khoá fps, chụp, ghép ảnh). Thiếu thì mở
-   rộng công cụ trong Horcrux hoặc class đường tắt của dự án, rồi dùng. *Đã sai một lần:* dò luồng quảng cáo treo bằng vài
-   chục eval MCP rời (vào Play, chờ, đọc field private, bấm nút, đóng quảng cáo) và đọc console thô hàng trăm KB, trong khi
-   `playrun.sh` + `PlayProbe` làm cả chuỗi trong một lệnh và in `LOG` đã gọn.
+   rộng công cụ trong Horcrux hoặc class đường tắt của dự án, rồi dùng. *Bẫy:* dò một luồng treo bằng vài chục
+   eval rời và đọc console thô hàng trăm KB, trong khi `playrun.sh` + `PlayProbe` làm cả chuỗi trong một lệnh và in `LOG`
+   đã gọn.
 2. **Không đọc dữ liệu thô vào ngữ cảnh.** Trace đọc qua `stat`, `diff`, `sig`; kết quả probe tóm tắt dưới 4 KB; ảnh là
    một sheet đã cắt và thu nhỏ.
 3. **Refactor phải giữ chuyển động thì chứng minh bằng trace**, không bằng mắt: quay mỗi frame ở cuối frame với frame rate
@@ -31,7 +31,7 @@ Khi nào được vào Play và khi nào giao developer chơi thử: `workflow` 
 | GC, batches, renderer bật mà không vẽ lúc diễn | `feeltrace.sh --gc`, `stat <file> M0 --cols 0` | có |
 | một hàm có cấp phát dưới vài chục KB | test PlayMode `Is.Not.AllocatingGCMemory`, **không** đọc từ M0 — GC mỗi frame trong Editor có nền nhiễu ≈ 100 KB | có |
 | trạng thái nội bộ sau một chuỗi thao tác | `playrun.sh` + `PlayProbe.Run` | có |
-| developer giao kiểm kịch bản hành vi (thiếu tiền thì mở cửa hàng, đủ thì trừ đúng) | một probe chạy hết các ca: dựng dữ liệu, `Click`, đọc số trước–sau; runner trả PlayerPrefs, save ngoài PlayerPrefs thì probe tự trả (`docs/Editor/Probe.md` › Bẫy); mỗi ngữ cảnh cửa tự chọn (menu, màn chơi) là một ca | có |
+| developer giao kiểm kịch bản hành vi (thiếu điều kiện thì rẽ nhánh nào, đủ thì ghi đúng số) | một probe chạy hết các ca: dựng dữ liệu, `Click`, đọc số trước–sau; runner trả PlayerPrefs, save ngoài PlayerPrefs thì probe tự trả (`docs/Editor/Probe.md` › Bẫy); mỗi ngữ cảnh cửa tự chọn (menu, màn chơi) là một ca | có |
 | luồng dừng giữa chừng, Editor còn giữ nguyên (không chuyển màn, popup kẹt) | **không dừng Play**: `console_digest.py` tới dòng cuối trước khi im, rồi `PlayProbe.Field` đọc trạng thái hai bên chỗ đứt (hệ ngoài đã trả chưa, bên chờ còn sống không) | đang Play |
 | sửa xong, tái hiện luồng (thắng → quảng cáo → chuyển màn) | `playrun.sh`: `WaitForSceneAsync` trước mọi service, `Call` handler nút hay `Click`, đóng quảng cáo giả (`docs/Editor/Probe.md` › Bẫy), ghi số trước–sau | có |
 | mất hình, lệch lớp, nháy ở một frame | `FrameSheet` trong probe hay `Act` của kịch bản, một PNG | có |

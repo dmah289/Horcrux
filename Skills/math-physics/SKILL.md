@@ -5,14 +5,15 @@ description: Dùng khi hệ cần công thức toán hay vật lý: quyết có 
 
 # math-physics — toán và vật lý trong hệ
 
-Skill nền dưới `Skills/horcrux_skill.md` (NT, ba tầng, ký hiệu định nghĩa ở đó).
+Skill nền dưới `Skills/horcrux_skill.md` (NT, tầng, ký hiệu định nghĩa ở đó). Skill này không có
+`reference.md`.
 
 ## Khi nào dùng toán, sâu tới đâu
 
 Mở ra khi **developer yêu cầu**, hoặc khi **agent thấy toán giải tốt hơn hẳn** — khi đó nêu được–mất để developer quyết.
 
 **Mặc định là không cần toán.** Logic gameplay phần lớn là trạng thái và luật rời rạc. Xét cách rẻ, dễ chỉnh hơn trước:
-`AnimationCurve` hay bảng tra designer chỉnh trong Inspector (NT4) · easing có sẵn · lerp · máy trạng thái · hằng số chọn
+`AnimationCurve` hay bảng tra designer chỉnh trong Inspector (NT5) · easing có sẵn · lerp · máy trạng thái · hằng số chọn
 tay. **Dấu hiệu ép toán:** phải dẫn định luật để biện minh một phép nhân · công thức một call site, không tham số nào đổi ·
 designer không chỉnh được gì. **Bờ vực kia cũng sai:** bài toán vốn liên tục có ràng buộc (dừng đúng chỗ, va chạm, nội suy
 cần đạo hàm liên tục) mà né toán thì thành đống hằng số không ai hiểu. Toán đúng chỗ làm code **ngắn hơn**. Đã cần thì
@@ -38,7 +39,7 @@ Người đọc phải **hiểu hiện tượng** · **tin công thức suy ra �
 | 6 | sao tin nghiệm đúng? | giá trị tại mốc biên so với kỳ vọng | bảng "mốc → kỳ vọng → ✓" |
 
 Không thương lượng: **trực giác trước, ký hiệu sau** · **suy ra, không áp đặt** · **thứ chọn bằng cảm giác thì nói thẳng**
-("chọn bằng tai và mắt, số này cho cảm giác X"), không bịa dẫn giải vật lý · **lệch vật lý chuẩn là bình thường** (NT8) —
+("chọn bằng tai và mắt, số này cho cảm giác X"), không bịa dẫn giải vật lý · **lệch vật lý chuẩn là bình thường** (NT10) —
 nêu lệch ở đâu, vì sao, khi nào mới cần bản đầy đủ.
 
 ## Đối chiếu công thức

@@ -21,7 +21,7 @@ Skill công cụ. `<horcrux>` là gốc Horcrux trong dự án. Chi tiết lện
    dấu conflict, sinh GUID mới cho file nó đọc không được. **Nhánh đã tách hai phía (ahead và behind) thì `pull` là merge:**
    đọc skill này và dựng worktree trước lệnh merge đầu tiên, không thử ở checkout chính rồi mới chuyển. Worktree không cần
    index của checkout chính sạch, nên file developer đang sửa hay đã stage để nguyên, không `stash`; đưa nhánh lên merge bằng
-   `merge --ff-only`, lệnh này chỉ từ chối khi merge chạm đúng file đang bẩn. *Đã sai một lần:* merge ở checkout chính bị từ
+   `merge --ff-only`, lệnh này chỉ từ chối khi merge chạm đúng file đang bẩn. *Bẫy:* merge ở checkout chính bị từ
    chối vì index có file đã stage; agent cất chúng rồi merge tiếp, conflict hiện ra trong cây Unity đang mở.
 4. **File cấu hình gộp hợp hai bên, không chọn một bên:** dependency và scope trong `Packages/manifest.json` cùng lock,
    define symbol theo platform, scope registry, assembly reference của asmdef. Chọn một bên là gỡ package hay define bên kia
@@ -29,7 +29,7 @@ Skill công cụ. `<horcrux>` là gốc Horcrux trong dự án. Chi tiết lện
 5. **Prefab, scene conflict không lấy nguyên một bên.** Lấy bản của phía đổi cấu trúc nhiều hơn rồi ghép khối object phía
    kia thêm; kiểm fileID không trùng và cây Transform (`m_Children` ↔ `m_Father`) khớp, rồi mở trong Editor xem. Ghép
    và kiểm bằng PrefabYaml (`graft`, `check`; `docs/Editor/PrefabYaml.md`), không sửa YAML tay.
-6. **Conflict ngữ nghĩa là quyết định của developer** (NT5): hai bên đổi cùng hành vi khác hướng, một bên bỏ tính năng bên
+6. **Conflict ngữ nghĩa là quyết định của developer** (NT1): hai bên đổi cùng hành vi khác hướng, một bên bỏ tính năng bên
    kia vừa sửa, hai số đo cho cùng thứ. Bày phương án *giữ gì · mất gì*, chốt một đề xuất, hỏi; không chọn hộ.
 7. **Mọi dòng `lines`, `assets` báo đều được phân loại** trong báo cáo: *chủ ý* (một cha sửa, xoá, gỡ có lý do — nêu lý do)
    hay *rơi* (sửa ngay). Lỗi có sẵn ở một cha thì báo, không sửa trong merge.

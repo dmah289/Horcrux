@@ -5,7 +5,7 @@ description: Dùng khi so màn game với ảnh demo hay ảnh chụp máy thậ
 
 # demo-compare — so demo ở Game view và trên máy giả lập
 
-Skill công cụ dưới `Skills/horcrux_skill.md` (NT, ba tầng, ký hiệu định nghĩa ở đó). Tool: `docs/Editor/Probe.md` (chạy nhiều cỡ,
+Skill công cụ dưới `Skills/horcrux_skill.md` (NT, tầng, ký hiệu định nghĩa ở đó). Tool: `docs/Editor/Probe.md` (chạy nhiều cỡ,
 nhiều máy, chọn máy Simulator, thêm máy thật, đo khung object) · `docs/Editor/UIReskin.md` (dò dải màu, ghép ảnh cạnh nhau, số lệch `Diff`, fit shader vầng sáng) ·
 `docs/Editor/VideoDemo.md` (video demo: lưới khung hình, đoạn động, bám vật ra thời lượng và ease, mốc xuất hiện từng lớp, khung vật
 để đo cỡ, so nhịp với bản quay Unity; quay bản Unity bằng `FrameRecorder` của Probe). Dựng
@@ -64,8 +64,8 @@ cỡ, máy cũ sau khi đo. Developer nghiệm thu hình (`workflow` › Nghiệ
 
 Demo thường đã chừa dải trống trên cùng cho thanh trạng thái và lỗ camera. Cộng cả inset của máy lên trên dải đó là đếm hai lần: cả cụm
 trên tụt sâu trên máy có tai thỏ, còn ở Game view vẫn đúng. Inset chỉ đẩy phần vượt dải trống thiết kế. HUD và mọi khối world neo cùng
-mép đọc **cùng một quy tắc** (`NT7`, hai bản buộc khớp lúc chạy), để khe giữa chúng không đổi theo máy. Dải trống là số đo của thiết kế,
-nằm một chỗ cạnh phần tử trên cùng mà nó đo. *Đã sai một lần:* HUD và cụm world cùng neo trong safe area, khớp demo ở Game view, trên máy
+mép đọc **cùng một quy tắc** (`code-design` › tra cứu › Bất biến: hai bản buộc khớp), để khe giữa chúng không đổi theo máy. Dải trống là số đo của thiết kế,
+nằm một chỗ cạnh phần tử trên cùng mà nó đo. *Bẫy:* HUD và cụm world cùng neo trong safe area, khớp demo ở Game view, trên máy
 punch-hole tụt cả cụm hơn trăm pixel xuống dưới dải trống demo đã chừa.
 
 **Neo là mép cộng khoảng cách, không là phần của vùng an toàn.** Vùng an toàn ngắn đi vì inset thì điểm đặt bằng tỉ lệ của nó chỉ dời một
@@ -77,8 +77,8 @@ Canvas HUD co theo một trục (thường khớp chiều cao). Khối world k�
 giữ trọn khung thiết kế — số lớn hơn giữa cỡ giữ bề rộng và cỡ giữ chiều cao — và khoảng từ mép tới khối đo bằng pixel thiết kế nhân cùng
 hệ số canvas, không bằng unit world. Hai luật khác nhau trùng đúng ở tỉ lệ demo nên Game view cỡ demo không bao giờ lộ; lệch lớn dần theo
 tỉ số hai aspect, rõ nhất trên tablet. Mỗi lần chỉnh bố cục so thêm ở Game view một màn rộng hơn demo (16:9, tablet) và một màn cao hơn.
-*Đã sai một lần:* camera giữ bề rộng, khoảng cách tính bằng unit world, khớp demo ở 19.5:9; trên tablet 3:2 khối world cách HUD gấp bốn
-lần demo, dải bàn chơi còn nửa và scale fit kẹt sàn; developer nghi vùng an toàn, Game view cùng cỡ máy đã ra trùng ảnh máy.
+*Bẫy:* camera giữ bề rộng, khoảng cách tính bằng unit world: khớp demo ở tỉ lệ demo, trên tablet khối world cách HUD gấp
+nhiều lần demo; bị nghi là vùng an toàn trong khi Game view cùng cỡ máy đã ra trùng ảnh máy.
 
 ## Bẫy
 

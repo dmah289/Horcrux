@@ -48,7 +48,7 @@ return $"strip={UnityEditor.PlayerSettings.GetManagedStrippingLevel(UnityEditor.
 1. Chạy lệnh đầy đủ một lần; đọc mục `apk` để xếp hạng nhóm.
 2. Với mỗi nhóm lớn, quy nguồn: `dex` → manifest và `mainTemplate.gradle` · `aa`/`layout` → group, implicit, trùng ·
    `log` → Resources, scene, tham chiếu thẳng (grep GUID của asset trong `.unity`, `.prefab`, `TMP Settings.asset`).
-3. Font TMP: `m_AtlasPopulationMode: 1` là Dynamic, kéo nguyên file font; đếm glyph so với ngôn ngữ game hỗ trợ.
+3. Khi dự án dùng TMP: font có `m_AtlasPopulationMode: 1` là Dynamic, kéo nguyên file font; đếm glyph so với ngôn ngữ game hỗ trợ.
 4. Báo cáo bảng nhóm · MB · % · cơ chế kéo vào; phương án gỡ kèm MB ước tính và rủi ro; hỏi developer thứ thuộc sản phẩm
    (ngôn ngữ, mạng quảng cáo, CDN).
 5. Sau khi sửa: build lại, chạy lại lệnh, so hai bảng.

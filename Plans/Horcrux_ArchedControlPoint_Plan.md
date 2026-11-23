@@ -25,7 +25,7 @@ Plan) agent làm. GĐ1, GĐ3 commit trong `Assets/Horcrux`; GĐ2 commit ở dự
   - lựa chọn vồng theo trục trong `ArcFlightSpec`/`CharmFlyArc` — `CharmFlyArc` chưa có caller nào trong dự án.
   - hàm gộp "điểm trên cung vồng" — caller ghép `ComputeArchedControlPoint` với `EvaluateQuadraticBezier` có sẵn, mỗi frame đọc lại đích.
 - **Quyết định trái trực giác:** đỉnh thật của cung cao **nửa** `height` so với trung điểm dây cung. `height` là độ nhấc của điểm điều
-  khiển, không phải độ cao đỉnh; giữ vậy vì núm `ArcHeight` của dự án đã chỉnh trên prefab theo nghĩa này (NT9).
+  khiển, không phải độ cao đỉnh; giữ vậy vì núm `ArcHeight` của dự án đã chỉnh trên prefab theo nghĩa này.
 - **Mở rộng sau:** `ArcFlightSpec` thêm `bool archedUp` (mặc định `false`, key YAML mới không phá asset cũ) khi `CharmFlyArc` có caller
   bay hai chiều · tham số `controlAtRatio` khi có caller đặt đỉnh lệch.
 
