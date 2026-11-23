@@ -42,6 +42,7 @@ lệch nhịp giữa demo với bản quay Unity. Dùng để dựng và chỉnh
 ```
 video ──► đọc tuần tự (OpenCV) ──┬─► sheet   : khung ở N mốc → cắt roi → ô có nhãn "giây #frame" → lưới PNG
                                  ├─► frame   : khung ở mốc → cắt roi → đổi cỡ (--size) → PNG ──► DemoCompare.Diff / SideBySide
+                                 ├─► extent  : khung ở mốc − khung nền (--bg) trong roi → pixel lệch > --diff → phân vị cắt mép → khung px
                                  ├─► motion  : ảnh xám rộng 160 px → lệch trung bình giữa hai frame liền e[k] (0–255)
                                  │             → ngưỡng = max(3·nhiễu, nhiễu + 0.5) → đoạn động, cắt cảnh, vùng, frame trùng, chu kỳ lặp
                                  ├─► track   : mẫu = roi ở --ref → khớp mọi frame (vị trí, scale) → alpha theo nền --bg
@@ -67,6 +68,7 @@ trên demo thật.
 T="<horcrux>/Editor/VideoDemo/Tools~/video_demo.py"
 python -X utf8 -P "$T" sheet   <video> --out <png> [--from s] [--to s] [--count 12 | --step s] [--cols 6] [--cell 180] [--roi R]
 python -X utf8 -P "$T" frame   <video> --at 1.2,3.4 --out-dir <dir> [--size 1080x2340] [--roi R]
+python -X utf8 -P "$T" extent  <video> --at 1.2,3.4 --bg 0.1 [--roi R] [--diff 40] [--trim 1]
 python -X utf8 -P "$T" motion  <video> [--from s] [--to s] [--roi R] [--bin 0.1] [--threshold v]
 python -X utf8 -P "$T" track   <video> --roi R --ref t [--bg t] [--from s] [--to s] [--csv <file>] [--min-score 0.7]
 python -X utf8 -P "$T" compare <a> <b> [--roi R] [--a-from s] [--a-to s] [--b-from s] [--b-to s] [--out <png>] [--count 8] [--max-lag 5] [--tempo 1.25] [--pair-window 0.4]
@@ -79,6 +81,8 @@ python -X utf8 -P "$T" layers  <a> [<b>] --layer tên:R:màu [--layer …] [--a-
 | `--from`, `--to` | khoảng giây đọc |
 | `sheet --step` | giây giữa hai ô; `--step 0.0334` ở video 30 fps là mọi frame — xem từng frame quanh một mốc |
 | `frame --size` | đổi cỡ khung xuất ra, ví dụ cỡ Game view để `Diff` |
+| `extent --bg` | giây khung nền: cùng cảnh, vật đo chưa có. Mọi thứ khác nền trong `--roi` đều tính vào khung, nên vùng chỉ ôm vật đo; vật khác cũng đổi (hạt, vật bị lắc) thì thu vùng hoặc chọn mốc chúng đứng yên |
+| `extent --diff`, `--trim` | lệch kênh tối thiểu để tính là khác nền · phần trăm cắt mỗi mép theo phân vị, bỏ chấm hạt, nhiễu nén; `--trim 0` là khung đủ |
 | `motion --bin` | giây mỗi ký tự của dải độ động |
 | `motion --threshold` | ép ngưỡng động (0–255) khi ngưỡng tự tính bắt nhiễu nén |
 | `track --ref` | giây vật hiện **rõ, đúng dáng cuối, nằm trong `--roi`**; vùng ở mốc này là mẫu |
@@ -109,6 +113,9 @@ Thời gian: `motion`, `sheet`, `frame` vài giây cho video 15 s; `track` ~10 s
    Ít hơn ba cặp sự kiện (mục Giới hạn đo) thì so nhịp bằng `layers demo.mp4 <unity>/f_%04d.png --layer …`, mỗi lớp một màu
    riêng: khoảng cách giữa các lớp lệch dưới một frame là nhịp đã khớp.
 7. Khung tĩnh cuối: `frame --size <cỡ Game view>` rồi `DemoCompare.Diff` với ảnh chụp Game view.
+8. Cỡ vật world: `extent` vật trên demo và trên bản quay Unity ở cùng chặng, chia cho cỡ một vật world đứng cạnh đo trên cùng khung
+   (ô, hộp; đo bằng `extent` với khung nền chưa có nó, hoặc dải màu của `DemoCompare`). Tỉ số hai bên khớp nhau là cỡ đã đúng ở mọi
+   bố cục camera; so pixel thẳng chỉ đúng khi hai bản cùng camera.
 
 ## Quay bản Unity
 
@@ -218,6 +225,8 @@ $t_B = k\,t_A + c$ để in nhịp.
 - Nhún 0.95…1.05, chu kỳ 1.00 ± 0.08 s, mỗi nửa nhịp InOutSine.
 - `motion --roi` ra lặp 1.00 ± 0.05 s.
 - Alpha lúc đứng ≈ 1.
+- `extent` ở 1.0 s trên nền 0.1 s, vùng quanh vật: khung 80×50 ± 3 px, góc (70, 275) ± 3 px. Đối chứng: cả khung, `--trim 0` thì
+  chấm nhiễu kéo khung ra gần cả ảnh.
 - `compare` với bản chậm 10%, trễ 0.3 s ra nhịp 1.10 ± 0.02 và trễ 0.30 ± 0.1 s.
 
 **`layers`:** A là mp4, B là chuỗi PNG, đều 30 fps. Lớp vàng phóng to từ 0.40 s ở A, từ 0.60 s ở B. Lớp xanh hiện ở 1.00 s ở A,

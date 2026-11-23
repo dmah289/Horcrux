@@ -2,6 +2,7 @@
 
   video_demo.py sheet   <video> --out <png> [--from s] [--to s] [--count N | --step s] [--cols C] [--cell W] [--roi R]
   video_demo.py frame   <video> --at t1,t2 --out-dir <dir> [--size WxH] [--roi R]
+  video_demo.py extent  <video> --at t1,t2 --bg t [--roi R] [--diff v] [--trim %]
   video_demo.py motion  <video> [--from s] [--to s] [--roi R] [--bin s] [--threshold v]
   video_demo.py track   <video> --roi R --ref t [--bg t] [--from s] [--to s] [--csv <file>]
   video_demo.py compare <a> <b> [--roi R] [--out <png>] [--count N] [--max-lag s] [--tempo k]
@@ -215,6 +216,70 @@ def cmd_frame(args):
         path = os.path.join(args.out_dir, '%s_%.3fs.png' % (stem, i / v.fps))
         write_png(path, img)
         print('%.3fs #%d -> %s (%dx%d)' % (i / v.fps, i, path, img.shape[1], img.shape[0]))
+
+
+def change_box(frame, bg, roi, level, trim):
+    """Khung các pixel khác nền từ `level` (kênh lệch nhiều nhất) trong roi, toạ độ của video. `trim` là phần trăm cắt mỗi
+    mép theo phân vị: chấm hạt, nhiễu nén lọt ngưỡng không kéo khung ra; 0 là khung đủ."""
+    x, y, w, h = roi
+    d = np.abs(crop(frame, roi).astype(np.int16) - crop(bg, roi).astype(np.int16)).max(axis=2)
+    ys, xs = np.nonzero(d > level)
+    if len(xs) == 0:
+        return None
+    lo, hi = trim, 100 - trim
+    x0, x1 = (float(np.percentile(xs, q)) for q in (lo, hi))
+    y0, y1 = (float(np.percentile(ys, q)) for q in (lo, hi))
+    return {'x0': x + x0, 'y0': y + y0, 'w': x1 - x0 + 1, 'h': y1 - y0 + 1,
+            'cx': x + float(xs.mean()), 'cy': y + float(ys.mean()), 'n': int(len(xs))}
+
+
+def cmd_extent(args):
+    v = Video(args.video)
+    roi = parse_roi(args.roi, v.w, v.h)
+    times = [float(t) for t in args.at.split(',')]
+    bg_i = v.index(args.bg)
+    idx = [v.index(t) for t in times]
+    frames = v.read(idx + [bg_i])
+    print(v.header())
+    print('nền %.3fs #%d · roi %s · ngưỡng %d · cắt %g%% mỗi mép' % (bg_i / v.fps, bg_i, ','.join(map(str, roi)), args.diff, args.trim))
+    for t, i in zip(times, idx):
+        if i not in frames:
+            print('%.3fs: ngoài video' % t)
+            continue
+        b = change_box(frames[i], frames[bg_i], roi, args.diff, args.trim)
+        if b is None:
+            print('%.3fs #%d: không có pixel khác nền' % (i / v.fps, i))
+            continue
+        print('%.3fs #%d: khung x %.0f y %.0f · %.0fx%.0f px · tâm khối (%.0f, %.0f) · %d px' % (
+            i / v.fps, i, b['x0'], b['y0'], b['w'], b['h'], b['cx'], b['cy'], b['n']))
+
+
+def test_extent():
+    """Vật 80x50 tâm (110, 300) đứng yên ở 1.0s của video tổng hợp, nền 0.1s chưa có vật, có chấm sáng nhiễu mỗi frame."""
+    import tempfile
+    path = os.path.join(tempfile.mkdtemp(prefix='video_demo_extent_'), 'synth.mp4')
+    synth_video(path)
+    v = Video(path)
+    frames = v.read([v.index(0.1), v.index(1.0)])
+    fails = []
+
+    def check(cond, msg):
+        print('  %s %s' % ('ok  ' if cond else 'SAI ', msg))
+        if not cond:
+            fails.append(msg)
+
+    roi = (20, 230, 220, 140)
+    b = change_box(frames[v.index(1.0)], frames[v.index(0.1)], roi, 40, 1.0)
+    check(b is not None and abs(b['w'] - 80) <= 3 and abs(b['h'] - 50) <= 3,
+          'khung 80x50 ± 3 px (%s)' % ('%.0fx%.0f' % (b['w'], b['h']) if b else '—'))
+    check(b is not None and abs(b['x0'] - 70) <= 3 and abs(b['y0'] - 275) <= 3,
+          'góc trên trái (70, 275) ± 3 px (%s)' % ('%.0f, %.0f' % (b['x0'], b['y0']) if b else '—'))
+    full = change_box(frames[v.index(1.0)], frames[v.index(0.1)], (0, 0, v.w, v.h), 40, 0.0)
+    check(full is not None and (full['w'] > 100 or full['h'] > 80),
+          'đối chứng: cả khung, không cắt mép thì chấm nhiễu kéo khung ra (%s)' % ('%.0fx%.0f' % (full['w'], full['h']) if full else '—'))
+    if fails:
+        sys.exit('extent: %d phép kiểm sai' % len(fails))
+    print('extent: mọi phép kiểm khớp đáp án dựng sẵn')
 
 
 # ---------------------------------------------------------------- chuyển động
@@ -1197,6 +1262,15 @@ def main():
     sp.add_argument('--roi', default=None)
     sp.set_defaults(fn=cmd_frame)
 
+    sp = sub.add_parser('extent', help='khung của vật trên khung hình: pixel khác một khung nền chưa có vật')
+    sp.add_argument('video')
+    sp.add_argument('--at', required=True, help='mốc giây, cách nhau dấu phẩy')
+    sp.add_argument('--bg', type=float, required=True, help='giây khung nền: cùng cảnh, chưa có vật')
+    sp.add_argument('--roi', default=None)
+    sp.add_argument('--diff', type=int, default=40, help='lệch kênh tối thiểu (0–255) để tính là khác nền')
+    sp.add_argument('--trim', type=float, default=1.0, help='phần trăm cắt mỗi mép theo phân vị; 0 là khung đủ')
+    sp.set_defaults(fn=cmd_extent)
+
     sp = sub.add_parser('motion', help='đoạn động, đoạn tĩnh, cắt cảnh, chu kỳ lặp')
     sp.add_argument('video')
     window(sp)
@@ -1246,7 +1320,7 @@ def main():
     sp.set_defaults(fn=cmd_layers)
 
     sp = sub.add_parser('selftest', help='đối chiếu bảng ease với PrimeTween, rồi đo video tổng hợp đã biết đáp án')
-    sp.set_defaults(fn=lambda a: (test_eases(), test_video(), test_layers()))
+    sp.set_defaults(fn=lambda a: (test_eases(), test_video(), test_layers(), test_extent()))
 
     args = p.parse_args()
     args.fn(args)

@@ -13,12 +13,15 @@ namespace Horcrux.Editor.Probe
 {
     /// <summary>
     /// Phần chung của script đo chạy trong Play qua playrun.sh: ghi file kết quả và cờ .done ở mọi đường ra, chờ object theo tên,
-    /// đọc field và gọi method không public kể cả khai trên base.
+    /// đọc field và gọi method không public kể cả khai trên base, ghi bước đang làm để lượt bị huỷ nói được nó dừng ở đâu.
     /// </summary>
     public static class PlayProbe
     {
         private const BindingFlags DeclaredInstance =
             BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly;
+
+        private static string _step;
+        private static float _stepSince;
 
         public static string DoneFlagPath(string outPath) => outPath + ".done";
 
@@ -29,12 +32,24 @@ namespace Horcrux.Editor.Probe
         public static void Run(string outPath, Func<StringBuilder, CancellationToken, UniTask> body)
         {
             File.Delete(DoneFlagPath(outPath));
+            _step = null;
             RunAsync(outPath, body, Application.exitCancellationToken).Forget();
+        }
+
+        /// <summary>
+        /// Ghi bước script đang làm. Body ném hay bị huỷ (thoát Play, runner hết giờ) thì LOG ghi bước cuối kèm số giây đã ở đó:
+        /// một lượt chờ không bao giờ tới vẫn cho biết nó chờ gì. Vòng chờ tự viết trong script gọi trước vòng.
+        /// </summary>
+        public static void Step(string what)
+        {
+            _step = what;
+            _stepSince = Time.realtimeSinceStartup;
         }
 
         /// <summary>Chờ tới khi có GameObject đang active mang đúng tên; kiểm mỗi frame ở Update.</summary>
         public static async UniTask<GameObject> WaitForActiveAsync(string objectName, CancellationToken ct)
         {
+            Step("chờ object " + objectName);
             while (true)
             {
                 foreach (var t in Object.FindObjectsByType<Transform>(FindObjectsInactive.Exclude, FindObjectsSortMode.None))
@@ -50,6 +65,7 @@ namespace Horcrux.Editor.Probe
         /// </summary>
         public static async UniTask<Scene> WaitForSceneAsync(string sceneName, CancellationToken ct)
         {
+            Step("chờ scene " + sceneName);
             while (true)
             {
                 var scene = SceneManager.GetSceneByName(sceneName);
@@ -94,6 +110,9 @@ namespace Horcrux.Editor.Probe
             }
             catch (Exception e)
             {
+                if (_step != null)
+                    log.Append("probe: dừng ở bước \"").Append(_step).Append("\" sau ")
+                       .Append((Time.realtimeSinceStartup - _stepSince).ToString("F1")).Append(" s\n");
                 log.Append("probe: ").Append(e).Append('\n');
             }
             finally

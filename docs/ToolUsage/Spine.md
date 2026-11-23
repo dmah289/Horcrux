@@ -1,7 +1,7 @@
 # Spine — khi dự án dùng spine-unity 4.3
 
 Ghi chú dùng runtime Spine trong Unity: nâng bản, dựng skeleton trên canvas, gọi anim từ code. Đã kiểm trên spine-unity 4.3
-(gói `spine-unity-4.3-2026-11-10`), Unity 6, canvas Overlay. Bản khác thì mở mã nguồn đối chiếu trước khi tin.
+(gói `spine-unity-4.3-2026-11-10`), Unity 6, canvas Overlay và skeleton world. Bản khác thì mở mã nguồn đối chiếu trước khi tin.
 
 ## Nâng runtime
 
@@ -22,6 +22,7 @@ và chỉ tick phần hiệu ứng cần.
 |---|---|
 | `SkeletonGraphic` không có `AnimationState`, `startingAnimation` (CS1061) | 4.3 tách anim khỏi phần vẽ. Anim nằm ở component `SkeletonAnimation` cùng object; `SkeletonGraphic.Animation` trả `ISkeletonAnimation`, ép sang `SkeletonAnimation` để lấy `AnimationState`, `AnimationName` |
 | `Sequence` mơ hồ giữa `Spine.Sequence` và `PrimeTween.Sequence` (CS0104) | 4.3 thêm `Spine.Sequence`. File dùng PrimeTween không `using Spine;`, viết đủ `Spine.TrackEntry` ở chỗ cần |
+| `AnimationState` mơ hồ giữa `Spine.AnimationState` và `UnityEngine.AnimationState` (CS0104) | file có cả `using Spine;` lẫn `using UnityEngine;`: thêm `using AnimationState = Spine.AnimationState;` |
 | Code cũ đọc, ghi `startingAnimation` | đổi sang `AnimationName` của `SkeletonAnimation`. Gán tên là bắt đầu anim, nên có thể bắn sự kiện start, end thêm một lần; code chỉ cần đặt anim thì gọi `AnimationState.SetAnimation` |
 
 ## Dựng skeleton trên canvas
@@ -48,6 +49,13 @@ và chỉ tick phần hiệu ứng cần.
 - Khung dữ liệu xuất bằng cỡ màn thiết kế (ví dụ 1080×2340) thì RectTransform của skeleton đặt đúng cỡ đó, gốc skeleton ở tâm,
   để vị trí trong Spine Editor khớp màn.
 
+## Skeleton trong world (ngoài canvas)
+
+- Object mang `SkeletonAnimation` và `MeshRenderer`; lớp vẽ đặt ở `MeshRenderer` (Sorting Layer, Order in Layer).
+- **Skeleton đi cùng hạt của nó thì gom dưới một cha có `SortingGroup`**: cả cụm xếp với phần còn lại của màn bằng một bậc, thứ tự
+  skeleton với hạt chỉnh bằng order bên trong nhóm, không giãn bậc của lớp khác.
+- Cỡ skeleton world quy theo vật world đứng cạnh nó trên demo (`Skills/demo-compare/SKILL.md`), không theo bề ngang màn.
+
 ## Gọi anim từ code
 
 **Sổ tay** — hiện ra rồi lặp:
@@ -59,6 +67,13 @@ state.AddAnimation(0, idle, true, 0f);
 skeletonAnimation.Update(0f);   // đặt pose frame 0 ngay; thiếu thì frame đầu vẽ setup pose (đủ mọi phần) rồi mới về anim
 ```
 
+- **Nối nhiều clip không trộn** (hoạ sĩ đã khớp pose cuối clip trước với pose đầu clip sau): `AddAnimation(0, tên, false, 0f)`
+  rồi `entry.SetMixDuration(0f, 0f)`. `AddAnimation` tính `Delay` theo mix mặc định ngay lúc gọi; gán riêng `MixDuration = 0` không
+  tính lại `Delay`, clip sau vẫn bắt đầu sớm hơn clip trước hết một khoảng mix.
+- **Chạy lại từ đầu** một vật đã diễn: `AnimationState.ClearTracks()` rồi `Skeleton.SetupPose()` trước khi xếp clip, rồi
+  `Update(0f)` như trên. Thiếu `SetupPose` thì slot, attachment clip cũ để lại còn trên frame đầu lượt mới.
+- **Chặng code chạy song song với anim** (vật bay tới đích trong lúc clip bay chạy) lấy thời lượng bằng tổng `Animation.Duration` của
+  các clip đã xếp trước clip tác động: vật tới đích đúng frame clip tác động bắt đầu, hoạ sĩ đổi clip thì chặng code theo.
 - Thời lượng lấy từ dữ liệu: `skeleton.Data.FindAnimation(name).Duration`. Spine và `UniTask.Delay` cùng chạy theo
   `Time.deltaTime`, nên chờ đúng số giây đó là khớp nhịp anim, không cần nghe sự kiện complete.
 - Track đang chạy: `AnimationState.GetTrack(0)` (4.3 không có `GetCurrent`); thời điểm trong anim là
@@ -77,6 +92,10 @@ delay đo tay.
 - **Nghe event:** `AnimationState.Event += (TrackEntry entry, Spine.Event e) => …`, lọc theo `e.Data.Name`. `AnimationState` lấy
   ở `Start`, chưa chắc có ở `Awake`. Skeleton dựng lại (đổi `SkeletonData` trong Inspector, reload) thay `AnimationState` mới:
   đăng ký lại trong `SkeletonAnimation.OnAnimationRebuild`, gỡ ở bản cũ.
+- **Một lượt diễn chờ event của một clip:** gắn handler lên `TrackEntry` của chính clip đó (`entry.Event`, `entry.Complete`), không
+  lên `AnimationState`: chỉ nghe đúng clip, và Spine xoá handler khi trả entry về pool (`TrackEntry.Reset`), nên gắn mỗi lượt không
+  rò. Handler chỉ bật cờ; chủ lượt diễn `await UniTask.WaitUntil(cờ, …, ct)` với delegate đọc cờ dựng một lần, cờ đặt lại ở đầu
+  mỗi lượt. Huỷ giữa chừng thì `finally` của chủ `ClearTracks` và tắt vật.
 - **Anim chưa có event:** đọc `TrackEntry.AnimationTime` mỗi `LateUpdate` (sau khi Spine đã tiến frame) và bắn khi mốc nằm trong
   khoảng (frame trước, frame này]. Anim lặp thì thời điểm quay về đầu: khoảng bị cắt làm hai. Có event thật thì bỏ đường đọc
   thời điểm, không bắn hai lần. Biết anim có event chưa: duyệt `animation.Timelines` tìm `EventTimeline` có event cùng tên.

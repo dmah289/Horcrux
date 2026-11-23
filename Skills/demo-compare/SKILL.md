@@ -7,8 +7,8 @@ description: Dùng khi so màn game với ảnh demo hay ảnh chụp máy thậ
 
 Skill công cụ dưới `Skills/horcrux_skill.md` (NT, ba tầng, ký hiệu định nghĩa ở đó). Tool: `docs/Editor/Probe.md` (chạy nhiều cỡ,
 nhiều máy, chọn máy Simulator, thêm máy thật, đo khung object) · `docs/Editor/UIReskin.md` (dò dải màu, ghép ảnh cạnh nhau, số lệch `Diff`, fit shader vầng sáng) ·
-`docs/Editor/VideoDemo.md` (video demo: lưới khung hình, đoạn động, bám vật ra thời lượng và ease, mốc xuất hiện từng lớp, so nhịp
-với bản quay Unity; quay bản Unity bằng `FrameRecorder` của Probe). Dựng
+`docs/Editor/VideoDemo.md` (video demo: lưới khung hình, đoạn động, bám vật ra thời lượng và ease, mốc xuất hiện từng lớp, khung vật
+để đo cỡ, so nhịp với bản quay Unity; quay bản Unity bằng `FrameRecorder` của Probe). Dựng
 prefab UI theo demo: `ui-reskin`.
 
 ## Demo là video
@@ -20,9 +20,9 @@ giác khác hẳn dù khung cuối khớp. Số đo là điểm xuất phát cho
 **Video quay màn chưa phải nhịp gốc.** Bản quay có thể lặp frame, chậm hoặc nhanh hơn máy dựng; đọc nhịp thật của bản quay trước khi
 tin một thời lượng. Một vật đổi dáng giữa chừng (Spine đổi attachment, chữ đổi viền) là nhiều chặng, mỗi chặng đo với mẫu của nó.
 
-**Video hoạ sĩ quay từ preview thì tách preview khỏi thứ game dùng.** Chu kỳ lặp của video trùng thời lượng một clip, một prefab hạt
-là dấu hiệu preview: clip ghép sẵn và hạt để lặp, `startDelay` của hạt là nhịp so với một event trong clip. Game nối các clip lẻ, neo hạt
-vào event đó, chuyển hạt sang phát một lần; đo mốc trên video để tìm event neo, không để chép delay.
+**Video hoạ sĩ quay từ bản preview thì tách preview khỏi thứ game dùng.** Dấu hiệu: chu kỳ lặp của video trùng thời lượng một asset
+trong gói. Preview ghép sẵn và để lặp cho dễ xem; game diễn theo mốc của chính nó, nên thứ để lặp chuyển sang phát theo mốc, và độ trễ
+trong preview là nhịp so với một khoảnh khắc trong anim. Mốc đo trên video dùng để tìm khoảnh khắc neo đó, không để chép thành delay.
 
 **Cỡ vật world đo theo vật world đứng cạnh, không theo bề ngang màn.** Camera có thể đổi theo bố cục từng màn: tỉ lệ với màn đúng ở
 một màn, tỉ lệ với vật kề (ô, hộp) đúng ở mọi màn.

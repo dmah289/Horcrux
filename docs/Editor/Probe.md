@@ -67,6 +67,7 @@ playrun.sh: thấy .done → playmode stop → chuyển file về <file ra> → 
 | `PlayProbe.DoneFlagPath(string outPath)` | `outPath + ".done"`; FeelTrace dùng chung |
 | `PlayProbe.WaitForActiveAsync(string objectName, CancellationToken ct)` | trả GameObject active đầu tiên mang đúng tên; kiểm mỗi frame ở `Update` |
 | `PlayProbe.WaitForSceneAsync(string sceneName, CancellationToken ct)` | trả `Scene` khi scene đúng tên đã nạp xong. Gọi service của game trước khi scene chứa nó nạp là chạy trước boot |
+| `PlayProbe.Step(string what)` | ghi bước script đang làm; body ném hay bị huỷ thì `LOG` có dòng `probe: dừng ở bước "<what>" sau <n> s` trước exception. Hai hàm `WaitFor…` tự ghi bước; vòng chờ tự viết (`UniTask.WaitUntil`, `while`) gọi `Step` trước vòng |
 | `PlayProbe.Click(GameObject target)` | pointerDown, pointerUp, pointerClick vào handler gần nhất từ `target` lên cha; cần EventSystem |
 | `GameViewSize.Set(int width, int height)` · `Restore()` · `Current()` | chọn cỡ cố định (chưa có thì thêm vào nhóm của platform đang chọn, lưu trong preference của máy), trả `index: nhãn`; `Restore` về cỡ trước lần `Set` đầu. Trong và ngoài Play; layout UI cập nhật vài frame sau |
 | `SimulatorDevice.Set(string name)` · `Restore()` · `Current()` · `List()` | đưa Device Simulator lên làm view Play chính và chọn máy theo tên (không phân biệt hoa thường, tên trần khớp máy mẫu Unity có đuôi `" (WxH)"`), trả `index: tên rộng×cao safe x,y,w,h`; không thấy tên thì ném `ArgumentException` kèm danh sách. `Restore` về view và máy trước lần `Set` đầu; `List` mọi máy Simulator thấy. `GameViewSize` tự đưa Game view về trước khi đổi cỡ |
@@ -214,6 +215,10 @@ Run In Background và auto-tick runner tự bật, và trả lại khi thoát �
   ở DontDestroyOnLoad; đóng bằng `Button.onClick` của `MaxInterstitialCloseButton`, rewarded bấm `MaxRewardButton` rồi
   `MaxRewardedCloseButton`. Có canvas `BannerBottom(Clone)` là banner đang hiện.
 
+- **Runner hết giờ, `LOG` chỉ có `OperationCanceledException`**: script chờ một thứ không bao giờ tới. Đọc dòng `dừng ở bước` ngay trên
+  exception; script thiếu `Step` trước vòng chờ tự viết thì chỉ thấy bước trước đó. Hay gặp nhất là đường tắt vào trạng thái của dự án
+  bám vào UI (nút menu) mà luồng boot đã đổi, game tự vào thẳng màn chơi. *Đã sai một lần:* ba phiên Play hết giờ mới biết probe chờ
+  nút menu không còn tồn tại.
 - **Eval hay rớt ngay sau khi vào Play** ("domain reloading" hay chưa có kết quả): runner thử lại tới 10 lần. Script có tác dụng phụ trước
   `PlayProbe.Run` (ghi file, đổi state) thì phải chịu được chạy hai lần.
 - **Lệnh Unity CLI đổi cài đặt Editor ghi vào file của project**: override Run In Background nằm trong

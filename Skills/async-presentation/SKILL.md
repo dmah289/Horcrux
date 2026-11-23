@@ -74,7 +74,8 @@ Dữ liệu đổi ở một nơi, người chơi thấy ở nơi khác, có khi
 - **Nhiều lớp chung một nhịp (scale, độ sáng, màu) ghép một Sequence, chung thời lượng và ease** — đỉnh trùng nhau dù
   chỉnh số nào; căn bằng delay rời thì lệch ở lần chỉnh sau. Cú bùng (hạt, loé) bắn lúc nhịp **bắt đầu**: chờ tới đỉnh
   mới bắn, mắt đọc thành trễ. Nhịp nằm trong anim của hoạ sĩ (Spine, Animator) thì hiệu ứng neo vào **event đặt trong anim**
-  ở đúng khoảnh khắc; delay đo tay lệch ngay khi anim đổi clip, đổi tốc độ.
+  ở đúng khoảnh khắc; delay đo tay lệch ngay khi anim đổi clip, đổi tốc độ. Chặng code chạy song song với anim (vật bay tới đích
+  trong lúc clip chạy) lấy thời lượng từ chính dữ liệu anim, vì cùng lý do.
 - **Chỉ dẫn nhường ngay cho hành động của người chơi.** Tay chỉ, viền sáng bám vật người chơi sắp tác động thì tắt ngay frame
   người chơi tác động, không fade: vật bắt đầu di chuyển kéo chỉ dẫn theo, và chỉ dẫn còn lại đọc thành trễ.
 - **Ép dùng một hành động ngẫu nhiên trên trạng thái đã thiết kế: dựng trạng thái "trước" từ trạng thái đích, hành động đưa về
