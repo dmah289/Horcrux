@@ -145,6 +145,54 @@ namespace Horcrux.Tests
             Assert.AreEqual(1f, track.Volume);
         }
 
+        [Test]
+        public void MissingIds_AreListedAsWarnings()
+        {
+            AddEntry(1, _clip);
+            AddTrack(1, _clip);
+
+            LogAssert.Expect(LogType.Warning, new Regex(Regex.Escape("[AudioCatalog]: Sfx ids without an entry: B, C.")));
+            LogAssert.Expect(LogType.Warning, new Regex(Regex.Escape("[AudioCatalog]: Music ids without an entry: N.")));
+            Assert.AreEqual(3, LogMissingIds());
+        }
+
+        [Test]
+        public void FullCatalog_HasNoMissingIds()
+        {
+            AddEntry(1, _clip);
+            AddEntry(2, _clip);
+            AddEntry(3, _clip);
+            AddTrack(1, _clip);
+            AddTrack(2, _clip);
+
+            Assert.AreEqual(0, LogMissingIds());
+        }
+
+        [Test]
+        public void MeasureClip_ReadsPeakAndRms()
+        {
+            AudioClip clip = Track(AudioClip.Create("half", 100, 1, 44100, false));
+            var samples = new float[100];
+            for (int i = 0; i < samples.Length; i++)
+                samples[i] = i % 2 == 0 ? 0.5f : -0.5f;
+            clip.SetData(samples, 0);
+
+            object[] args = { clip, 0f, 0f, null };
+            Assert.IsTrue((bool)StaticMethod("TryMeasureClip").Invoke(null, args), (string)args[3]);
+            Assert.AreEqual(0.5f, (float)args[1], 1e-6f);
+            Assert.AreEqual(0.5f, (float)args[2], 1e-6f);
+            Assert.AreEqual(-6.0206f, (float)StaticMethod("ToDecibels").Invoke(null, new object[] { 0.5f }), 1e-3f);
+        }
+
+        [Test]
+        public void MeasureClip_WithoutClip_GivesReason()
+        {
+            object[] args = { null, 0f, 0f, null };
+
+            Assert.IsFalse((bool)StaticMethod("TryMeasureClip").Invoke(null, args));
+            Assert.AreEqual("no clip", args[3]);
+        }
+
         private T Track<T>(T created) where T : Object
         {
             _created.Add(created);
@@ -156,6 +204,20 @@ namespace Horcrux.Tests
             MethodInfo method = typeof(AudioCatalog<TestSfx, TestMusic>).GetMethod("LogInvalidEntries", BindingFlags.Instance | BindingFlags.NonPublic);
             Assert.NotNull(method, "LogInvalidEntries is missing or no longer editor-only private.");
             return (int)method.Invoke(_catalog, null);
+        }
+
+        private int LogMissingIds()
+        {
+            MethodInfo method = typeof(AudioCatalog<TestSfx, TestMusic>).GetMethod("LogMissingIds", BindingFlags.Instance | BindingFlags.NonPublic, null, System.Type.EmptyTypes, null);
+            Assert.NotNull(method, "LogMissingIds is missing or no longer editor-only private.");
+            return (int)method.Invoke(_catalog, null);
+        }
+
+        private static MethodInfo StaticMethod(string name)
+        {
+            MethodInfo method = typeof(AudioCatalog<TestSfx, TestMusic>).GetMethod(name, BindingFlags.Static | BindingFlags.NonPublic);
+            Assert.NotNull(method, $"{name} is missing or no longer editor-only private static.");
+            return method;
         }
 
         private static void ExpectError(string text) =>

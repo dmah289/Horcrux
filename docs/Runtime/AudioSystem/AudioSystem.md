@@ -60,7 +60,10 @@ không ai resolve được `IAudioService<…>`, consumer không nhận được
 2. **Entries**: mỗi tiếng một phần tử — chọn `Id` từ dropdown `GameSfx`, kéo `Clip`, chỉnh `Volume` (mặc định 1) và
    `Min Interval Seconds` (mặc định 0.03).
 3. **Tracks**: mỗi bài nhạc một phần tử — `Id` từ dropdown `GameMusic`, `Clip`, `Volume`.
-4. Bấm **Validate Entries**: Console phải có **một dòng log**, không error.
+4. Bấm **Validate Entries**: Console phải có **một dòng log**, không error. Id của enum chưa có entry hiện thành **một dòng
+   warning** liệt kê tên: hợp lệ khi clip chưa về, nhưng phát id đó chỉ log lỗi và im.
+5. Bấm **Audit Loudness** sau khi thêm hay thay clip: đọc cột *played peak*; dòng gắn `<- QUIET` nhỏ hơn trung vị cả catalog từ
+   12 dB trở lên — xin file chuẩn hoá lại hoặc nâng `Volume`, không sửa code.
 
 | Thiếu | Hỏng ở đâu |
 |---|---|
@@ -235,7 +238,8 @@ _audio.PlaySfx(GameSfx.Combo, pitchScale);
 
 | Nút | Ở đâu | Làm gì |
 |---|---|---|
-| `Validate Entries` | catalog | id chưa gán / không thuộc enum / trùng, clip null — kiểm **riêng** từng bảng (SFX và music được trùng số với nhau) |
+| `Validate Entries` | catalog | id chưa gán / không thuộc enum / trùng, clip null — kiểm **riêng** từng bảng (SFX và music được trùng số với nhau); warning liệt kê id của enum chưa có entry |
+| `Audit Loudness` | catalog | mỗi entry, track: đỉnh và RMS của file (dBFS), đỉnh lúc phát = đỉnh × `Volume`; gắn `<- QUIET` khi thấp hơn trung vị từ 12 dB. Chỉ đo clip Load Type **Decompress On Load** (loại khác `GetData` trả toàn 0), dòng đó ghi lý do |
 | `Setup Audio Sources` | host | dựng voice + music source còn thiếu, rồi ép cờ |
 | `Configure All Sources` | host | ép lại cờ cho mọi source (sau khi tự kéo hoặc đổi tay); không tạo mới |
 | `Validate References` | host | thiếu catalog, music source, voice, hoặc ô `None` |
@@ -282,7 +286,7 @@ Validate chỉ chạy khi bấm: không `OnValidate` (đang kéo thả danh sác
 |---|---|
 | `AudioEntry<TSfx>` | `[Serializable]` · `Id` · `Clip` · `Volume` · `MinIntervalSeconds` |
 | `MusicTrack<TMusic>` | `[Serializable]` · `Id` · `Clip` · `Volume` |
-| `AudioCatalog<TSfx,TMusic> : ScriptableObject` | `abstract` · `Entries` · `BuildTables()` · `TryGetEntryById` · `TryGetMusicById` · nút `Validate Entries` |
+| `AudioCatalog<TSfx,TMusic> : ScriptableObject` | `abstract` · `Entries` · `BuildTables()` · `TryGetEntryById` · `TryGetMusicById` · nút `Validate Entries`, `Audit Loudness` |
 | `AudioService<TSfx,TMusic> : MonoBehaviour, IAudioService<…>` | `abstract` · `protected virtual Awake()` · `protected virtual ConfigureAllSources()` (chỉ Editor) · 3 nút Editor |
 
 ## Cấu trúc file
@@ -296,7 +300,7 @@ Runtime/Implementations/Foundations/Audio/
 ├── AudioEntry.cs            một tiếng SFX
 ├── MusicTrack.cs            một bài nhạc
 ├── AudioCatalog.cs          SO: entry[] + track[] + bảng tra id → entry/track
-├── AudioCatalog.Editor.cs   nút Validate Entries
+├── AudioCatalog.Editor.cs   nút Validate Entries, Audit Loudness
 ├── AudioService.cs          host: SFX (throttle, pitch, voice) + Music (một source riêng)
 └── AudioService.Editor.cs   nút Setup / Configure / Validate References
 

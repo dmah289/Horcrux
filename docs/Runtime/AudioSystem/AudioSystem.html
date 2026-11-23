@@ -183,7 +183,8 @@ public class GameAudioService : AudioService&lt;GameSfx, GameMusic&gt; { }</code
         <li><code>Create → Game → Audio Catalog</code> (tên menu do <code>[CreateAssetMenu]</code> của bạn khai).</li>
         <li><strong>Entries</strong>: mỗi tiếng một phần tử — chọn <code>Id</code> từ dropdown <code>GameSfx</code>, kéo <code>Clip</code>, chỉnh <code>Volume</code> (mặc định 1) và <code>Min Interval Seconds</code> (mặc định 0.03).</li>
         <li><strong>Tracks</strong>: mỗi bài nhạc một phần tử — <code>Id</code> từ dropdown <code>GameMusic</code>, <code>Clip</code>, <code>Volume</code>.</li>
-        <li>Bấm <strong>Validate Entries</strong>: Console phải có <strong>một dòng log</strong>, không error.</li>
+        <li>Bấm <strong>Validate Entries</strong>: Console phải có <strong>một dòng log</strong>, không error. Id của enum chưa có entry hiện thành <strong>một dòng warning</strong> liệt kê tên: hợp lệ khi clip chưa về, nhưng phát id đó chỉ log lỗi và im.</li>
+        <li>Bấm <strong>Audit Loudness</strong> sau khi thêm hay thay clip: đọc cột <em>played peak</em>; dòng gắn <code>&lt;- QUIET</code> nhỏ hơn trung vị cả catalog từ 12 dB trở lên — xin file chuẩn hoá lại hoặc nâng <code>Volume</code>, không sửa code.</li>
       </ol>
       <div class="tw"><table>
         <thead><tr><th>Thiếu</th><th>Hỏng ở đâu</th></tr></thead>
@@ -310,7 +311,8 @@ _audio.PlaySfx(GameSfx.Combo, pitchScale);</code></pre>
   <div class="tw"><table>
     <thead><tr><th>Nút</th><th>Ở đâu</th><th>Làm gì</th></tr></thead>
     <tbody>
-      <tr><td><code>Validate Entries</code></td><td>catalog</td><td>id chưa gán / không thuộc enum / trùng, clip null — kiểm <strong>riêng</strong> từng bảng (SFX và music được trùng số với nhau)</td></tr>
+      <tr><td><code>Validate Entries</code></td><td>catalog</td><td>id chưa gán / không thuộc enum / trùng, clip null — kiểm <strong>riêng</strong> từng bảng (SFX và music được trùng số với nhau); warning liệt kê id của enum chưa có entry</td></tr>
+      <tr><td><code>Audit Loudness</code></td><td>catalog</td><td>mỗi entry, track: đỉnh và RMS của file (dBFS), đỉnh lúc phát = đỉnh × <code>Volume</code>; gắn <code>&lt;- QUIET</code> khi thấp hơn trung vị từ 12 dB. Chỉ đo clip Load Type <strong>Decompress On Load</strong> (loại khác <code>GetData</code> trả toàn 0), dòng đó ghi lý do</td></tr>
       <tr><td><code>Setup Audio Sources</code></td><td>host</td><td>dựng voice + music source còn thiếu, rồi ép cờ</td></tr>
       <tr><td><code>Configure All Sources</code></td><td>host</td><td>ép lại cờ cho mọi source (sau khi tự kéo hoặc đổi tay); không tạo mới</td></tr>
       <tr><td><code>Validate References</code></td><td>host</td><td>thiếu catalog, music source, voice, hoặc ô <code>None</code></td></tr>
