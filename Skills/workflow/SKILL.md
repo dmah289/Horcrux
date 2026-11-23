@@ -107,7 +107,7 @@ Neo khi phân vân: **công sức đắt nhất là của developer.**
 
 | Tiêu chí | Bằng chứng | Ai chạy |
 |---|---|---|
-| thuật toán tất định, công thức, parser, serialize | phép kiểm chạy được; wire format kiểm qua đúng cửa đọc–ghi hệ dùng, không gọi serializer trực tiếp — setting của serializer là một phần của format; state đầu (cài mới, save cũ) dựng qua đúng đường hệ tạo ra nó, không `new` trong test | agent |
+| thuật toán tất định, công thức, parser, serialize | phép kiểm chạy được; wire format kiểm qua đúng cửa đọc–ghi hệ dùng, không gọi serializer trực tiếp — setting của serializer là một phần của format | agent |
 | tên, tham chiếu, đồng bộ tài liệu | grep quét | agent |
 | hiệu năng | số trước–sau tại chỗ đo | agent |
 | đúng–sai xác định được mà làm tay chậm, sót | vét cạn | agent, **tự đề xuất** |
@@ -117,6 +117,10 @@ Neo khi phân vân: **công sức đắt nhất là của developer.**
 **Phép kiểm phải đỏ được.** Case khẳng định "luôn" chọn input mà bảo đảm có hiệu lực — input ngẫu nhiên rơi vào ca biên được
 phép thì đỏ oan, và người đọc học cách bỏ qua màu đỏ. Mỗi bước của thuật toán có ít nhất một case đỏ khi bỏ bước đó; chạy đối
 chứng một lần và ghi kết quả cạnh case.
+
+**Số đo nằm trên đúng vật được hỏi.** Chỗ nhiều vật chồng nhau trên ảnh thì định vị vật bằng toạ độ runtime của nó ở frame đó rồi
+mới lấy mẫu; mắt developer trái số đo thì nghi chỗ đo trước. *Đã sai một lần:* lấy mẫu nút thay vì icon đang bay qua nút, báo icon
+đã sáng; icon vẫn tối như lớp phủ.
 
 **Cảm giác — dừng và giao, không dựng proxy.** Báo *"cần chơi thử"* kèm kịch bản: *vào đâu* · *làm gì* (chuỗi ngắn nhất) ·
 *nhìn gì* · *khác trước ra sao* · *dấu hiệu hỏng*. **Developer chơi là cảm được thì agent không vào Play qua công cụ**: dừng
