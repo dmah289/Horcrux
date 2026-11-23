@@ -34,7 +34,10 @@ renderer thì làm trong chính nó (shader, tham số theo renderer); mask dùn
 
 **Thứ lặp lại là một khối dùng chung; khác nhau ở dữ liệu là variant; khác hình dạng là khối riêng.** Tiêu chí: đổi kiểu (khung,
 nút, font) ở một chỗ thì mọi chỗ theo, và thêm một mục mới là *thêm* một variant hay kéo một khối vào, không chép. Số tầng
-variant theo số **lý do thay đổi** thật (kiểu chung → loại → gói), không theo cho đủ bộ (NT1).
+variant theo số **lý do thay đổi** thật (kiểu chung → loại → gói), không theo cho đủ bộ (NT1). Sửa cho một nhóm variant thì
+đặt ở **prefab gốc hẹp nhất phủ đúng nhóm đó**: chép sang từng variant là n bản buộc khớp; đặt ở gốc rộng hơn kéo theo nhóm
+khác — cần thì override tại gốc tầng giữa (`PrefabAudit.ApplyOverrides`). *Đã sai một lần:* chép layout nút sang các variant anh em; developer bắt dời lên
+gốc, và giá trị cũ nằm ở gốc chung với một loại thẻ khác.
 
 **Vị trí do layout tính, số tay chỉ cho thứ demo đặt tự do.** LayoutGroup, ContentSizeFitter xếp và co theo nội dung: thêm bớt
 mục không phải đo lại. Override mà layout ghi đè mỗi lần tính là nhiễu — che thay đổi của prefab gốc và làm diff vô nghĩa;
@@ -156,6 +159,7 @@ sách file của task, không `add` cả thư mục.
 |---|---|
 | Thay đổi trên instance trong scene mất sau khi lưu thành prefab | modification không được ghi lại · sửa trong nội dung prefab (`PrefabEdit.Edit`) hoặc gọi `RecordPrefabInstancePropertyModifications` |
 | Sửa prefab gốc mà màn không đổi | override lồng ở variant hay instance che giá trị gốc · `ListOverrides` trên chuỗi variant, gỡ đúng dòng |
+| Prefab mở riêng thành khung 0×0; diff có anchor, size, vị trí root về 0 | Apply từ instance là con LayoutGroup ghi cả rect layout đang điều khiển · apply theo từng property, không Apply All; trả rect root về bản commit |
 | Border đặt xong vẫn như cũ | sprite Multiple bỏ qua `spriteBorder` của importer · `SpriteSlicing.SetBorder` (đi qua sprite data provider) |
 | Đường dẫn của sprite đã pack là file `.spriteatlasv2` | `sprite.texture` trả trang atlas · lấy nguồn bằng `AssetDatabase.GetAssetPath(sprite)` |
 | Art đã vào atlas mà bundle vẫn chứa texture nguồn | RawImage, material, sprite asset TMP giữ thẳng texture, không qua atlas · chấp nhận khi nhỏ, hoặc tách art đó ra |

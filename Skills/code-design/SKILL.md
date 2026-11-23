@@ -31,7 +31,9 @@ lỗi, điểm thoát khi huỷ) chỉ có **một bản**; nhân vòng lặp ha
 
 **Biến thể là cửa riêng, không phải cờ trên cửa chung:** hai chế độ loại trừ → overload nhận spec riêng · kịch bản mới của
 service dùng chung → **consumer mới** đưa nội dung qua tham số, không mọc cờ trên service (gom domain mọi consumer về một
-class) · component dùng ở nhiều host **không có cờ chế độ trên instance** — ô quên tick không để lại dấu vết.
+class) · component dùng ở nhiều host **không có cờ chế độ trên instance** — ô quên tick không để lại dấu vết; service đã tự chọn
+theo ngữ cảnh thì component chỉ gọi service, host không cần hành vi thì tắt component. *Đã sai một lần:* nút mở cửa hàng mang
+cờ "chuyển tab", trong màn chơi không có tab nên bấm không ra gì, không lỗi nào báo.
 
 **Hiệu ứng không mang giá:** cửa chạy hiệu ứng không trừ kho, tiền hay lượt; mỗi nguồn trả (nút dùng, phần thưởng, hồi sinh, mua
 xong dùng ngay) trừ ở chỗ của nó rồi gọi cùng cửa. Nguồn mới không phải mọc cờ "miễn phí" trên cửa.
@@ -161,7 +163,7 @@ dư; vòng tặng quà duyệt cả enum nên nó nhận số dư không ai đ�
 | **Một trạng thái = một cửa ghi, một chủ gọi** | mở, huỷ, chốt trong **một** class; nơi khác chỉ **phát sự thật** (sự kiện tên theo điều đã xảy ra, đồng bộ, một người nghe hành động; cần mốc mới thì thêm sự kiện). Hệ quả luôn xảy ra, rẻ, không ném → trong **setter**. Hai lời gọi luôn đi cùng nhau thì gộp vào trong cửa public; thiếu điều kiện cho một vế thì hoãn cả hai — cờ đã bật cho vế đầu làm vế sau mất vĩnh viễn |
 | **Lệnh tới hệ ngoài là ý muốn, đối chiếu ở một cửa** | hệ ngoài bỏ im lặng lệnh tới lúc nó chưa sẵn sàng hay đang bị che: giữ **ý muốn** của caller tách khỏi **thứ đã gửi**; mọi mốc đổi điều kiện gọi **một** hàm đối chiếu, hàm chỉ gửi khi kết quả khác lần gửi trước. Gộp hai cờ thì lệnh tạm ẩn xoá luôn ý muốn |
 | **Lý do của trạng thái ghi ở cùng cửa với trạng thái** | giá trị đổi được từ nhiều đường mà luật sau cần biết vì sao → lưu **vì sao giá trị hiện tại như vậy** ngay ở cửa ghi; luật đọc lý do mà quyết, không lưu cờ mang tên một kịch bản (khoá, cửa sổ). Suy ngược từ field khác sai khi một đường phụ (cheat, sự kiện về muộn) vẫn ghi field đó. Luật áp cho một nhóm lý do thì liệt kê nhóm **được áp**, để lý do thêm sau rơi về phía an toàn. Input bị luật bỏ qua vẫn được ghi: tracking cần sự thật dù nó không quyết |
-| **Một bảo đảm phủ MỌI đường vào** | mọi cửa ghi đi qua chỗ tạo bảo đảm; **đếm cửa trước, đọc thân sau** — grep mọi API ghi |
+| **Một bảo đảm phủ MỌI đường vào** | mọi cửa ghi đi qua chỗ tạo bảo đảm; **đếm cửa trước, đọc thân sau** — grep mọi API ghi. Bộ đếm theo phạm vi (lượt, màn, phiên) reset ở cửa mở phạm vi mà mọi đường vào (vào mới, chơi lại) cùng đi qua; phạm vi đọc từ hợp đồng của dữ liệu dùng nó; hàm reset không caller là bộ đếm sống quá phạm vi |
 | **Đếm tiến độ ở ranh mỗi phần tử qua đúng một lần** | thường là lúc rời nguồn, không phải chỗ chứa trung gian: vật chuyển giữa hai chỗ chứa bị đếm lại, đường tắt bỏ qua chỗ chứa bị sót. Mọi đường qua ranh phát cùng một sự kiện; số đếm và tổng phát chung từ một chủ |
 | **Một phép biến đổi chỉ áp ở MỘT tầng** | runner đã ease thì thân nhận `t` đã ease; hai tầng cùng ease thì một tầng `Linear` |
 | **Chọn cấu trúc theo bảo đảm người dùng dựa vào** | `Dictionary` để tra, không để vẽ danh sách. Thứ tự từ cấu hình ngoài **toàn phần, tất định**: thiếu rơi về thấp nhất, hoà phá bằng định danh ổn định |

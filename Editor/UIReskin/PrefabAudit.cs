@@ -122,9 +122,46 @@ namespace Horcrux.Editor.UIReskin
             return sb.ToString();
         }
 
+        /// <summary>
+        /// Đẩy override có dòng được select chọn lên prefab targetPath trong chuỗi gốc (variant lên base, hay base tầng giữa):
+        /// override rời prefab này, mọi variant khác của target nhận giá trị. apply false chỉ in dòng sẽ đẩy. Target không
+        /// nằm trong chuỗi gốc của một dòng được chọn thì ném trước khi đẩy dòng nào.
+        /// </summary>
+        public static string ApplyOverrides(string prefabPath, Func<string, bool> select, string targetPath, bool apply = false)
+        {
+            var sb = new StringBuilder();
+            Action<GameObject> push = root =>
+            {
+                var selected = new List<Entry>();
+                foreach (var instance in OutermostInstances(root))
+                    foreach (var entry in Collect(root, instance))
+                        if (select(entry.Line))
+                        {
+                            if (entry.Instance == null || PrefabUtility.GetCorrespondingObjectFromSourceAtPath(entry.Instance, targetPath) == null)
+                                throw new ArgumentException(targetPath + " không nằm trong chuỗi gốc của: " + entry.Line);
+                            selected.Add(entry);
+                        }
+                foreach (var entry in selected)
+                {
+                    sb.Append(entry.Line).Append('\n');
+                    if (apply)
+                    {
+                        var property = new SerializedObject(entry.Instance).FindProperty(entry.Modification.propertyPath);
+                        PrefabUtility.ApplyPropertyOverride(property, targetPath, InteractionMode.AutomatedAction);
+                    }
+                }
+            };
+            if (apply)
+                PrefabEdit.Edit(prefabPath, push);
+            else
+                ReadOnly(prefabPath, push);
+            return (apply ? "applied to " : "dry run to ") + targetPath + "\n" + sb;
+        }
+
         private struct Entry
         {
             public PropertyModification Modification;
+            public Object Instance;
             public string Line;
             public bool Default;
         }
@@ -303,7 +340,7 @@ namespace Horcrux.Editor.UIReskin
                 line.Append(target != null ? PathOf(root, TransformOf(target)) + ":" + target.GetType().Name : "?" + modification.target);
                 line.Append('.').Append(modification.propertyPath).Append(" = ");
                 line.Append(modification.objectReference != null ? modification.objectReference.name : modification.value);
-                entries.Add(new Entry { Modification = modification, Line = line.ToString(), Default = isDefault });
+                entries.Add(new Entry { Modification = modification, Instance = target, Line = line.ToString(), Default = isDefault });
             }
             return entries;
         }

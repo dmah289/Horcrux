@@ -70,6 +70,7 @@ Cách dùng chúng trong một task reskin ở `Skills/ui-reskin/SKILL.md`. Đ�
 | `RevertOverrides(string prefabPath, Func<string, bool> select, bool apply = false)` | gỡ override có dòng được `select` chọn; `apply` false chỉ in. Override bắt buộc không bao giờ gỡ |
 | `PruneNoise(string prefabPath, bool apply = false)` | `RevertOverrides` với mọi dòng `~` |
 | `TextFit(string folder)` | soát chữ đổi theo dữ liệu có co trong vùng art: mỗi prefab có UniText một khối, mỗi chữ `node \| size s \| auto min-max` (hay `auto off`) `\| set by Type.field`. Chữ do code ghi là chữ có script giữ reference tới nó hay GameObject của nó, hoặc script không phải UI cùng object. Dòng nghi mở đầu `!`: `fixed` (code ghi mà tắt autosize) · `image rect` (autosize mà phủ đúng rect Image cha, co trong cả art nên đè viền). Script ở prefab khác, scene, hay ghi qua `Find` thì không thấy: chữ không cờ chưa chắc tĩnh |
+| `ApplyOverrides(string prefabPath, Func<string, bool> select, string targetPath, bool apply = false)` | đẩy override có dòng được `select` chọn lên `targetPath` trong chuỗi gốc (variant lên base, base tầng giữa): override rời `prefabPath`, mọi variant khác của target nhận giá trị. `apply` false chỉ in. `targetPath` ngoài chuỗi gốc của một dòng được chọn thì `ArgumentException` trước khi ghi. Sửa cho một nhóm variant thì đẩy lên gốc hẹp nhất phủ đúng nhóm; reference tới object chỉ có ở variant không đẩy được |
 
 Dòng override: `~ variant | boosters/booster_1:RectTransform.m_AnchoredPosition.x = 12`
 
