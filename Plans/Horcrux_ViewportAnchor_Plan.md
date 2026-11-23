@@ -623,8 +623,8 @@ không đổi chữ ký.
 **Mục tiêu:** bấm **Apply Layout** trên `ViewportCamera` hoặc trên bất kỳ `ViewportAnchor` nào là cả chuỗi GĐ1–3 chạy lại ở Edit mode;
 designer chỉnh `Viewport Point`, `Design Pixel Offset` và thấy ngay ở Scene view, không vào Play.
 
-**Vì sao bây giờ:** ba thành phần đã đủ để "thấy"; nút chỉ gọi API có sẵn. Code Editor: agent viết thẳng theo `reuse-gate`, developer
-review và veto.
+**Vì sao bây giờ:** ba thành phần đã đủ để "thấy"; nút chỉ gọi API có sẵn. Code Editor: agent viết thẳng, không bản tạm — hỏng chỉ lộ
+trên máy developer; developer review và veto.
 
 ### `Runtime/Utilities/Layout/ViewportCamera.Editor.cs` — file mới
 

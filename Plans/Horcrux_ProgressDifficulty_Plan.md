@@ -344,9 +344,10 @@ namespace Horcrux.Runtime.Utilities.Picking
 `GameDifficultyManager`) dựa vào `null` để biết "không có gì để chọn"; `nextIndex(0)` là dải rỗng, gọi là lỗi của nguồn. Phương án bỏ:
 ném — ba caller đều có nhánh `null` sẵn. — `nextIndex` là tham số bắt buộc, không mặc định `UnityEngine.Random` (developer chốt
 2026-11-02): Horcrux không chọn nguồn ngẫu nhiên; dự án truyền `UnityEngine.Random.Range` để giữ nước đi đã author và luôn thấy mình
-dùng nguồn nào, test truyền `System.Random` để tất định. — Không đưa `Shuffle`, `KShuffle`, `GetRandomElements` lên: `Shuffle` không
-caller; `KShuffle` ba caller trong `LevelLoader` xáo tại chỗ theo seed, là ca khác (hoán vị, không chọn); `GetRandomElements` một caller
-dùng `OrderBy(Guid.NewGuid())` — đổi cách rút là đổi 50 level đã author.
+dùng nguồn nào, test truyền `System.Random` để tất định. — Không đưa `Shuffle`, `KShuffle`, `GetRandomElements` lên: `Shuffle` và
+`KShuffle` xáo tại chỗ, là ca khác (hoán vị, không chọn), và bản chung của ca đó là `FisherYates.Shuffle` (`Horcrux_SlotShuffle_Plan.md`
+GĐ1) — chuyển caller `KShuffle` (`LevelLoader`, `ShuffleBooster`) sang nó không thuộc Plan này; `GetRandomElements` một caller dùng
+`OrderBy(Guid.NewGuid())` — đổi cách rút là đổi 50 level đã author.
 
 | Consumes | Produces |
 |---|---|
