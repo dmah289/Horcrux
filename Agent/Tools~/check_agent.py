@@ -174,6 +174,7 @@ def write_meta():
 
 
 if __name__ == "__main__":
+    sys.stdout.reconfigure(encoding="utf-8")  # console Windows mặc định cp1252, không in được tiếng Việt
     cmd = sys.argv[1] if len(sys.argv) > 1 else "all"
     if cmd == "preserve":
         preserve(sys.argv[2])
