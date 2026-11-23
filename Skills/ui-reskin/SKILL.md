@@ -20,6 +20,11 @@ hình cũ **tắt** thay vì xoá — prefab gốc còn nhận bản cập nhậ
 cũ. Tắt chỉ an toàn khi code không với tới object tắt: `GetComponentInChildren`, `GetComponentsInChildren(false)` bỏ qua object
 tắt, reference kéo thả thì không. **Cây giữ, art cũ thì gỡ** (mục Atlas): art khác style không quay lại.
 
+**Nguồn hình là màn tham chiếu (demo, prefab đã reskin) thì mọi thuộc tính hình lấy từ đó; prefab cũ chỉ góp hành vi.** Màu,
+nhãn mà skin cũ gán theo ý nghĩa (đỏ cho thoát, vàng cho chơi lại) cũng là skin cũ: giữ lại là trộn hai skin. Vai mà tham chiếu
+không có hình cho thì hỏi (mục cuối), không lấy từ skin cũ. *Đã sai một lần:* reskin theo popup tham chiếu nút xanh, agent giữ
+nút đỏ, vàng của popup cũ dưới nhãn giả định; developer bắt đổi.
+
 **Đổi art của một khối thì soát mọi nơi còn vẽ art cũ** (tìm theo GUID): bản sao hình của khối trong tool thiết kế, preview, prefab
 song song không báo lỗi khi lệch skin, chỉ lộ khi người khác mở. Nêu từng nơi cho developer quyết, không tự đổi theo.
 
@@ -118,7 +123,8 @@ code phải đào lại từ lịch sử chat nhiều lần · viết lại bộ
 
 **Nhìn trước khi sửa.** Dump cây và field serialize (`PrefabDump`, `PrefabAudit.ListOverrides`), contact sheet art
 (`DemoCompare.ContactSheet`), báo cáo sprite (`SpriteSlicing.Report`) trước khi chạm: tên file art và số trong YAML có thể đánh
-lừa, giá trị đọc qua engine thì không.
+lừa, giá trị đọc qua engine thì không. Sau khi thay khối (`PrefabEdit.ReplaceWithPrefab`) hay ghép prefab, soát wiring bằng
+`PrefabDump.Refs`: ô trỏ sai chỗ không lỗi nào báo tới lúc bấm.
 
 **Edit mode cho dựng và soát; Play cho thứ cần dữ liệu thật.** Bố cục của khối xem được bằng chụp canvas ngoài Play
 (`UICapture.Canvas`); một look ở vài giá trị thông số thì chụp copy, mỗi ô một giá trị (`UICapture.Variants`; vật world thì `UICapture.World`, đúng px mỗi unit của demo). Màn cần service (chữ do script đặt, popup mở qua navigator) thì vào Play. Chuỗi Play lặp lại nhiều lần (chụp

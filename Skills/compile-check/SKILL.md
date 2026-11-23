@@ -12,14 +12,19 @@ Skill công cụ. `<horcrux>` là gốc Horcrux trong dự án. Chi tiết: `doc
 1. **Mỗi task code kết bằng một lần `verify.sh` xanh.** Báo cáo dán dòng tool in ra, không viết "đã compile sạch".
 2. **Không chép ba lệnh vào plan, task, constraint.** Plan ghi một dòng `bash <verify.sh> --csproj … --tests …` với tên
    của dự án.
-3. **Lỗi build sau khi thêm hay dời file là lỗi tạm** (type mới báo không tồn tại): csproj chưa có file. Editor đang mở tự
-   sinh lại csproj; chạy lại trước khi kết luận — bước recompile mới là sự thật.
+3. **Lỗi build sau khi thêm, dời hay pull file là lỗi tạm** (type mới báo không tồn tại): csproj chưa có file. Editor mở thì
+   tool Refresh trước bước build để Editor sinh lại csproj; còn lỗi thì chạy lại trước khi kết luận — bước recompile mới là
+   sự thật. `--no-unity` không Refresh được.
 4. **PlayMode không qua tool này** (cần Play, chiếm Editor); developer chạy trong Window > General > Test Runner.
 5. **Thiếu mục thì mở rộng `verify.sh`**, không viết script kiểm mới bên cạnh.
 6. **Đọc output thẳng, không pipe qua `tail`, `head`:** tool đã in gọn từng bước; pipe giữ mọi dòng tới khi lệnh xong, lệnh
    bị đẩy nền thì không biết đang kẹt bước nào. Hạn giờ của lệnh gọi phải dài hơn `--timeout` (600 s mỗi assembly).
 7. **Không đổi cây làm việc (pull, checkout, merge) khi tool đang chạy:** Editor nạp file mới giữa lượt, kết quả không thuộc
-   bản nào. Dừng tool, đổi cây, chạy lại.
+   bản nào. Dừng tool, đổi cây, chạy lại. Ngay sau khi đổi cây, Editor import và báo bận: tool tự chờ tới `--ready-wait`,
+   không dựng vòng chờ bên ngoài.
+8. **Fail mới là của task, fail có sẵn thì không.** Tool so tên test fail với lượt trước (`(mới)`, `hết fail`, mốc
+   `<giờ> @<commit>`). Mốc không ở bản trước task (task trước còn dở, vừa pull) thì chạy một lần trước khi sửa hay merge.
+   Báo cáo tách hai nhóm; fail có sẵn báo một dòng, không sửa trong task.
 
 ## Lệnh
 
@@ -38,7 +43,7 @@ Tên csproj và assembly test của dự án ghi trong file hướng dẫn agent
 2. `FAIL build`: đọc dòng lỗi, sửa, chạy lại. `build: không có dotnet …`: đặt `MSBUILD=<MSBuild.exe>`, không coi là xanh. `FAIL recompile` mà build ok: assembly chưa có trong `--csproj`, hoặc lỗi ở
    asmdef, define — đọc `errors`. `FAIL unity` (Editor chưa mở): báo là chưa kiểm phần Unity, không coi là xanh.
 3. `FAIL tests`: tên test và dòng đầu message in dưới dòng tổng; mở đúng test đó.
-4. Dán dòng `verify: OK` và các dòng `tests …: n/m pass` vào báo cáo.
+4. Dán dòng `verify: OK` và các dòng `tests …: n/m pass` vào báo cáo, kèm dòng `so với lượt …` khi có fail.
 
 ## Ngân sách token
 

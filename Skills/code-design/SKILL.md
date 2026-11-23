@@ -36,6 +36,10 @@ class) · component dùng ở nhiều host **không có cờ chế độ trên i
 **Hiệu ứng không mang giá:** cửa chạy hiệu ứng không trừ kho, tiền hay lượt; mỗi nguồn trả (nút dùng, phần thưởng, hồi sinh, mua
 xong dùng ngay) trừ ở chỗ của nó rồi gọi cùng cửa. Nguồn mới không phải mọc cờ "miễn phí" trên cửa.
 
+**Giá theo kết cục mà người chơi rời được giữa chừng thì đặt cọc trong save:** ghi cọc ở mốc cam kết (lần tác động đầu, không
+lúc vào màn), tất toán ở mọi đường ra — kết cục, bỏ có xác nhận, boot thấy cọc còn (phiên chết giữa chừng). Chưa có cọc thì rời
+không giá, không hỏi; hỏi xác nhận chỉ khi có giá thật. Trừ thật và xoá cọc cùng một cửa ghi — chết giữa hai bước là trừ hai lần.
+
 **Đóng gói ở đâu** (hỏi sau khi biết cần class): trả lời từ tham số, không giữ gì → **class thuần static** · trả lời từ dữ
 liệu của chính nó → **`ScriptableObject`** · làm gì đó theo thời gian (loop, chờ, subscribe, ghi ra ngoài) →
 **`MonoBehaviour`** hoặc class thuần do nó sở hữu — cần **mốc chết tin được** để tắt.

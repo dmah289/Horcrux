@@ -48,6 +48,7 @@ Cách dùng chúng trong một task reskin ở `Skills/ui-reskin/SKILL.md`. Đ�
 | `Edit(string prefabPath, Action<GameObject> edit)` | nạp nội dung prefab vào scene cô lập, gọi `edit(root)`, lưu, dỡ. `edit` ném thì không lưu, exception đi tiếp. Trả đường dẫn |
 | `CreateVariant(string basePath, string variantPath, Action<GameObject> edit = null)` | variant mới (tạo thư mục nếu thiếu), rồi `Edit` nếu có `edit`. Đã có file thì ném |
 | `Child(GameObject root, string path)` | `Transform.Find` kể cả object tắt; không có thì ném kèm tên các con của cha gần nhất |
+| `ReplaceWithPrefab(Transform old, GameObject prefab)` | gọi trong `edit`: instance của `prefab` thế chỗ `old` — cùng cha, tên, thứ tự, transform (rect đủ anchor, pivot, cỡ, vị trí), trạng thái bật; mọi ô trong cây (trừ `Transform`) trỏ vào `old` hay con của nó nối sang object cùng đường dẫn, cùng kiểu trên instance mới, rồi xoá `old`. Trả log `replace`/`remap`/`unmapped`; ô `unmapped` để trống — instance mới thiếu đích, đọc log trước khi lưu. Object mới lấy lại bằng `Child` cùng đường dẫn |
 | `AssetByName<T>(string name, string folder = null)` | asset duy nhất đúng tên (kể cả sub-asset như sprite, material); không có hay trùng thì ném kèm đường dẫn |
 
 ### `UIBuild` — gọi trong `edit`
@@ -58,6 +59,7 @@ Cách dùng chúng trong một task reskin ở `Skills/ui-reskin/SKILL.md`. Đ�
 | `Image(parent, name, Sprite sprite, size = default, anchoredPosition = default)` | Sliced khi sprite có border, không thì Simple; `size` zero lấy cỡ gốc; `raycastTarget` tắt |
 | `Text(parent, name, string text, float fontSize, UniTextFontStack fontStack, StylePreset look = null, size, anchoredPosition)` | `UniText` một dòng, căn giữa, không xuống dòng, `raycastTarget` tắt; `look` là preset kiểu chữ (viền, bóng) gắn vào Style Presets |
 | `Stretch(RectTransform rect)` | anchor 0–1, offset 0 |
+| `SetText(Transform target, string text, float size = 0)` | chữ của UniText có sẵn trên `target`; `size > 0` đặt cỡ, chữ autosize thì đặt cả `MaxFontSize` (autosize co từ cỡ tối đa, bỏ qua cỡ thường). Không có UniText thì ném |
 
 ### `PrefabAudit`
 

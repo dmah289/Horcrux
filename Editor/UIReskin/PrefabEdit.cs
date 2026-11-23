@@ -1,4 +1,7 @@
 using System;
+using System.Collections.Generic;
+using System.Text;
+using Horcrux.Editor.Common;
 using Horcrux.Editor.Utilities;
 using UnityEditor;
 using UnityEditor.SceneManagement;
@@ -59,6 +62,96 @@ namespace Horcrux.Editor.UIReskin
                 EditorSceneManager.ClosePreviewScene(scene);
             }
             return edit == null ? variantPath : Edit(variantPath, edit);
+        }
+
+        /// <summary>
+        /// Thay object cũ bằng một instance của prefab ở đúng chỗ: cùng cha, tên, thứ tự, transform (rect), trạng thái bật. Mọi ô trong
+        /// cây chứa nó trỏ vào object cũ hay object con được nối sang object cùng đường dẫn, cùng kiểu trên instance mới; rồi xoá object cũ.
+        /// </summary>
+        /// <returns>Mỗi dòng một việc: <c>replace</c>, <c>remap</c>, và <c>unmapped</c> khi instance mới thiếu đích (ô để trống).</returns>
+        public static string ReplaceWithPrefab(Transform old, GameObject prefab)
+        {
+            if (old.parent == null)
+                throw new ArgumentException("không thay được root " + old.name);
+            var log = new StringBuilder();
+            var created = (GameObject)PrefabUtility.InstantiatePrefab(prefab, old.parent);
+            created.name = old.name;
+            created.transform.SetSiblingIndex(old.GetSiblingIndex());
+            CopyPlacement(old, created.transform);
+            created.SetActive(old.gameObject.activeSelf);
+            log.Append("replace ").Append(old.name).Append(" -> ").Append(prefab.name).Append('\n');
+
+            var root = old.root;
+            foreach (var component in root.GetComponentsInChildren<Component>(true))
+            {
+                // Transform giữ cây cha con do Unity quản; object nằm trong cây cũ sẽ xoá cùng nó
+                if (component == null || component is Transform || component.transform.IsChildOf(old) || component.transform.IsChildOf(created.transform))
+                    continue;
+                var so = new SerializedObject(component);
+                var visitor = new ReferencesInto { Old = old, Paths = new List<string>() };
+                SerializedPropertyWalker.Walk(so, ref visitor);
+                foreach (var path in visitor.Paths)
+                {
+                    var property = so.FindProperty(path);
+                    var replacement = Counterpart(property.objectReferenceValue, old, created.transform);
+                    var field = component.GetType().Name + "." + path;
+                    if (replacement == null)
+                    {
+                        log.Append("unmapped ").Append(field).Append(" (").Append(property.objectReferenceValue.GetType().Name).Append(")\n");
+                        property.objectReferenceValue = null;
+                        continue;
+                    }
+                    property.objectReferenceValue = replacement;
+                    log.Append("remap ").Append(field).Append(" -> ").Append(replacement.GetType().Name).Append('\n');
+                }
+                so.ApplyModifiedPropertiesWithoutUndo();
+            }
+            Object.DestroyImmediate(old.gameObject);
+            return log.ToString();
+        }
+
+        private static void CopyPlacement(Transform from, Transform to)
+        {
+            to.localRotation = from.localRotation;
+            to.localScale = from.localScale;
+            if (from is RectTransform a && to is RectTransform b)
+            {
+                b.anchorMin = a.anchorMin;
+                b.anchorMax = a.anchorMax;
+                b.pivot = a.pivot;
+                b.sizeDelta = a.sizeDelta;
+                b.anchoredPosition = a.anchoredPosition;
+            }
+            else
+                to.localPosition = from.localPosition;
+        }
+
+        // Object cùng đường dẫn tương đối dưới instance mới; component thì thêm cùng kiểu. Không có thì null.
+        private static Object Counterpart(Object value, Transform old, Transform created)
+        {
+            var transform = value is GameObject go ? go.transform : ((Component)value).transform;
+            var relative = transform == old ? "" : AnimationUtility.CalculateTransformPath(transform, old);
+            var target = relative.Length == 0 ? created : created.Find(relative);
+            if (target == null)
+                return null;
+            return value is GameObject ? target.gameObject : (Object)target.GetComponent(value.GetType());
+        }
+
+        // đường dẫn property trỏ vào object cũ, con của nó, hay component trên chúng
+        private struct ReferencesInto : IReferencePropertyVisitor
+        {
+            public Transform Old;
+            public List<string> Paths;
+
+            public void Visit(SerializedObject so, SerializedProperty property, RefPropertyKind kind)
+            {
+                if (kind != RefPropertyKind.ObjectReference)
+                    return;
+                var value = property.objectReferenceValue;
+                var transform = value is GameObject go ? go.transform : value is Component c && c != null ? c.transform : null;
+                if (transform != null && transform.IsChildOf(Old))
+                    Paths.Add(property.propertyPath);
+            }
         }
 
         /// <summary>Object con theo đường dẫn từ root (kể cả object tắt); không có thì ném, kèm tên các con trực tiếp của cha gần nhất.</summary>

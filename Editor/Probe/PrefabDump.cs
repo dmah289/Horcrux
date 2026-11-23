@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text;
+using Horcrux.Editor.Common;
 using LightSide;
 using UnityEditor;
 using UnityEngine;
@@ -27,6 +28,26 @@ namespace Horcrux.Editor.Probe
                 if (pathFilter != null && !path.Contains(pathFilter))
                     continue;
                 AppendObject(sb, t, path, rootFromWorld);
+            }
+            return sb.ToString();
+        }
+
+        /// <summary>
+        /// Mỗi ô reference của component logic (MonoBehaviour không phải UIBehaviour) một dòng:
+        /// <c>đường dẫn:Kiểu.ô -&gt; đích</c>. Đích trong cây in đường dẫn, ngoài cây in <c>asset tên</c>, ô trống in <c>null</c> — soát wiring sau khi sửa prefab.
+        /// </summary>
+        public static string Refs(GameObject root, string pathFilter = null)
+        {
+            var sb = new StringBuilder();
+            foreach (var component in root.GetComponentsInChildren<MonoBehaviour>(true))
+            {
+                if (component == null || component is UnityEngine.EventSystems.UIBehaviour)
+                    continue;
+                var path = component.transform == root.transform ? root.name : AnimationUtility.CalculateTransformPath(component.transform, root.transform);
+                if (pathFilter != null && !path.Contains(pathFilter))
+                    continue;
+                var visitor = new ReferenceLines { Root = root.transform, Owner = path + ":" + component.GetType().Name + ".", Lines = sb };
+                SerializedPropertyWalker.Walk(new SerializedObject(component), ref visitor);
             }
             return sb.ToString();
         }
@@ -162,6 +183,33 @@ namespace Horcrux.Editor.Probe
                     if (!PrefabUtility.IsDefaultOverride(modification))
                         overrides++;
             sb.Append(" ov=").Append(overrides);
+        }
+
+        private struct ReferenceLines : IReferencePropertyVisitor
+        {
+            public Transform Root;
+            public string Owner;
+            public StringBuilder Lines;
+
+            public void Visit(SerializedObject so, SerializedProperty property, RefPropertyKind kind)
+            {
+                if (kind != RefPropertyKind.ObjectReference)
+                    return;
+                Lines.Append(Owner).Append(property.propertyPath).Append(" -> ");
+                var value = property.objectReferenceValue;
+                if (value == null)
+                {
+                    Lines.Append("null\n");
+                    return;
+                }
+                var transform = value is GameObject go ? go.transform : value is Component c ? c.transform : null;
+                if (transform != null && transform.IsChildOf(Root))
+                    Lines.Append(transform == Root ? Root.name : AnimationUtility.CalculateTransformPath(transform, Root));
+                else
+                    Lines.Append("asset ").Append(value.name);
+                Lines.Append(" (").Append(value.GetType().Name).Append(')');
+                Lines.Append('\n');
+            }
         }
 
         /// <summary>Tên các StylePreset gắn trên chữ (kiểu viền, bóng), <c>-</c> khi không có.</summary>

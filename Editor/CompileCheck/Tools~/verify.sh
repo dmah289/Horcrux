@@ -6,9 +6,11 @@
 #   MSBUILD ép đường dẫn MSBuild.exe. Không đặt thì dùng `dotnet` trên PATH, thiếu nữa thì tìm MSBuild của Rider, Visual Studio.
 #   --tests    assembly test EditMode, mỗi assembly một lần `test run`. Bỏ trống thì bỏ bước này.
 #   --timeout  giây chờ mỗi assembly test (mặc định 600).
+#   --ready-wait  giây chờ Editor đang bận (import sau pull, merge) về ready trước bước Unity (mặc định 600). Không Editor nào mở project thì không chờ.
+#   Test fail ghi vào Library/HorcruxVerify/<assembly>.fail; lượt sau đánh dấu fail mới, in fail đã hết so với lượt đó.
 #   UNITY_CLI ép đường dẫn unity.exe (mặc định tìm `unity` trên PATH). Chạy từ gốc project hoặc đặt --project.
 set -u
-PROJECT="$PWD"; CSPROJ=""; TESTS=""; UNITY=1; RUN_TESTS=1; TIMEOUT=600
+PROJECT="$PWD"; CSPROJ=""; TESTS=""; UNITY=1; RUN_TESTS=1; TIMEOUT=600; READY_WAIT=600
 while [ $# -gt 0 ]; do
   case "$1" in
     --project) PROJECT="$2"; shift 2 ;;
@@ -17,6 +19,7 @@ while [ $# -gt 0 ]; do
     --no-unity) UNITY=0; shift ;;
     --no-tests) RUN_TESTS=0; shift ;;
     --timeout) TIMEOUT="$2"; shift 2 ;;
+    --ready-wait) READY_WAIT="$2"; shift 2 ;;
     --help|-h) sed -n '2,/^set -u/p' "$0" | sed '$d;s/^# \{0,1\}//'; exit 0 ;;
     *) echo "verify.sh: tham số lạ $1"; exit 2 ;;
   esac
@@ -43,6 +46,38 @@ print("" if cur is None else (json.dumps(cur, ensure_ascii=False) if isinstance(
 ' "$1"; }
 
 finish() { [ -z "$FAIL" ] && { echo "verify: OK${1:-}"; exit 0; }; echo "verify: FAIL$FAIL"; exit 1; }
+
+# Trạng thái Editor đang mở project (cột state của `unity status`: ready hay trạng thái bận); rỗng khi không Editor nào mở.
+editor_state() {
+  local out line
+  out="$("$U" status --project-path "$W" 2>&1 | tr -d '\r')"
+  line="$(echo "$out" | grep -iF -- "$W" | head -1)"
+  if [ -n "$line" ]; then echo "$line" | awk '{print $2}'
+  elif echo "$out" | grep -q "ready"; then echo ready; fi
+}
+# Sau pull, merge kéo nhiều file, Editor import vài phút và báo bận; gọi lệnh lúc đó thì timeout. Chờ thay vì báo FAIL unity.
+# $1: giây vẫn chờ khi status không thấy Editor — ngay sau khi kết nối rớt giữa lượt, status trả trống vài giây dù Editor còn sống.
+wait_ready() {
+  local s waited=0 absent_grace="${1:-0}"
+  s="$(editor_state)"
+  [ "$s" = "ready" ] && return 0
+  [ -z "$s" ] && [ "$absent_grace" -le 0 ] && return 1
+  echo "unity: Editor đang ${s:-không trả lời}, chờ ready (tối đa $READY_WAIT s)"
+  while [ $waited -lt "$READY_WAIT" ]; do
+    sleep 5; waited=$((waited + 5)); s="$(editor_state)"
+    [ "$s" = "ready" ] && { echo "unity: ready sau $waited s"; return 0; }
+    [ -z "$s" ] && [ $waited -ge "$absent_grace" ] && return 1
+  done
+  return 1
+}
+
+# 0. Editor mở thì Refresh trước build: file mới từ pull, merge chỉ vào csproj khi Editor nạp chúng — build csproj cũ báo CS0246 giả.
+# Editor không focus cũng chưa thấy file sửa từ ngoài: recompile trả up_to_date trên bản cũ.
+EDITOR_READY=0
+if [ $UNITY -eq 1 ] && wait_ready; then
+  EDITOR_READY=1
+  "$U" cmd --project-path "$W" --result-only --timeout 300 script eval --code "UnityEditor.AssetDatabase.Refresh(); return 0;" >/dev/null 2>&1
+fi
 
 # 1. Build csproj: chỉ dòng lỗi, bỏ dòng trùng (MSBuild in mỗi lỗi hai lần).
 # Chọn builder một lần. Không tìm thấy là FAIL: chạy lệnh không tồn tại không in dòng "error CS" nào, bước này từng báo ok giả.
@@ -84,9 +119,11 @@ done
 [ $UNITY -eq 1 ] || finish " (chỉ build csproj)"
 
 # 2. Unity recompile: hỏi trạng thái tới khi completed hoặc up_to_date; lỗi biên dịch nằm trong errors.
-"$U" status --project-path "$W" 2>&1 | grep -q "ready" || { echo "unity: Editor chưa mở project (unity status không ready)"; FAIL="$FAIL unity"; finish; }
-# Editor không focus thì chưa thấy file sửa từ ngoài: recompile trả up_to_date trên bản cũ. Refresh trước để nạp file mới.
-"$U" cmd --project-path "$W" --result-only script eval --code "UnityEditor.AssetDatabase.Refresh(); return 0;" >/dev/null 2>&1
+if [ $EDITOR_READY -eq 0 ]; then
+  s="$(editor_state)"
+  if [ -z "$s" ]; then echo "unity: Editor chưa mở project"; else echo "unity: Editor vẫn $s sau $READY_WAIT s (hộp thoại đang mở? import nặng thì tăng --ready-wait)"; fi
+  FAIL="$FAIL unity"; finish
+fi
 "$U" cmd --project-path "$W" --result-only script recompile >/dev/null 2>&1
 status=""; raw=""
 for i in $(seq 1 60); do
@@ -118,12 +155,18 @@ for asm in "${ASMS[@]}"; do
   started=$SECONDS
   raw="$("$U" cmd --project-path "$W" --result-only test run --mode EditMode --filter_type assembly --filter "$asm" --timeout "$TIMEOUT" 2>&1)"
   # Kết nối rớt giữa lượt ("socket hang up"): test có thể vẫn chạy trong Editor nên hỏi test status; Editor mất hẳn thì nói thẳng.
+  # Editor bận (domain reload vì file đổi giữa lượt, session khác sửa code) thì chờ ready; lượt bị reload cắt thì gửi lại một lần.
   if [ "$(echo "$raw" | jfield success)" = "False" ]; then
-    if ! "$U" status --project-path "$W" 2>&1 | grep -q "ready"; then
-      echo "tests $asm: Editor ngắt giữa lượt test ($(echo "$raw" | jfield errors | head -c 160)) và không còn ready. Mở lại Editor rồi chạy lại"
+    if ! wait_ready 60; then
+      echo "tests $asm: Editor ngắt giữa lượt test ($(echo "$raw" | jfield errors | head -c 160)) và không về ready. Mở lại Editor rồi chạy lại"
       FAIL="$FAIL unity"; continue
     fi
     raw="$("$U" cmd --project-path "$W" --result-only test status 2>&1)"
+    if [ "$(echo "$raw" | jfield status)" != "in_progress" ] && [ -z "$(echo "$raw" | jfield Summary.Total)" ]; then
+      echo "tests $asm: lượt test bị cắt giữa chừng, chạy lại"
+      started=$SECONDS
+      raw="$("$U" cmd --project-path "$W" --result-only test run --mode EditMode --filter_type assembly --filter "$asm" --timeout "$TIMEOUT" 2>&1)"
+    fi
   fi
   while [ "$(echo "$raw" | jfield status)" = "in_progress" ] && [ $((SECONDS - started)) -lt "$TIMEOUT" ]; do
     sleep 5; raw="$("$U" cmd --project-path "$W" --result-only test status 2>&1)"
@@ -134,16 +177,31 @@ for asm in "${ASMS[@]}"; do
   total="$(echo "$raw" | jfield Summary.Total)"; passed="$(echo "$raw" | jfield Summary.Passed)"; failed="$(echo "$raw" | jfield Summary.Failed)"
   if [ -z "$total" ]; then echo "tests $asm: không đọc được kết quả"; echo "$raw" | head -c 600; echo; FAIL="$FAIL tests"; continue; fi
   echo "tests $asm: $passed/$total pass, $failed fail"
-  if [ "$failed" != "0" ]; then
-    echo "$raw" | python -X utf8 -I -c '
-import json, sys
+  # Fail có sẵn từ trước task không phân biệt được với fail task gây ra nếu chỉ đọc số: so tên với lượt trước, ghi lượt này.
+  mkdir -p "$PROJECT/Library/HorcruxVerify"
+  echo "$raw" | python -X utf8 -I -c '
+import json, os, subprocess, sys, time
+path, project = sys.argv[1], sys.argv[2]
 raw = sys.stdin.read(); obj, _ = json.JSONDecoder().raw_decode(raw[raw.index("{"):])
-for r in obj.get("Results", []):
-    if r.get("Status") not in ("Passed", "Skipped"):
-        msg = (r.get("Message") or "").strip().replace("\n", " | ")
-        print("  %s: %s %s" % (r["FullName"], r["Status"], msg[:300]))'
-    FAIL="$FAIL tests"
-  fi
+fails = [r for r in obj.get("Results", []) if r.get("Status") not in ("Passed", "Skipped")]
+prev, stamp = None, ""
+if os.path.exists(path):
+    lines = open(path, encoding="utf8").read().splitlines()
+    stamp, prev = (lines[0], set(lines[1:])) if lines else ("", set())
+for r in fails:
+    msg = (r.get("Message") or "").strip().replace("\n", " | ")
+    mark = "" if prev is None or r["FullName"] in prev else " (mới)"
+    print("  %s: %s%s %s" % (r["FullName"], r["Status"], mark, msg[:300]))
+if prev is not None:
+    now = {r["FullName"] for r in fails}
+    for name in sorted(prev - now):
+        print("  hết fail: %s" % name)
+    print("  so với lượt %s: %d fail mới, %d hết fail" % (stamp, len(now - prev), len(prev - now)))
+head = subprocess.run(["git", "-C", project, "rev-parse", "--short", "HEAD"], capture_output=True, text=True).stdout.strip()
+with open(path, "w", encoding="utf8") as f:
+    f.write("%s @%s\n" % (time.strftime("%Y-%m-%d %H:%M"), head or "?"))
+    f.writelines(r["FullName"] + "\n" for r in fails)' "$PROJECT/Library/HorcruxVerify/$asm.fail" "$PROJECT"
+  [ "$failed" != "0" ] && FAIL="$FAIL tests"
 done
 
 finish

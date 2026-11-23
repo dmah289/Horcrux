@@ -18,7 +18,11 @@ Skill công cụ. `<horcrux>` là gốc Horcrux trong dự án. Chi tiết lện
    `-X find-renames=100%`. Rename nguyên vẹn không kéo theo directory rename: file mới phía kia ở thư mục cũ phải `git mv`
    tay — `plan` liệt kê sẵn đường dẫn đích.
 3. **Merge trong worktree riêng**, checkout vào nhánh làm việc khi cây đã sạch: Unity đang mở import `.meta` và asset còn
-   dấu conflict, sinh GUID mới cho file nó đọc không được.
+   dấu conflict, sinh GUID mới cho file nó đọc không được. **Nhánh đã tách hai phía (ahead và behind) thì `pull` là merge:**
+   đọc skill này và dựng worktree trước lệnh merge đầu tiên, không thử ở checkout chính rồi mới chuyển. Worktree không cần
+   index của checkout chính sạch, nên file developer đang sửa hay đã stage để nguyên, không `stash`; đưa nhánh lên merge bằng
+   `merge --ff-only`, lệnh này chỉ từ chối khi merge chạm đúng file đang bẩn. *Đã sai một lần:* merge ở checkout chính bị từ
+   chối vì index có file đã stage; agent cất chúng rồi merge tiếp, conflict hiện ra trong cây Unity đang mở.
 4. **File cấu hình gộp hợp hai bên, không chọn một bên:** dependency và scope trong `Packages/manifest.json` cùng lock,
    define symbol theo platform, scope registry, assembly reference của asmdef. Chọn một bên là gỡ package hay define bên kia
    đang dùng; lỗi chỉ lộ lúc compile ở máy khác.
@@ -39,11 +43,14 @@ Skill công cụ. `<horcrux>` là gốc Horcrux trong dự án. Chi tiết lện
 
 1. `plan <đích> <nhánh>`: đọc commit dời và bậc, cặp `GHÉP SAI GUID` / `ASSET KHÔNG THEO META`, file mới lạc thư mục,
    số conflict mỗi cách. Không có commit dời và không có cặp nào → merge thường, sang bước 5.
-2. Tạo worktree từ đích: `git worktree add <thư mục tạm> <đích> --detach`.
+2. Tạo worktree từ đích: `git -c core.longpaths=true worktree add <thư mục tạm> <đích> --detach`, thư mục tạm đường dẫn
+   ngắn. Windows giới hạn 260 ký tự đường dẫn; vượt thì `worktree add` báo `Could not reset index file`, `worktree remove`
+   báo `Filename too long` — gỡ cũng kèm cờ đó.
 3. Mỗi bậc: `git merge --no-ff --no-commit -X find-renames=100% <mốc bậc>` → `git mv` file lạc thư mục của bậc → giải
    conflict theo luật 4–6 → commit bậc.
 4. Gói thành một merge commit hai cha để lịch sử như merge thường:
-   `git commit-tree <tree của bậc cuối> -p <đích> -p <nhánh> -F <message>`, trỏ nhánh đích vào commit đó, xoá worktree.
+   `git commit-tree <tree của bậc cuối> -p <đích> -p <nhánh> -F <message>`, đưa nhánh đích lên commit đó (`merge --ff-only`
+   ở checkout chính), xoá worktree.
 5. `lines <merge>` và `assets <merge>`: phân loại từng dòng theo luật 7, sửa phần rơi bằng commit tiếp theo.
 6. Checkout nhánh đích ở project chính, chạy `compile-check` (build, recompile, test EditMode). Lỗi do API một bên xoá mà
    code bên kia còn gọi: sửa theo ý định của bên xoá, ghi vào báo cáo.

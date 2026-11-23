@@ -28,24 +28,27 @@ làm điều kiện commit.
 | Giữ cả bước build csproj dù Unity recompile đã đủ | builder báo đủ mọi lỗi của một assembly trong một lần và in chúng ra stdout; Unity dừng ở assembly đầu tiên hỏng và chỉ ghi console |
 | Đọc JSON của Unity CLI bằng `raw_decode`, không `json.load` | CLI in thêm một dòng hint của plugin sau JSON; `json.load` ném "Extra data" |
 | Lỗi build lọc bằng `sort -u` | MSBuild in mỗi lỗi hai lần (một của compiler, một của tổng kết) |
-| `AssetDatabase.Refresh` qua `script eval` trước `script recompile` | Editor không focus thì chưa nạp file sửa từ ngoài; recompile trả `up_to_date` trên bản cũ và bước này báo xanh giả |
+| `AssetDatabase.Refresh` qua `script eval` **trước bước build** khi Editor mở | Editor không focus thì chưa nạp file sửa từ ngoài: recompile trả `up_to_date` trên bản cũ và báo xanh giả; file mới từ pull, merge chưa vào csproj nên build báo `CS0246` giả |
+| Editor đang bận (import sau pull) thì chờ tới `--ready-wait`, không báo `FAIL unity` | import vài chục file mất vài phút, lệnh gửi lúc đó timeout; không Editor nào mở project thì không chờ |
+| Ghi tên test fail vào `Library/HorcruxVerify/<assembly>.fail` | fail có sẵn trước task chỉ phân biệt được với fail task gây ra bằng tên, không bằng số; `Library` không vào git, mỗi máy một mốc |
 | Đợi `unity status` ra `ready` (tối đa 60 s) giữa recompile và test | recompile xong còn domain reload, Pipeline ngắt vài giây; `test run` gửi lúc đó trả `EDITOR_NOT_RUNNING` |
-| `test run` trả `success: false` thì hỏi `test status`, không báo hỏng ngay | kết nối CLI rớt giữa lượt ("socket hang up") trong khi test vẫn chạy trong Editor; chỉ khi `unity status` không còn `ready` mới báo Editor mất |
+| `test run` trả `success: false` thì hỏi `test status`, không báo hỏng ngay | kết nối CLI rớt giữa lượt ("socket hang up") trong khi test vẫn chạy trong Editor. Editor bận (domain reload vì file đổi giữa lượt) thì chờ tới `--ready-wait`; `test status` không có kết quả thì gửi lại `test run` một lần — reload cắt lượt test. Chỉ khi không về `ready` mới báo Editor mất |
 
 ## Luồng dữ liệu
 
 ```
+--project   ──► unity status: ready | bận → chờ tới --ready-wait | không Editor ──► (ready) AssetDatabase.Refresh — Editor sinh lại csproj
 --csproj a,b ──► chọn builder (MSBUILD › dotnet › MSBuild Rider/VS) ──► build -v q -clp:ErrorsOnly ──► "build a: ok" | dòng lỗi CS/MSB | mã thoát ≠ 0
---project   ──► unity status ready? ──► AssetDatabase.Refresh ──► script recompile ──► poll recompile_status tới completed|up_to_date ──► errors[]
+(ready?)    ──► script recompile ──► poll recompile_status tới completed|up_to_date ──► errors[]          (không ready → FAIL unity)
 --tests X,Y ──► test run --mode EditMode --filter_type assembly --filter X ──► (success false? Editor ready → test status | mất → FAIL unity)
-                ──► (in_progress? poll test status tới hết --timeout) ──► Summary + test fail
+                ──► (in_progress? poll test status tới hết --timeout) ──► Summary + test fail ──► so tên với Library/HorcruxVerify/X.fail, ghi lượt này
                                                                                                           └──► "verify: OK" | "verify: FAIL build recompile tests"
 ```
 
 ## Lệnh
 
 ```bash
-bash "<horcrux>/Editor/CompileCheck/Tools~/verify.sh" --csproj <A.csproj,B.csproj> --tests <TestAsm1,TestAsm2> [--project <path>] [--no-unity] [--no-tests] [--timeout 600]
+bash "<horcrux>/Editor/CompileCheck/Tools~/verify.sh" --csproj <A.csproj,B.csproj> --tests <TestAsm1,TestAsm2> [--project <path>] [--no-unity] [--no-tests] [--timeout 600] [--ready-wait 600]
 ```
 
 | Cờ | Nghĩa |
@@ -56,6 +59,7 @@ bash "<horcrux>/Editor/CompileCheck/Tools~/verify.sh" --csproj <A.csproj,B.cspro
 | `--no-unity` | chỉ build csproj, cho máy không mở Editor |
 | `--no-tests` | dừng sau recompile |
 | `--timeout` | giây chờ mỗi assembly test, tính cả lượt hỏi `test status` sau đó; mặc định 600 |
+| `--ready-wait` | giây chờ Editor đang bận về `ready` trước bước Unity; mặc định 600 |
 | `UNITY_CLI` | biến môi trường ép đường dẫn `unity.exe`; mặc định `unity` trên PATH |
 | `MSBUILD` | biến môi trường ép đường dẫn `MSBuild.exe`; không đặt thì dùng `dotnet` trên PATH, thiếu nữa thì MSBuild mới nhất của Rider hay Visual Studio trong `Program Files` ổ c–h |
 
@@ -73,8 +77,11 @@ Thời gian: build 25–30 s mỗi csproj, recompile 5–20 s, test EditMode và
 | `build X: ok` nhưng `recompile: LỖI` | assembly không có trong `--csproj` (asmdef mới, test) hoặc define khác | đọc `errors` in ra; csproj thiếu assembly mới thì thêm tên vào `--csproj` |
 | `recompile: không xong sau 180 s` | Editor treo ở dialog, hoặc đang import | nhìn Editor; Unity bận import asset nặng thì chạy lại |
 | `tests X: không đọc được kết quả` | assembly không có test, lệnh timeout, hoặc Editor đang Play | thân JSON in kèm 600 ký tự đầu |
-| `tests X: Editor ngắt giữa lượt test (…) và không còn ready` | Editor đóng hoặc crash lúc test chạy | mở lại Editor rồi chạy lại; `verify: FAIL unity`, không phải lỗi test |
-| `tests X: n/m pass, k fail` | tên test fail và dòng đầu message in ngay dưới | mở test đó |
+| `tests X: Editor ngắt giữa lượt test (…) và không về ready` | Editor đóng, crash, hoặc kẹt quá `--ready-wait` lúc test chạy | mở lại Editor rồi chạy lại; `verify: FAIL unity`, không phải lỗi test |
+| `tests X: lượt test bị cắt giữa chừng, chạy lại` | domain reload (file đổi giữa lượt, session khác sửa code) cắt lượt test; tool đã gửi lại một lần | kết quả in sau dòng này là của lượt gửi lại |
+| `tests X: n/m pass, k fail` | tên test fail và dòng đầu message in ngay dưới; `(mới)` là fail lượt trước chưa có, `hết fail` là fail lượt trước đã qua | mở test `(mới)` trước; dòng `so với lượt <giờ> @<commit>` cho biết mốc — mốc không ở bản trước task thì chạy một lần trên bản đó |
+| `unity: Editor đang <state>, chờ ready` rồi `vẫn <state> sau n s` | Editor kẹt ở hộp thoại, hoặc import lâu hơn `--ready-wait` | nhìn Editor; import nặng thì tăng `--ready-wait` |
+| `unity: Editor chưa mở project` | không Editor nào mở project này | mở Editor, hoặc `--no-unity` (không Refresh được nên csproj có thể cũ) |
 
 ## Đã sai một lần
 

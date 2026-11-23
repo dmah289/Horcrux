@@ -1506,6 +1506,31 @@ timeToNext = lastRefillUtc + interval − now;
 
 **Cạm bẫy:** kiểm `IsInfinity` bằng `DateTime.Now` (local) trong khi lưu UTC → sai đúng bằng timezone (§0.7).
 
+**Đặt cọc mạng — mất mạng theo kết cục mà người chơi rời được giữa chừng.** Thua mất một tim, thắng không mất; người chơi
+có thể bỏ màn (về Home, chơi lại) hay app bị kill trước khi có kết cục. Mạng không trừ lúc vào màn mà **đặt cọc** ở mốc cam
+kết, rồi tất toán ở mỗi đường ra:
+
+```csharp
+    bool HasStake { get; }                      // rời màn bây giờ có mất tim không → hỏi xác nhận hay rời thẳng
+    void Stake();                               // mốc cam kết (nước đi đầu): ghi cọc vào save, chưa trừ
+    void Settle(bool lost);                     // kết cục: lost → Consume (xoá cọc trong cùng cửa); không → chỉ xoá cọc
+```
+
+| Đường ra | Gọi |
+|---|---|
+| thắng | `Settle(false)` |
+| thua · bỏ màn sau khi người chơi xác nhận | `Settle(true)` |
+| bỏ màn khi `!HasStake` (chưa đi nước nào) | không gọi gì, không hỏi |
+| huỷ hộp xác nhận (nút đóng) | không gọi gì, chơi tiếp, cọc giữ nguyên |
+| boot thấy `HasStake` (phiên trước chết giữa màn) | `Settle(true)` |
+
+| Chi tiết | Vì sao |
+|---|---|
+| Cọc ở nước đi đầu, không lúc vào màn | vào xem rồi rời không tốn tim, và không phải hỏi; hộp xác nhận chỉ hiện khi có giá thật |
+| Cọc nằm trong save, không trong RAM | app bị kill không bắn mốc nào tin được, pause bắn cả khi quảng cáo che app; cọc còn lúc boot là bỏ giữa chừng — chặn mẹo kill app để né thua |
+| `Consume` xoá cọc trong cùng cửa ghi | kill app giữa "trừ" và "xoá cọc" thì lần boot sau trừ thêm lần nữa |
+| Đang infinity thì không đặt cọc | màn bắt đầu miễn phí thì bỏ giữa chừng cũng miễn phí. Giả định (cần xác nhận): hết infinity giữa màn rồi thua vẫn mất tim |
+
 ### 14c. Reward
 
 **Bài toán.** "Thưởng" xuất hiện khắp nơi (win level, daily, chest, event, IAP, rewarded ads) với nhiều loại (coin, booster, tim, remove-ads, item event). Cần **một** kiểu dữ liệu thưởng + **một** đường trao + **nhiều** cách trình bày, và thêm loại mới **không sửa** code đã có.

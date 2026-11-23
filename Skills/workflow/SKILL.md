@@ -22,7 +22,10 @@ nhánh nào giữ.
 
 **Working tree có sửa dở của developer thì commit chỉ mang phần của việc mình:** file trùng thì tách theo hunk qua một index
 tạm, không đụng thứ developer đã stage; soát `git show --stat` sau mỗi commit. Commit theo pathspec lấy nội dung working tree,
-bỏ qua phần đã tách vào index. Công cụ: `docs/Editor/PartialCommit.md`.
+bỏ qua phần đã tách vào index. Công cụ: `docs/Editor/PartialCommit.md`. Không cất (`stash`) thứ developer đã stage khi còn
+đường không cần cất (merge: `merge-audit`). **Developer thao tác git song song** (app GUI pull, push, trả stash): sau một lượt
+chờ dài, bước ghi ra ngoài (push, pop stash, commit) đọc lại `status`, `reflog`, nhánh remote trước — trạng thái đọc trước lượt
+chờ là bản chết.
 
 ## Phỏng vấn — hỏi tới khi chốt kịch bản
 

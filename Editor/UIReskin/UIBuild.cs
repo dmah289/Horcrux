@@ -51,6 +51,23 @@ namespace Horcrux.Editor.UIReskin
             return label;
         }
 
+        /// <summary>
+        /// Đặt chữ cho UniText có sẵn trên target. size &gt; 0 đặt cỡ chữ; chữ autosize thì đặt cả cỡ tối đa (cỡ demo), vì autosize
+        /// co từ cỡ tối đa và bỏ qua cỡ thường. Không có UniText thì ném.
+        /// </summary>
+        public static UniTextBase SetText(Transform target, string text, float size = 0f)
+        {
+            if (!target.TryGetComponent<UniTextBase>(out var label))
+                throw new System.ArgumentException("không có UniText trên " + target.name);
+            label.Text = text;
+            if (size <= 0f)
+                return label;
+            label.FontSize = size;
+            if (label.AutoSize)
+                label.MaxFontSize = size;
+            return label;
+        }
+
         /// <summary>Phủ kín cha (anchor 0–1, offset 0).</summary>
         public static RectTransform Stretch(RectTransform rect)
         {
