@@ -20,7 +20,6 @@ hình cũ **tắt** thay vì xoá — prefab gốc còn nhận bản cập nhậ
 cũ. Tắt chỉ an toàn khi code không với tới object tắt: `GetComponentInChildren`, `GetComponentsInChildren(false)` bỏ qua object
 tắt, reference kéo thả thì không. **Cây giữ, art cũ thì gỡ** (mục Atlas): art khác style không quay lại.
 
-**Thứ lặp lại là một khối dùng chung; khác nhau ở dữ liệu là variant; khác hình dạng là khối riêng.** Tiêu chí: đổi kiểu (khung,
 **Đổi art của một khối thì soát mọi nơi còn vẽ art cũ** (tìm theo GUID): bản sao hình của khối trong tool thiết kế, preview, prefab
 song song không báo lỗi khi lệch skin, chỉ lộ khi người khác mở. Nêu từng nơi cho developer quyết, không tự đổi theo.
 
@@ -28,6 +27,7 @@ song song không báo lỗi khi lệch skin, chỉ lộ khi người khác mở.
 yên. Mốc dữ liệu đặt trùng mốc art (bước k/tổng nằm ở tâm vạch k) để mỗi lần dừng, đầu ruột chạm đúng một vạch. Cắt hay che một
 renderer thì làm trong chính nó (shader, tham số theo renderer); mask dùng chung kéo theo mọi renderer khác cùng dải.
 
+**Thứ lặp lại là một khối dùng chung; khác nhau ở dữ liệu là variant; khác hình dạng là khối riêng.** Tiêu chí: đổi kiểu (khung,
 nút, font) ở một chỗ thì mọi chỗ theo, và thêm một mục mới là *thêm* một variant hay kéo một khối vào, không chép. Số tầng
 variant theo số **lý do thay đổi** thật (kiểu chung → loại → gói), không theo cho đủ bộ (NT1).
 
