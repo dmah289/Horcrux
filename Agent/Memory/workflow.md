@@ -61,3 +61,8 @@ Bài học đã trả giá khi làm việc với `workflow`. Đọc trọn cùng
 `2026-11` · vấp 1 · đã đo · đúng với session mở trong git worktree
 **Thấy:** tới lúc sửa prefab, scene hay art chưa track mới phát hiện worktree thiếu submodule, thiếu art, và hook chặn ghi checkout chính. **Vì:** Editor và MCP chỉ mở trên checkout chính; mở worktree trong Editor phải init submodule, chép art, import lại Library rất lâu.
 **Làm:** việc cần Editor thì hỏi ngay đầu task làm ở đâu; được làm ở checkout chính thì ghi file ở scratchpad rồi chép sang, giữ kiểu xuống dòng của file gốc; không commit nếu developer chưa bảo.
+
+### File chưa track trùng type của Plan xuất hiện giữa lúc viết lại Plan
+`2026-11` · vấp 1 · đã đo
+**Thấy:** đang viết lại nhiều Plan bằng subagent thì một file code chưa track mang đúng class của một Plan xuất hiện trong Horcrux — developer đã bắt đầu gõ theo bản Plan sắp đổi. **Vì:** Plan là đầu vào developer gõ song song; grep "chưa ai gõ" lúc đầu phiên chỉ đúng tại thời điểm đó.
+**Làm:** trước khi viết lại Plan, báo developer danh sách Plan sẽ đổi; trước mỗi commit soát `git status` của thư mục code Horcrux; thấy file trùng thì dừng và hỏi giữ hay đổi Plan, không chạm file đó (`workflow` › Subagent).
