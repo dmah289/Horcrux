@@ -54,7 +54,7 @@ và chỉ tick phần hiệu ứng cần.
 - Object mang `SkeletonAnimation` và `MeshRenderer`; lớp vẽ đặt ở `MeshRenderer` (Sorting Layer, Order in Layer).
 - **Skeleton đi cùng hạt của nó thì gom dưới một cha có `SortingGroup`**: cả cụm xếp với phần còn lại của màn bằng một bậc, thứ tự
   skeleton với hạt chỉnh bằng order bên trong nhóm, không giãn bậc của lớp khác.
-- Cỡ skeleton world quy theo vật world đứng cạnh nó trên demo (`Skills/demo-compare/SKILL.md`), không theo bề ngang màn.
+- Cỡ skeleton world quy theo vật world đứng cạnh nó trên demo (`Agent/Skills/demo-compare/SKILL.md`), không theo bề ngang màn.
 
 ## Gọi anim từ code
 

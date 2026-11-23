@@ -8,7 +8,7 @@ mục `Assets/` không phải số của build: asset không được tham chi�
 
 | Mục | Chốt |
 |---|---|
-| Người dùng | agent, khi developer hỏi build size; quy trình ở `Skills/build-size/SKILL.md` |
+| Người dùng | agent, khi developer hỏi build size; quy trình ở `Agent/Skills/build-size/SKILL.md` |
 | Đầu vào | APK đã build · `Library/com.unity.addressables/BuildReports/buildlayout_*.json` (Addressables ghi sau mỗi lần build content) · `%LOCALAPPDATA%/Unity/Editor/Editor.log` (khối `Build Report` sau mỗi lần build player) |
 | Ranh giới | tool chỉ **đo và quy nguồn**; kết luận gỡ cái gì là việc đọc code, asset, manifest sau đó. AAB chưa hỗ trợ: đổi cấu trúc thư mục, chưa có nhu cầu |
 | Chỗ đặt | `Editor/BuildSize/Tools~/apk_report.py`: thư mục đuôi `~` Unity không import, không vào build. Không có C# |

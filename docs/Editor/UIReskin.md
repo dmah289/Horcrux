@@ -7,7 +7,7 @@ reference, đặt 9-slice, tạo sprite asset TMP, chụp canvas và vật world
 `execute_code`, Unity CLI `script eval`): khung lặp lại (nạp, lưu, dỡ, trả trạng thái) viết một lần ở đây, đã compile thật,
 nên eval chỉ còn phần riêng của bài.
 
-Cách dùng chúng trong một task reskin ở `Skills/ui-reskin/SKILL.md`. Đặt cỡ Game view và vào Play từ scene đầu ở
+Cách dùng chúng trong một task reskin ở `Agent/Skills/ui-reskin/SKILL.md`. Đặt cỡ Game view và vào Play từ scene đầu ở
 `docs/Editor/Probe.md` (`GameViewSize`, `PlayFrom`).
 
 ## Ngữ cảnh đã chốt

@@ -406,4 +406,4 @@ Mốc commit dự án: `refactor(cheat): category SRDebugger dựng qua DebugOpt
 | dự án `Assets/_Game/Scripts/Cheat/{Tracking,EconomyCheat,LevelCheat}DebugOptions.cs` | 2 |
 | dự án `Assets/_Game/Scripts/Segmentation/UserSegmentationDebugOptions.cs` | 2 |
 | `docs/Runtime/SRDebuggerOptions/SRDebuggerOptions.{md,html}` | 2 |
-| `Skills/workflow/SKILL.md` (Sổ tay Cheat) | 2 |
+| `Agent/Rules/workflow/RULE.md` (Sổ tay Cheat) | 2 |

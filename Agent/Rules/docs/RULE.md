@@ -17,7 +17,7 @@ chỉ `.md`**, nằm phẳng ở `docs/Editor/`; Plan ở `Plans/`. **Thay đổ
 | **`.html`** | **developer, designer** — dùng hệ không cần đọc code; agent không đọc khi đã có `.md` | cùng lần làm với `.md` |
 | **Plan** | developer **tự gõ** — khi được yêu cầu, và code runtime vào Horcrux đã duyệt | hệ dựng xong có tài liệu module thì xoá Plan |
 | **Manual** | người dùng tool không phải developer, để **thao tác** | cạnh tài liệu của tool |
-| **Skill** | agent mọi dự án — luật chung cho game Unity | qua chưng cất (`workflow` › Chưng cất) |
+| **Rule, Skill, Memory** | agent mọi dự án — `Agent/`: luật chung, quy trình một loại việc, bài học đã trả giá | qua cổng ghi (`horcrux.md` › Cổng ghi) |
 
 **Agent viết cả năm loại;** nghiệm thu là đối chiếu máy móc với code; developer chốt nội dung. Quy trình: phỏng vấn và đối
 chiếu (`workflow`) → đọc **tất cả** source, hiểu data flow, lifecycle, lý do mỗi quyết định → `.md` → `.html` chọn từ `.md`.
@@ -75,7 +75,7 @@ lần · lý do dài cho khẳng định hiển nhiên. Cắt xong vẫn dài th
   API trong `.md`.
 - **Thao tác Editor là một mục riêng** ở mọi đầu ra: Plan (Editor setup) · tài liệu ("Trước khi chạy") · **trả lời chat**.
 - **Viết cho người đọc lần đầu, ở thì hiện tại** (NT12); ngoại lệ là bẫy — ghi bài học, không tường thuật.
-- **Mâu thuẫn thì sửa dòng cũ**, không thêm dòng nói ngược. Ngoại lệ: dòng developer đặt và luật trong skill — nêu để
+- **Mâu thuẫn thì sửa dòng cũ**, không thêm dòng nói ngược. Ngoại lệ: dòng developer đặt và luật trong rule và skill — nêu để
   developer phân xử.
 - **Tri thức sinh trong hội thoại vào tài liệu trước khi báo xong:** câu hỏi của người đọc → câu trả lời ở lại tài liệu ·
   bug âm thầm vừa sửa → một dòng bẫy · quy ước mới → tài liệu module. **Liệt kê nguyên văn trong báo cáo**; đủ chung thì

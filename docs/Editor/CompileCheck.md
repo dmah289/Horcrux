@@ -8,7 +8,7 @@ làm điều kiện commit.
 
 | Mục | Chốt |
 |---|---|
-| Người dùng | agent sau mỗi task sửa code, trước khi báo xong hay commit; quy trình ở `Skills/compile-check/SKILL.md` |
+| Người dùng | agent sau mỗi task sửa code, trước khi báo xong hay commit; quy trình ở `Agent/Skills/compile-check/SKILL.md` |
 | Đầu vào | csproj ở gốc project do Unity sinh (gitignore) · Editor đang mở project (`unity status` ra `ready`) · tên assembly test EditMode |
 | Ranh giới | tool chỉ **chạy và tóm tắt**; sửa lỗi là việc đọc code sau đó. Không chạy PlayMode: PlayMode cần Play và chiếm Editor, developer chạy trong Test Runner |
 | Chỗ đặt | `Editor/CompileCheck/Tools~/verify.sh`: thư mục đuôi `~` Unity không import. Không có C# |

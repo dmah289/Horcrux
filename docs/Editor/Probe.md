@@ -11,7 +11,7 @@ kiểm tĩnh trước: `PrefabDump` không cần vào Play.
 
 | Mục | Chốt |
 |---|---|
-| Người dùng | agent, khi chỉnh feeling, dò lỗi trình diễn, đo hiệu năng, dò một luồng runtime treo bằng trạng thái nội bộ; quy trình chọn công cụ ở `Skills/feel-tune/SKILL.md` |
+| Người dùng | agent, khi chỉnh feeling, dò lỗi trình diễn, đo hiệu năng, dò một luồng runtime treo bằng trạng thái nội bộ; quy trình chọn công cụ ở `Agent/Skills/feel-tune/SKILL.md` |
 | Ranh giới | Horcrux giữ runner, ghi kết quả, sao lưu PlayerPrefs quanh lượt chạy, tóm console của phiên đang mở, reflection, chờ scene, bấm nút, dump prefab, ghép ảnh, cỡ Game view, máy trên Device Simulator, chạy lần lượt nhiều cỡ hay nhiều máy, file máy thật (`Editor/Probe/Devices/`), đo khung object trên màn, vào Play từ scene đầu. Dự án giữ **đường tắt vào trạng thái cần đo** (bấm menu, chờ level, chọn entity), một class Editor của dự án |
 | Chỗ đặt | C# ở `Editor/Probe/` (assembly `com.horcrux.editor`). Shell ở `Editor/Probe/Tools~/`: Unity không import, không vào build |
 | Quan hệ với FeelTrace | `feeltrace.sh` chạy qua `playrun.sh`; `FeelTraceRecorder` dùng chung cờ `.done` |

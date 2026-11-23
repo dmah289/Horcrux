@@ -34,9 +34,9 @@ chỉ còn phần chưa commit.
 ## Dùng
 
 ```bash
-python -X utf8 -I "<horcrux>/Editor/PartialCommit/Tools~/partial_commit.py" list Skills/workflow/SKILL.md Plans/A.md
+python -X utf8 -I "<horcrux>/Editor/PartialCommit/Tools~/partial_commit.py" list Agent/Rules/workflow/RULE.md Plans/A.md
 python -X utf8 -I "<horcrux>/Editor/PartialCommit/Tools~/partial_commit.py" commit -m @msg.txt \
-    --hunks Skills/workflow/SKILL.md:2,5-6 --whole docs/Editor/New.md --whole Plans/Old.md
+    --hunks Agent/Rules/workflow/RULE.md:2,5-6 --whole docs/Editor/New.md --whole Plans/Old.md
 ```
 
 | Tham số | Nghĩa |
