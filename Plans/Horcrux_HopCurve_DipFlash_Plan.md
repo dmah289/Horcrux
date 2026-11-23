@@ -16,7 +16,8 @@ cuối, sổ "đang diễn") cùng khuôn "struct núm + class toán", làm trư
 ## Ngữ cảnh đã chốt
 
 - **Người dùng:** category-jam — tile bay hai pha vào ô và nhảy lên hàng trước (`Tile`), box nhận và vọt đi (`BoxAnimation`), ô cache
-  nhún (`CacheTileSlot`), số nảy (`CategoryBox`, `SingleShelfAmountBar`), pitch đáp (`ShelfPromoteTuning.LandPitch`) · foods_jam
+  nhún (`CacheTileSlot`), số nảy (`CategoryBox`, `SingleShelfAmountBar`), pitch đáp (`ShelfPromoteTuning.LandPitch`), khay Extra Slot và bình Pack bay trên UI
+  (`BoosterFlight`: `ApexT`, `ArcY` trên toạ độ màn hình — cùng hình dạng tile vào ô, đơn vị khác) · foods_jam
   `CacheHole.PlaySpringAnimation` cùng hình lún vị trí.
 - **Mục tiêu:** toán thuần, struct núm, extension một lời gọi lên Horcrux, dự án gọi thẳng; cảm giác **không đổi một giá trị**: mọi
   biểu thức chép nguyên văn, kể cả thứ tự phép nhân float. Đường bay hai pha lên trọn, `TileFlightCurve.cs` xoá hẳn ở GĐ10.
@@ -76,7 +77,7 @@ $$ArcY(t) = lerp(t ≤ apexT\ ?\ y_0 : y_1,\ y_1 + fallHeight,\ Arc01(t))$$
 | `duration` | giây của cả chuyến; `DurationForSpeed` = quãng / tốc độ, kẹp hai đầu |
 | `fallDuration` | giây của pha rơi, **núm tuyệt đối** của dự án |
 | `MIN_APEX_T = 0.5` | pha lên không ngắn hơn pha rơi; chuyến ngắn hơn `2 · fallDuration` thì pha rơi co lại |
-| `fallHeight` | đỉnh cao hơn ô bao nhiêu world unit |
+| `fallHeight` | đỉnh cao hơn ô bao nhiêu, cùng đơn vị với `y0`, `y1` caller truyền (world unit, pixel màn hình) |
 
 **Vì sao pha rơi giống nhau mọi chuyến.** Gọi `s` là giây sau đỉnh. `(1 − apexT) · duration = fallDuration` khi chưa chạm kẹp, nên
 `v = s / fallDuration`, và độ cao trên ô là `fallHeight · (1 − v²)`: chỉ phụ thuộc `s`, `fallDuration`, `fallHeight` — không phụ thuộc
@@ -136,7 +137,8 @@ cú lên hàng trước: LiftWithAnticipation (nhún lấy đà rồi cung Lift)
 chuyến. **Vì sao bây giờ:** kênh đầu tiên vòng `Step` ghi; các kênh khác đọc `apexT`, `ProgressAfter` của nó.
 
 **Ai gọi:** test của giai đoạn; trong dự án là `Tile.FlyToAsync` (`DurationForSpeed`), `Tile.BuildFlightState` (`ApexT`), `Tile.StepFlight`
-(`ArcY`, `ProgressAfter`, `PeakToLocal`), `Tile.StepFinale` và `Tile.AnimateToFrontRow` (`PeakToLocal`) (GĐ10).
+(`ArcY`, `ProgressAfter`, `PeakToLocal`), `Tile.StepFinale` và `Tile.AnimateToFrontRow` (`PeakToLocal`), `BoosterFlight.FlyAsync` (`ApexT`) và `BoosterFlight.SetDropIn`
+(`ArcY` trên y màn hình, gốc lerp tuyến tính) (GĐ10).
 
 ### `Runtime/Utilities/PhysXHelper/HopCurve.cs` — file mới
 
@@ -1092,13 +1094,13 @@ Thêm `using Horcrux.Runtime.Utilities.PhysXHelper;` và bốn hằng vào `Prop
 | `StepFinale` | `TileFlightCurve.PeakToLocal(pose.Lift, scale)` | `HopCurve.PeakToLocal(…)` |
 | `AnimateToFrontRow` | `TileFlightCurve.PeakToLocal(rise.Peak, …)` · `TileFlightCurve.LeanToward(-from.x, rise.LeanDegrees)` | `HopCurve.PeakToLocal(…)` · `HopCurve.LeanToward(-from.x, rise.LeanDegrees, LEAN_MIN_DX)` |
 | `StepRise` | `TileFlightCurve.ProgressAfter(t, rise.SinkEnd)` · `RiseRamp(k, rise.ScaleEnd)` · `RiseRamp(k, rise.TintEnd)` · `RiseLift(t, peak, rise.SinkDepth, rise.SinkEnd)` · `LeanRamp(k)` | `HopCurve.ProgressAfter(…)` · `HopCurve.EaseOutUntil(…)` ×2 · `HopCurve.LiftWithAnticipation(…)` · `HopCurve.LeanRamp(k, LEAN_RISE_END, LEAN_FALL_START)` |
-
-`Entities/Tile/TileFlightCurve.cs` **xoá hẳn** (cả `.meta`); summary của `TileRiseTuning` trong `TileFeelTuning.cs`: "Hình dạng ở
 | `BuildSuckMotion` | `TileFlightCurve.LeanToward(to.x - from.x, suck.TiltDegrees)` · `TileSuckCurve.DashDuration(Vector3.Distance(back, to), suck)` | `HopCurve.LeanToward(to.x - from.x, suck.TiltDegrees, LEAN_MIN_DX)` · `HopCurve.DurationForSpeed(Vector3.Distance(back, to), suck.Speed, suck.MinDuration, suck.MaxDuration)` |
 | `SinkIntoSlot` | `TileFlightCurve.PeakToLocal(suck.SinkDepth, transform.parent.lossyScale.y)` | `HopCurve.PeakToLocal(…)` |
 
 `Entities/Tile/TileSuckCurve.cs`: xoá `DashDuration` (thân trùng nguyên văn `DurationForSpeed`); `TileSuckCurveTests` xoá ba case
 `DashDuration_IsDistanceOverSpeed_Clamped` (GĐ1 đã phủ). `WindupBack`, `DashPoint`, `LeanHold` ở lại: một người dùng.
+
+`Entities/Tile/TileFlightCurve.cs` **xoá hẳn** (cả `.meta`); summary của `TileRiseTuning` trong `TileFeelTuning.cs`: "Hình dạng ở
 `TileFlightCurve.Rise*`" → "Hình dạng ở `HopCurve.LiftWithAnticipation`, `EaseOutUntil`".
 
 ### `Entities/Box/`
@@ -1109,6 +1111,15 @@ Thêm `using Horcrux.Runtime.Utilities.PhysXHelper;` và bốn hằng vào `Prop
 | `BoxReceiveTuning.cs` | `Dip` → `DipSpec`, `Flash` → `FlashSpec`; ba núm `FramePunchScale`, `FramePunchDelay`, `FramePunchDuration` → `[Tooltip("Khung phồng lên rồi về sau đế một nhịp: lực đi từ khung xuống đế rồi bật lại.")] public PopSpec FramePunch = new(1.10f, 0.03f, 0.18f);`; xoá `CounterPopTuning` |
 | `BoxAnimation.cs` | `ApplyDip(float t, in DipSpec dip) => ApplyScaleY(dip.EvaluateScaleY(t))` · `BoxFeelCurve.LaunchScaleY(t, anim.complete.Launch)` → `anim.complete.Launch.EvaluateStretchScaleY(t)` · `InsertFlash(_completeSequence, touch, lidFlash, complete.LidFlash)` → `_completeSequence.InsertFlash(touch, lidFlash, complete.LidFlash)` · `InsertReceiveAccents`: `InsertFlash(sequence, at, frameFlash, tuning.Flash)` → `sequence.InsertFlash(at, frameFlash, tuning.Flash)`, hai dòng punch → `sequence.Insert(at, frame.transform.CharmPop(_frameRestScale, tuning.FramePunch));` · xoá `InsertFlash` private · `ApplyLandCompress` giữ nguyên · thêm `using Horcrux.Runtime.Utilities.Tweening;` |
 | `CategoryBox.cs` | `CounterPopTuning counterPop` → `PopSpec counterPop` (tên field giữ); thân `UpdateCounter` từ `_counterPopTween = Sequence.Create().ChainDelay(…).Chain(…)` → `_counterPopTween = _counterText.transform.CharmPop(_counterOriginalScale, counterPop);`; bỏ comment hai dòng về `ChainDelay`; thêm `using Horcrux.Runtime.Utilities.ExtensionMethods;`, `using Horcrux.Runtime.Utilities.Tweening;` |
+
+### `Entities/Cache/BoosterFlight.cs`
+
+| Call site | Cũ | Mới |
+|---|---|---|
+| `FlyAsync` (nhánh `fallHeight > 0`) | `TileFlightCurve.ApexT(duration, fallDuration)` | `HopCurve.ApexT(duration, fallDuration)` |
+| `SetDropIn` | `TileFlightCurve.ArcY(t, _from.y, _to.y, _fallHeightPx, _apexT)` | `HopCurve.ArcY(…)`, cùng tham số |
+
+Thêm `using Horcrux.Runtime.Utilities.PhysXHelper;`. Comment `SetDropIn` trỏ `TileFlightCurve` → `HopCurve`. `Horcrux_UIProxyFlight_Plan.md` đã chuyển dự án trước thì `BoosterFlight.cs` chỉ còn lớp nối đuôi hạt, không gọi `TileFlightCurve`: bỏ mục này.
 
 ### `Entities/Shelf/`, `Entities/TileSlot/`
 
@@ -1158,7 +1169,7 @@ kiểm `git diff` chỉ có các khối trong bảng.
 - **Cần chơi thử** (developer): vào một level có kệ hai hàng và kệ Single. Làm: tap tile vào cache, tap tiếp để tile dồn trái, đưa tile
   vào box tới khi box đầy, tap hết hàng trước của một kệ để hàng sau nhảy lên. Nhìn: tile bay vồng lên rồi rơi vào ô cùng một kiểu dù
   từ kệ nào; ô cache nhún khi nhận và khi dồn; box lún, lòng khung loé, khung nảy, số đếm nảy; tile cuối đón mạnh hơn, nắp đóng, box
-  nén rồi vọt; tile hàng sau nhún rồi nhảy lên, ba tiếng clack lên dần trái sang phải; số lớp kệ Single nảy khi giảm. Dấu hiệu hỏng:
+  nén rồi vọt; tile hàng sau nhún rồi nhảy lên, ba tiếng clack lên dần trái sang phải; số lớp kệ Single nảy khi giảm; bấm Extra Slot — khay lên đỉnh trên ô rồi rơi vào như tile. Dấu hiệu hỏng:
   tile đập vào ô (cỡ nhảy), ô cache lún rồi không về đúng chỗ, khung nảy sớm hơn hay muộn hơn đế, số đếm đứng yên, ô cache xuống
   "bật" thay vì "bị đè" (`DownEase` rơi về 0).
 
@@ -1185,4 +1196,4 @@ kèm con trỏ submodule.
 | `Tests/EditMode/DipSpecTests.cs`, `AccentSpecTests.cs`, `LaunchSpecTests.cs` (agent) | | | | tạo | | tạo | | tạo | | |
 | `Tests/PlayMode/CharmAccentTests.cs` (agent) | | | | | tạo | thêm case | thêm case | | | |
 | `docs/Runtime/HopCurve/`, `docs/Runtime/CharmAccent/` (`.md` + `.html`), `docs/Runtime/Interpolator/Interpolator.html`, `Plans/FeelingPlan.md` (agent) | | | | | | | | | tạo, sửa | |
-| dự án: `Tile.cs`, `TileFeelTuning.cs`, `TileSuckCurve.cs`, `TileSuckCurveTests.cs`, xoá `TileFlightCurve.cs`, `BoxFeelTuning.cs`, `BoxReceiveTuning.cs`, `BoxAnimation.cs`, `CategoryBox.cs`, `SingleShelfAmountBar.cs`, `CacheTileSlot.cs`, `ShelfPromoteTuning.cs`, hai test, `Feel.md`, `Structure.md`, ba prefab | | | | | | | | | | đổi |
+| dự án: `Tile.cs`, `TileFeelTuning.cs`, `BoosterFlight.cs`, `TileSuckCurve.cs`, `TileSuckCurveTests.cs`, xoá `TileFlightCurve.cs`, `BoxFeelTuning.cs`, `BoxReceiveTuning.cs`, `BoxAnimation.cs`, `CategoryBox.cs`, `SingleShelfAmountBar.cs`, `CacheTileSlot.cs`, `ShelfPromoteTuning.cs`, hai test, `Feel.md`, `Structure.md`, ba prefab | | | | | | | | | | đổi |

@@ -322,13 +322,17 @@ không gọi `Easer.Evaluate(EaseType, t)`: thêm một switch mỗi frame cho c
 **Vì sao bây giờ:** cả hai chỉ đọc `Lift` của GĐ1; bóng và cú cất cánh là hai kênh còn lại của một host thật.
 
 **Ai gọi:** test; trong dự án `Tile.StepFinale` (`Shadow01(pose.Lift, finale)` mỗi frame), `Tile.FlyToAsync`
-(`startLift = EndLift(finale)`), `Tile.BuildFlightState` (`StartShadow01 = Shadow01(startLift, finale)`) (GĐ9).
+(`startLift = EndLift(finale)`), `Tile.BuildFlightState` (`StartShadow01 = Shadow01(startLift, finale)`), `Tile.BuildFlightMotion`
+(`InsertCallback(WiggleStart(finale), …)`: tiếng tile cuối vào đúng lúc thân bắt đầu lắc) (GĐ9).
 
 ### `TadaCurve.cs` › thêm sau `Duration`, trước `Evaluate`
 
 ```csharp
         public static float Duration(in TadaSpec spec)
             => spec.LiftDuration + BEAT_COUNT * spec.WiggleBeatDuration + spec.WindupDuration;
+
+        /// <summary>Giây nhịp lắc đầu bắt đầu, tính từ lúc tada bắt đầu: nhấc xong thì lắc.</summary>
+        public static float WiggleStart(in TadaSpec spec) => spec.LiftDuration;
 
         /// <summary>Độ cao thân lúc cất cánh: chuyến bay bắt đầu từ đây.</summary>
         public static float EndLift(in TadaSpec spec) => spec.LiftHeight - spec.WindupDip;
@@ -338,7 +342,11 @@ không gọi `Easer.Evaluate(EaseType, t)`: thêm một switch mỗi frame cho c
             => spec.LiftHeight > 0f ? Mathf.Clamp01(lift / spec.LiftHeight) : 0f;
 ```
 
-**Khác với bản dự án:** không — hai hàm chép nguyên văn, đổi kiểu tham số.
+**Khác với bản dự án:** không — ba hàm chép nguyên văn, đổi kiểu tham số.
+
+**Quyết định** — `WiggleStart` là hàm, không để caller cộng `LiftDuration`: mốc của một pha bên trong tada thuộc về chỗ định nghĩa
+pha (`Evaluate` rẽ nhánh đúng ở mốc này); caller chèn tiếng, rung vào mốc mà không biết tada chia pha thế nào, đổi thứ tự pha thì
+mốc dời theo.
 
 **Quyết định** — `Shadow01` guard `LiftHeight > 0f`: `[Min(0f)]` cho phép 0 là giá trị hợp lệ (tada không nhấc, chỉ lắc), chia 0 cho
 `NaN` lan vào scale bóng; đây là ca hợp lệ, không phải lỗi setup. — `EndLift` không kẹp âm: `WindupDip > LiftHeight` là lỗi núm, tooltip
@@ -346,13 +354,14 @@ của `WindupDip` nói rõ, Inspector là nơi người tune đang nhìn.
 
 | Consumes | Produces |
 |---|---|
-| GĐ1 (`TadaSpec`) | `TadaCurve.EndLift`, `Shadow01` |
+| GĐ1 (`TadaSpec`) | `TadaCurve.WiggleStart`, `EndLift`, `Shadow01` |
 
 **Sơ đồ tương tác sau GĐ2**
 
 ```
   host ──mỗi frame tada──► Evaluate → pose ──Shadow01+(pose.Lift)──► bóng co
        ──hết Duration──► EndLift+ → độ cao xuất phát chuyến bay; Shadow01+(EndLift) → bóng lúc cất cánh
+       ──dựng Sequence──► InsertCallback(WiggleStart+) → tiếng, rung đúng lúc bắt đầu lắc
 ```
 
 **Editor setup:** không.
@@ -361,6 +370,7 @@ của `WindupDip` nói rõ, Inspector là nơi người tune đang nhìn.
 
 | Case | Input | Kỳ vọng |
 |---|---|---|
+| `WiggleStart` | `Default()` | 0.15 (= `LiftDuration`); `Evaluate(WiggleStart − 1e-4)` còn `Angle` 0, `Evaluate(WiggleStart + beat/2)` có `Angle` ≠ 0 |
 | `EndLift` | `Default()` | 0.30 |
 | `Shadow01` theo lift | lift 0, 0.35, 0.30, 0.5 | 0, 1, 0.30/0.35, 1 (kẹp) |
 | `Shadow01` lift âm (ngoài dải) | −0.1 | 0 |
@@ -894,7 +904,7 @@ vẹn, API consumer gọi), flow, lưu ý (bẫy object huỷ, núm ràng buộc
 
 Với hai bộ số (mặc định C# của `TileFinaleTuning` và một bộ bất kỳ khác), `fromScale` 1.15: mỗi 1 ms trên `Duration + 0.05`,
 `TileFinaleCurve.Evaluate(t, s, tuning)` và `TadaCurve.Evaluate(t, s, spec)` bằng nhau tuyệt đối ở ba kênh; `Duration`, `EndLift`,
-`Shadow01(lift)` với lift 0, 0.1, L, 2L bằng nhau. Chạy xanh rồi **xoá** cùng `TileFinaleCurve.cs` ở bước 2.
+`WiggleStart`, `Shadow01(lift)` với lift 0, 0.1, L, 2L bằng nhau. Chạy xanh rồi **xoá** cùng `TileFinaleCurve.cs` ở bước 2.
 
 ### 2. Tada
 
@@ -902,7 +912,7 @@ Với hai bộ số (mặc định C# của `TileFinaleTuning` và một bộ b�
 |---|---|
 | `Entities/Tile/TileFinaleCurve.cs` | **xoá hẳn** (cả `.meta`) |
 | `Entities/Tile/TileFeelTuning.cs` | xoá `TileFinaleTuning` và `<summary>` của nó |
-| `Entities/Tile/Tile.cs` | `[SerializeField] private TileFinaleTuning finale = new();` → `[Tooltip("Tada tile cuối. LiftScale ≥ HeldScale của press, WindupScale ≤ PeakScale của flight, WiggleDegrees ≤ 12° (sprite 2.5D lộ cạnh).")] [SerializeField] private TadaSpec finale = new(0.35f, 0.15f, 1.2f, 6f, 0.08f, 0.04f, 1.14f, 0.05f, 0.07f);` · `FlyToAsync`: `TileFinaleCurve.Duration(finale)`, `TileFinaleCurve.EndLift(finale)` → `TadaCurve.` · `BuildFlightState`: `TileFinaleCurve.Shadow01(startLift, finale)` → `TadaCurve.Shadow01(…)` · `StepFinale`: `TileFinaleCurve.Evaluate(time, _flightState.FinaleScaleFrom, finale)` → `TadaCurve.Evaluate(…)`, `TileFinaleCurve.Shadow01(pose.Lift, finale)` → `TadaCurve.Shadow01(…)` (`pose` là `var`, kiểu `TadaPose` tự suy) · `finale.WindupScale` giữ · thêm `using Horcrux.Runtime.Utilities.Tweening;` |
+| `Entities/Tile/Tile.cs` | `[SerializeField] private TileFinaleTuning finale = new();` → `[Tooltip("Tada tile cuối. LiftScale ≥ HeldScale của press, WindupScale ≤ PeakScale của flight, WiggleDegrees ≤ 12° (sprite 2.5D lộ cạnh).")] [SerializeField] private TadaSpec finale = new(0.35f, 0.15f, 1.2f, 6f, 0.08f, 0.04f, 1.14f, 0.05f, 0.07f);` · `FlyToAsync`: `TileFinaleCurve.Duration(finale)`, `TileFinaleCurve.EndLift(finale)` → `TadaCurve.` · `BuildFlightState`: `TileFinaleCurve.Shadow01(startLift, finale)` → `TadaCurve.Shadow01(…)` · `BuildFlightMotion`: `TileFinaleCurve.WiggleStart(finale)` → `TadaCurve.WiggleStart(finale)` (callback tiếng `TileFinaleShake`) · `StepFinale`: `TileFinaleCurve.Evaluate(time, _flightState.FinaleScaleFrom, finale)` → `TadaCurve.Evaluate(…)`, `TileFinaleCurve.Shadow01(pose.Lift, finale)` → `TadaCurve.Shadow01(…)` (`pose` là `var`, kiểu `TadaPose` tự suy) · `finale.WindupScale` giữ · thêm `using Horcrux.Runtime.Utilities.Tweening;` |
 | `Entities/Tile/Tile.Editor.cs` › `PreviewFinale` | `TileFinaleCurve.Duration(finale)` → `TadaCurve.Duration(finale)`; thêm `using Horcrux.Runtime.Utilities.Tweening;` |
 | `Tests/EditMode/TileFinaleCurveTests.cs` | **xoá** (19 case đã ở Horcrux `TadaCurveTests`) |
 | `Scripts/Feel.md` §7 và "Nghiệm thu" | `TileFinaleTuning` → `TadaSpec` (field `finale`), `TileFinaleCurve` → `TadaCurve` (Horcrux, `docs/Runtime/Tada/Tada.md`), `TileFinaleCurveTests` → Horcrux `TadaCurveTests` |

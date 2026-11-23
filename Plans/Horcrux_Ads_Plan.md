@@ -64,7 +64,9 @@ giữ bản tạm `BannerSpace` của dự án. Không có `§0` vì hệ không
   - **Remove ads kiểm trước khi kiểm sẵn sàng.** Nếu ngược lại, người đã mua bị báo cho SDK là "mất cơ hội chiếu", làm sai số liệu
     fill.
   - **Caller huỷ token không huỷ lượt chiếu.** Quảng cáo đã hiện thì không huỷ được. Lượt chiếu chạy tới lúc đóng để cờ và đồng hồ
-    đúng, thưởng không bị lạc; caller chỉ nhận `OperationCanceledException`.
+    đúng, thưởng không bị lạc; caller chỉ nhận `OperationCanceledException`. Hệ quả cho dự án: token truyền vào thuộc chủ làm
+    bước **sau** lượt chiếu. Popup tự huỷ lúc đóng mà chờ interstitial bằng token của chính nó thì `await` ném, `UniTaskVoid`
+    nuốt, màn kế không bao giờ nạp; lỗi chỉ lộ khi level qua mốc interstitial. Cặp "chiếu rồi chuyển màn" nằm ở điều phối màn.
   - **`onEarned` có thể chạy khi quảng cáo còn che màn.** Ở đó chỉ ghi dữ liệu. Lợi ích: người chơi tắt app ngay lúc đó vẫn
     không mất thưởng.
   - **Thưởng về sau khi lượt đã chốt `Skipped` thì bỏ.** Lúc đó popup đã mở lại nút, cấp thưởng lúc này là cấp ngoài luồng.
@@ -1233,7 +1235,8 @@ Compile sạch ở dự án có Zego. Nghiệm thu hành vi nằm ở GĐ7, trê
   banner che nút sát đáy.
 - Cửa ghi remove ads của dự án gọi `HideBanner`. Thiếu thì banner đang hiện còn tới lúc rời màn.
 
-Ngoài ra: luồng rewarded, interstitial và banner, bảng kết quả → caller nên làm gì, cách viết lớp luật kịch bản ở dự án (mốc,
+Ngoài ra: luồng rewarded, interstitial và banner, bảng kết quả → caller nên làm gì, token của ai (chủ làm bước sau lượt chiếu, không
+phải popup sắp đóng), cách viết lớp luật kịch bản ở dự án (mốc,
 giãn cách, placement, màn nào muốn banner — ví dụ tên trung tính), các quyết định trái trực giác, lỗi Zego ở chế độ compare, và
 "Mở rộng sau".
 
@@ -1248,7 +1251,8 @@ giãn cách, placement, màn nào muốn banner — ví dụ tên trung tính), 
    còn dùng thứ khác trong đó. Placement giữ nguyên chuỗi `refill_live`, `revive`, `win_x2`, `add_box`.
 2. **`InterstitialScenarios`, `RewardedScenarios`, `AdLevelGate`** ở lại dự án (mốc level, tập user, lượt play test là luật của dự
    án): `InterstitialScenarios` đổi `Service.Get<IAdService>()` thành `IAdService.Service`, thêm cùng `using`. Chỗ gọi ở
-   `PopupWin.EndExit` và `MainController.RetryLevel` không đổi.
+   `MainController.LeaveAfterWin` (popup thắng gọi sau khi đóng, chờ bằng token của `MainController`) và
+   `MainController.RetryLevel` không đổi.
 3. **Banner** — `GameplayBanner` (bốn chỗ `Service.Get<IAdService>()`) đổi thành `IAdService.Service`; `PersistentData.RemoveAds`
    đổi `Service.TryGet<Core.IAdService>(out var ads)` thành `IAdService.TryGet(out var ads)`. `PopupShop`, `MainController` gọi
    `GameplayBanner`, không đổi. Dải đáy: `Horcrux_ViewportAnchor_Plan.md` GĐ6 (đã gõ Plan đó) hoặc giữ `BannerSpace` của dự án.

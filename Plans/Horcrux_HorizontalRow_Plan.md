@@ -23,7 +23,7 @@ dòng ở GĐ1.
   (`Runtime/Utilities/Attribute/SplitterAttribute.cs`, namespace cha nên không cần `using`).
 - **Không làm:** hàng dọc, lưới hai chiều (chưa có người dùng; cần thì component khác, không phải cờ trục) · con khác cỡ (cần thì thêm
   chế độ đọc `Renderer.bounds`, `space` giữ nghĩa khoảng cách tâm).
-- **Đã khảo sát:** `HorizontalGrid.cs` (commit `5c3549ed`, lấy cả cơ chế; chỗ khác ở bảng "Khác với bản dự án" từng GĐ) ·
+- **Đã khảo sát:** `HorizontalGrid.cs` (commit `5c3549ed`, lấy cả cơ chế; `a179102a` thêm `SlotLocalX`, `LocalPositionOf` cho khay Extra Slot bay tới ô vừa mở; chỗ khác ở bảng "Khác với bản dự án" từng GĐ) ·
   `BoxesContainer.cs` (bốn cách gọi, `space` đổi theo số hộp) · `CacheTileSlots.cs` (`GetComponent`, `RepositionNow` sau `SetLocked`,
   đọc `Space` tính thanh nền) · `GameDirector.StartLevelAsync` (thứ tự `OpenSlots` → `SpawnInitialBoxesAsync`) · `GameplayRoot.prefab`
   (GUID script `3b10628ba4222cf4092c8a20be197ec7`; `cache_bar` có 7 ô con sẵn, `box_row` không) · Unity `HorizontalLayoutGroup`
@@ -50,7 +50,8 @@ tài liệu (GĐ4) · dự án dùng bản Horcrux, xoá bản tạm (GĐ5)
 chủ (component trên cha; quyết con nào bật, gọi lúc nào, await hay không)
    │ RepositionNow / RepositionSmooth / SetSpaceAndRepositionSmooth / SetSpaceAndPlayAppearAsync / Space
    ▼
-HorizontalRow ── GetActiveChildren: lọc activeSelf ──► con 0..n-1: localPosition.x = leftX + i·space
+HorizontalRow ── GetActiveChildren: lọc activeSelf ──► con 0..n-1: localPosition.x = SlotLocalX(i, n, space)
+   ├─ LocalPositionOf(i, n) ──► chủ đọc chỗ nghỉ tương lai (đích chuyến bay) trước khi hàng trượt xong
    ├─ _moveSequence ──► Tween.LocalPositionX (song song)
    └─ _appearSequences ──► delay → bật → Tween.LocalPositionX
 
@@ -63,11 +64,13 @@ Inspector: space, childLocalY · repositionDuration · appearDuration, appearSta
 ## Giai đoạn 1 — Chủ gắn component, con bật/tắt, xếp ngay
 
 **Mục tiêu:** chủ bật/tắt con rồi gọi `RepositionNow`: con đang bật đứng cách đều quanh gốc ở `childLocalY`; chủ đọc `Space` tính
-thanh nền. Hai frame sau khi bật, hàng tự xếp một lần. Xong thì thanh khay mở `n` ô đúng chỗ.
+thanh nền. Hai frame sau khi bật, hàng tự xếp một lần. Chủ hỏi được trước chỗ nghỉ của con thứ `i` khi có `n` con
+(`LocalPositionOf`) — đích của vật bay tới ô vừa mở, lúc hàng chưa trượt xong. Xong thì thanh khay mở `n` ô đúng chỗ.
 
 **Vì sao bây giờ:** lời gọi đầu tiên của mọi chủ lúc vào level (`OpenSlots` gọi ngay sau `SetLocked`); chưa có gì phải chờ nên chưa tween.
 
-**Toán → code:** `n` con cách đều quanh gốc: `x_i = -(n - 1)·space / 2 + i·space`, `i = 0..n-1`; `n = 1` thì `x_0 = 0`.
+**Toán → code:** `n` con cách đều quanh gốc: `x_i = -(n - 1)·space / 2 + i·space`, `i = 0..n-1`; `n = 1` thì `x_0 = 0`. Công thức
+nằm trong **một** hàm thuần `SlotLocalX`; mọi động tác xếp (GĐ1–GĐ3) và `LocalPositionOf` gọi nó.
 
 ### `Runtime/Utilities/Layout/HorizontalRow.cs` — file mới
 
@@ -96,6 +99,12 @@ namespace Horcrux.Runtime.Utilities.Layout
         /// <summary>Khoảng cách tâm hai con kề nhau.</summary>
         public float Space => space;
 
+        /// <summary>x cục bộ của con thứ index trong count con cách đều space, căn giữa quanh gốc.</summary>
+        public static float SlotLocalX(int index, int count, float space) => -(count - 1) * space / 2 + index * space;
+
+        /// <summary>Chỗ nghỉ cục bộ của con thứ index khi có count con bật; đọc được trước khi hàng trượt xong.</summary>
+        public Vector3 LocalPositionOf(int index, int count) => new(SlotLocalX(index, count, space), childLocalY, 0f);
+
         #endregion Properties
 
         #region Unity Callbacks
@@ -111,9 +120,8 @@ namespace Horcrux.Runtime.Utilities.Layout
         {
             var activeChildren = GetActiveChildren();
             var activeChildCount = activeChildren.Count;
-            var leftX = -(activeChildCount - 1) * space / 2;
             for (var i = 0; i < activeChildCount; i++)
-                activeChildren[i].localPosition = new Vector3(leftX + i * space, childLocalY, 0f);
+                activeChildren[i].localPosition = LocalPositionOf(i, activeChildCount);
         }
 
         #endregion API
@@ -162,16 +170,19 @@ cha tắt thì mọi con đều "tắt theo cây", hàng vẫn phải xếp đú
 mọi API duyệt hết danh sách trước điểm `await` đầu tiên, nên không hai lượt chồng nhau. Phương án bỏ: `GetComponentsInChildren`
 — cấp phát mỗi lần, lấy cả cháu. — Tên `HorizontalRow`, không giữ `HorizontalGrid`: một hàng, không phải lưới. — Odin `[Button]` trong
 runtime: Horcrux runtime đã dùng Odin ngoài file Editor (`Abstractions/Foundations/Persistence/PersistenceDataEntry.cs`,
-`Implementations/Foundations/RemoteConfigSystem/RemoteConfig.cs`); hai nút để developer thử trong Inspector.
+`Implementations/Foundations/RemoteConfigSystem/RemoteConfig.cs`); hai nút để developer thử trong Inspector. — `LocalPositionOf` public:
+vật bay tới ô vừa mở cần đích **trước** khi hàng trượt xong; `localPosition` của con lúc cất cánh còn là chỗ cũ. Xếp và dự đoán là hai
+bản buộc khớp nên cùng gọi `SlotLocalX`. `SlotLocalX` static để test và chủ không có instance (tính trước bề ngang) gọi được.
 
 | Consumes | Produces |
 |---|---|
-| `UnityEngine.MonoBehaviour`, `UniTask.DelayFrame`, `destroyCancellationToken` | `HorizontalRow.RepositionNow`, `Space`; núm `space`, `childLocalY` |
+| `UnityEngine.MonoBehaviour`, `UniTask.DelayFrame`, `destroyCancellationToken` | `HorizontalRow.RepositionNow`, `Space`, `SlotLocalX`, `LocalPositionOf`; núm `space`, `childLocalY` |
 
 **Sơ đồ tương tác sau GĐ1** (`+` là phần mới)
 
 ```
   chủ ──RepositionNow+ / Space+──► HorizontalRow+ ──localPosition──► con đang bật
+      ──LocalPositionOf+(i, n)──► chỗ nghỉ tương lai (đích chuyến bay)     cả hai qua SlotLocalX+
   Start+ ──2 frame──► RepositionNow
 ```
 
@@ -193,6 +204,9 @@ runtime: Horcrux runtime đã dùng Odin ngoài file Editor (`Abstractions/Found
 | frame đầu | `AddComponent` lên cha có 2 con, không gọi gì, chờ 3 frame | hai con ở ±0.75 (mặc định `space 1.5`) |
 | con sinh sau frame đầu | thêm con thứ ba ở frame 1 | sau mốc hai frame cả ba đã xếp |
 | huỷ trước mốc | `Destroy` cha ngay sau `AddComponent`, chờ 3 frame | không lỗi trong log (`LogAssert.NoUnexpectedReceived`) |
+| `SlotLocalX` | (0, 1, 2) · (0, 3, 2), (1, 3, 2), (2, 3, 2) · (3, 4, 1.5) | 0 · −2, 0, 2 · 2.25 |
+| `LocalPositionOf` | `space 2`, `childLocalY 0.5`, (2, 3) | (2, 0.5, 0) |
+| dự đoán khớp xếp | n = 1…7 con, `RepositionNow` | mọi i: `localPosition` **bằng tuyệt đối** `LocalPositionOf(i, n)` |
 
 **Mốc commit:** `feat(layout): HorizontalRow xếp ngay`.
 
@@ -239,13 +253,12 @@ using PrimeTween;
 
             var activeChildren = GetActiveChildren();
             var activeChildCount = activeChildren.Count;
-            var leftX = -(activeChildCount - 1) * space / 2;
 
             _moveSequence = Sequence.Create();
             for (var i = 0; i < activeChildCount; i++)
             {
                 var child = activeChildren[i];
-                _moveSequence.Insert(0f, Tween.LocalPositionX(child, child.localPosition.x, leftX + i * space, repositionDuration, Ease.OutQuad));
+                _moveSequence.Insert(0f, Tween.LocalPositionX(child, child.localPosition.x, SlotLocalX(i, activeChildCount, space), repositionDuration, Ease.OutQuad));
             }
 
             return _moveSequence;
@@ -351,13 +364,12 @@ và sau `_moveSequence`:
 
             var activeChildren = GetActiveChildren();
             var activeChildCount = activeChildren.Count;
-            var leftX = -(activeChildCount - 1) * space / 2;
 
             _appearTasks.Clear();
             for (var i = 0; i < activeChildCount; i++)
             {
                 var child = activeChildren[i];
-                var targetX = leftX + i * space;
+                var targetX = SlotLocalX(i, activeChildCount, space);
 
                 child.gameObject.SetActive(false);
 
@@ -471,7 +483,8 @@ từ `.md`: kịch bản (vào level, mở thêm con, con rời hàng), cách d�
 | File | Cũ | Mới |
 |---|---|---|
 | `Entities/Box/BoxesContainer.cs` | `using CategoryJam.Gameplay.Utilities;` (không còn type nào khác của namespace này dùng trong file) · `HorizontalGrid _grid` · `_grid.SetSpaceAndPlayStartLevelAnimation(` | `using Horcrux.Runtime.Utilities.Layout;` · `HorizontalRow _grid` (tên field giữ: đã serialize trong prefab) · `_grid.SetSpaceAndPlayAppearAsync(` |
-| `Entities/Cache/CacheTileSlots.cs` | `[RequireComponent(typeof(HorizontalGrid))]` · `HorizontalGrid _horizontalGrid` và 4 chỗ dùng (`GetComponent<HorizontalGrid>()`, `.RepositionNow()`, `.RepositionSmooth()`, `.Space`) | thêm `using Horcrux.Runtime.Utilities.Layout;` (giữ `using CategoryJam.Gameplay.Utilities;` vì `SetPositionX`) · `HorizontalRow _row` và 4 chỗ dùng |
+| `Entities/Cache/CacheTileSlots.cs` | `[RequireComponent(typeof(HorizontalGrid))]` · `HorizontalGrid _horizontalGrid` và 5 chỗ dùng (`GetComponent<HorizontalGrid>()`, `.RepositionNow()`, `.RepositionSmooth()`, `.Space`, `.LocalPositionOf(` — đích khay Extra Slot trong `FlyTrayAsync`) | thêm `using Horcrux.Runtime.Utilities.Layout;` (giữ `using CategoryJam.Gameplay.Utilities;` vì `SetPositionX`) · `HorizontalRow _row` và 5 chỗ dùng |
+| `Tests/EditMode/HorizontalGridLayoutTests.cs` | 5 case `SlotLocalX`, `LocalPositionOf` trên `HorizontalGrid` | xoá: các case đã ở bảng GĐ1 của `HorizontalRowTests` |
 
 Xoá `Assets/_CategoryJam/Scripts/Utilities/HorizontalGrid.cs` và `.meta`.
 
@@ -502,4 +515,4 @@ bay về); hộp mất sau khi vào level (bị tắt không bật lại); ô kh
 | `Runtime/Utilities/Layout/HorizontalRow.cs` | tạo: `space`, `childLocalY`, `Space`, `RepositionNow`, `Start` | `repositionDuration`, `_moveSequence`, `RepositionSmooth`, `SetSpaceAndRepositionSmooth`, `StopMoves` | 4 núm `appear*`, `_appearSequences`, `_appearTasks`, `SetSpaceAndPlayAppearAsync`, `StopMoves` dừng cả bay | | `.meta` nhận GUID bản tạm |
 | `Tests/PlayMode/HorizontalRowTests.cs` (agent) | tạo | thêm case | thêm case | | |
 | `docs/Runtime/HorizontalRow/HorizontalRow.md`, `.html` (agent) | | | | tạo | |
-| dự án: `BoxesContainer.cs`, `CacheTileSlots.cs`, xoá `HorizontalGrid.cs` | | | | | đổi |
+| dự án: `BoxesContainer.cs`, `CacheTileSlots.cs`, xoá `HorizontalGrid.cs`, `HorizontalGridLayoutTests.cs` | | | | | đổi |
