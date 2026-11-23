@@ -1,74 +1,42 @@
-# Plan — Độ khó theo tiến độ: `ProgressCurve`, `LevelTypeTable`, `RandomPick` lên Horcrux
+# Plan — Độ khó theo tiến độ: `ProgressCurve`, `LevelTypeTable`, `RandomPick`
 
-Ngày 2026-11-06. Nguồn: category-jam `Assets/_CategoryJam/Scripts/Config/LevelDifficulty.cs` (`DifficultyCurve.PointAt`),
-`Assets/_CategoryJam/Scripts/Utilities/Extensions/LegacyHelpers.cs` (`LegacyListExtensions.GetRandomFromListWithProrityPredicates`,
-`GetRandomFromListReseeded`), `Assets/_CategoryJam/Scripts/Utilities/Extensions/ListExtensions.cs` (`GetRandomFromList`); mahjong-jam
-(`D:\game\iKame\mahjong-jam`) `Assets/_Assets/Scripts/Config/ABTests/ABTestManager.LevelDifficulty.cs`
-(`LevelDifficultAssignmentConfigCollection<T>.GetDifficultType`), `Assets/_Assets/Scripts/Config/Base/LevelDifficultConfigSO.cs`
-(`GetCurrentConfigBase`). Ba cơ chế thuần, độc lập: giá trị theo mốc % tiến độ · level → loại · chọn ngẫu nhiên theo chuỗi predicate
-ưu tiên. Chấm điểm theo tile chặn (`GameDifficultyManager`) và SO độ khó (`LevelDifficultyProfile`) ở lại dự án.
-
-**Phân công:** GĐ1–4 developer gõ, agent viết test theo bảng case rồi compile · GĐ5 (tài liệu), GĐ6 (category-jam chuyển sang bản
-Horcrux, xoá bản tạm) agent làm. **Chạy được, thấy được** ở GĐ1–4 = compile sạch + bảng case xanh trong `Tests/EditMode/`; thấy trong
-game ở GĐ6. GĐ1–5 commit trong `Assets/Horcrux`, GĐ6 commit ở dự án kèm con trỏ submodule. Không phụ thuộc Plan nào;
-`Plans/SystemPlan.md` §15 Level Library trỏ sang `LevelTypeTable` (`IDifficultyTagProvider` bọc `TypeOf`). Không có `§0`.
-
-## Ngữ cảnh đã chốt
-
-- **Người dùng:** bảng độ khó designer chỉnh, có thể từ remote config. category-jam dùng `ProgressCurve` và `RandomPick` (5 call site);
-  level → loại là SO gắn thẳng vào level, không tra bảng. mahjong-jam dùng cả ba; chuyển nó sang bản Horcrux là việc riêng (bảng qua
-  `ILevelTypeEntry`, mốc mã hoá giải trong getter `IProgressStep`, bản LINQ → `PickByPriority` với `nextIndex` reseed).
-- **Mục tiêu:** ba lõi thuần, test không dựng gì; **không đổi kết quả ngẫu nhiên** của dự án khi chuyển.
-- **Chỗ đặt:** `Runtime/Utilities/Progression/ProgressCurve.cs`, `LevelTypeTable.cs` (namespace `Horcrux.Runtime.Utilities.Progression`)
-  · `Runtime/Utilities/Picking/RandomPick.cs` (namespace `Horcrux.Runtime.Utilities.Picking` — không có `Random` để khỏi che
-  `UnityEngine.Random`). Tên `ValueAt`, `TypeOf`, `PickRandom`, `PickByPriority` đổi tuỳ ý trước khi gõ.
-- **Từ vựng:** framework không đặt tên field dữ liệu — Horcrux khai interface hai getter, dự án giữ struct (lý do ở GĐ1).
-- **Nguồn ngẫu nhiên:** caller truyền `Func<int, int> nextIndex` (`count → [0, count)`), bắt buộc (developer chốt 2026-11-02; lý do ở GĐ3).
-- **Không làm:** tra curve theo loại với fallback (dữ liệu dự án, vài dòng) · nội suy giữa hai mốc (lý do ở GĐ1) · `Shuffle`, `KShuffle`,
-  `GetRandomElements` (lý do ở GĐ3).
-- **Đã khảo sát:** category-jam `LevelDifficulty.cs` (thuật toán `PointAt`), `LevelDifficultyProfile.cs`, `LevelInfo.difficulty`,
-  `GameDirector.StartLevelAsync` (level → độ khó là SO, không bảng) · `LegacyHelpers.cs`, `ListExtensions.cs` (hai vòng lặp,
-  `MatchBuffer<T>`) · `Tests/EditMode/DifficultyCurveTests.cs`, `PriorityPredicatePickTests.cs` (bảng case, bản LINQ gốc làm oracle),
-  `DifficultyProfileAssetTests.cs` (chặn `steps` rỗng, mốc không tăng) · mahjong-jam `GetDifficultType` (`Find`, thiếu thì enum nhỏ
-  nhất, không log), `GetCurrentConfigBase` (cùng vòng `>=` + `Clamp(i - 1)`), `Dessentials/Extensions/DListExtensions.cs` (`TakeLast +
-  Where + All` là nghĩa gốc của chuỗi ưu tiên) · Horcrux `Runtime/Utilities/` (chưa có; `GeometryHelper`, `AudioService` dùng
-  `UnityEngine.Random` cho số thực, ca khác) · Unity `AnimationCurve` (không hợp: curve liên tục, cần bậc thang và key JSON phẳng).
-
----
+Bản tạm: category-jam `Assets/_CategoryJam/Scripts/Config/LevelDifficulty.cs` › `DifficultyCurve.PointAt`, `Utilities/Extensions/LegacyHelpers.cs` › `GetRandomFromListWithProrityPredicates`, `GetRandomFromListReseeded`, `Utilities/Extensions/ListExtensions.cs` › `GetRandomFromList`; khuôn mahjong-jam (`D:\game\iKame\mahjong-jam`) `Assets/_Assets/Scripts/Config/ABTests/ABTestManager.LevelDifficulty.cs` › `GetDifficultType`, `Config/Base/LevelDifficultConfigSO.cs` › `GetCurrentConfigBase`.
+Ba cơ chế độc lập. Không phụ thuộc Plan nào; `Plans/SystemPlan.md` §15 Level Library trỏ sang `LevelTypeTable` (`IDifficultyTagProvider` bọc `TypeOf`).
+Kiểm: `bash "<horcrux>/Editor/CompileCheck/Tools~/verify.sh" --csproj com.horcrux.runtime.csproj,Horcrux.EditModeTests.csproj --tests Horcrux.EditModeTests`.
 
 ## Cơ chế A — `ProgressCurve`: giá trị theo % tiến độ
 
-### Luồng mô tả
+### Kịch bản
+
+| Tình huống | Hệ làm gì | Caller thấy |
+|---|---|---|
+| tiến độ nằm giữa hai mốc | mốc i có hiệu lực khi tiến độ **vượt quá** mốc i | giá trị bậc thang của mốc đang hiệu lực, không nội suy |
+| tiến độ đúng tại mốc | vẫn dùng mốc trước | (0, 0), (50, 0.5): 50 → 0, 51 → 0.5 |
+| tiến độ trước mốc đầu, âm | dùng mốc đầu | giá trị mốc đầu |
+| tiến độ qua mốc cuối, trên 100 | dùng mốc cuối | giá trị mốc cuối |
+| bảng không tăng dần | không kiểm | kết quả sai nghĩa — cửa nhận dữ liệu của dự án kiểm |
+| bảng rỗng | không guard | `ArgumentOutOfRangeException` tại `steps[^1]` |
+| struct dữ liệu của dự án | đọc qua `IProgressStep`, lời gọi generic có ràng buộc | không boxing; tên field và key JSON của dự án giữ nguyên |
+
+### Flow
 
 ```
-designer chỉnh bảng mốc (asset hay remote config), mỗi mốc (progressPercent, value) tăng dần
-            ▼
-dự án đọc bảng vào List<TStep> của mình, TStep : IProgressStep            GĐ6 (category-jam)
-            ▼
-mỗi lần cần giá trị (sau mỗi box xong): tiến độ % ──► ValueAt(steps, p)   GĐ1
-                                                        mốc i có hiệu lực khi p vượt quá mốc i
-            ▼
-giá trị bậc thang ──► công thức của dự án (target point của box kế)        ở lại dự án
+designer: bảng mốc (progressPercent, value) tăng dần — asset hay remote config
+   ▼
+dự án: List<TStep>, TStep : IProgressStep (tên field theo wire format)                 dự án
+   ▼  mỗi lần cần giá trị: ValueAt(steps, p)
+ProgressCurve.ValueAt (static, không state)                                           ProgressCurve.cs
+   ▼  float Value của mốc đang hiệu lực
+công thức của dự án                                                                     dự án
 ```
 
-### Bản đồ hệ cuối
+### GĐ1 — xong thì bảng "giá trị theo % tiến độ" tra bằng một lời gọi
 
 ```
-  dự án: List<TStep> (field tên theo wire format) ──ValueAt(steps, p)──► ProgressCurve (static, không state)
-         TStep : IProgressStep { ProgressPercent, Value }                   trả float Value của mốc đang hiệu lực
+  dự án: List<TStep : IProgressStep+> ──ValueAt+──► ProgressCurve+ ──float──► công thức của dự án
 ```
 
----
-
-## Giai đoạn 1 — `ProgressCurve.ValueAt`
-
-**Mục tiêu:** từ list mốc tăng dần và tiến độ %, trả giá trị của mốc đang hiệu lực — bảng "giá trị theo % tiến độ" tra bằng một lời gọi.
-
-**Vì sao bây giờ:** cơ chế A chỉ có một chặng; là lõi nhỏ nhất và không phụ thuộc hai cơ chế kia.
-
-**Ai gọi:** test của giai đoạn; trong dự án là `DifficultyCurve.PointAt` (GĐ6).
-
-### `Runtime/Utilities/Progression/ProgressCurve.cs` — file mới
+#### `Runtime/Utilities/Progression/ProgressCurve.cs` — file mới
 
 ```csharp
 using System.Collections.Generic;
@@ -77,6 +45,7 @@ using UnityEngine;
 namespace Horcrux.Runtime.Utilities.Progression
 {
     /// <summary>Một mốc của curve bậc thang: từ khi tiến độ vượt quá ProgressPercent, Value có hiệu lực.</summary>
+    // Interface hai getter, không class serialize sẵn: tên field là wire format của từng game; ràng buộc generic tránh boxing.
     public interface IProgressStep
     {
         int ProgressPercent { get; }
@@ -94,6 +63,7 @@ namespace Horcrux.Runtime.Utilities.Progression
         {
             for (var i = 0; i < steps.Count; i++)
             {
+                // >= rồi i − 1: đúng tại mốc vẫn dùng mốc trước, như mọi curve đã author.
                 if (steps[i].ProgressPercent >= progressPercent)
                     return steps[Mathf.Clamp(i - 1, 0, steps.Count - 1)].Value;
             }
@@ -104,38 +74,7 @@ namespace Horcrux.Runtime.Utilities.Progression
 }
 ```
 
-**Khác với bản dự án**
-
-| Chỗ | Bản dự án | Bản Horcrux | Vì |
-|---|---|---|---|
-| `DifficultyCurve.PointAt` | method của class dữ liệu, đọc `steps[i].progressPercent`, `pointPerFreeSlot` | static generic, đọc qua `IProgressStep` | class dữ liệu và tên field ở lại dự án; vòng lặp, `>=`, `Clamp(i - 1)`, `steps[^1]` giữ nguyên văn |
-| mahjong-jam `GetCurrentConfigBase` | `items.Length == 0` trả config rỗng; giải mã mốc trong vòng lặp | không guard; getter của `IProgressStep` giải mã | guard là nhánh không ai tới khi cửa dữ liệu đã chặn; giải mã là việc của struct dự án |
-
-**Quyết định** — mốc i có hiệu lực khi tiến độ **vượt quá** mốc i, đúng tại mốc vẫn là mốc trước: hành vi V2 của mahjong-jam, test
-`PointAt_TwoSteps_StepTakesEffectAfterItsProgress` của category-jam khoá (50 → mốc 0, 51 → mốc 1). Phương án bỏ: `>` thay `>=` — đổi
-giá trị tại đúng mốc của mọi curve đã author. — Không guard `steps` rỗng: category-jam `DifficultyProfileAssetTests` bắt `steps` rỗng
-và mốc không tăng trên từng SO độ khó, `LevelDifficultySelection.Resolve` bắt level thiếu SO; guard lần hai là nhánh không ai tới.
-— Không nội suy giữa hai mốc: luật của người dùng là bậc thang; nội suy là đổi hành vi. — Mốc đọc qua interface hai getter, không
-class `ProgressCurve` serialize sẵn `List<ProgressStep>`: tên field (`pointPerFreeSlot`, `levelNumber`, `type`) là wire format với
-remote config của từng game, framework đặt tên là ép dự án đổi key JSON; struct của dự án không boxing nhờ lời gọi generic có ràng
-buộc. Cùng lý do cho `ILevelTypeEntry<TType>` ở GĐ2. — Mở rộng sau: mốc theo đơn vị khác % (số lượt, giây) thì `ValueAt` nhận `float
-progress`, mốc là `float`; `StepAt<TStep>` trả cả mốc khi cần nhiều giá trị của cùng mốc (mahjong-jam `GetCurrentConfigBase` cần
-min/max box point), `ValueAt` gọi nó.
-
-| Consumes | Produces |
-|---|---|
-| `UnityEngine.Mathf.Clamp` | `IProgressStep`, `ProgressCurve.ValueAt` |
-
-**Sơ đồ tương tác sau GĐ1** (`+` là phần mới)
-
-```
-  dự án: List<TStep : IProgressStep+> ──ValueAt+──► ProgressCurve+ ──float──► công thức của dự án
-```
-
-**Editor setup:** không.
-
-**Kiểm:** compile sạch. `Tests/EditMode/ProgressCurveTests.cs` khai `struct TestStep : IProgressStep` (hai field, hai getter), list
-dựng tại chỗ.
+`Tests/EditMode/ProgressCurveTests.cs` (agent), khai `struct TestStep : IProgressStep` (hai field, hai getter), list dựng tại chỗ:
 
 | Case | Input | Kỳ vọng |
 |---|---|---|
@@ -148,47 +87,41 @@ dựng tại chỗ.
 | mốc không tăng dần | (50, 1), (0, 0); tiến độ 10 | 1 — mốc đầu `>=` 10 là mốc 0, clamp(−1) về mốc 0. Ghi ở tài liệu: bảng phải tăng dần, cửa nhận dữ liệu của dự án kiểm |
 | rỗng | `[]`; tiến độ 10 | ném `ArgumentOutOfRangeException` tại `steps[^1]` |
 
-**Mốc commit:** `feat(progression): ProgressCurve.ValueAt`.
-
 ---
 
 ## Cơ chế B — `LevelTypeTable`: level → loại
 
-### Luồng mô tả
+### Kịch bản
+
+| Tình huống | Hệ làm gì | Caller thấy |
+|---|---|---|
+| level có trong bảng | quét tới dòng khớp | loại của level, không log |
+| level thiếu (cả level 0, âm, bảng rỗng) | `LogError` chứa số level | `fallback` caller truyền — loại dễ nhất của game |
+| level trùng | dòng đầu thắng | loại của dòng đầu |
+| bảng không theo thứ tự | quét hết | đúng loại |
+
+### Flow
 
 ```
-designer chỉnh bảng (levelNumber, type) — CSV, remote config
-            │
-            ▼
-dự án đọc bảng vào List<TEntry>, TEntry : ILevelTypeEntry<TType>; enum loại là của dự án   (mahjong-jam, §15 — ngoài Plan)
-            │
-            ▼
-vào level n: TypeOf(entries, n, fallback) ──► loại của level                                  GĐ2
-            │                                 thiếu: LogError, trả fallback
-            ▼
-loại ──► dự án tra curve, preset theo loại                                                     ở lại dự án
+designer: bảng (levelNumber, type) — CSV, remote config
+   ▼
+dự án: List<TEntry>, TEntry : ILevelTypeEntry<TType>, enum loại của dự án                 dự án (SystemPlan §15)
+   ▼  vào level n: TypeOf(entries, n, fallback)
+LevelTypeTable.TypeOf (static, không state)                                             LevelTypeTable.cs
+   ├─ có: TType
+   └─ thiếu: Debug.LogError, trả fallback
+   ▼
+dự án tra curve, preset theo loại                                                         dự án
 ```
 
-### Bản đồ hệ cuối
+### GĐ2 — xong thì lõi tra level → loại của `SystemPlan` §15 có sẵn
 
 ```
-  dự án: List<TEntry> ──TypeOf(entries, n, fallback)──► LevelTypeTable (static, không state) ──TType──► dự án
-         TEntry : ILevelTypeEntry<TType> { LevelNumber, Type }
+  dự án: List<TEntry : ILevelTypeEntry<TType>+> ──TypeOf+──► LevelTypeTable+ ──TType──► dự án tra curve theo loại
+                                                                  └─ thiếu: LogError+, fallback
 ```
 
----
-
-## Giai đoạn 2 — `LevelTypeTable.TypeOf`
-
-**Mục tiêu:** từ bảng level → loại và một số level, trả loại; level không có trong bảng là lỗi dữ liệu, log rồi trả `fallback`. Xong
-giai đoạn này lõi tra của `SystemPlan` §15 có sẵn.
-
-**Vì sao bây giờ:** cơ chế B chỉ có một chặng, độc lập với A và C. Đặt sau A để hai file cùng thư mục `Progression/` ra đời liền nhau.
-
-**Ai gọi:** test của giai đoạn. category-jam không có bảng level → loại nên GĐ6 không chạm cơ chế này; caller thật là mahjong-jam
-(`LevelManager` gọi `GetDifficultType` bốn chỗ) khi chuyển, và `IDifficultyTagProvider` của §15.
-
-### `Runtime/Utilities/Progression/LevelTypeTable.cs` — file mới
+#### `Runtime/Utilities/Progression/LevelTypeTable.cs` — file mới
 
 ```csharp
 using System;
@@ -208,6 +141,7 @@ namespace Horcrux.Runtime.Utilities.Progression
     public static class LevelTypeTable
     {
         /// <summary>Level không có trong bảng là lỗi dữ liệu: LogError rồi trả fallback (loại dễ nhất của game). Level trùng: dòng đầu thắng.</summary>
+        // fallback là tham số, không default(TType): enum của game không chắc giá trị 0 là dễ nhất.
         public static TType TypeOf<TEntry, TType>(List<TEntry> entries, int levelNumber, TType fallback)
             where TEntry : ILevelTypeEntry<TType>
             where TType : struct, Enum
@@ -225,34 +159,7 @@ namespace Horcrux.Runtime.Utilities.Progression
 }
 ```
 
-`TEntry` không ràng `struct`: bảng của mahjong-jam là class. `TType` ràng `struct, Enum` để `$"{fallback}"` in tên enum và caller không
-truyền được kiểu không phải enum.
-
-**Khác với bản dự án**
-
-| Chỗ | mahjong-jam `GetDifficultType` | Bản Horcrux | Vì |
-|---|---|---|---|
-| tìm | `configs.Find(x => x.levelNumber == levelNumber)` — lambda bắt `levelNumber`, cấp phát mỗi lần | vòng lặp chỉ số | gọi mỗi lần vào level, không rác; dòng đầu thắng như `Find` |
-| thiếu | trả `Enum.GetValues(...).Min()` im lặng; `Validate` trong Editor bắt | `LogError` rồi trả `fallback` caller truyền | bảng từ server không có nút Validate; thiếu là lỗi setup không nổ nên phải log; "dễ nhất" là của từng game nên caller truyền |
-
-**Quyết định** — `fallback` là tham số, không phải `default(TType)`: enum của game không chắc có giá trị 0 là "dễ nhất". Phương án
-bỏ: `TryTypeOf(out)` để caller tự log — mọi caller thật đều làm cùng một việc (log, rơi về dễ nhất), hai dòng lặp ở mỗi caller.
-
-| Consumes | Produces |
-|---|---|
-| `UnityEngine.Debug.LogError` | `ILevelTypeEntry<TType>`, `LevelTypeTable.TypeOf` |
-
-**Sơ đồ tương tác sau GĐ2**
-
-```
-  dự án: List<TEntry : ILevelTypeEntry<TType>+> ──TypeOf+──► LevelTypeTable+ ──TType──► dự án tra curve theo loại
-                                                                  └─ thiếu: LogError+, fallback
-```
-
-**Editor setup:** không.
-
-**Kiểm:** compile sạch. `Tests/EditMode/LevelTypeTableTests.cs` khai `enum TestType { A, B }`, `class TestEntry : ILevelTypeEntry<TestType>`;
-ca thiếu dùng `LogAssert.Expect(LogType.Error, …)` khớp chuỗi chứa `level 99`.
+`Tests/EditMode/LevelTypeTableTests.cs` (agent), khai `enum TestType { A, B }`, `class TestEntry : ILevelTypeEntry<TestType>`; ca thiếu dùng `LogAssert.Expect(LogType.Error, …)` khớp chuỗi chứa `level 99`:
 
 | Case | Input | Kỳ vọng |
 |---|---|---|
@@ -263,49 +170,53 @@ ca thiếu dùng `LogAssert.Expect(LogType.Error, …)` khớp chuỗi chứa `l
 | level 0, âm | {1 → B}; `TypeOf(0, A)`, `TypeOf(-1, A)` | log lỗi, trả A |
 | bảng không theo thứ tự | {5 → B, 2 → A}; `TypeOf(2, B)` | A |
 
-**Mốc commit:** `feat(progression): LevelTypeTable.TypeOf`.
-
 ---
 
 ## Cơ chế C — `RandomPick`: chọn ngẫu nhiên theo chuỗi predicate ưu tiên
 
-### Luồng mô tả
+### Kịch bản
+
+| Tình huống | Hệ làm gì | Caller thấy |
+|---|---|---|
+| list rỗng | trả `default`, không gọi `nextIndex` | `null` với class — nhánh "không có gì để chọn" của caller |
+| chọn bất kỳ | `list[nextIndex(count)]` | một phần tử theo nguồn caller đưa |
+| chọn theo ưu tiên `p0…pn` | pass k lọc phần tử thoả mọi predicate từ k tới cuối; pass đầu có kết quả thì chọn trong đó | `[1,2,3,6,9]`, `>100`, `%2==0`, `%3==0` → 6 |
+| không pass nào có | chọn trong cả list | một phần tử của list |
+| không predicate, `predicates` null | như `PickRandom` | một phần tử của list |
+| cùng nguồn seed | tất định | cùng phần tử |
+| gọi mỗi lần dữ liệu đổi (spawn) | buffer dùng lại theo `T`, `Clear` sau khi chọn | không cấp phát; buffer không giữ phần tử của level đã dispose |
+| dự án truyền `UnityEngine.Random.Range` (hoặc bản reseed) | | kết quả như bản dự án trước khi chuyển |
+
+### Flow
 
 ```
-dự án có List<T> ứng viên và một nguồn ngẫu nhiên của riêng nó (Func<int,int> nextIndex)
-            │
-            ├─► chọn bất kỳ: PickRandom(list, nextIndex)                                        GĐ3
-            │        rỗng → default; còn lại → list[nextIndex(count)]
-            │
-            └─► chọn theo ưu tiên: PickByPriority(list, nextIndex, p0, p1, …, pn)                GĐ4
-                     pass 0 lọc thoả p0…pn → có thì PickRandom trong đó
-                     pass 1 lọc thoả p1…pn → …
-                     không pass nào có → PickRandom cả list
-            │
-            ▼
-dự án nối: GetRandomFromList, GetRandomFromListWithProrityPredicates giữ tên, truyền nguồn Unity   GĐ6
+caller dự án: List<T> ứng viên, Func<int,int> nextIndex                                    dự án
+   │  nguồn: static readonly delegate quanh UnityEngine.Random.Range · test: new System.Random(seed)
+   ├─ PickRandom(list, nextIndex) ──────────► RandomPick                                    RandomPick.cs
+   │                                            rỗng → default; còn lại → list[nextIndex(count)]
+   └─ PickByPriority(list, nextIndex, p0…pn) ─► RandomPick
+                                                pass k: MatchesAllFrom(pk…pn) → MatchBuffer<T>.Items
+                                                có → PickRandom(matches), Clear · không pass nào → PickRandom(list)
 ```
 
-### Bản đồ hệ cuối
+### Thuật toán
+
+Pass `k` (0 ≤ k < n) lọc `{x : p_k(x) ∧ … ∧ p_{n−1}(x)}` — predicate đầu mong muốn nhất, bỏ dần từ đầu; pass đầu khác rỗng thì chọn đều trong đó, không pass nào thì chọn trong cả list.
+
+| Pass | Đòi (`[1,2,3,6,9]`, `p0 >100`, `p1 %2==0`, `p2 %3==0`) | Ứng viên |
+|---|---|---|
+| 0 | `p0 ∧ p1 ∧ p2` | ∅ |
+| 1 | `p1 ∧ p2` | {6} → chọn 6 |
+
+Oracle: bản LINQ `TakeLast(n − k) + Where + All` (nghĩa gốc của chuỗi ưu tiên); case vét 2 000 ca ở GĐ4 so tập ứng viên với nó.
+
+### GĐ3 — xong thì chọn ngẫu nhiên bằng nguồn của caller có lõi để `GetRandomFromList` trỏ về
 
 ```
-  caller dự án ──PickRandom(list, nextIndex)──────────► RandomPick (static)
-               ──PickByPriority(list, nextIndex, preds)─►    │ MatchBuffer<T>.Items (static, dùng lại, Clear sau khi chọn)
-                                                             └─ PickRandom(matches, nextIndex)
-  nguồn ngẫu nhiên: dự án static readonly Func<int,int> (UnityEngine.Random.Range) · test new System.Random(seed)
+  caller ──PickRandom+(list, nextIndex)──► RandomPick+ ──nextIndex(count)──► nguồn của caller ──► list[i]
 ```
 
----
-
-## Giai đoạn 3 — `RandomPick.PickRandom`
-
-**Mục tiêu:** chọn một phần tử bất kỳ bằng nguồn ngẫu nhiên caller đưa; list rỗng trả `default`. Xong thì `GetRandomFromList` có lõi để trỏ về.
-
-**Vì sao bây giờ:** là bước chọn cuối của mọi pass trong GĐ4; viết trước để GĐ4 chỉ còn phần lọc.
-
-**Ai gọi:** test của giai đoạn; `PickByPriority` (GĐ4); trong dự án là `ListExtensions.GetRandomFromList` (GĐ6).
-
-### `Runtime/Utilities/Picking/RandomPick.cs` — file mới
+#### `Runtime/Utilities/Picking/RandomPick.cs` — file mới
 
 ```csharp
 using System;
@@ -333,35 +244,7 @@ namespace Horcrux.Runtime.Utilities.Picking
 }
 ```
 
-**Khác với bản dự án**
-
-| Chỗ | Bản dự án | Bản Horcrux | Vì |
-|---|---|---|---|
-| `ListExtensions.GetRandomFromList` | `UnityEngine.Random.Range(0, list.Count)` gọi thẳng | `nextIndex(list.Count)` | nguồn ngẫu nhiên là của caller; kết quả giữ nguyên khi caller truyền `Random.Range` |
-| `LegacyListExtensions.GetRandomFromListReseeded` | `InitState(Guid.NewGuid().GetHashCode())` rồi `Range` | không có | reseed là quyết định của dự án, nằm trong delegate nó truyền |
-
-**Quyết định** — list rỗng trả `default` và không gọi `nextIndex`: caller của dự án (`AutoPlayer`, `EntitiesManager`,
-`GameDifficultyManager`) dựa vào `null` để biết "không có gì để chọn"; `nextIndex(0)` là dải rỗng, gọi là lỗi của nguồn. Phương án bỏ:
-ném — ba caller đều có nhánh `null` sẵn. — `nextIndex` là tham số bắt buộc, không mặc định `UnityEngine.Random` (developer chốt
-2026-11-02): Horcrux không chọn nguồn ngẫu nhiên; dự án truyền `UnityEngine.Random.Range` để giữ nước đi đã author và luôn thấy mình
-dùng nguồn nào, test truyền `System.Random` để tất định. — Không đưa `Shuffle`, `KShuffle`, `GetRandomElements` lên: `Shuffle` và
-`KShuffle` xáo tại chỗ, là ca khác (hoán vị, không chọn), và bản chung của ca đó là `FisherYates.Shuffle` (`Horcrux_SlotShuffle_Plan.md`
-GĐ1) — chuyển caller `KShuffle` (`LevelLoader`, `ShuffleBooster`) sang nó không thuộc Plan này; `GetRandomElements` một caller dùng
-`OrderBy(Guid.NewGuid())` — đổi cách rút là đổi 50 level đã author.
-
-| Consumes | Produces |
-|---|---|
-| `System.Func<int, int>` | `RandomPick.PickRandom` |
-
-**Sơ đồ tương tác sau GĐ3**
-
-```
-  caller ──PickRandom+(list, nextIndex)──► RandomPick+ ──nextIndex(count)──► nguồn của caller ──► list[i]
-```
-
-**Editor setup:** không.
-
-**Kiểm:** compile sạch. `Tests/EditMode/RandomPickTests.cs`; `nextIndex` từ `new System.Random(seed)`: `count => rng.Next(count)`.
+`Tests/EditMode/RandomPickTests.cs` (agent); `nextIndex` từ `new System.Random(seed)`: `count => rng.Next(count)`:
 
 | Case | Input | Kỳ vọng |
 |---|---|---|
@@ -371,21 +254,14 @@ GĐ1) — chuyển caller `KShuffle` (`LevelLoader`, `ShuffleBooster`) sang nó 
 | nguồn trả biên | `[1,2,3]`, `nextIndex` trả `count - 1` | 3 |
 | nguồn trả 0 | `[1,2,3]`, `nextIndex` trả 0 | 1 |
 
-**Mốc commit:** `feat(picking): RandomPick.PickRandom`.
+### GĐ4 — xong thì bước chọn theo chuỗi predicate ưu tiên có lõi không cấp phát để dự án trỏ về
 
----
+```
+  caller ──PickByPriority+(list, nextIndex, p0…pn)──► RandomPick ──pass k: MatchesAllFrom+ → MatchBuffer<T>+──► PickRandom(matches) ──► phần tử
+                                                                 └─ không pass nào ──► PickRandom(list)
+```
 
-## Giai đoạn 4 — `RandomPick.PickByPriority`
-
-**Mục tiêu:** chọn theo chuỗi predicate ưu tiên: pass k lọc phần tử thoả mọi predicate từ k tới cuối, pass đầu có kết quả thì chọn
-ngẫu nhiên trong đó, không pass nào có thì chọn trong cả list; không cấp phát mỗi lần gọi. Xong giai đoạn này bước chọn tileId
-của box kế (9 predicate, chạy sau mỗi box xong) có lõi để trỏ về.
-
-**Vì sao bây giờ:** là caller đầu tiên của `PickRandom` ngoài test; phần lọc chỉ có nghĩa khi bước chọn cuối đã có.
-
-**Ai gọi:** test của giai đoạn; trong dự án là `LegacyListExtensions.GetRandomFromListWithProrityPredicates` (GĐ6).
-
-### `RandomPick.cs` › `API` › thêm sau `PickRandom`, trước `#endregion API`
+#### `RandomPick.cs` › `API` › thêm sau `PickRandom`, trước `#endregion API`
 
 ```csharp
         /// <summary>
@@ -403,6 +279,7 @@ của box kế (9 predicate, chạy sau mỗi box xong) có lõi để trỏ v�
                 matches.Clear();
                 for (var i = 0; i < list.Count; i++)
                 {
+                    // Mọi predicate từ firstPredicate tới cuối, không riêng predicate đó: predicate đầu mong muốn nhất, bỏ dần từ đầu.
                     if (MatchesAllFrom(list[i], predicates, firstPredicate))
                         matches.Add(list[i]);
                 }
@@ -419,7 +296,7 @@ của box kế (9 predicate, chạy sau mỗi box xong) có lõi để trỏ v�
         }
 ```
 
-### `RandomPick.cs` › thêm region `Class Methods` sau `#endregion API`
+#### `RandomPick.cs` › thêm region `Class Methods` sau `#endregion API`
 
 ```csharp
         #region Class Methods
@@ -444,34 +321,7 @@ của box kế (9 predicate, chạy sau mỗi box xong) có lõi để trỏ v�
         #endregion Class Methods
 ```
 
-**Khác với bản dự án**
-
-| Chỗ | Bản dự án | Bản Horcrux | Vì |
-|---|---|---|---|
-| `GetRandomFromListWithProrityPredicates` | bước chọn gọi `GetRandomFromListReseeded` (reseed rồi `Range`) | `PickRandom(nextIndex)` | reseed đi vào delegate của dự án (GĐ6); hai vòng lặp, `MatchesAllFrom`, `MatchBuffer<T>` giữ nguyên văn |
-| mahjong-jam bản LINQ | `predicates.TakeLast(n - i)`, `Where(All)`, `ToList()` mỗi pass | hai vòng lặp, buffer dùng lại | cùng tập ứng viên ở mỗi pass (test vét cạn so với bản LINQ), không rác ở nhịp spawn |
-
-**Quyết định** — pass k đòi **mọi** predicate từ k tới cuối, không phải "predicate k": nghĩa gốc của chuỗi ưu tiên là predicate đầu
-mong muốn nhất, bỏ dần từ đầu; test vét cạn so với bản LINQ gốc khoá. Phương án bỏ: pass k chỉ đòi predicate k — đổi tập ứng viên của
-mọi pass sau pass 0, đổi 50 level đã author. — `MatchBuffer<T>` static generic: một buffer mỗi `T`, không khoá luồng vì mọi caller
-ở main thread; `Clear` sau khi chọn để buffer không giữ tham chiếu tới phần tử của level đã dispose. — `predicates == null` xử như
-không predicate: caller của dự án gọi `params` rỗng và `null` đều có test.
-
-| Consumes | Produces |
-|---|---|
-| GĐ3 `PickRandom` · `System.Predicate<T>` | `RandomPick.PickByPriority` |
-
-**Sơ đồ tương tác sau GĐ4**
-
-```
-  caller ──PickByPriority+(list, nextIndex, p0…pn)──► RandomPick ──pass k: MatchesAllFrom+ → MatchBuffer<T>+──► PickRandom(matches) ──► phần tử
-                                                                 └─ không pass nào ──► PickRandom(list)
-```
-
-**Editor setup:** không.
-
-**Kiểm:** compile sạch; thêm vào `RandomPickTests.cs`. Oracle vét cạn là bản LINQ gốc viết lại trong test (`TakeLast + Where + All`,
-trả tập ứng viên của pass đầu có phần tử).
+`Tests/EditMode/RandomPickTests.cs` (agent), thêm; oracle là bản LINQ gốc viết lại trong test (`TakeLast + Where + All`, trả tập ứng viên của pass đầu có phần tử):
 
 | Case | Input | Kỳ vọng |
 |---|---|---|
@@ -486,37 +336,28 @@ trả tập ứng viên của pass đầu có phần tử).
 | vét 2000 ca ngẫu nhiên | list 1–11 phần tử giá trị 0–19, 1–6 predicate ngẫu nhiên (`> t`, `% m == 0`, `<= t`), seed 20261025 | kết quả nằm trong tập ứng viên của bản LINQ, bằng phần tử duy nhất khi tập có một; có ít nhất một ca một ứng viên |
 | buffer không giữ phần tử | sau `PickByPriority` trên list class | `MatchBuffer<T>.Items.Count == 0` qua reflection (`MatchBuffer` là private lồng); không với tới thì bỏ ca này |
 
-**Mốc commit:** `feat(picking): RandomPick.PickByPriority`.
-
 ---
 
-## Giai đoạn 5 — Tài liệu (agent)
+## Chuyển dự án (agent)
 
-`docs/Runtime/Progression/Progression.md` (một tài liệu cho `ProgressCurve` và `LevelTypeTable`), mở đầu `Code: Runtime/Utilities/Progression`:
-luồng *bảng từ asset hay remote config → `TypeOf` → `ValueAt`* vẽ ASCII · bảng mốc của curve bậc thang (bảng case GĐ1) · cách dự án
-implement hai interface để key JSON không đổi (struct với explicit interface implementation) · "Design decisions" gom **Quyết định** của
-GĐ1–GĐ2 · ca "bảng phải tăng dần, cửa nhận dữ liệu của dự án kiểm" và ca `steps` rỗng ném.
+Đường dẫn dự án tính từ `Assets/_CategoryJam/Scripts/`.
 
-`docs/Runtime/RandomPick/RandomPick.md`, mở đầu `Code: Runtime/Utilities/Picking`: luật pass ưu tiên bằng một ví dụ năm phần tử ba
-predicate (ca "pass đầu không ai thoả") · quy ước nguồn ngẫu nhiên của caller · hai delegate mẫu (Unity `static readonly`, `System.Random`
-cho test) · "Design decisions" gom **Quyết định** của GĐ3–GĐ4.
+| Chỗ | Đổi |
+|---|---|
+| `docs/Runtime/Progression/Progression.md`, `.html` | tạo, `Code: Runtime/Utilities/Progression`, một tài liệu cho `ProgressCurve` và `LevelTypeTable`: luồng bảng từ asset hay remote config → `TypeOf` → `ValueAt` · bảng mốc bậc thang (bảng case GĐ1) · implement hai interface bằng explicit implementation để key JSON không đổi · ca bảng phải tăng dần, `steps` rỗng ném; `.html`: kịch bản (bảng mốc, level thiếu), cách dùng, flow, lưu ý |
+| `docs/Runtime/RandomPick/RandomPick.md`, `.html` | tạo, `Code: Runtime/Utilities/Picking`: luật pass bằng ví dụ năm phần tử ba predicate · quy ước nguồn ngẫu nhiên của caller · hai delegate mẫu (Unity `static readonly`, `System.Random` cho test); `.html`: kịch bản chuỗi ưu tiên, cách dùng, flow, lưu ý |
+| `Config/LevelDifficulty.cs` › `DifficultyStep` | `: IProgressStep`, explicit implementation (code dưới); thêm `using Horcrux.Runtime.Utilities.Progression;` |
+| `Config/LevelDifficulty.cs` › `DifficultyCurve.PointAt` | thân vòng lặp → `public float PointAt(float progressPercent) => ProgressCurve.ValueAt(steps, progressPercent);`, giữ summary |
+| `Utilities/Extensions/ListExtensions.cs` › `GetRandomFromList` | giữ tên, trỏ `PickRandom(UnityRange)` (code dưới); thêm `using Horcrux.Runtime.Utilities.Picking;` |
+| `Utilities/Extensions/LegacyHelpers.cs` › `LegacyListExtensions` | xoá `GetRandomFromListReseeded`, thân `GetRandomFromListWithProrityPredicates`, `MatchesAllFrom`, `MatchBuffer<T>`; thay bằng `UnityRangeReseeded` và lời gọi `PickByPriority` (code dưới) — reseed rồi `Range` ở mỗi lần rút như bản cũ, cả nhánh không predicate; `DivideEqually`, `GetRandomElementsInGroups` giữ; thêm `using Horcrux.Runtime.Utilities.Picking;` |
+| năm call site, hai test của dự án | không đổi dòng nào |
+| `LevelTypeTable` | không chạm: dự án không có bảng level → loại (level gắn thẳng SO độ khó) |
+| SO `Content/Difficulty/*.asset`, key remote config | không đổi: `DifficultyStep` giữ tên field serialize |
+| Plan này | xoá cùng `.meta` |
+| kiểm | grep `GetRandomFromListReseeded`, `MatchBuffer`, `MatchesAllFrom` trong `Assets/_CategoryJam` ra 0 · compile dự án sạch · `Tests/EditMode/DifficultyCurveTests.cs`, `PriorityPredicatePickTests.cs`, `DifficultyProfileAssetTests.cs` xanh không sửa dòng nào — phép kiểm "không đổi hành vi" |
+| chơi thử | vào một level, chơi tới khi vài box xong: box kế có tileId hợp lý với tile trong cache (không lặp box cùng id liên tiếp khi còn id khác), auto-play (cheat) chọn tile và chạy hết level, panel debug của `GameDifficultyManager` hiện `Point Per Free Slot` tăng theo mốc curve khi `Play: %` vượt mốc; hỏng: log `finalDiag is null`, auto-play đứng, point không đổi qua mốc |
 
-Không có "Trước khi chạy": không wire tay. Mỗi `.md` có `.html` cùng tên chọn từ nó: kịch bản (bảng mốc, level thiếu, chuỗi ưu
-tiên), cách dùng (implement interface, truyền nguồn ngẫu nhiên), flow, lưu ý.
-
-**Mốc commit:** `docs(progression,picking): Progression.md, RandomPick.md`.
-
----
-
-## Giai đoạn 6 — category-jam dùng bản Horcrux, xoá bản tạm (agent)
-
-**Mục tiêu:** `DifficultyCurve.PointAt` trỏ về `ValueAt`; `GetRandomFromList`, `GetRandomFromListWithProrityPredicates` giữ tên, trỏ về
-`RandomPick` với nguồn Unity; `GetRandomFromListReseeded`, `MatchesAllFrom`, `MatchBuffer` xoá khỏi dự án. Năm call site và hai test
-của dự án không đổi dòng nào; `LevelTypeTable` không có caller ở category-jam nên giai đoạn này không chạm.
-
-### `Config/LevelDifficulty.cs` — đoạn cũ → đoạn mới
-
-Cũ:
+`Config/LevelDifficulty.cs` › `DifficultyStep`, cũ:
 
 ```csharp
     [Serializable]
@@ -527,7 +368,7 @@ Cũ:
     }
 ```
 
-Mới — explicit interface implementation để tên field serialize và key JSON không đổi:
+mới:
 
 ```csharp
     [Serializable]
@@ -536,17 +377,13 @@ Mới — explicit interface implementation để tên field serialize và key J
         [Range(0, 100)] public int progressPercent;
         [Min(0)] public float pointPerFreeSlot;
 
+        // Explicit implementation: tên field serialize và key JSON không đổi.
         int IProgressStep.ProgressPercent => progressPercent;
         float IProgressStep.Value => pointPerFreeSlot;
     }
 ```
 
-`DifficultyCurve.PointAt` — thân cũ (vòng lặp) → `public float PointAt(float progressPercent) => ProgressCurve.ValueAt(steps, progressPercent);`
-giữ summary. Thêm `using Horcrux.Runtime.Utilities.Progression;`.
-
-### `Utilities/Extensions/ListExtensions.cs` › `ListExtensions` › `GetRandomFromList` — đoạn cũ → đoạn mới
-
-Cũ:
+`Utilities/Extensions/ListExtensions.cs` › `ListExtensions` › `GetRandomFromList`, cũ:
 
 ```csharp
         public static T GetRandomFromList<T>(this List<T> list)
@@ -558,20 +395,17 @@ Cũ:
         }
 ```
 
-Mới — delegate `static readonly` để không cấp phát mỗi lần gọi:
+mới:
 
 ```csharp
         /// <summary>Nguồn ngẫu nhiên của gameplay: UnityEngine.Random, giữ nước đi đã author.</summary>
+        // static readonly: không cấp phát delegate mỗi lần gọi.
         public static readonly Func<int, int> UnityRange = static count => UnityEngine.Random.Range(0, count);
 
         public static T GetRandomFromList<T>(this List<T> list) => list.PickRandom(UnityRange);
 ```
 
-Thêm `using Horcrux.Runtime.Utilities.Picking;`.
-
-### `Utilities/Extensions/LegacyHelpers.cs` › `LegacyListExtensions` — đoạn cũ → đoạn mới
-
-Xoá `GetRandomFromListReseeded`, thân `GetRandomFromListWithProrityPredicates`, `MatchesAllFrom`, `MatchBuffer<T>`. Thay bằng:
+`Utilities/Extensions/LegacyHelpers.cs` › `LegacyListExtensions`, thay phần xoá bằng:
 
 ```csharp
         /// <summary>Reseed mỗi lần rút rồi Random.Range: nước đi của bước chọn tileId đã author theo nguồn này.</summary>
@@ -586,34 +420,31 @@ Xoá `GetRandomFromListReseeded`, thân `GetRandomFromListWithProrityPredicates`
             => list.PickByPriority(UnityRangeReseeded, predicates);
 ```
 
-`DivideEqually`, `GetRandomElementsInGroups` giữ nguyên. Thêm `using Horcrux.Runtime.Utilities.Picking;`.
+## Không làm · Mở rộng sau
 
-**Khác với bản dự án:** không đổi hành vi. `GetRandomFromListReseeded` reseed rồi `Range` ở mỗi lần rút, kể cả nhánh "không predicate" —
-`UnityRangeReseeded` làm đúng chuỗi đó ở mỗi `nextIndex`.
-
-**Editor setup:** không — `DifficultyStep` giữ tên field serialize, YAML của các SO `Content/Difficulty/*.asset` không đổi; key remote
-config không đổi.
-
-**Kiểm:** grep `GetRandomFromListReseeded`, `MatchBuffer`, `MatchesAllFrom` trong `Assets/_CategoryJam` trả 0 · compile dự án sạch ·
-test dự án `Tests/EditMode/DifficultyCurveTests.cs`, `PriorityPredicatePickTests.cs`, `DifficultyProfileAssetTests.cs` xanh không sửa dòng
-nào — đây là phép kiểm "không đổi hành vi" · **cần chơi thử** (developer): vào một level, chơi tới khi vài box xong; nhìn box kế có
-tileId hợp lý với tile trong cache (không lặp box cùng id liên tiếp khi còn id khác), auto-play (cheat) chọn tile và chạy hết level;
-panel debug của `GameDifficultyManager` hiện `Point Per Free Slot` tăng theo mốc curve khi `Play: %` vượt mốc. Dấu hiệu hỏng: log
-`finalDiag is null`, auto-play đứng, point không đổi qua mốc.
-
-**Mốc commit:** repo dự án `refactor(difficulty): DifficultyCurve và pick ngẫu nhiên dùng Progression, Picking của Horcrux` kèm con trỏ submodule.
-
----
-
-## File → giai đoạn
-
-| File | GĐ1 | GĐ2 | GĐ3 | GĐ4 | GĐ5 | GĐ6 |
-|---|---|---|---|---|---|---|
-| `Runtime/Utilities/Progression/ProgressCurve.cs` | tạo | | | | | |
-| `Runtime/Utilities/Progression/LevelTypeTable.cs` | | tạo | | | | |
-| `Runtime/Utilities/Picking/RandomPick.cs` | | | tạo | `PickByPriority`, `MatchesAllFrom`, `MatchBuffer` | | |
-| `Tests/EditMode/ProgressCurveTests.cs` (agent) | tạo | | | | | |
-| `Tests/EditMode/LevelTypeTableTests.cs` (agent) | | tạo | | | | |
-| `Tests/EditMode/RandomPickTests.cs` (agent) | | | tạo | thêm case | | |
-| `docs/Runtime/Progression/Progression.md`, `docs/Runtime/RandomPick/RandomPick.md` và hai `.html` (agent) | | | | | tạo | |
-| dự án: `Config/LevelDifficulty.cs`, `Utilities/Extensions/ListExtensions.cs`, `Utilities/Extensions/LegacyHelpers.cs` | | | | | | đổi |
+| | Phương án | Vì sao |
+|---|---|---|
+| bỏ | chấm điểm độ khó, asset độ khó của dự án lên Horcrux | mang từ vựng game; ba lõi thuần là phần mang đi được |
+| bỏ | `>` thay `>=` trong `ValueAt` | đổi giá trị tại đúng mốc của mọi curve đã author |
+| bỏ | nội suy giữa hai mốc | luật của người dùng là bậc thang; nội suy là đổi hành vi |
+| bỏ | guard `steps` rỗng trong `ValueAt` | cửa nhận dữ liệu của dự án đã chặn rỗng và mốc không tăng; guard lần hai là nhánh không ai tới |
+| bỏ | giải mã mốc trong `ValueAt` | việc của struct dự án, trong getter `IProgressStep` |
+| bỏ | tra curve theo loại với fallback trong Horcrux | dữ liệu dự án, vài dòng |
+| bỏ | `TypeOf` tìm bằng `List.Find(lambda)` | lambda bắt `levelNumber`, cấp phát mỗi lần vào level |
+| bỏ | thiếu level thì trả loại nhỏ nhất im lặng | bảng từ server không có nút Validate; thiếu là lỗi setup không nổ nên phải log |
+| bỏ | `TryTypeOf(out)` để caller tự log | mọi caller thật cùng làm một việc (log, rơi về dễ nhất), hai dòng lặp ở mỗi caller |
+| bỏ | `TEntry` ràng `struct` | bảng của dự án có thể là class |
+| bỏ | `TType` không ràng `struct, Enum` | `$"{fallback}"` phải in tên enum; caller không truyền được kiểu không phải enum |
+| bỏ | `nextIndex` mặc định `UnityEngine.Random` | developer chốt: Horcrux không chọn nguồn; dự án truyền `Random.Range` giữ nước đi đã author, test truyền `System.Random` để tất định |
+| bỏ | reseed trong Horcrux | reseed là quyết định của dự án, nằm trong delegate nó truyền |
+| bỏ | `PickRandom` ném khi list rỗng | caller của dự án dựa vào `null` để biết "không có gì để chọn"; `nextIndex(0)` là dải rỗng |
+| bỏ | `predicates == null` ném | caller gọi `params` rỗng và `null`, đều có test |
+| bỏ | pass k chỉ đòi predicate k | đổi tập ứng viên của mọi pass sau pass 0, đổi level đã author |
+| bỏ | LINQ `TakeLast + Where + ToList` mỗi pass | rác ở nhịp spawn; hai vòng lặp cho cùng tập ứng viên |
+| bỏ | khoá luồng cho `MatchBuffer<T>` | mọi caller ở main thread |
+| bỏ | `Shuffle`, `KShuffle` lên đây | xáo tại chỗ là ca khác; bản chung là `FisherYates.Shuffle` (`Horcrux_SlotShuffle_Plan.md` GĐ1), chuyển caller sang nó không thuộc Plan này |
+| bỏ | `GetRandomElements` lên đây | một caller rút bằng `OrderBy(Guid.NewGuid())`; đổi cách rút là đổi level đã author |
+| bỏ | namespace chứa chữ `Random` | che `UnityEngine.Random` ở code dùng namespace đó |
+| sau | dự án khuôn ở dòng mở chuyển sang bản Horcrux | việc riêng: bảng qua `ILevelTypeEntry`, mốc mã hoá giải trong getter `IProgressStep`, bản LINQ → `PickByPriority` với `nextIndex` reseed |
+| sau | `ValueAt` nhận `float progress`, mốc `float` | khi mốc theo đơn vị khác % (số lượt, giây) |
+| sau | `StepAt<TStep>` trả cả mốc, `ValueAt` gọi nó | khi cần nhiều giá trị của cùng mốc (min, max điểm) |
