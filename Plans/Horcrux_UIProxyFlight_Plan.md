@@ -1,81 +1,117 @@
-# Plan — `UIProxyFlight` lên Horcrux: bản sao UI bay tới vật world rồi nhường chỗ
+# Plan — `UIProxyFlight`: bản sao UI bay tới vật world rồi nhường chỗ
 
-Nguồn: category-jam `Assets/_CategoryJam/Scripts/Entities/Cache/BoosterFlight.cs`, hai instance trong `Game.unity`
-(`extra_slot_flight`, `pack_flight`), caller `CacheTileSlots.FlyTrayAsync`, `FlyPackAsync`; đã chơi thử cả hai booster.
+Ngày 2026-11-23. Nguồn: category-jam `Assets/_CategoryJam/Scripts/Entities/Cache/BoosterFlight.cs` (`FlyAsync`), hai instance trong
+`Game.unity` (`extra_slot_flight`, `pack_flight`), caller `CacheTileSlots.FlyTrayAsync`, `FlyPackAsync`; đã chơi thử cả hai booster.
+Sprite world luôn bị canvas Overlay đè, nên vật không bay thẳng từ nút được: một bản sao UI bay từ nút tới chỗ vật, tới nơi đúng cỡ vật
+trên màn hình, rồi caller bật vật thật cùng frame.
 
-**Phân công:** GĐ1–GĐ2 developer gõ (code runtime Horcrux), agent viết test theo bảng case rồi compile · GĐ3 (dự án chuyển sang bản
-Horcrux) và GĐ4 (tài liệu, xoá Plan) agent làm. GĐ1, GĐ2, GĐ4 commit trong `Assets/Horcrux`; GĐ3 commit ở dự án; mỗi lần kèm con trỏ
-submodule. **Phụ thuộc** `Horcrux_HopCurve_DipFlash_Plan.md` GĐ1 (`HopCurve.ApexT`, `HopCurve.ArcY`): Plan này viết như Plan đó đã gõ.
-GĐ10 của Plan đó có hai dòng `BoosterFlight.cs`: làm GĐ3 ở đây trước thì hai dòng đó không còn gì để đổi (code đã lên Horcrux, gọi
-`HopCurve` sẵn). Không có `§0`: hai công thức một dòng nằm ở giai đoạn sinh ra chúng.
+**Phân công:** GĐ1–GĐ2 developer gõ, agent viết test theo bảng case rồi compile · GĐ3 (tài liệu) · GĐ4 (dự án chuyển sang bản Horcrux,
+xoá Plan) agent làm.
+**Chạy được, thấy được:** GĐ1, GĐ2 compile sạch + bảng case xanh trong `Tests/PlayMode/UIProxyFlightTests.cs` (Test Runner, PlayMode);
+thấy trong game ở GĐ4.
+**Lệnh kiểm** (chạy từ gốc dự án): GĐ1–GĐ3 `bash "<horcrux>/Editor/CompileCheck/Tools~/verify.sh" --csproj
+com.horcrux.runtime.csproj,Horcrux.PlayModeTests.csproj --tests Horcrux.EditModeTests` · GĐ4 thêm `CategoryJam.Gameplay.csproj` và
+`--tests CategoryJam.EditModeTests,Horcrux.EditModeTests`. PlayMode không qua tool: chạy trong Window › General › Test Runner.
+**Commit:** GĐ1, GĐ2, GĐ3 trong `Assets/Horcrux`; GĐ4 ở dự án kèm con trỏ submodule.
+**Phụ thuộc:** GĐ2 phụ thuộc `Horcrux_HopCurve_DipFlash_Plan.md` › GĐ1 (`HopCurve.ApexT`, `HopCurve.ArcY`), viết như Plan đó đã gõ.
+GĐ1 không phụ thuộc gì, gõ được sớm.
+**Chung file:** `BoosterFlight.cs`, `Scripts/Feel.md` §10 — `Horcrux_HopCurve_DipFlash_Plan.md` › GĐ10. GĐ4 ở đây làm trước thì mục
+`BoosterFlight.cs` của GĐ10 bên kia không còn gì để đổi (file chỉ còn lớp nối, không gọi `TileFlightCurve`); hàng §10 của `Feel.md` viết
+một lần, theo tên hàm đang có lúc sửa (`HopCurve.ArcY` hay `TileFlightCurve.ArcY`).
+**Đã kiểm trước khi ghi:** csc của Rider, `-langversion:9`, trên `UnityEngine.CoreModule`/`UIModule` của Editor 6000.0.73f1 và
+`Library/ScriptAssemblies` (`com.horcrux.runtime`, `PrimeTween.Runtime`, `UniTask`, `UnityEngine.UI`, `Coffee.UIParticle`): `UIProxyFlight.cs`
+bản GĐ1 và bản GĐ2 (kèm `HopCurve.cs` chép từ Plan HopCurve GĐ1), `BoosterFlight.cs` lớp con và hai lời gọi mới của GĐ4 — 0 lỗi. Bản
+mẫu: mọi biểu thức là của bản dự án đã chơi thử (hai booster); Plan chỉ dời chúng, không đổi số. Hành vi huỷ đọc từ mã PrimeTween
+`AsyncAwaitSupport` (`GetResult` ném `OperationCanceledException` khi token đã huỷ, kể cả huỷ trước lúc `await`). `§0`: không — hai công
+thức một dòng nằm ở GĐ sinh ra chúng.
 
 ## Ngữ cảnh đã chốt
 
-- **Người dùng:** nút booster nằm ở Canvas Overlay, vật booster (khay ô cache, bình hút tile) là sprite world — sprite world luôn bị
-  canvas Overlay đè, nên vật không bay thẳng từ nút được. Một bản sao UI bay từ nút tới chỗ vật sẽ đứng, đúng cỡ vật trên màn hình, rồi
-  caller bật vật thật cùng frame. Dự án sau: món mua từ shop bay vào túi đồ trên bàn chơi · icon phần thưởng bay xuống ô world.
+- **Người dùng:** nút vật phẩm nằm ở canvas Overlay, vật nó sinh ra là sprite world trên bàn chơi; bản sao bay từ nút tới chỗ vật sẽ đứng,
+  tới nơi đúng bề ngang vật trên màn hình, caller bật vật thật. Ví dụ: vật phẩm hỗ trợ bay từ nút xuống bàn chơi · món mua trong shop bay
+  vào túi đồ world · icon phần thưởng bay xuống một ô world khi nhận quà giữa màn.
 - **Mục tiêu:** cơ chế bay (cỡ theo bề ngang đích trên màn hình, hai hình đường bay, nghiêng theo hướng ngang, dọn ở mọi đường ra) lên
   Horcrux; dự án chỉ còn lớp nối với đuôi hạt. **Cảm giác không đổi:** mọi biểu thức chép nguyên văn; số trên scene giữ nguyên.
+- **Ranh giới:** canvas gốc là Screen Space Overlay; đích là một điểm world đứng yên suốt chuyến; caller bật vật thật sau `await`.
 - **Chỗ đặt, tên:** `Runtime/Utilities/UI/UIProxyFlight.cs`, namespace `Horcrux.Runtime.Utilities.UI`, cạnh `FlyRewardItem`. Tên nói cơ
-  chế (bản sao UI), không nói booster. Đổi tên type tuỳ ý trước khi gõ.
-- **Đuôi hạt ở lại dự án qua hai hook `protected virtual`:** đuôi hiện là Coffee `UIParticle`, ngoài stack Horcrux; framework không
-  tham chiếu được assembly đó. Dự án giữ `BoosterFlight` thành lớp con ghi đè hai hook — script giữ GUID, scene không phải kéo lại.
-- **Hình đường bay là `enum` tường minh từ `1`:** hiện chế độ ẩn trong `fallHeight > 0`; một ô số vừa là núm vừa là công tắc thì
-  đặt 0 là đổi cả hình bay mà không gì báo. Giá trị `0` (ô chưa chọn) ghi `LogError` rồi bay hình `Arc`.
-- **API nhận đích world:** hai caller đều tự quy chỗ đáp và bề ngang world ra màn hình bằng cùng sáu dòng; quy đổi vào
-  `UIProxyFlight`, caller truyền camera, điểm, bề ngang world.
+  chế (bản sao UI), không nói kịch bản. Tên chốt khi gõ.
+- **Đuôi hạt ở lại dự án qua hai hook `protected virtual`:** đuôi hiện là Coffee `UIParticle`, ngoài stack Horcrux; framework không tham
+  chiếu được assembly đó. Lớp nối của dự án ghi đè hai hook; script giữ GUID nên scene không phải kéo lại.
+- **API nhận đích world:** hai caller hiện tự quy chỗ đáp và bề ngang world ra màn hình bằng cùng sáu dòng; quy đổi vào `FlyAsync`,
+  caller truyền camera, điểm, bề ngang world.
 - **Cố ý KHÔNG làm, kèm lý do:**
-  - overload nhận đích màn hình — caller UI→UI duy nhất (`Bridge/BoosterUnlockTutorial.FlyIconAsync`: icon popup nảy tại chỗ, đứng,
-    rồi bay thẳng về nút HUD, cỡ theo bề ngang nút trên màn hình) khác hình bay: không vồng, không nghiêng, ease kiểu In để icon đập
-    vào nút. Gộp khi có caller thứ hai cùng lý do thay đổi; lúc đó thêm hình bay `Straight` và pha nảy–đứng trước khi bay.
+  - overload nhận đích màn hình — caller UI→UI duy nhất hiện có (icon popup nảy tại chỗ, đứng, rồi bay thẳng về nút HUD) khác hình bay:
+    không vồng, không nghiêng, ease kiểu In để icon đập vào nút. Gộp khi có caller thứ hai cùng lý do thay đổi.
   - gộp với `FlyRewardItem` — khác lý do thay đổi: icon thưởng bay UI→UI, mờ dần, nổ hạt ở mốc; bản sao này nhường chỗ cho vật world.
-  - hỗ trợ canvas Screen Space Camera hay World Space — `visual.position = điểm màn hình` chỉ đúng ở Overlay; chưa có người dùng khác.
-  - đuôi tuỳ chọn trong framework (`ParticleSystem` field) — `UIParticle` của dự án không có `ParticleSystem` ở gốc; hook rẻ hơn.
-- **Huỷ ném `OperationCanceledException`:** `await` một `Sequence` gắn `SetCancellationToken(ct)` mà token bị huỷ thì ném;
-  `finally` vẫn tắt bản sao và gọi hook kết thúc. Comment hiện tại "huỷ thì await vẫn xong bình thường" là sai, không chép.
-- **Mở rộng sau:** overload đích màn hình khi có caller UI→UI thứ hai cùng hình bay (mục trên) · canvas Camera khi dự án có HUD ở chế độ đó.
+  - canvas Screen Space Camera hay World Space — `visual.position = điểm màn hình` chỉ đúng ở Overlay; chưa có người dùng.
+  - đuôi tuỳ chọn trong framework (field `ParticleSystem`) — `UIParticle` không có `ParticleSystem` ở gốc; hook rẻ hơn.
+- **Quyết định trái trực giác:**
+  - **Đích chốt lúc gọi, không đọc lại mỗi frame:** đích là chỗ nghỉ cuối của vật (tính bằng chính công thức bố cục, hoặc vật đứng yên),
+    camera không đổi suốt chuyến. Đọc lại mỗi frame cần đích `Transform` và một lần quy đổi màn hình mỗi frame — chưa caller nào cần.
+  - **Hình đường bay là `enum` tường minh từ `1`:** một ô số vừa là núm vừa là công tắc (`fallHeight > 0`) thì đặt 0 là đổi cả hình bay
+    mà không gì báo. Giá trị `0` (ô chưa chọn) ghi `LogError` rồi bay hình `Arc`, người chơi không kẹt ở nút.
+  - **Huỷ ném `OperationCanceledException`:** `await` một `Sequence` gắn `SetCancellationToken(ct)` mà token huỷ thì ném; `finally` vẫn
+    tắt bản sao và gọi hook kết thúc.
+  - **Cỡ đặt bằng `sizeDelta`, không scale transform:** con giữ cỡ riêng (đuôi hạt) không co giãn theo bản sao.
+- **Mở rộng sau:** overload đích màn hình khi có caller UI→UI thứ hai cùng hình bay (thêm hình `Straight` và pha nảy–đứng trước khi bay;
+  cỡ hai đầu qua `LocalScaleForScreenWidth` của `Horcrux_ScreenSize_Plan.md`) · bám đích: overload nhận `Transform`, quy đổi màn hình
+  mỗi frame (cùng cách overload `Transform` của `Horcrux_CharmFlyArcFollow_Plan.md`), khi có đích trượt trong lúc bay · ba dòng quy đổi
+  bề ngang world → pixel thành `WorldWidthOnScreen(this Camera, …)` trong `ScreenSizeExtensions` khi có người dùng thứ hai · canvas Camera
+  khi có HUD ở chế độ đó.
 
 ## Đã khảo sát
 
 | Nguồn | Lấy gì | Không lấy, vì sao |
 |---|---|---|
+| bản tạm category-jam `Scripts/Entities/Cache/BoosterFlight.cs` | toàn bộ cơ chế, nguyên văn biểu thức | `fallHeight > 0` làm công tắc hình bay; comment "huỷ thì await vẫn xong bình thường" sai |
+| category-jam `CacheTileSlots.FlyTrayAsync`, `FlyPackAsync` | sáu dòng quy đổi world → màn hình | — |
 | `Runtime/Utilities/UI/FlyRewardItem.cs` | khuôn component UI bay, `[Splitter]`, chỗ đặt | khác lý do thay đổi (trên) |
-| `TransformExtensions.CharmJump` | dùng nguyên cho hình `Arc` | — |
+| `TransformExtensions.CharmJump` | dùng nguyên cho hình `Arc` (cung vồng theo +Y) | — |
 | `HopCurve.ApexT`, `ArcY` (Plan HopCurve GĐ1) | hình `DropIn`: lên đỉnh cao hơn đích rồi rơi `fallDuration` giây cuối | — |
-| `CharmFlyArc` | — | tốc độ theo độ dài cung, không đổi cỡ, không nghiêng |
-| `CacheTileSlots.FlyTrayAsync`, `FlyPackAsync` | sáu dòng quy đổi world → màn hình | — |
+| `CharmFlyArc` (và overload `Transform` của Plan CharmFlyArcFollow) | — | bezier vồng theo pháp tuyến dây cung, đổi phía theo hướng bay; cảm giác đã chơi thử là cung `CharmJump` vồng lên |
+| `Horcrux_ScreenSize_Plan.md` | cùng khái niệm "bề ngang trên màn hình"; chỗ cho `WorldWidthOnScreen` | hàm của Plan đó đo rect trên canvas; ở đây đo đoạn world, một người dùng |
 
-## Luồng mô tả
+## Luồng
 
 ```
-caller (dự án): await flight.FlyAsync(nútScreen, worldCamera, chỗĐápWorld, bềNgangWorld, ct); rồi bật vật thật
+caller: await flight.FlyAsync(nútScreen, worldCamera, chỗĐápWorld, bềNgangWorld, ct); rồi bật vật thật
 UIProxyFlight.FlyAsync:
-    toScreen    = camera.WorldToScreenPoint(chỗĐáp) ; toWidth = |điểm màn hình hai mép| (GĐ1)
+    toScreen    = camera.WorldToScreenPoint(chỗĐáp) ; toWidth = hiệu x màn hình của hai mép           (GĐ1)
     endWidth    = toWidth / scaleFactor ; startWidth = startScale · endWidth
-    bật visual tại nútScreen, OnFlightStarted()                        ── dự án: đuôi Play
+    bật visual tại nútScreen, OnFlightStarted()                        ── lớp con: đuôi Play
     Sequence: cỡ (sizeEase) ‖ nghiêng sin(πt) ‖ đường bay theo path:
-        Arc    → visual.CharmJump(toScreen, arcHeight·scaleFactor, duration, moveEase)
-        DropIn → x lerp tuyến tính, y = HopCurve.ArcY(t, from.y, to.y, fallHeight·scaleFactor, apexT)   (GĐ2)
-    finally: OnFlightEnded(), xoay về 0, tắt visual                     ── dự án: đuôi Stop + Clear
+        Arc    → visual.CharmJump(toScreen, arcHeight·scaleFactor, duration, moveEase)              (GĐ1)
+        DropIn → x lerp tuyến tính, y = HopCurve.ArcY(t, from.y, to.y, fallHeight·scaleFactor, apexT) (GĐ2)
+    finally: OnFlightEnded(), xoay về 0, tắt visual                     ── lớp con: đuôi Stop + Clear
 ```
 
 ## Bản đồ hệ cuối
 
 | Thành phần | Ai gọi | Việc |
 |---|---|---|
-| `UIProxyFlight.FlyAsync` | `CacheTileSlots.FlyTrayAsync`, `FlyPackAsync` | toàn chuyến bay; trả khi bản sao đã tắt |
-| `UIProxyFlight.OnFlightStarted`, `OnFlightEnded` (`protected virtual`) | `FlyAsync` | chỗ lớp con bật, dọn thứ đi kèm |
+| `UIProxyFlight.FlyAsync` | caller dự án (category-jam: `CacheTileSlots.FlyTrayAsync`, `FlyPackAsync`) | toàn chuyến bay; trả khi bản sao đã tắt |
+| `OnFlightStarted`, `OnFlightEnded` (`protected virtual`) | `FlyAsync` | chỗ lớp con bật, dọn thứ đi kèm |
 | `UIProxyFlightPath` | Inspector | `Arc` · `DropIn` |
-| `BoosterFlight : UIProxyFlight` (dự án) | scene | ô `trail` (`UIParticle`), ghi đè hai hook |
+| lớp con dự án (category-jam: `BoosterFlight : UIProxyFlight`) | scene | ô `trail` (`UIParticle`), ghi đè hai hook |
 
-## Giai đoạn 1 — bay hình `Arc` tới đích world
+## GĐ1 — bay hình `Arc` tới đích world
 
 **Mục tiêu:** bản sao bay vồng từ một điểm màn hình tới chỗ một vật world, tới nơi đúng bề ngang vật trên màn hình, nghiêng theo hướng
-ngang, dọn ở mọi đường ra. **Vì sao trước:** bình hút tile chỉ dùng hình này — xong giai đoạn là đủ một người dùng thật.
+ngang, dọn ở mọi đường ra. Xong GĐ thì một hình bay đủ cho người dùng thật (bình Pack của category-jam).
 
-**Ai gọi:** test PlayMode của giai đoạn; trong dự án `CacheTileSlots.FlyPackAsync` (GĐ3).
+**Vì sao bây giờ:** gốc của luồng; GĐ2 chỉ thêm một nhánh vào `BuildPath`.
 
-File mới `Runtime/Utilities/UI/UIProxyFlight.cs`:
+**Sơ đồ sau GĐ1** (`+` là phần mới)
+
+```
+  test / caller ──FlyAsync+──► UIProxyFlight+ ──BuildPath+──► TransformExtensions.CharmJump
+                                   ├─ Tween.Custom (SetWidth+, SetTilt+)
+                                   └─ OnFlightStarted+ / OnFlightEnded+ ──► lớp con
+```
+
+**Ai gọi:** test PlayMode của GĐ; trong dự án `CacheTileSlots.FlyPackAsync` (GĐ4).
+
+### `Runtime/Utilities/UI/UIProxyFlight.cs` — file mới
 
 ```csharp
 using System.Threading;
@@ -137,8 +173,8 @@ namespace Horcrux.Runtime.Utilities.UI
         #region API
 
         /// <summary>
-        /// Bay tới chỗ toWorld, tới nơi bề ngang bằng toWorldWidth trên màn hình. Xong hay huỷ đều tắt bản sao; huỷ thì ném
-        /// OperationCanceledException sau khi đã dọn.
+        /// Bay tới chỗ toWorld, tới nơi bề ngang bằng toWorldWidth trên màn hình. Đích chốt lúc gọi. Xong hay huỷ đều tắt bản sao;
+        /// huỷ thì ném OperationCanceledException sau khi đã dọn.
         /// </summary>
         public async UniTask FlyAsync(Vector2 fromScreen, Camera worldCamera, Vector3 toWorld, float toWorldWidth, CancellationToken ct)
         {
@@ -209,60 +245,105 @@ namespace Horcrux.Runtime.Utilities.UI
 **Toán → code.**
 - Bề ngang trên màn hình là hiệu `x` màn hình của hai mép đích, `toWorld ± ½·toWorldWidth·x̂`. Camera ortho nên hiệu này không phụ thuộc
   độ sâu.
-- Đổi sang đơn vị canvas bằng cách chia `scaleFactor` của canvas gốc, vì `sizeDelta` tính theo canvas tham chiếu.
+- Đổi sang đơn vị canvas bằng cách chia `scaleFactor` của canvas gốc, vì `sizeDelta` tính theo canvas tham chiếu. Phép chia này và
+  `arcHeight · scaleFactor` đúng khi mọi cha của `visual` dưới canvas gốc có scale 1 (Editor setup bước 2).
 - Nghiêng theo `θ(t) = s·θmax·sin(πt)`: bằng 0 ở `t` = 0 và 1, đạt `θmax` ở `t = 0.5`. `s = −1` khi bay sang phải (Unity quay dương ngược
   chiều kim đồng hồ).
 
-**Quyết định, phương án bỏ, vì sao:**
-- **`BuildPath` tách hàm ngay từ giai đoạn này:** GĐ2 chỉ thêm một nhánh vào đây.
-- **`LogError` cho ô chưa chọn, không ném:** cấu hình sai lúc setup mà không nổ thì ghi log rồi chạy tiếp (`code-design` › Guard). Bản sao
-  vẫn bay, nên người chơi không kẹt ở nút.
-- **Không `try/catch` quanh `await`:** huỷ là hợp đồng của caller.
+| Consumes | Produces |
+|---|---|
+| `TransformExtensions.CharmJump`, `Tween.Custom`, `Sequence`, `Camera.WorldToScreenPoint`, `Canvas.rootCanvas.scaleFactor` | `UIProxyFlight.FlyAsync`, `OnFlightStarted`, `OnFlightEnded`, `UIProxyFlightPath.Arc` |
 
-**Editor setup** (dựng từ 0, cho dự án sau):
+**Quyết định, phương án bỏ, vì sao:**
+- **`BuildPath` tách hàm ngay từ GĐ này:** GĐ2 chỉ thêm một nhánh vào đây.
+- **`LogError` cho ô chưa chọn, không ném:** cấu hình sai lúc setup mà không nổ thì ghi log rồi chạy tiếp; bản sao vẫn bay.
+- **Không `try/catch` quanh `await`:** huỷ là hợp đồng của caller. Phương án bỏ: nuốt OCE rồi trả bình thường — caller phải tự kiểm
+  token, quên là bật vật thật trên level đã dọn.
+- **Quy đổi bằng `/ scaleFactor`, không qua ma trận cha của `visual`:** chép nguyên bản đã chơi thử; điều kiện scale 1 ghi ở Editor setup.
+
+**Editor setup** (dựng từ 0):
 1. Dưới canvas HUD **Screen Space – Overlay**, tạo `ui_proxy_flight` có `Canvas` (Override Sorting, order trên nút xuất phát) + `UIProxyFlight`.
    Thiếu Override Sorting thì bản sao chui dưới nút.
-2. Con `visual`: `RectTransform` anchor và pivot giữa, chứa `Image` của vật; con của `visual` stretch theo nó. Kéo vào ô **Visual**, Image
-   vào **Aspect Image**, Canvas vào **Canvas**. Thiếu Aspect Image (sprite null) thì nổ ở lần bay đầu.
-3. **Path** = `Arc`.
+2. Con `visual`: `RectTransform` anchor và pivot giữa, chứa `Image` của vật; con của `visual` stretch theo nó. **Mọi cha của `visual` dưới
+   canvas gốc giữ scale 1.** Cha có scale khác 1 thì bản sao tới nơi sai cỡ (lệch đúng bằng scale đó) và độ vồng sai theo cùng tỉ lệ,
+   không log nào báo.
+3. Kéo `visual` vào ô **Visual**, Image vào **Aspect Image**, Canvas lồng vào **Canvas**. Thiếu Aspect Image (sprite null) thì nổ
+   `NullReferenceException` ở lần bay đầu.
+4. **Path** = `Arc`.
 
-**Kiểm:** compile sạch. Test PlayMode `Tests/PlayMode/UIProxyFlightTests.cs` (agent viết sau khi đọc code thật). Dựng: canvas Overlay,
-camera ortho, lớp con test đếm hook và chụp `sizeDelta` trong `OnFlightEnded`.
+**Kiểm:** lệnh kiểm GĐ1–GĐ3 ở đầu Plan. Test PlayMode `Tests/PlayMode/UIProxyFlightTests.cs` (agent viết sau khi đọc code thật). Dựng:
+canvas Overlay với `CanvasScaler` Constant Pixel Size (`scaleFactor` 1), camera ortho size 5, lớp con test đếm hook và chụp `sizeDelta`
+trong `OnFlightEnded`. Cỡ màn trong PlayMode là cỡ Game view, nên kỳ vọng tính từ `Screen.height`.
 
 | Input | Kỳ vọng |
 |---|---|
-| bay `duration` 0.1 tới vật world rộng 1 unit, camera ortho size 5, màn 1080×1920, `scaleFactor` 1 | `OnFlightEnded` thấy `sizeDelta.x` = 1080 / (2·5·0.5625) = 192 (±0.5) · `visual` tắt · xoay identity |
+| bay `duration` 0.1 tới vật world rộng 1 unit | `OnFlightEnded` thấy `sizeDelta.x` = `Screen.height / (2·5)` (±0.5) · `visual` tắt · xoay identity |
 | cùng chuyến, đếm hook | `OnFlightStarted` 1 · `OnFlightEnded` 1 |
 | huỷ token giữa chuyến | ném `OperationCanceledException` · `OnFlightEnded` 1 · `visual` tắt · xoay identity |
-| bay sang phải, `maxTiltDegrees` 10, đọc ở `t ≈ 0.5` | `localEulerAngles.z` ≈ 350 (−10°) |
-| `path` = `(UIProxyFlightPath)0` | một `LogError` (`LogAssert.Expect`), vẫn bay xong |
+| token đã huỷ trước khi gọi | ném `OperationCanceledException` · `OnFlightEnded` 1 · `visual` tắt |
+| bay sang phải, `maxTiltDegrees` 10, `duration` 0.4, chụp góc sau 0.2 s | `localEulerAngles.z` ∈ [348, 352] (−10° ± 2°, lệch một frame); bay sang trái ∈ [8, 12] — đỏ nếu đảo dấu |
+| `path` = `(UIProxyFlightPath)0` | một `LogError` (`LogAssert.Expect`), vẫn bay xong, đáp đúng đích ±0.5 px |
 
 **Mốc commit:** `feat(ui): UIProxyFlight bay hình Arc tới đích world`.
 
-## Giai đoạn 2 — hình `DropIn`
+## GĐ2 — hình `DropIn`
 
-**Mục tiêu:** bản sao bay như vật rơi vào ô: lên đỉnh cao hơn đích rồi rơi vào trong `fallDuration` giây cuối. **Vì sao bây giờ:**
-khay ô cache dùng hình này; hình `Arc` đã chạy nên giai đoạn chỉ thêm một nhánh.
+**Mục tiêu:** bản sao bay như vật rơi vào ô: lên đỉnh cao hơn đích rồi rơi vào trong `fallDuration` giây cuối. Xong GĐ thì đủ hai hình
+bay cho cả hai người dùng của category-jam.
 
-**Ai gọi:** test của giai đoạn; trong dự án `CacheTileSlots.FlyTrayAsync` (GĐ3).
+**Vì sao bây giờ:** hình `Arc` đã chạy, GĐ này chỉ thêm một nhánh; cần `HopCurve` GĐ1 đã gõ.
 
-`UIProxyFlight.cs` › `UIProxyFlightPath`, sau `Arc = 1,`:
+**Sơ đồ sau GĐ2** (`+` là phần mới)
+
+```
+  FlyAsync ──BuildPath──┬─ Arc     ──► CharmJump
+                        └─ DropIn+ ──► Tween.Custom ──SetDropIn+──► HopCurve.ApexT, HopCurve.ArcY
+```
+
+**Ai gọi:** test của GĐ; trong dự án `CacheTileSlots.FlyTrayAsync` (GĐ4).
+
+### `UIProxyFlight.cs` › đầu file › sau `using Horcrux.Runtime.Utilities.ExtensionMethods;`
+
+```csharp
+using Horcrux.Runtime.Utilities.PhysXHelper;
+```
+
+### › `UIProxyFlightPath` › sau `Arc = 1,`
+
+Quanh chỗ thêm:
+
+```csharp
+        /// <summary>Cung CharmJump cao arcHeight trên đường thẳng, nhịp theo moveEase.</summary>
+        Arc = 1,
+    }
+```
+
+Đoạn mới, trước `}` đóng enum:
 
 ```csharp
         /// <summary>Lên đỉnh cao hơn đích fallHeight rồi rơi vào trong fallDuration giây cuối, gốc đi tuyến tính.</summary>
         DropIn = 2,
 ```
 
-› `Properties`, sau `moveEase`:
+### › region `Properties` › sau `moveEase`
+
+Quanh chỗ thêm:
+
+```csharp
+        [SerializeField] private Ease moveEase = Ease.InOutSine;
+        [SerializeField] private Ease sizeEase = Ease.OutQuad;
+```
+
+Đoạn mới giữa hai dòng trên:
 
 ```csharp
         [Tooltip("Path DropIn: đỉnh cao hơn đích bao nhiêu, đơn vị canvas tham chiếu.")]
-        [SerializeField, Min(0f)] private float fallHeight = 150f;
+        [SerializeField, Min(0f)] private float fallHeight;
         [Tooltip("Path DropIn: số giây rơi từ đỉnh vào đích; đỉnh không sớm hơn nửa chuyến.")]
         [SerializeField, Min(0.02f)] private float fallDuration = 0.15f;
 ```
 
-› sau `private float _tiltSign;`:
+### › region `Properties` › sau `private float _tiltSign;`
 
 ```csharp
         private Vector2 _from;
@@ -271,11 +352,19 @@ khay ô cache dùng hình này; hình `Arc` đã chạy nên giai đoạn chỉ 
         private float _apexT;
 ```
 
-`using Horcrux.Runtime.Utilities.PhysXHelper;` thêm vào đầu file. `BuildPath` cũ → mới:
+### › region `Class Methods` › `BuildPath` — thân mới
+
+Neo, đầu thân hiện có:
 
 ```csharp
         private Sequence BuildPath(Vector2 fromScreen, Vector2 toScreen, float scaleFactor)
         {
+            if (path != UIProxyFlightPath.Arc)
+```
+
+Đoạn mới chèn ngay sau `{`, trước `if (path != UIProxyFlightPath.Arc)`:
+
+```csharp
             if (path == UIProxyFlightPath.DropIn)
             {
                 _from = fromScreen;
@@ -286,15 +375,12 @@ khay ô cache dùng hình này; hình `Arc` đã chạy nên giai đoạn chỉ 
                 return Sequence.Create().Group(Tween.Custom(this, 0f, 1f, duration, static (flight, t) => flight.SetDropIn(t), Ease.Linear));
             }
 
-            if (path != UIProxyFlightPath.Arc)
-                Debug.LogError($"[UIProxyFlight]: path {path} chưa chọn, bay Arc", this);
-            return visual.CharmJump(toScreen, arcHeight * scaleFactor, duration, moveEase);
-        }
 ```
 
-› sau `SetWidth`:
+### › region `Class Methods` › sau `SetWidth`
 
 ```csharp
+
         private void SetDropIn(float t)
         {
             var x = Mathf.LerpUnclamped(_from.x, _to.x, t);
@@ -303,28 +389,54 @@ khay ô cache dùng hình này; hình `Arc` đã chạy nên giai đoạn chỉ 
         }
 ```
 
-**Toán → code:** dùng nguyên `ArcY` và `ApexT` của Plan HopCurve §0. `fallHeight` nhân `scaleFactor` vì `y` tính bằng pixel màn hình.
+**Toán → code:** dùng nguyên `ArcY` và `ApexT` của Plan HopCurve §0. `fallHeight` nhân `scaleFactor` vì `y` tính bằng pixel màn hình;
+`ArcY` nhận cùng đơn vị với `y0`, `y1` caller truyền.
+
+| Consumes | Produces |
+|---|---|
+| `HopCurve.ApexT`, `HopCurve.ArcY` (Plan HopCurve GĐ1) | `UIProxyFlightPath.DropIn`, field `fallHeight`, `fallDuration` |
 
 **Quyết định:**
 - **`Sequence.Create().Group(...)` bọc tween DropIn:** hai nhánh cùng trả `Sequence`, nên `FlyAsync` ghép bằng một `Group`.
-- **Ba số của chuyến DropIn giữ trong field, không closure:** lambda `static` không bắt được biến ngoài (`code-design` › delegate `static`).
+- **Ba số của chuyến DropIn giữ trong field, không closure:** lambda `static` không bắt được biến ngoài; field cho 0 B mỗi chuyến.
+- **`fallHeight` mặc định 0:** con số đã chỉnh là của từng scene; instance mới chọn `DropIn` thì tự đặt độ cao. Phương án bỏ: mặc định
+  150 của bản tạm — số cảm giác của một dự án.
 
-**Editor setup:** instance hình rơi đặt **Path** = `DropIn`, chỉnh **Fall Height**, **Fall Duration**.
+**Editor setup:** instance hình rơi đặt **Path** = `DropIn`, chỉnh **Fall Height** (0 là không lên đỉnh, bản sao trượt thẳng vào đích),
+**Fall Duration**.
 
-**Kiểm:** compile sạch; thêm vào `UIProxyFlightTests`:
+**Kiểm:** lệnh kiểm GĐ1–GĐ3; thêm vào `UIProxyFlightTests`:
 
 | Input | Kỳ vọng |
 |---|---|
-| `DropIn`, `fallHeight` 150, `duration` 0.5, `fallDuration` 0.15, cùng độ cao hai đầu | `y` lớn nhất ≈ đích + 150 tại `t ≈ 0.7` (`ApexT` = max(0.5, 1 − 0.15/0.5)) · kết thúc đúng đích ±0.5 px |
+| `DropIn`, `fallHeight` 150, `duration` 0.5, `fallDuration` 0.15, cùng độ cao hai đầu | `y` lớn nhất ≈ đích + 150 (±3 px, lấy mẫu theo frame) tại `t ≈ 0.7` (`ApexT` = max(0.5, 1 − 0.15/0.5)) · kết thúc đúng đích ±0.5 px |
+| `DropIn`, `fallHeight` 0, cùng độ cao hai đầu | `y` không vượt đích ở mọi frame (đỏ nếu nhánh vẫn đi `CharmJump` với `arcHeight` 160) |
 | `DropIn` huỷ giữa chuyến | như case huỷ GĐ1 |
 
 **Mốc commit:** `feat(ui): UIProxyFlight hình DropIn`.
 
-## Giai đoạn 3 — dự án dùng bản Horcrux (agent)
+## GĐ3 — tài liệu (agent)
 
-**Mục tiêu:** `BoosterFlight` còn lớp nối với đuôi hạt; hai caller gọi một dòng. **Vì sao bây giờ:** đủ hai hình đường bay.
+**Mục tiêu:** người dùng hệ dựng được instance và tránh được bẫy mà không đọc code.
 
-`Entities/Cache/BoosterFlight.cs` viết lại, giữ file và `.meta` (GUID scene đang trỏ):
+`docs/Runtime/UIProxyFlight/UIProxyFlight.md` mở đầu `Code: Runtime/Utilities/UI/UIProxyFlight.cs`, và `.html` cùng thư mục.
+- **`.md`:** luồng (như trên) · bảng API (`FlyAsync`, hai hook, `UIProxyFlightPath`, field) · "Trước khi chạy" (Editor setup GĐ1–2) ·
+  "Design decisions" theo Ngữ cảnh đã chốt (đích chốt lúc gọi, enum từ 1, huỷ ném OCE, cỡ bằng `sizeDelta`).
+- **Bẫy:** canvas gốc không phải Overlay · cha của `visual` có scale khác 1 · thiếu Override Sorting · `path` = 0 · huỷ ném OCE · lớp con
+  quên dọn đuôi trong `OnFlightEnded` (vệt từ chuyến trước) · đích trượt trong lúc bay (bản sao đáp chỗ cũ).
+- **`.html`:** trang cho developer và designer: luồng, bảng field, Trước khi chạy, bẫy; đồng bộ theo `.md`.
+
+**Editor setup:** không. **Kiểm:** hai file có đủ mục trên; tên API khớp code đã gõ.
+
+**Mốc commit:** `docs(ui): UIProxyFlight.md, .html`.
+
+## GĐ4 — category-jam dùng bản Horcrux, xoá Plan (agent)
+
+**Mục tiêu:** lớp `BoosterFlight` chỉ còn lớp nối với đuôi hạt; hai caller gọi một dòng.
+
+**Vì sao bây giờ:** đủ hai hình bay và tài liệu.
+
+### `Assets/_CategoryJam/Scripts/Entities/Cache/BoosterFlight.cs` — viết lại, giữ file và `.meta` (GUID scene đang trỏ)
 
 ```csharp
 using Coffee.UIExtensions;
@@ -350,57 +462,56 @@ namespace CategoryJam.Gameplay.Entities
 }
 ```
 
-`Entities/Cache/CacheTileSlots.cs`:
+### `Assets/_CategoryJam/Scripts/Entities/Cache/CacheTileSlots.cs`
 
 | Chỗ | Cũ | Mới |
 |---|---|---|
-| `FlyTrayAsync` | sáu dòng `worldCamera`, `halfWidth`, `screenWidth` rồi `_extraSlotFlight.FlyAsync(launchScreenPoint, worldCamera.WorldToScreenPoint(landing), screenWidth, ct)` | `var landing = transform.TransformPoint(_horizontalGrid.LocalPositionOf(openCount - 1, openCount));` rồi `return _extraSlotFlight.FlyAsync(launchScreenPoint, Director.WorldCamera, landing, slot.RestWorldWidth, ct);` |
+| `FlyTrayAsync` | `var worldCamera = Director.WorldCamera;` · dòng `landing` · `halfWidth`, `screenWidth` (ba dòng) · `return _extraSlotFlight.FlyAsync(launchScreenPoint, worldCamera.WorldToScreenPoint(landing), screenWidth, ct);` | giữ `var landing = transform.TransformPoint(_horizontalGrid.LocalPositionOf(openCount - 1, openCount));` rồi `return _extraSlotFlight.FlyAsync(launchScreenPoint, Director.WorldCamera, landing, slot.RestWorldWidth, ct);` |
 | `FlyPackAsync` | như trên với `_packBooster` | `return _packFlight.FlyAsync(launchScreenPoint, Director.WorldCamera, _packBooster.transform.position, _packBooster.RestWorldWidth, ct);` |
-| comment quanh hai lời gọi nói "huỷ thì trả về bình thường" | — | sửa thành "huỷ thì ném `OperationCanceledException`" |
 
-**YAML `Game.unity`** (agent sửa text, rồi đọc lại trên object đã dựng bằng eval):
+`ct.ThrowIfCancellationRequested()` sau hai lời gọi (comment "Lưới an toàn: huỷ giữa lúc bay thì không …") giữ nguyên: `FlyAsync` đã ném
+khi huỷ, dòng đó vô hại và vẫn che nhánh `WhenAll` của `OpenOneMoreSlotAsync`.
 
-| Instance | Đổi |
+### `Assets/_CategoryJam/Scenes/Game.unity` (agent sửa text, rồi đọc lại trên object đã dựng bằng eval)
+
+| Instance | Có sẵn | Đổi |
+|---|---|---|
+| `extra_slot_flight` | `fallHeight: 150`, `fallDuration: 0.15` | thêm `path: 2` |
+| `pack_flight` | không có key `fallHeight`, `fallDuration` | thêm `path: 1` |
+
+Các key còn lại (`canvas`, `visual`, `aspectImage`, `trail`, `duration`, `arcHeight`, `startScale`, `moveEase`, `sizeEase`, `maxTiltDegrees`)
+trùng tên field, không đổi. Lần lưu đầu Unity ghi cho `pack_flight` `fallHeight: 0`, `fallDuration: 0.15` (mặc định) — vô hại vì `path`
+là `Arc`, và trùng giá trị bản tạm đang dùng.
+
+### `Assets/_CategoryJam/Scripts/Feel.md`
+
+| Chỗ | Đổi |
 |---|---|
-| `extra_slot_flight` (`fallHeight: 150`) | thêm `path: 2` |
-| `pack_flight` (không có key `fallHeight`) | thêm `path: 1` |
+| §10, hàng núm `extra_slot_flight` | `fallHeight > 0: cùng hình dạng …` → `path = DropIn: cùng hình dạng …`; `fallHeight 0 thì về cung CharmJump …` → `path = Arc: cung CharmJump theo arcHeight, moveEase — pack_flight bay kiểu này`; thêm `path` vào cột Núm; tên hàm đường cong theo bản đang có (xem Chung file) |
+| §11, hàng núm `pack_flight` | thêm `path` (`Arc`) vào cột Núm |
+| Trước khi chạy, hàng `extra_slot_flight` | thêm "`path` = `DropIn`" vào cột thiết lập, "khay bay vồng thay vì rơi" vào cột hỏng |
 
-Các key còn lại (`canvas`, `visual`, `aspectImage`, `trail`, `duration`, `arcHeight`, `startScale`, `moveEase`, `fallHeight`,
-`fallDuration`, `sizeEase`, `maxTiltDegrees`) trùng tên field, không đổi. Nếu `pack_flight` chưa có key `fallHeight` thì sau lần lưu đầu,
-Unity ghi `fallHeight: 150` (mặc định mới) cho nó. Key đó vô hại vì `path` là `Arc`.
+Xong thì **xoá Plan này** cùng `.meta`.
+
+**Editor setup:** không (YAML sửa bằng text ở trên).
 
 **Kiểm:**
-- Compile sạch; grep `TileFlightCurve` trong `BoosterFlight.cs` = 0.
+- `bash "<horcrux>/Editor/CompileCheck/Tools~/verify.sh" --csproj com.horcrux.runtime.csproj,CategoryJam.Gameplay.csproj --tests
+  CategoryJam.EditModeTests,Horcrux.EditModeTests` xanh; grep `TileFlightCurve` trong `BoosterFlight.cs` = 0.
 - Eval trên scene đã dựng: `extra_slot_flight.path == DropIn` · `pack_flight.path == Arc` · `trail` không null ở cả hai.
-- **Cần chơi thử** (developer): bấm Extra Slot thì khay lên đỉnh trên ô rồi rơi vào. Bấm Pack thì bình bay vồng, nghiêng nhẹ, đáp đúng
-  chỗ và cỡ bình thật. Dấu hiệu hỏng: bản sao giật cỡ một frame lúc nhường vật thật · đuôi kéo vệt từ chuyến trước · log `UIProxyFlight`
-  đỏ (`path` chưa chọn).
+- **Chơi thử** (developer): vào một level có thanh cache. Bấm Extra Slot: khay lên đỉnh trên ô mới rồi rơi vào, ô world hiện đúng chỗ và
+  cỡ khay. Bấm Pack khi thanh có tile: bình bay vồng, nghiêng nhẹ giữa đường, đáp đúng chỗ và cỡ bình thật. Khác trước: không gì (cảm giác
+  giữ nguyên). Dấu hiệu hỏng: bản sao giật cỡ một frame lúc nhường vật thật · khay bay vồng thay vì rơi (`path` sai) · đuôi kéo vệt từ
+  chuyến trước · log `UIProxyFlight` đỏ (`path` chưa chọn).
 
-**Mốc commit:** `refactor(booster): BoosterFlight dựng trên UIProxyFlight của Horcrux` ở dự án, kèm con trỏ submodule.
+**Mốc commit:** `refactor(booster): BoosterFlight dựng trên UIProxyFlight của Horcrux` ở dự án kèm con trỏ submodule; xoá Plan trong
+`Assets/Horcrux` cùng con trỏ đó.
 
-## Giai đoạn 4 — tài liệu (agent)
-
-`docs/Runtime/UIProxyFlight/UIProxyFlight.md` mở đầu `Code: Runtime/Utilities/UI/UIProxyFlight.cs` và `.html` cùng thư mục.
-- **`.md`:** luồng (như trên) · bảng API (`FlyAsync`, hai hook, `UIProxyFlightPath`, field) · "Trước khi chạy" (Editor setup GĐ1–2) ·
-  "Design decisions" theo Ngữ cảnh đã chốt.
-- **Bẫy:** canvas gốc không phải Overlay · thiếu Override Sorting · `path` = 0 · huỷ ném OCE · lớp con quên dọn đuôi trong `OnFlightEnded`
-  (vệt từ chuyến trước).
-- **`.html`:** theo `docs` › `.html`.
-
-Dự án: `Scripts/Feel.md` §10, §11 đổi tên field `fallHeight > 0` thành `path`. Xong thì **xoá Plan này** cùng `.meta`.
-
-**Mốc commit:** `docs(ui): UIProxyFlight.md, .html`, xoá Plan.
-
-## Use case
-
-Booster bay từ nút xuống bàn chơi (khay thêm ô, bình hút) · món mua trong shop bay vào túi đồ world · icon phần thưởng bay xuống ô của
-bàn chơi khi nhận quà giữa màn.
-
-## File → giai đoạn
+## File → GĐ
 
 | File | GĐ |
 |---|---|
 | `Runtime/Utilities/UI/UIProxyFlight.cs` | 1, 2 |
 | `Tests/PlayMode/UIProxyFlightTests.cs` (agent) | 1, 2 |
-| dự án: `BoosterFlight.cs`, `CacheTileSlots.cs`, `Game.unity` | 3 |
-| `docs/Runtime/UIProxyFlight/UIProxyFlight.md`, `.html`; dự án `Feel.md` | 4 |
+| `docs/Runtime/UIProxyFlight/UIProxyFlight.md`, `.html` (agent) | 3 |
+| category-jam `BoosterFlight.cs`, `CacheTileSlots.cs`, `Game.unity`, `Feel.md`; xoá Plan này | 4 |
