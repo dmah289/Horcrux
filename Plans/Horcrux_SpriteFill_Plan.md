@@ -1,119 +1,48 @@
 # Plan — `SpriteFill` (tên chốt khi gõ): ruột thanh tiến độ vẽ bằng `SpriteRenderer`
 
-Ngày 2026-11-13. Nguồn: category-jam `Assets/_CategoryJam/Scripts/Utilities/` — `SlicedFill.cs` (thanh tiến độ trên box),
-`SpriteHorizontalFill.cs`, `SpriteFillDividers.cs`, `sprite_horizontal_fill.shader` (thanh đếm lớp có vạch chia trên kệ), test
-`Tests/EditMode/SlicedFillTests.cs`, đã chơi thử. Hai cơ chế cho cùng một việc — ruột thanh theo tỉ lệ ở world — ứng hai chế độ
-`SetWidth`/`SetFill` của `ProgressBar` (UI): **A** `SlicedFill` đổi bề rộng `size` của Sliced, hai đầu bo luôn còn; **B**
-`SpriteHorizontalFill` cắt texel bằng shader, đầu cắt phẳng, art trong lòng không co, kèm `SpriteFillDividers` đặt vạch chia.
+Bản tạm: category-jam `Assets/_CategoryJam/Scripts/Utilities/` — A `SlicedFill.cs` (thanh tiến độ trên box; test `Tests/EditMode/SlicedFillTests.cs`) · B `SpriteHorizontalFill.cs`, `SpriteFillDividers.cs`, `sprite_horizontal_fill.shader` (thanh đếm lớp có vạch trên kệ). Hai cơ chế độc lập cho cùng việc, ứng `SetWidth` / `SetFill` của `ProgressBar` (UI); không phụ thuộc Plan nào.
+Chung file: `Runtime/AssemblyInfo.cs` với `Horcrux_ConveyorLoop_Plan.md` GĐ1 — Plan gõ trước tạo file, Plan sau thấy dòng đã có thì bỏ qua · category-jam `CategoryBox.cs` với Chuyển dự án của `Horcrux_UniTextSetFraction_Plan.md` — gõ cả hai thì chuyển chung một lần.
+Kiểm: `bash "<horcrux>/Editor/CompileCheck/Tools~/verify.sh" --csproj com.horcrux.runtime.csproj,Horcrux.EditModeTests.csproj,Horcrux.PlayModeTests.csproj --tests Horcrux.EditModeTests`; PlayMode chạy ở Window › General › Test Runner.
 
-**Phân công:** GĐ1–3 developer gõ, agent viết test theo bảng case rồi compile · GĐ4 (tài liệu) · GĐ5 (dự án chuyển sang bản Horcrux,
-xoá bản tạm, xoá Plan) agent làm.
-**Chạy được, thấy được:** GĐ1–3 compile sạch + bảng case xanh trong `Tests/EditMode/SlicedFillTests.cs`,
-`Tests/EditMode/SpriteHorizontalFillTests.cs` và hai case PlayMode trong `Tests/PlayMode/SpriteHorizontalFillPlayTests.cs`; thấy trong
-game ở GĐ5.
-**Lệnh kiểm** (chạy từ gốc dự án): `bash "<horcrux>/Editor/CompileCheck/Tools~/verify.sh" --csproj com.horcrux.runtime.csproj,Horcrux.EditModeTests.csproj,Horcrux.PlayModeTests.csproj --tests Horcrux.EditModeTests`;
-case PlayMode developer chạy trong Window › General › Test Runner › PlayMode.
-**Commit:** GĐ1–4 trong `Assets/Horcrux`; GĐ5 ở dự án kèm con trỏ submodule.
-**Phụ thuộc:** không. **Chung file:** `Runtime/AssemblyInfo.cs` — `Horcrux_ConveyorLoop_Plan.md` GĐ1 cũng cần dòng
-`InternalsVisibleTo("Horcrux.EditModeTests")`; Plan gõ trước tạo file, Plan sau thấy dòng đã có thì bỏ qua · category-jam
-`CategoryBox.cs` — GĐ chuyển dự án của `Horcrux_UniTextSetFraction_Plan.md` cũng sửa dòng `using` của file này; gõ cả hai thì gộp
-hai GĐ chuyển dự án vào một commit dự án.
-**Đã kiểm trước khi ghi:** ba file C# ở namespace mới, theo thứ tự GĐ1 → GĐ1+2 → GĐ1+2+3, cùng `AssemblyInfo.cs`, qua `csc -langversion:9`
-trên `UnityEngine.CoreModule` của Editor 6000.0.73f1 và `com.horcrux.runtime.dll`; assembly tên `Horcrux.EditModeTests` gọi được
-`SlicedFill.VisibleWidth` (`internal`). Thân hàm trùng nguyên văn ba bản tạm đang chạy trong game; shader trùng từng dòng bản tạm
-(diff rỗng), không qua compiler ngoài Unity. Bảng GĐ1 phủ đủ 11 test của `SlicedFillTests`. `§0`: không — mỗi cơ chế một phép toán một
-dòng, nằm ở GĐ của nó.
+## Cơ chế A — `SlicedFill`: ruột Sliced đổi bề rộng, hai đầu bo luôn còn
 
-## Ngữ cảnh đã chốt
+### Kịch bản
 
-- **Người dùng:** thanh tiến độ, thanh máu, thanh đếm vẽ bằng `SpriteRenderer` trong world: thanh máu trên đầu quái, thanh tiến độ trên
-  vật thể, thanh chia vạch dưới vật thể (số lớp, số lượt), thanh art nhiều lớp đổ bóng trong lòng không được co.
-- **Mục tiêu:** caller đưa tỉ lệ (hay `curr`/`total`), ruột vẽ đúng ở mọi tỉ lệ kể cả 0, 1 và rất nhỏ. Chọn cơ chế theo bảng dưới.
-- **Ranh giới:** chỉ vẽ ruột theo tỉ lệ; tween, chữ số, khung là của caller.
-- **Chỗ đặt, tên:** `Runtime/Utilities/Sprites/` (`SlicedFill.cs`, `SpriteHorizontalFill.cs`, `SpriteFillDividers.cs`), namespace
-  `Horcrux.Runtime.Utilities.Sprites`; shader `Shader/sprite_horizontal_fill.shader`, tên `Horcrux/sprite_horizontal_fill`. Không phụ
-  thuộc hệ nào. Tên đổi tuỳ ý trước khi gõ.
-- **Bảng chọn:**
-
-  | | A `SlicedFill` | B `SpriteHorizontalFill` (+ `SpriteFillDividers`) |
-  |---|---|---|
-  | ứng chế độ `ProgressBar` (UI) | `SetWidth` | `SetFill` (`Image.fillAmount`) |
-  | đầu ruột | hai đầu bo luôn còn | cắt phẳng |
-  | art trong lòng | phần giữa Sliced giãn theo bề rộng | giữ nguyên, không co, không kéo |
-  | vạch chia | không | có, đầu cắt dừng đúng tâm vạch |
-  | giá | không material riêng, batch như sprite thường | material shader riêng, mỗi renderer một `MaterialPropertyBlock`, không batch với renderer khác |
-  | setup | Draw Mode Sliced, sprite có border trái/phải, pivot trái | Draw Mode Simple, material shader B, atlas tắt xoay, `flipX` tắt |
-
-- **Cố ý không làm:** tween — caller tự `Tween.Custom` rồi gọi `Apply` / ghi `FillAmount` mỗi frame · trục dọc, cắt từ phải, tâm ra hai
-  phía — chưa có người dùng · `flipX` cho B — `_Flip` của Sprites-Default lật đỉnh còn UV giữ nguyên, đầu cắt sang phía phải nhìn thấy và
-  `Left`/`Width` đọc đỉnh chưa lật làm vạch lệch; chưa có người dùng · bản URP của shader B — chưa có người dùng (shader cho built-in).
-- **Quyết định trái trực giác:**
-  - A đổi `size.x`, không đổi `localScale.x`: Sliced giữ hai đầu bo nguyên cỡ khi đổi `size`; đổi scale thì bo méo. Sprite ruột pivot
-    trái để mép trái đứng yên.
-  - B cắt bằng shader, không `SpriteMask`: mask ghi stencil chung; renderer `VisibleInsideMask` hiện ở mọi vùng mask khác cùng dải, và
-    mất `VisibleOutsideMask` của bàn chơi. Shader cắt riêng từng renderer, mask interaction của renderer giữ nguyên.
-  - B cắt theo UV, không toạ độ object: sprite batching gộp đỉnh sang world nên object space không tin được. Giá: atlas chứa sprite tắt
-    xoay để trục u là trục ngang.
-  - B lấy vị trí và UV từ **cùng hai đỉnh** trái nhất, phải nhất của mesh: tỉ lệ `t` cùng một nghĩa ở đầu cắt và ở `Left + t * Width` dù
-    mesh Tight hay Full Rect. Lấy vị trí từ `sprite.bounds` thì hai nguồn chỉ trùng khi mesh phủ trọn rect; mesh Tight trên art có lề
-    trong suốt làm vạch lệch khỏi đầu cắt.
-  - B chạy cả ngoài Play: tool Editor vẽ thanh bằng chính hai component này, để bản xem trước giống game mà không chép công thức. Đo mesh
-    ở lần dùng đầu thay vì `Awake` · ghi `enabled` và vị trí vạch chỉ khi khác, vì ghi trùng ngoài Play làm scene bẩn · ngoài Play không
-    chép vạch (bản chép lưu vào scene đang mở): prefab dùng ngoài Play đặt sẵn đủ vạch.
-- **Mở rộng sau:** `SlicedFill.VisibleWidth` thành `public` khi caller cần số mà không ghi (giờ `internal`, `Apply` và test gọi) · trục
-  dọc, cắt từ phải, `flipX`, bản URP khi có người dùng · B đọc lại mesh khi sprite đổi lúc chạy.
-
-## Đã khảo sát
-
-| Nguồn | Lấy | Không lấy, vì sao |
+| Tình huống | Hệ làm gì | Caller thấy |
 |---|---|---|
-| category-jam `Scripts/Utilities/SlicedFill.cs` (bản tạm) | cả bốn hàm nguyên văn | namespace dự án; `VisibleWidth` public — caller thật (`CategoryBox`) không gọi |
-| category-jam `Tests/EditMode/SlicedFillTests.cs` | 11 test, đã có trong bảng GĐ1 | — |
-| category-jam `Scripts/Utilities/SpriteHorizontalFill.cs`, `SpriteFillDividers.cs`, `sprite_horizontal_fill.shader` (bản tạm) | cả cơ chế nguyên văn | namespace dự án |
-| category-jam `CategoryBox.cs`, `Scripts/Entities/Shelf/SingleShelfAmountBar.cs`, `_GameDesign/Script/LevelEditor/Design/DesignShelfView.cs` | cách gọi: chụp bề rộng đầy và `MinWidth` ở `Awake` (A) · `SetSegments(tổng)` rồi `Show(còn/tổng)` mỗi lần số đổi và mỗi frame tween (B) · tool level vẽ thanh ngoài Play (B) | — |
-| Horcrux `Runtime/Utilities/UI/ProgressBar.cs` | hai chế độ `SetWidth`/`SetFill` làm trục cho bảng chọn | chỉ cho `RectTransform`/`Image` UI |
-| Horcrux `Shader/` | chỗ đặt shader | shader UI và nền, không có shader sprite cắt |
+| số đổi `(curr, total)`, caller `Apply(fill, FillWidth(curr, total, full), min)` | ghi `size.x`, mép trái đứng yên | ruột dài ra, co lại; hai đầu bo nguyên cỡ, phần giữa giãn |
+| bề rộng dương nhưng hẹp hơn hai đầu bo | nâng lên `MinWidth` | đoạn ngắn đủ hai đầu bo, không chồng |
+| `curr` = 0 | tắt renderer, giữ `size` | ruột ẩn; lần hiện lại chỉ ghi `x` |
+| `curr` > `total` · `curr` < 0 | `Clamp01` | đầy · ẩn |
+| `total` ≤ 0 | `FillWidth` trả 0 | ẩn, không chia 0 |
+| tween | caller `Tween.Custom(from, to, …, w => SlicedFill.Apply(fill, w, min))` | ruột trượt mỗi frame |
+| caller đọc lại `fill.size.x` làm bề rộng đầy sau lần `Apply` đầu | `Apply` đã ghi đè `size.x` | thanh co dần — chụp `full` một lần ở `Awake` |
+| sprite ruột đổi lúc chạy | — | caller gọi lại `MinWidth` |
+| nhiều thanh cùng sprite | không material riêng | batch như sprite thường |
+
+### Flow
+
+```
+caller (thanh tiến độ)
+  │ Awake, một lần: full = fill.size.x ; min = SlicedFill.MinWidth(fill.sprite)
+  │ dữ liệu đổi (curr, total), hoặc mỗi frame Tween.Custom
+  ├─ SlicedFill.FillWidth(curr, total, full) ──► width               Runtime/Utilities/Sprites/SlicedFill.cs
+  └─ SlicedFill.Apply(fill, width, min)
+        └─ VisibleWidth (internal): 0 → ẩn ; (0, min) → min ; ≥ min → giữ
+              ──size.x, enabled──► SpriteRenderer ruột (Sliced, pivot trái)
+test ──VisibleWidth──► SlicedFill                                     Runtime/AssemblyInfo.cs (InternalsVisibleTo)
+```
 
 ---
 
-## Cơ chế A — `SlicedFill`
-
-### Luồng A
-
-```
-Awake của caller : full = fill.size.x ; min = SlicedFill.MinWidth(fill.sprite)        (chụp một lần)
-Dữ liệu đổi (curr, total):
-         width = SlicedFill.FillWidth(curr, total, full)
-         SlicedFill.Apply(fill, width, min)
-                 └─ VisibleWidth: 0 → ẩn ; (0, min) → nâng lên min ; ≥ min → giữ
-Có tween : Tween.Custom(from, to, ..., w => SlicedFill.Apply(fill, w, min))
-```
-
-Chụp `full` ở `Awake`, không đọc lại `fill.size.x` về sau: `Apply` ghi đè `size.x`.
-
-### Bản đồ A
-
-| Thành phần | Ai gọi | Việc |
-|---|---|---|
-| `SlicedFill.FillWidth` | caller mỗi lần dữ liệu đổi | tỉ lệ curr/total → bề rộng |
-| `SlicedFill.MinWidth` | caller một lần ở `Awake` | hai đầu bo của sprite, theo unit |
-| `SlicedFill.VisibleWidth` (`internal`) | `Apply`, test | 0 → 0 · dương → không hẹp hơn `MinWidth` |
-| `SlicedFill.Apply` | caller (trực tiếp hoặc trong tween) | ghi `size.x`, bật/tắt renderer |
-
-## Giai đoạn 1 — `SlicedFill`
-
-**Mục tiêu:** thanh Sliced chạy đúng ở mọi tỉ lệ, kể cả 0 và rất nhỏ. Xong là thanh tiến độ trên vật thể vẽ được bằng bản Horcrux.
-
-**Vì sao bây giờ:** cơ chế đơn giản nhất, không phụ thuộc gì; là trọn cơ chế A.
-
-**Sơ đồ sau GĐ1** (`+` là phần mới)
+### GĐ1 — xong thì thanh Sliced vẽ đúng ở mọi tỉ lệ, kể cả 0 và rất nhỏ
 
 ```
 caller ──FillWidth+ · MinWidth+ · Apply+──► SlicedFill+ ──size.x, enabled──► SpriteRenderer (Sliced)
 test ──VisibleWidth+ (internal)──► SlicedFill
 ```
 
-### `Runtime/AssemblyInfo.cs` — file mới (bỏ qua nếu đã có dòng này)
+`Runtime/AssemblyInfo.cs` — file mới (bỏ qua nếu đã có dòng này):
 
 ```csharp
 using System.Runtime.CompilerServices;
@@ -121,7 +50,7 @@ using System.Runtime.CompilerServices;
 [assembly: InternalsVisibleTo("Horcrux.EditModeTests")]
 ```
 
-### `Runtime/Utilities/Sprites/SlicedFill.cs` — file mới
+`Runtime/Utilities/Sprites/SlicedFill.cs` — file mới:
 
 ```csharp
 using UnityEngine;
@@ -155,6 +84,7 @@ namespace Horcrux.Runtime.Utilities.Sprites
         {
             var visible = VisibleWidth(width, minWidth);
             fill.enabled = visible > 0f;
+            // Ghi size, không localScale: Sliced giữ hai đầu bo nguyên cỡ, scale làm bo méo.
             if (visible > 0f)
                 fill.size = new Vector2(visible, fill.size.y);
         }
@@ -164,20 +94,15 @@ namespace Horcrux.Runtime.Utilities.Sprites
 }
 ```
 
-**Consumes / Produces:** consumes `SpriteRenderer.size`, `enabled`, `Sprite.border`, `pixelsPerUnit` · produces `FillWidth`, `MinWidth`,
-`Apply`; `internal VisibleWidth`.
+Editor setup phía caller:
 
-**Quyết định:**
-- `FillWidth`: `Clamp01` chặn curr vượt total và âm; `total ≤ 0` trả 0 thay vì chia cho 0.
-- `MinWidth`: `border.x + border.z` là trái + phải theo pixel, chia `pixelsPerUnit` ra unit. Bề rộng dưới số này làm Sliced chồng hai
-  đầu bo.
-- `Apply` giữ `size.y` và không đụng `size` khi ẩn: lần hiện lại chỉ ghi `x`.
-- Caller đọc `sprite.border` qua `MinWidth` một lần; sprite đổi lúc chạy thì gọi lại.
+| # | Bước | Thiếu thì |
+|---|---|---|
+| 1 | `SpriteRenderer` ruột › **Draw Mode** = Sliced | `size` bị bỏ qua, thanh không đổi |
+| 2 | sprite có border trái, phải > 0 và pivot **trái** | thiếu pivot trái: ruột co về tâm |
+| 3 | `size.x` lúc dựng là bề rộng đầy | caller chụp sai `full` |
 
-**Editor setup:** không trong Horcrux. Phía caller: `SpriteRenderer.drawMode` = **Sliced**, sprite có border trái/phải > 0 và pivot
-**trái**, `size.x` lúc dựng là bề rộng đầy. Thiếu pivot trái: ruột co về tâm. Thiếu Sliced: `size` bị bỏ qua, thanh không đổi.
-
-**Kiểm:** lệnh kiểm ở đầu Plan. Agent viết `Tests/EditMode/SlicedFillTests.cs`:
+`Tests/EditMode/SlicedFillTests.cs` (agent):
 
 | Input | Kỳ vọng |
 |---|---|
@@ -191,51 +116,77 @@ namespace Horcrux.Runtime.Utilities.Sprites
 | `Apply` width 1, minWidth 0.4 | `enabled` true, `size.x` 1, `size.y` giữ |
 | `Apply` width 0.1, minWidth 0.4 | `size.x` 0.4 |
 
-**Mốc commit:** `feat(sprites): SlicedFill — ruột Sliced theo tỉ lệ` (Horcrux).
+---
+
+## Cơ chế B — `SpriteHorizontalFill`, `SpriteFillDividers`: cắt phẳng bằng shader, vạch chia
+
+### Kịch bản
+
+| Tình huống | Hệ làm gì | Caller thấy |
+|---|---|---|
+| `FillAmount = t`, 0 < t ≤ 1 | ghi `_FillU` qua `MaterialPropertyBlock`; shader bỏ texel bên phải | đầu cắt phẳng như `Image.fillAmount`; art trong lòng không co, không kéo |
+| `t` = 0 hay âm | kẹp 0, tắt renderer | ruột ẩn; `FillAmount` đọc lại 0 |
+| `t` > 1 | kẹp 1 | cả sprite |
+| chưa ai gán `FillAmount` | `Awake` áp tỉ lệ mặc định 1 | cả sprite |
+| caller gán `FillAmount` hay đọc `Left`, `Width` trước `Awake` của component, hoặc ngoài Play | đo mesh ở lần dùng đầu | số đúng ngay, không cần `Awake` |
+| mesh sprite Tight hay Full Rect; sprite là mảnh của atlas | vị trí và UV lấy từ cùng hai đỉnh mép | đầu cắt và vạch khớp nhau |
+| thanh đếm: `SetSegments(tổng)` khi tổng đổi, `Show(còn / tổng)` mỗi lần số đổi, mỗi frame tween | đặt n − 1 vạch ở k/n; bật vạch đầu cắt đã qua hết bề rộng | đầu cắt dừng đúng tâm vạch `còn`; vạch ở đầu cắt và trên phần rỗng ẩn |
+| lúc co, đầu cắt chạm mép phải vạch | vạch tắt ngay | vạch không bao giờ nửa trên ruột nửa trên phần rỗng |
+| số đoạn giảm | vạch thừa chỉ tắt | pool lấy lại thanh với tổng khác không sinh rác |
+| lúc chạy, thiếu vạch | chép thêm từ vạch đầu | đủ vạch |
+| ngoài Play, thiếu vạch | `LogError`, đặt số vạch đang có | Console đỏ; scene không thêm object |
+| `SetSegments(1)` | không vạch | chỉ ruột |
+| scale vạch đổi lúc chạy | — | caller gọi lại `SetSegments` |
+| tool Editor vẽ thanh ngoài Play mỗi lần mở scene | ghi `enabled`, vị trí vạch chỉ khi khác | scene không bẩn; bản xem trước giống game |
+| renderer B | material riêng, mỗi renderer một MPB | không batch với renderer khác |
+| atlas xoay sprite · `flipX` bật | — | đầu cắt chạy theo trục dọc của art · hiện ở phía phải (setup sai) |
+
+### Flow
+
+```
+caller thanh đếm (còn / tổng) · tool Editor vẽ thanh ngoài Play (Awake không chạy)
+  │ SetSegments(tổng) khi tổng đổi · Show(còn / tổng) mỗi lần số đổi, mỗi frame tween
+  ▼
+SpriteFillDividers                                         Runtime/Utilities/Sprites/SpriteFillDividers.cs
+  ├─ localPosition.x, enabled ──► vạch (SpriteRenderer con của ruột)
+  │ FillAmount · Left · Width
+  ▼
+SpriteHorizontalFill ◄──FillAmount── caller thanh không vạch   Runtime/Utilities/Sprites/SpriteHorizontalFill.cs
+  ├─ EnsureMeasured (lần dùng đầu) ◄── sprite.vertices, sprite.uv
+  └─ Apply ──enabled, MPB _FillU──► SpriteRenderer ruột
+                                       └─► clip(_FillU − uv.x)    Shader/sprite_horizontal_fill.shader
+```
+
+### Thuật toán
+
+```
+Đo (lần dùng đầu: FillAmount, Left, Width hay Awake — cái nào tới trước):
+    iL, iR        ← chỉ số đỉnh x nhỏ nhất, lớn nhất của sprite.vertices
+    Left, Width   ← vertices[iL].x, vertices[iR].x − Left
+    uMin, uWidth  ← uv[iL].x, uv[iR].x − uMin        (UV trên texture đang vẽ: trang atlas khi đã pack)
+Cắt:   t ← Clamp01(t) ; t = 0 → tắt renderer ; t > 0 → _FillU = uMin + uWidth · t
+Shader: clip(_FillU − uv.x)
+Vạch:  vạch k (1 … n−1) ở x = Left + Width · k / n
+       h = nửa bề rộng vạch / Width
+       vạch k bật ⇔ t ≥ k / n + h
+```
+
+| Bất biến | Nhờ |
+|---|---|
+| `t` cùng một nghĩa ở đầu cắt (`u`) và ở `x = Left + t · Width` | vị trí và UV lấy từ cùng hai đỉnh; atlas không xoay nên `u` tuyến tính theo `x` |
+| `Show(còn / tổng)` dừng đầu cắt ở tâm vạch `còn` | `còn / tổng` là bội của `1/n` |
+| ở `t = k/n` đúng, vạch k tắt | ngưỡng có `+ h`; đầu cắt phẳng là ranh giới, vạch ở đó thừa |
 
 ---
 
-## Cơ chế B — `SpriteHorizontalFill`, `SpriteFillDividers`
-
-### Luồng B
-
-```
-Lần dùng đầu (FillAmount, Left, Width hay Awake — cái nào tới trước; ngoài Play Awake không chạy):
-            iL, iR ← đỉnh x nhỏ nhất, lớn nhất của sprite.vertices
-            Left, Width ← vertices[iL].x, vertices[iR].x − Left
-            uMin, uWidth ← uv[iL].x, uv[iR].x − uMin    (UV trong texture đang vẽ: trang atlas khi đã pack)
-FillAmount = t :
-            t ← Clamp01(t)
-            t = 0 → renderer.enabled = false
-            t > 0 → enabled = true ; MPB._FillU = uMin + uWidth * t
-Shader    : clip(_FillU − uv.x)  → texel bên phải đầu cắt bị bỏ, đầu cắt phẳng
-Dividers  : SetSegments(n) đặt vạch k ở Left + Width·k/n ; Show(t) ghi FillAmount và bật vạch đã nằm trọn trên ruột
-```
-
-### Bản đồ B
-
-| Thành phần | Ai gọi | Việc |
-|---|---|---|
-| `sprite_horizontal_fill.shader` | material trên renderer | Sprites-Default + `clip` theo `_FillU` |
-| `SpriteHorizontalFill.FillAmount` | `SpriteFillDividers.Show`; caller thanh không vạch | ghi `_FillU`, bật/tắt renderer |
-| `SpriteHorizontalFill.Left`, `Width` | `SpriteFillDividers`, caller khác bám đầu cắt | mép trái và bề rộng mesh sprite theo local renderer |
-| `SpriteFillDividers.SetSegments` | caller khi số đoạn đổi | đặt n − 1 vạch ở k/n |
-| `SpriteFillDividers.Show` | caller mỗi lần số đổi, mỗi frame tween | ghi tỉ lệ, bật vạch trên phần ruột |
-
-## Giai đoạn 2 — shader và `SpriteHorizontalFill`
-
-**Mục tiêu:** một renderer cắt phẳng đúng ở mọi tỉ lệ, kể cả 0 và 1. Xong là thanh không vạch có đầu phẳng vẽ được.
-
-**Vì sao bây giờ:** là lõi của B; `SpriteFillDividers` (GĐ3) đọc `Left`, `Width` và ghi `FillAmount` của nó.
-
-**Sơ đồ sau GĐ2**
+### GĐ2 — xong thì thanh không vạch có đầu cắt phẳng đúng ở mọi tỉ lệ, kể cả 0 và 1
 
 ```
 caller ──FillAmount+──► SpriteHorizontalFill+ ──MPB _FillU+, enabled──► SpriteRenderer ──► sprite_horizontal_fill.shader+ (clip)
 caller ──Left+ · Width+──► SpriteHorizontalFill+ (đo lười EnsureMeasured+)
 ```
 
-### `Shader/sprite_horizontal_fill.shader` — file mới
+`Shader/sprite_horizontal_fill.shader` — file mới:
 
 ```hlsl
 // Sprites/Default plus a horizontal cut: keeps texels with u <= _FillU, so the cut edge is straight like Image.fillAmount.
@@ -296,12 +247,7 @@ Shader "Horcrux/sprite_horizontal_fill"
 }
 ```
 
-- Thân giống Sprites-Default (`UnitySprites.cginc` lo đỉnh, màu renderer, flip, alpha ngoài), chỉ thêm dòng `clip`.
-- `_FillU` mặc định 1: renderer chưa có MPB (chưa ai gán tỉ lệ) vẽ cả sprite, vì UV không vượt 1.
-- Từ GĐ2 tới GĐ5, dự án có hai shader cùng tên `Horcrux/sprite_horizontal_fill` (bản tạm ở `_CategoryJam/Scripts/Utilities/`), thân
-  giống từng dòng: material trỏ shader theo GUID nên không đổi gì; `Shader.Find` trong test lấy bản nào cũng như nhau. GĐ5 xoá bản tạm.
-
-### `Runtime/Utilities/Sprites/SpriteHorizontalFill.cs` — file mới
+`Runtime/Utilities/Sprites/SpriteHorizontalFill.cs` — file mới:
 
 ```csharp
 using UnityEngine;
@@ -376,6 +322,7 @@ namespace Horcrux.Runtime.Utilities.Sprites
         /// </summary>
         private void EnsureMeasured()
         {
+            // _block là cờ đã đo: mesh sprite không đổi suốt đời renderer; vertices, uv cấp phát mảng mỗi lần đọc.
             if (_block != null) return;
 
             _block = new MaterialPropertyBlock();
@@ -406,6 +353,7 @@ namespace Horcrux.Runtime.Utilities.Sprites
             if (fillRenderer.enabled != visible) fillRenderer.enabled = visible;
             if (!visible) return;
 
+            // Đọc trước khi ghi: giữ giá trị khác caller đã đặt trên cùng renderer.
             fillRenderer.GetPropertyBlock(_block);
             _block.SetFloat(s_fillUId, _uMin + _uWidth * _fillAmount);
             fillRenderer.SetPropertyBlock(_block);
@@ -416,30 +364,16 @@ namespace Horcrux.Runtime.Utilities.Sprites
 }
 ```
 
-**Consumes / Produces:** consumes `Sprite.vertices`, `Sprite.uv`, `MaterialPropertyBlock` · produces shader
-`Horcrux/sprite_horizontal_fill`, `SpriteHorizontalFill.FillAmount`, `Left`, `Width`.
+Editor setup phía caller:
 
-**Quyết định:**
-- `EnsureMeasured` đọc `sprite.vertices` và `sprite.uv` một lần (mỗi cái cấp phát một mảng): mesh của sprite không đổi suốt đời
-  renderer. `_block` khác null là cờ "đã đo".
-- Đo lười, không ở `Awake`: tool Editor gọi `Show`, `Left` ngoài Play, nơi `Awake` không chạy · caller gán `FillAmount` trước `Awake`
-  của component (hai component cùng prefab, `Awake` không định thứ tự) vẫn được áp ngay. `Awake` vẫn gọi `Apply` để renderer có MPB
-  khi chưa ai gán tỉ lệ.
-- Hai mảng cùng chỉ số: `uv[i]` là UV của `vertices[i]`. Atlas không xoay thì u tuyến tính theo x, nên hai đỉnh ở hai mép là đủ.
-- So `enabled` trước khi ghi: ngoài Play, ghi một giá trị trùng cũng đánh dấu scene bẩn; lúc chạy một phép so không đáng kể. MPB không
-  serialize nên không làm scene bẩn.
-- `Left`, `Width` theo local renderer (đỉnh của sprite), không theo `bounds` của renderer (world, gồm scale cha): caller đặt con của
-  renderer theo tỉ lệ thì đúng ở mọi scale.
-- `GetPropertyBlock` trước `SetPropertyBlock`: giữ giá trị khác caller có thể đã đặt trên cùng renderer.
+| # | Bước | Thiếu thì |
+|---|---|---|
+| 1 | material mới dùng shader `Horcrux/sprite_horizontal_fill`, gán vào renderer ruột | không cắt, ruột luôn đầy |
+| 2 | renderer ruột › **Draw Mode** Simple, **Flip X** tắt | `flipX` bật: đầu cắt hiện ở phía phải |
+| 3 | thêm `SpriteHorizontalFill`, kéo renderer ruột vào ô **Fill Renderer** | `NullReferenceException` ở lần dùng đầu |
+| 4 | atlas chứa sprite tắt **Allow Rotation** | đầu cắt chạy theo trục dọc của art |
 
-**Editor setup** (phía caller): material mới dùng shader `Horcrux/sprite_horizontal_fill`, gán vào renderer ruột · `drawMode` Simple ·
-`flipX` tắt · thêm component, kéo renderer vào ô **Fill Renderer** · atlas chứa sprite tắt **Allow Rotation**. Thiếu material: không
-cắt, ruột luôn đầy. Thiếu ô: `NullReferenceException` ở lần dùng đầu. Atlas xoay sprite: đầu cắt chạy theo trục dọc của art. Bật
-`flipX`: đầu cắt hiện ở phía phải.
-
-**Kiểm:** lệnh kiểm ở đầu Plan. Agent viết `Tests/EditMode/SpriteHorizontalFillTests.cs` (đo lười nên không cần `Awake`; sprite tạo
-bằng `Sprite.Create` trên texture 100×10, renderer có material shader trên, đọc `_FillU` qua `GetPropertyBlock`), riêng hàng `Awake`
-ở `Tests/PlayMode/SpriteHorizontalFillPlayTests.cs` vì ở EditMode `Awake` không chạy:
+`Tests/EditMode/SpriteHorizontalFillTests.cs` (agent) — sprite `Sprite.Create` trên texture 100×10, renderer có material shader trên, đọc `_FillU` qua `GetPropertyBlock`; hàng PlayMode ở `Tests/PlayMode/SpriteHorizontalFillPlayTests.cs` (agent):
 
 | Input | Kỳ vọng |
 |---|---|
@@ -453,36 +387,16 @@ bằng `Sprite.Create` trên texture 100×10, renderer có material shader trên
 | `Left`, `Width` sprite 100 px, 100 ppu, pivot giữa | −0.5, 1 |
 | sprite pivot trái (`Sprite.Create` pivot (0, 0.5)), `FillAmount = 0.25` | `Left` 0; `_FillU` = uMin + 0.25 × uWidth |
 
-**Mốc commit:** `feat(sprites): SpriteHorizontalFill — cắt phẳng SpriteRenderer bằng shader` (Horcrux).
-
 ---
 
-## Giai đoạn 3 — `SpriteFillDividers`
-
-**Mục tiêu:** thanh chia n đoạn, đầu cắt dừng đúng tâm vạch, vạch chỉ hiện trên phần ruột. Xong là thanh đếm có vạch vẽ được, cả trong
-tool Editor ngoài Play.
-
-**Vì sao bây giờ:** đọc `Left`, `Width` và ghi `FillAmount` của ruột đã cắt được ở GĐ2.
-
-**Sơ đồ sau GĐ3**
+### GĐ3 — xong thì thanh chia n đoạn có vạch chạy được, cả trong tool Editor ngoài Play
 
 ```
 caller ──SetSegments+(n) · Show+(t)──► SpriteFillDividers+ ──FillAmount · Left · Width──► SpriteHorizontalFill
                                                 └─ localPosition.x, enabled+──► vạch (SpriteRenderer con của ruột)
 ```
 
-```
-SetSegments(n) : n − 1 vạch (lúc chạy chép thêm từ vạch đầu khi thiếu; ngoài Play không chép, LogError)
-                 vạch k (1…n−1) ở x = Left + Width · k / n
-                 halfWidthAmount = nửa bề rộng vạch / Width
-Show(t)        : fill.FillAmount = t
-                 vạch k bật ⇔ t ≥ k / n + halfWidthAmount
-```
-
-Caller (thanh đếm còn/tổng) gọi `SetSegments(tổng)` khi tổng đổi, `Show(còn / tổng)` mỗi lần số đổi và mỗi frame tween. `còn/tổng` là
-bội của `1/n` nên đầu cắt dừng ở `Left + Width · còn / n` — tâm vạch `còn`.
-
-### `Runtime/Utilities/Sprites/SpriteFillDividers.cs` — file mới
+`Runtime/Utilities/Sprites/SpriteFillDividers.cs` — file mới:
 
 ```csharp
 using System.Collections.Generic;
@@ -545,10 +459,12 @@ namespace Horcrux.Runtime.Utilities.Sprites
         /// <summary>Ghi tỉ lệ lên ruột và bật vạch nằm trọn trên phần ruột. Gọi mỗi lần tỉ lệ đổi, kể cả mỗi frame tween.</summary>
         public void Show(float amount)
         {
+            // Đầu cắt và vạch là một trạng thái: ghi chung thì caller không quên được một bên.
             fill.FillAmount = amount;
             var dividerCount = _segments - 1;
             for (var i = 0; i < dividers.Count; i++)
             {
+                // Vạch thừa khi số đoạn giảm chỉ tắt, không huỷ: pool lấy lại thanh với tổng khác không sinh rác.
                 var shown = i < dividerCount && amount >= (float)(i + 1) / _segments + _halfWidthAmount;
                 if (dividers[i].enabled != shown) dividers[i].enabled = shown;
             }
@@ -559,25 +475,15 @@ namespace Horcrux.Runtime.Utilities.Sprites
 }
 ```
 
-**Consumes / Produces:** consumes GĐ2 `FillAmount`, `Left`, `Width` · produces `SpriteFillDividers.SetSegments`, `Show`.
+Editor setup phía caller:
 
-**Quyết định:**
-- `Show` ghi luôn `FillAmount`: đầu cắt và vạch là một trạng thái, ghi hai chỗ thì caller có thể quên một.
-- Ngưỡng `k/n + halfWidthAmount`, không `k/n`: lúc ruột co, vạch tắt ngay khi đầu cắt chạm mép phải vạch, không đợi tới tâm — vạch
-  không bao giờ đứng nửa trên ruột nửa trên phần rỗng. Ở `t = k/n` đúng, vạch k tắt: đầu cắt phẳng là ranh giới, vạch ở đó thừa.
-- `halfWidthAmount` tính một lần ở `SetSegments` theo scale local của vạch mẫu; scale vạch đổi lúc chạy thì gọi lại `SetSegments`.
-- Vạch thừa khi n giảm chỉ tắt, không huỷ: pool lấy lại thanh với tổng khác không sinh rác.
-- Danh sách vạch là ô serialize, vạch đầu là mẫu: prefab chạy ngoài Play (tool Editor) đặt sẵn đủ vạch vào ô, vì ngoài Play
-  `Instantiate` sinh object con lưu vào scene đang mở. Thiếu vạch ngoài Play thì `LogError` rồi đặt số vạch đang có — lỗi setup không
-  nổ, nên báo đỏ.
-- So vị trí và `enabled` trước khi ghi: cùng lý do với `SpriteHorizontalFill.Apply`.
+| # | Bước | Thiếu thì |
+|---|---|---|
+| 1 | một vạch con của renderer ruột, `sortingOrder` trên ruột | — |
+| 2 | thêm `SpriteFillDividers` lên object của ruột, kéo `SpriteHorizontalFill` vào ô **Fill**, vạch vào phần tử đầu của ô **Dividers** | `NullReferenceException` ở lần `SetSegments` đầu |
+| 3 | prefab vẽ ngoài Play: thêm sẵn vạch vào ô **Dividers** tới số đoạn lớn nhất trừ một | `LogError`, thanh thiếu vạch |
 
-**Editor setup** (phía caller): một vạch con của renderer ruột, `sortingOrder` trên ruột · thêm component lên object của ruột, kéo
-`SpriteHorizontalFill` vào ô **Fill**, vạch vào phần tử đầu của ô **Dividers** · prefab vẽ ngoài Play: thêm sẵn vạch tới số đoạn lớn
-nhất trừ một. Thiếu ô: `NullReferenceException` ở lần `SetSegments` đầu.
-
-**Kiểm:** lệnh kiểm ở đầu Plan. Case thêm vào `SpriteHorizontalFillTests.cs`, riêng hàng chép vạch ở file PlayMode (chỉ lúc chạy mới
-chép); ruột sprite 100 px (Width 1, Left −0.5), vạch 2 px:
+Case thêm vào `SpriteHorizontalFillTests.cs` (agent), hàng chép vạch ở file PlayMode; ruột sprite 100 px (`Width` 1, `Left` −0.5), vạch 2 px:
 
 | Input | Kỳ vọng |
 |---|---|
@@ -588,73 +494,46 @@ chép); ruột sprite 100 px (Width 1, Left −0.5), vạch 2 px:
 | ngoài Play, ô một vạch: `SetSegments(3)` | `LogError` một lần, không thêm renderer, vạch 1 ở x = −0.1667 |
 | `SetSegments(1)`, `Show(1)` | không vạch nào bật |
 
-**Mốc commit:** `feat(sprites): SpriteFillDividers — vạch chia trên ruột cắt phẳng` (Horcrux).
-
 ---
 
-## Giai đoạn 4 — Tài liệu `docs/Runtime/SpriteFill/SpriteFill.md` và `SpriteFill.html` (agent)
+## Chuyển dự án (agent)
 
-Một tài liệu cho hai cơ chế. `.md` mở đầu `Code: Runtime/Utilities/Sprites/, Shader/sprite_horizontal_fill.shader`. Mục: **bảng chọn**
-(Ngữ cảnh đã chốt, kèm cột ứng chế độ `ProgressBar`) · luồng A, luồng B ASCII · bảng API (`FillWidth`, `MinWidth`, `Apply`;
-`FillAmount`, `Left`, `Width`, `SetSegments`, `Show`) · "Design decisions" gom Quyết định trái trực giác và Quyết định từng GĐ · "Trước
-khi chạy" = Editor setup phía caller của GĐ1, GĐ2, GĐ3 · "Dùng trong dự án": A chụp `full` và `min` một lần ở `Awake`, gọi `Apply` mỗi
-lần dữ liệu đổi hoặc mỗi frame tween; B gọi `SetSegments` khi tổng đổi, `Show` mỗi lần số đổi. `.html` chọn từ `.md`: Kịch bản (đầy,
-nửa, rất nhỏ, rỗng; thanh chia vạch) · Cách dùng · Flow · Lưu ý (thiếu pivot trái, thiếu Sliced, atlas xoay, `flipX`, thiếu material,
-mất batch, sprite đổi lúc chạy). Tên trung tính, không tên dự án.
-
-**Mốc commit:** `docs(sprites): SpriteFill.md, SpriteFill.html` (Horcrux).
-
----
-
-## Giai đoạn 5 — category-jam dùng bản Horcrux, xoá bản tạm, xoá Plan (agent)
-
-**Mục tiêu:** thanh tiến độ box, thanh đếm lớp của kệ Single và view kệ trong tool level chạy trên bản Horcrux; bản tạm và test của nó
-biến mất; prefab, material không "Missing script", không hồng.
-
-| File | Việc |
+| Chỗ | Đổi |
 |---|---|
-| `Assets/_CategoryJam/Scripts/Utilities/SlicedFill.cs` + `.meta` | xoá (class static, không asset nào trỏ GUID) |
-| `Assets/_CategoryJam/Tests/EditMode/SlicedFillTests.cs` + `.meta` | xoá — 11 test đã ở bảng GĐ1 |
-| `Assets/Horcrux/Runtime/Utilities/Sprites/SpriteHorizontalFill.cs.meta` | `guid:` ← GUID trong `.meta` bản tạm `SpriteHorizontalFill.cs` (hiện `988795041c6f7d64aaa65b34ef9b7ed6`; đọc lại từ file) |
+| `docs/Runtime/SpriteFill/SpriteFill.md`, `.html` | tạo, một tài liệu cho hai cơ chế: `Code: Runtime/Utilities/Sprites/, Shader/sprite_horizontal_fill.shader` · bảng chọn A / B (ứng `ProgressBar.SetWidth` / `SetFill`, đầu bo / phẳng, art trong lòng giãn / giữ, vạch, giá batch, setup) · Flow A, B · API · quyết định theo comment và Không làm · "Trước khi chạy" = Editor setup GĐ1–3 · `.html`: Kịch bản (đầy, nửa, rất nhỏ, rỗng; thanh chia vạch), Cách dùng, Flow, Lưu ý (thiếu pivot trái, thiếu Sliced, atlas xoay, `flipX`, thiếu material, mất batch, sprite đổi lúc chạy); tên trung tính |
+| `Scripts/Utilities/SlicedFill.cs` + `.meta` | xoá (class static, không asset nào trỏ GUID) |
+| `Tests/EditMode/SlicedFillTests.cs` + `.meta` | xoá — 11 test đã ở bảng GĐ1 |
+| Unity, trước ba dòng `.meta` | đóng Prefab Mode nếu đang mở `SingleShelf.prefab`, `_GameDesign/Prefabs/design_shelf_single.prefab` (Prefab Mode tự lưu đè file) · đóng Unity (sửa `.meta` khi Editor mở thì Unity ghi đè) |
+| `Assets/Horcrux/Runtime/Utilities/Sprites/SpriteHorizontalFill.cs.meta` | `guid:` ← GUID trong `.meta` bản tạm `SpriteHorizontalFill.cs` (hiện `988795041c6f7d64aaa65b34ef9b7ed6`; đọc lại từ file) — hai prefab trên trỏ script theo GUID |
 | `Assets/Horcrux/Runtime/Utilities/Sprites/SpriteFillDividers.cs.meta` | `guid:` ← bản tạm (hiện `86ce7e486a3758e439a70d8c44ec2472`) |
-| `Assets/Horcrux/Shader/sprite_horizontal_fill.shader.meta` | `guid:` ← bản tạm (hiện `cc94eb9ad979a9d45912ac378507d3c2`) |
-| bản tạm `SpriteHorizontalFill.cs`, `SpriteFillDividers.cs`, `sprite_horizontal_fill.shader` + `.meta` | xoá |
+| `Assets/Horcrux/Shader/sprite_horizontal_fill.shader.meta` | `guid:` ← bản tạm (hiện `cc94eb9ad979a9d45912ac378507d3c2`) — `Arts/Material/sprite_horizontal_fill.mat` trỏ shader theo GUID |
+| bản tạm `SpriteHorizontalFill.cs`, `SpriteFillDividers.cs`, `sprite_horizontal_fill.shader` + `.meta` | xoá, cùng lần với ba dòng `.meta` trên |
+| Unity, sau ba dòng `.meta` | mở, chờ import · `SingleShelf.prefab` › `AmountDisplay`: `Sprite Horizontal Fill`, `Sprite Fill Dividers` còn đủ ô; material ruột không hồng |
 | `Scripts/Entities/Box/CategoryBox.cs` | thêm `using Horcrux.Runtime.Utilities.Sprites;`; giữ `using CategoryJam.Gameplay.Utilities;` nếu file còn type khác của namespace đó, không thì bỏ |
 | `Scripts/Entities/Shelf/SingleShelfAmountBar.cs`, `_GameDesign/Script/LevelEditor/Design/DesignShelfView.cs` | như trên (`CategoryJam.GameDesign.asmdef` đã tham chiếu `com.horcrux.runtime`) |
-| `Scripts/Entities/Entities.md` (cây `AmountDisplay`, đoạn `_FillU`, `progress_fill`), `Structure.md` (cây `Utilities`, bảng bản tạm chờ Horcrux), `Scripts/Feel.md` (Máy kiểm `SlicedFillTests`), `_GameDesign/Script/LevelEditor/LevelEditor.md` (thanh `amount_bar`) | trỏ bản Horcrux và tài liệu `docs/Runtime/SpriteFill/`, bỏ dòng bản tạm và đường dẫn Plan cũ |
-| `Assets/Horcrux/Plans/Horcrux_SpriteFill_Plan.md` + `.meta` | xoá |
+| `Scripts/Entities/Entities.md` (cây `AmountDisplay`, đoạn `_FillU`, `progress_fill`), `Structure.md` (cây `Utilities`, bảng bản tạm chờ Horcrux), `Scripts/Feel.md` (Máy kiểm `SlicedFillTests`), `_GameDesign/Script/LevelEditor/LevelEditor.md` (thanh `amount_bar`) | trỏ bản Horcrux và `docs/Runtime/SpriteFill/`, bỏ dòng bản tạm và đường dẫn Plan |
+| kiểm | `verify.sh --csproj CategoryJam.Gameplay.csproj,CategoryJam.GameDesign.csproj,CategoryJam.EditModeTests.csproj --tests CategoryJam.EditModeTests,Horcrux.EditModeTests` xanh · `grep -rln "SlicedFill\|SpriteHorizontalFill\|SpriteFillDividers" Assets/_CategoryJam Assets/_GameDesign --include=*.cs` chỉ ra `CategoryBox.cs`, `SingleShelfAmountBar.cs`, `DesignShelfView.cs` · `grep -rl 988795041c6f7d64aaa65b34ef9b7ed6 Assets` chỉ còn `.meta` Horcrux và hai prefab · Console không "Missing script" |
+| Plan này | xoá cùng `.meta` |
+| chơi thử | màn có box và kệ Single theo bảng Kịch bản A, B (đặt tile vào box, nhặt tile khỏi kệ Single); tool thiết kế level xem kệ Single vẽ như trong game; hỏng: ruột hồng (mất shader), ruột luôn đầy (mất material), thanh không đổi, vạch lệch khỏi đầu cắt, "Missing script" trên prefab |
 
-`CategoryBox.cs` cũng đổi trong GĐ chuyển dự án của `Horcrux_UniTextSetFraction_Plan.md`: gõ cả hai thì làm chung một commit.
+## Không làm · Mở rộng sau
 
-**Editor setup** — `SingleShelf.prefab`, `_GameDesign/Prefabs/design_shelf_single.prefab` trỏ hai script, `Arts/Material/sprite_horizontal_fill.mat`
-trỏ shader, đều theo GUID; bản Horcrux **nhận lại GUID của bản tạm**:
-
-1. Đóng Prefab Mode nếu đang mở hai prefab trên (Prefab Mode tự lưu đè file).
-2. Đóng Unity (sửa `.meta` khi Editor mở thì Unity ghi đè). Đọc ba `guid:` từ `.meta` bản tạm, xoá bản tạm `.cs`/`.shader` + `.meta`, ghi
-   ba GUID vào `.meta` bản Horcrux — cùng một lần.
-3. Mở Unity, chờ import. Mở `SingleShelf.prefab` › `AmountDisplay`: `Sprite Horizontal Fill`, `Sprite Fill Dividers` còn đủ ô; material
-   ruột không hồng.
-
-**Kiểm:** `bash "<horcrux>/Editor/CompileCheck/Tools~/verify.sh" --csproj CategoryJam.Gameplay.csproj,CategoryJam.GameDesign.csproj,CategoryJam.EditModeTests.csproj --tests CategoryJam.EditModeTests,Horcrux.EditModeTests`
-xanh · `grep -rln "SlicedFill\|SpriteHorizontalFill\|SpriteFillDividers" Assets/_CategoryJam Assets/_GameDesign --include=*.cs` chỉ
-ra ba caller `CategoryBox.cs`, `SingleShelfAmountBar.cs`, `DesignShelfView.cs` · `grep -rl 988795041c6f7d64aaa65b34ef9b7ed6 Assets` chỉ
-còn `.meta` Horcrux và hai prefab · Console không "Missing script".
-
-**Chơi thử (developer):** vào màn có box và kệ Single · đặt tile vào box — thanh tiến độ trên box dài ra theo số tile, hai đầu bo, lúc rất
-ít tile vẫn thấy một đoạn ngắn đủ hai đầu, rỗng thì ẩn · nhặt tile khỏi kệ Single — thanh đếm lớp co lại, đầu cắt phẳng dừng đúng tâm
-vạch, vạch ở phần rỗng ẩn · mở tool thiết kế level, xem kệ Single — thanh vẽ như trong game · mọi thứ như trước khi chuyển. Dấu hiệu hỏng:
-ruột hồng (mất shader), ruột luôn đầy (mất material), thanh không đổi, vạch lệch khỏi đầu cắt, "Missing script" trên prefab.
-
-**Mốc commit:** `refactor(sprites): thanh tiến độ, thanh đếm dùng SpriteFill của Horcrux` (dự án, kèm con trỏ submodule).
-
----
-
-## File → GĐ
-
-| File | GĐ |
-|---|---|
-| `Runtime/AssemblyInfo.cs` (nếu chưa có), `Runtime/Utilities/Sprites/SlicedFill.cs`, `Tests/EditMode/SlicedFillTests.cs` (agent) | 1 |
-| `Shader/sprite_horizontal_fill.shader`, `Runtime/Utilities/Sprites/SpriteHorizontalFill.cs`, `Tests/EditMode/SpriteHorizontalFillTests.cs`, `Tests/PlayMode/SpriteHorizontalFillPlayTests.cs` (agent) | 2 |
-| `Runtime/Utilities/Sprites/SpriteFillDividers.cs`; hai file test trên thêm case | 3 |
-| `docs/Runtime/SpriteFill/SpriteFill.md`, `.html` (agent) | 4 |
-| category-jam bản tạm (xoá), `SlicedFillTests.cs` (xoá), ba `.meta` Horcrux nhận GUID, `CategoryBox.cs`, `SingleShelfAmountBar.cs`, `DesignShelfView.cs`, `Entities.md`, `Structure.md`, `Feel.md`, `LevelEditor.md`; Plan này (xoá) | 5 |
+| | Phương án | Vì sao |
+|---|---|---|
+| bỏ | tween, chữ số, khung trong hệ | caller tự `Tween.Custom` rồi gọi `Apply` / `Show` mỗi frame; hệ chỉ vẽ ruột theo tỉ lệ |
+| bỏ | A đổi `localScale.x` | scale làm méo hai đầu bo; Sliced giữ hai đầu nguyên cỡ chỉ khi đổi `size` |
+| bỏ | `VisibleWidth` `public` như bản tạm | caller thật không gọi; `Apply` và test gọi |
+| bỏ | B cắt bằng `SpriteMask` | mask ghi stencil chung: renderer `VisibleInsideMask` hiện ở mọi vùng mask khác cùng dải và mất `VisibleOutsideMask` của bàn chơi |
+| bỏ | B cắt theo toạ độ object | sprite batching gộp đỉnh sang world nên object space không tin được; giá là atlas tắt xoay |
+| bỏ | vị trí lấy từ `sprite.bounds` | chỉ trùng UV khi mesh phủ trọn rect; mesh Tight trên art có lề trong suốt làm vạch lệch khỏi đầu cắt |
+| bỏ | `Left`, `Width` theo `bounds` của renderer | world, gồm scale cha; con của renderer đặt theo tỉ lệ sai khi cha scale |
+| bỏ | B đo mesh ở `Awake` | ngoài Play `Awake` không chạy; caller cùng prefab gán `FillAmount` trước `Awake` vì thứ tự `Awake` không định |
+| bỏ | B chỉ chạy trong Play | tool Editor vẽ thanh bằng chính hai component để bản xem trước giống game mà không chép công thức |
+| bỏ | ngưỡng vạch `k/n` | lúc co, vạch đứng nửa trên ruột nửa trên phần rỗng tới khi đầu cắt chạm tâm |
+| bỏ | ngoài Play chép vạch thiếu | `Instantiate` ngoài Play lưu vạch vào scene đang mở; prefab dùng ngoài Play đặt sẵn đủ vạch |
+| bỏ | đặt tên shader Horcrux khác bản tạm | material trỏ GUID, hai bản thân giống từng dòng nên `Shader.Find` lấy bản nào cũng như nhau tới khi Chuyển dự án xoá bản tạm |
+| sau | `SlicedFill.VisibleWidth` thành `public` | khi caller cần số mà không ghi |
+| sau | trục dọc, cắt từ phải, tâm ra hai phía | khi có người dùng |
+| sau | `flipX` cho B | `_Flip` của Sprites-Default lật đỉnh còn UV giữ, đầu cắt sang phía phải và vạch lệch vì `Left`, `Width` đọc đỉnh chưa lật; khi có người dùng |
+| sau | bản URP của shader B | khi có người dùng; shader hiện cho built-in |
+| sau | B đọc lại mesh khi sprite đổi lúc chạy | khi có người dùng |
