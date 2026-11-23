@@ -1,6 +1,6 @@
 # code-design — tra cứu
 
-Nền tảng, Sổ tay và bẫy của `code-design`. Đọc mục được bảng Tra cứu trong `SKILL.md` gọi.
+Nền tảng và Sổ tay của `code-design`. Đọc mục được bảng Tra cứu trong `SKILL.md` gọi.
 
 ## Stack và quy ước
 
@@ -31,10 +31,8 @@ Nền tảng, Sổ tay và bẫy của `code-design`. Đọc mục được bả
   riêng, bật bằng define).
 - **Composite — giá:** cây composite thì hành vi phải chạy mới biết, dispatch ảo mỗi nút mỗi frame · xé thành nhiều
   `MonoBehaviour` thì thứ tự `Awake`/`Update` không định, wire thiếu lộ lúc chạy.
-- **Dọn "dự phòng" ở `OnDestroy`** chạy cả lúc thoát app, khi các hệ kia đã tự dọn trước. *Bẫy:* dừng Play ra một lỗi thiếu
-  service; vá lỗi đó thì lộ hàng chục lỗi trả tài nguyên — đường dọn không nên chạy, không phải chỗ ném sai.
-- *Bẫy:* component dùng chung mang cờ chế độ; ở host không có ngữ cảnh của chế độ đó, bấm không ra gì, không lỗi nào báo.
-  Service đã tự chọn theo ngữ cảnh thì component chỉ gọi service; host không cần hành vi thì tắt component.
+- **Dọn "dự phòng" ở `OnDestroy`** chạy cả lúc thoát app, khi các hệ kia đã tự dọn trước.
+- Service đã tự chọn theo ngữ cảnh thì component chỉ gọi service; host không cần hành vi thì tắt component.
 
 **Sổ tay** — `*.Editor.cs` partial bọc `#if UNITY_EDITOR` · `IInitializable<T>` khi base không phải `MonoBehaviour<T>` ·
 không service locator trong hệ; object sinh lúc chạy tự nhận service qua `Init`, không truyền qua nơi `Instantiate` ·
@@ -78,9 +76,6 @@ event · lookup dựng trước · tách tĩnh tính một lần khỏi động 
 list:* duyệt ngược hoặc deferred removal. Kết quả chỉ phụ thuộc cấu hình đọc một lần là hằng của phiên: dựng một lần, giữ
 trong field.
 
-- *Bẫy:* meter theo kích thước heap báo +0 B cho 1000 closure; đếm GC.Alloc (`Is.Not.AllocatingGCMemory()`) thì thấy.
-- *Bẫy:* chuỗi nội suy cấp phát mỗi lần chạm với lý do "chạm là tương tác, không phải mỗi frame".
-
 ## Guard
 
 **"Để nổ" phải kiểm vế *nổ*.** Năm hình dạng **không** nổ:
@@ -96,12 +91,10 @@ trong field.
 - Cấu hình ngoài về muộn để phiên sau, để người chơi mới vào đúng nhóm thử nghiệm ngay phiên đầu; mốc "đã xong" của lượt
   nhận bắn ở mọi đường ra.
 - View runtime không có nhánh vẽ lỗi — chỉ được **xoá vết cũ** của ô dùng lại.
-- *Bẫy:* field khoảng thời gian không default thành 0, ghi đĩa mỗi frame, không một dòng log.
 
 > **Nền tảng** — serializer của Unity không giữ `null` cho `string` và class `[Serializable]` lồng: đọc từ asset ra `""` và
 > object rỗng. State có mặc định author trong asset thì nghĩa *"chưa có"* không đặt vào `null` của chính field đó — suy từ
-> field hệ quyết được (id 0 = chưa quyết) hoặc chuẩn hoá ở cửa quyết nghĩa. *Bẫy:* luật coi `null` là "chưa báo"; save cài
-> mới lấy mặc định từ asset ra `""`, UI hiện như ca có thật.
+> field hệ quyết được (id 0 = chưa quyết) hoặc chuẩn hoá ở cửa quyết nghĩa.
 
 ## Bất biến
 
@@ -138,9 +131,6 @@ Bốn bất biến chuyên biệt, cùng gốc "một trạng thái = một cử
   một chủ.
 - **Danh sách vừa là lệnh vừa để vẽ:** thực thi gộp theo khoá hệ nhận lệnh, hiển thị theo khoá người dùng nhìn; kho cộng dồn
   gộp lúc đọc.
-- *Bẫy:* helper cùng tên trong class con che **mọi** overload của `UnityEngine.Object`; đưa ra extension method thì hết, vì
-  extension không che instance method.
-- *Bẫy:* phần tử khác hành vi nằm chung enum với nhóm; vòng duyệt cả enum cấp cho nó thứ không ai đọc.
 - **Hai bản buộc khớp — thêm:** định danh số chia sẻ với asset là `enum` tường minh từ `= 1` · phía nhận chuỗi định danh trỏ
   symbol phía phát · vật kề nhau ở world và canvas neo cùng mép, cùng luật co giãn (`demo-compare` › Tỉ lệ màn) · kênh phản
   hồi nghe event riêng sẽ bắn cả ca đã chặn · consumer tự giữ bản cũ của giá trị là bản sao thứ hai.
@@ -168,7 +158,6 @@ Bốn bất biến chuyên biệt, cùng gốc "một trạng thái = một cử
   tracking): giữ khoá dưới tên mới, hay đổi khoá kèm giá (máy còn build cũ, cấu hình ngoài phải đổi cùng lần phát hành).
   Asset trong repo đổi key YAML cùng lần, không `FormerlySerializedAs` — attribute đó chỉ là cầu cho asset không sửa tay
   được, gỡ sau khi asset đã lưu tên mới. Đổi đơn vị: grep mọi hằng mang đơn vị trước lần chạy đầu.
-  *Bẫy:* đổi tên field DTO theo yêu cầu rồi mới báo khoá ngoài repo phải đổi cùng build.
 
 **Sổ tay** — phạm vi đổi tên chọn theo **kiểu**, không theo tên; quét **mọi** định danh cũ trên **mọi** YAML (kể cả
 `propertyPath`, `m_MethodName`); đổi bằng luật máy móc thì áp lên cây gốc rồi so từng blob, file đổi ngoài tập kỳ vọng là

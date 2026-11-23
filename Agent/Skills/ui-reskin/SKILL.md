@@ -1,6 +1,6 @@
 ---
 name: ui-reskin
-description: Dùng khi dựng hoặc reskin UI hay art world (SpriteRenderer trên vật thể) theo ảnh demo, hay thêm art: cách tổ chức prefab UI để đúng demo và dễ mở rộng, chữ art nhiều lớp (màu, viền, bóng đổ) đúng số theo demo, chia atlas và bundle cho art UI, cách làm việc với Editor qua công cụ (MCP, eval) khi dựng, soát, chụp, đo, và các bẫy của UGUI, prefab, sprite, TMP đã trả giá.
+description: Dùng khi dựng hoặc reskin UI hay art world (SpriteRenderer trên vật thể) theo ảnh demo, hay thêm art: cách tổ chức prefab UI để đúng demo và dễ mở rộng, chữ art nhiều lớp (màu, viền, bóng đổ) đúng số theo demo, chia atlas và bundle cho art UI, cách làm việc với Editor qua công cụ (MCP, eval) khi dựng, soát, chụp, đo, và hành vi của UGUI, prefab, sprite, TMP cần biết.
 ---
 
 # ui-reskin — prefab UI theo demo
@@ -22,8 +22,7 @@ tắt, reference kéo thả thì không. **Cây giữ, art cũ thì gỡ** (mụ
 
 **Nguồn hình là màn tham chiếu (demo, prefab đã reskin) thì mọi thuộc tính hình lấy từ đó; prefab cũ chỉ góp hành vi.** Màu,
 nhãn mà skin cũ gán theo ý nghĩa (đỏ cho thoát, vàng cho chơi lại) cũng là skin cũ: giữ lại là trộn hai skin. Vai mà tham chiếu
-không có hình cho thì hỏi (mục cuối), không lấy từ skin cũ. *Bẫy:* màn tham chiếu dùng một màu nút, agent giữ màu
-theo ý nghĩa của skin cũ dưới nhãn giả định; developer bắt đổi.
+không có hình cho thì hỏi (mục cuối), không lấy từ skin cũ.
 
 **Đổi art của một khối thì soát mọi nơi còn vẽ art cũ** (tìm theo GUID): bản sao hình của khối trong tool thiết kế, preview, prefab
 song song không báo lỗi khi lệch skin, chỉ lộ khi người khác mở. Nêu từng nơi cho developer quyết, không tự đổi theo.
@@ -36,8 +35,7 @@ renderer thì làm trong chính nó (shader, tham số theo renderer); mask dùn
 nút, font) ở một chỗ thì mọi chỗ theo, và thêm một mục mới là *thêm* một variant hay kéo một khối vào, không chép. Số tầng
 variant theo số **lý do thay đổi** thật (kiểu chung → loại → gói), không theo cho đủ bộ (NT2). Sửa cho một nhóm variant thì
 đặt ở **prefab gốc hẹp nhất phủ đúng nhóm đó**: chép sang từng variant là n bản buộc khớp; đặt ở gốc rộng hơn kéo theo nhóm
-khác — cần thì override tại gốc tầng giữa (`PrefabAudit.ApplyOverrides`). *Bẫy:* chép layout sang các variant anh em thay vì đặt ở gốc; giá
-trị cũ lại nằm ở gốc chung với một nhóm khác.
+khác — cần thì override tại gốc tầng giữa (`PrefabAudit.ApplyOverrides`).
 
 **Vị trí do layout tính, số tay chỉ cho thứ demo đặt tự do.** LayoutGroup, ContentSizeFitter xếp và co theo nội dung: thêm bớt
 mục không phải đo lại. Override mà layout ghi đè mỗi lần tính là nhiễu — che thay đổi của prefab gốc và làm diff vô nghĩa;
@@ -67,8 +65,7 @@ tương đối theo cỡ chữ thì đổi cỡ là đổi bề dày. Kiểu ch�
 sửa kiểu dùng chung là đổi mọi chữ khác đang dùng nó. **Nghiệm thu theo lớp:** cùng đường cắt trên demo và ảnh chụp ra cùng
 số dải, màu và bề dày từng dải khớp (`DemoCompare.LayerDiff`). Khung bao đo bằng màu ruột không thấy viền và bóng; lớp mỏng chiếm ít pixel nên chìm
 trong `Diff` trung bình. Màu đặt đúng số mà ảnh chụp ra khác thì tìm khâu đổi màu (không gian màu, alpha cha, tint, lớp
-đè), không chỉnh mò tới khi giống. *Bẫy:* chữ dựng khớp khung và `Diff`, developer nghiệm thu thấy màu lệch,
-viền dày mỏng khác demo, bóng đổ bị bỏ hẳn.
+đè), không chỉnh mò tới khi giống.
 
 **Neo theo màn, không theo một máy.** Nền và dải màu phủ ra ngoài safe area (tai thỏ, thanh home); nội dung bấm được nằm trong.
 Khối thiết kế theo một bề rộng thì giữ bề rộng đó: màn hẹp hơn thu nhỏ đều, màn rộng hơn (tablet) nằm giữa. Art vẽ sẵn chi tiết
@@ -125,9 +122,7 @@ sai khác ~0.
 
 **Gọi hàm Horcrux, không chép khung vào eval.** Mở, sửa, lưu, dỡ prefab, dựng node, chụp, đo đã có sẵn và đã compile thật: eval
 chỉ còn phần riêng của bài, ít chỗ cho lỗi biên dịch C# 6 và API đoán tên. Khung nào eval tới lần thứ hai mà Horcrux chưa có
-thì đề xuất công cụ theo `workflow` › Việc lặp lại và git. *Bẫy:* hàng trăm eval chép cùng khung dump, sửa, chụp, so; đoạn
-code phải đào lại từ lịch sử chat nhiều lần · viết lại bộ đọc PNG và dò dải màu bằng Python ngoài Editor trong khi
-`DemoCompare.Runs` đã có — demo và ảnh chụp đo bằng cùng một hàm, cùng cột, cùng tolerance mới so được.
+thì đề xuất công cụ theo `workflow` › Việc lặp lại và git.
 
 **Nhìn trước khi sửa.** Dump cây và field serialize (`PrefabDump`, `PrefabAudit.ListOverrides`), contact sheet art
 (`DemoCompare.ContactSheet`), báo cáo sprite (`SpriteSlicing.Report`) trước khi chạm: tên file art và số trong YAML có thể đánh
@@ -146,36 +141,16 @@ mất chỉ lộ sau khi nạp. So với demo ở Game view đúng cỡ demo và
 
 **Commit chọn file**, không `add` cả thư mục: `workflow` › tra cứu › Git.
 
-## Bẫy
-
 > **Nền tảng** — eval của MCP biên dịch C# 6 (CodeDom): không hàm cục bộ, không `out var`, không pattern matching; `Object` mơ hồ
 > giữa `System` và `UnityEngine`; type `internal` không gọi được; mọi type viết đủ namespace.
 
 > **Nền tảng** — Editor mất focus thì frame Play đứng: bật `Application.runInBackground` trong Play (`PlayFrom` tự bật).
 > Scene đang mở có thay đổi chưa lưu thì vào Play hay chạy test bật hộp thoại hỏi lưu: Editor đứng, CLI chỉ thấy timeout.
 
-| Triệu chứng | Nguyên nhân · cách tránh |
+Kinh nghiệm đã trả giá: `Memory/ui-reskin.md`, đọc trọn trước khi làm.
+
+## Tra cứu — `ui-reskin/reference.md`
+
+| Chạm | Mục |
 |---|---|
-| Thay đổi trên instance trong scene mất sau khi lưu thành prefab | modification không được ghi lại · sửa trong nội dung prefab (`PrefabEdit.Edit`) hoặc gọi `RecordPrefabInstancePropertyModifications` |
-| Sửa prefab gốc mà màn không đổi | override lồng ở variant hay instance che giá trị gốc · `ListOverrides` trên chuỗi variant, gỡ đúng dòng |
-| Prefab mở riêng thành khung 0×0; diff có anchor, size, vị trí root về 0 | Apply từ instance là con LayoutGroup ghi cả rect layout đang điều khiển · apply theo từng property, không Apply All; trả rect root về bản commit |
-| Border đặt xong vẫn như cũ | sprite Multiple bỏ qua `spriteBorder` của importer · `SpriteSlicing.SetBorder` (đi qua sprite data provider) |
-| Đường dẫn của sprite đã pack là file `.spriteatlasv2` | `sprite.texture` trả trang atlas · lấy nguồn bằng `AssetDatabase.GetAssetPath(sprite)` |
-| Art đã vào atlas mà bundle vẫn chứa texture nguồn | RawImage, material, sprite asset TMP giữ thẳng texture, không qua atlas · chấp nhận khi nhỏ, hoặc tách art đó ra |
-| Sprite lấy ra là mảnh vụn | `LoadAssetAtPath<Sprite>` trả mảnh đầu · `SpriteSlicing.LargestSlice`; art một mảnh mà importer Multiple tự cắt thì `SpriteSlicing.MakeSingle` — đổi mode tay để lại bảng mảnh cũ trong `.meta` |
-| Hạt trên canvas vẽ thành khối màu đặc ở Play, Prefab Mode và ảnh chụp canvas vẫn đúng | material hạt dùng shader không dành cho UI, cần dữ liệu camera mà canvas Overlay không có · hạt bake vào canvas (UIParticle) dùng shader UI, kiểm trong Play ở đúng chế độ render của game |
-| Hạt UI phải phủ một khối rộng mà vẫn bung từ một điểm; đổi Shape sang Box thì hạt như đứng yên | Shape tính theo đơn vị thế giới, nhân scale bake (UIParticle) và scale các node — đổi ra px theo khung cần phủ trước khi đặt · Box phát dọc trục Z của shape, nhìn từ camera là bay vào màn: Spherical Direction để hạt toả trong mặt phẳng màn |
-| Console báo material "doesn't have a texture property '_MainTex'" từ `Canvas.SendWillRenderCanvases` | Graphic gán texture của nó vào `_MainTex` mỗi lần canvas dựng lại, kể cả khi shader không lấy mẫu texture · shader UI viết tay khai `[PerRendererData] _MainTex`; nằm dưới Mask, RectMask2D thì cần thêm khối stencil, `_ColorMask` và `_ClipRect` như `UI/Default`, thiếu thì không bị cắt |
-| Lớp phủ màu đặt cùng sprite với art ra bản tối của art, không ra màu phủ | shader UI mặc định nhân màu Image với texture · phủ bằng bản trắng của art giữ nguyên alpha (`SpriteSilhouette.Create`, art đổi thì gọi lại), hoặc shader thay màu giữ alpha — material khác thì tách batch; màu + % hoạ sĩ fit lại theo `demo-compare` › Bẫy |
-| Glow màu trên nền màu đậm ra trắng, hồng | blend cộng cộng cả màu nền · glow cần giữ màu dùng alpha blend; cộng chỉ cho ánh sáng trên nền tối |
-| Số đo pixel lệch đều một tỉ lệ | texture nguồn vượt Max Size nên bị thu lúc import · `SpriteSlicing.Report` báo `SHRUNK`, nâng Max Size |
-| Chữ TMP có `<sprite=0>` không hiện gì, không lỗi | sprite asset có face info bằng 0 · `TmpSpriteAssetBuilder.Create` |
-| Không chữ UniText nào được vẽ, ảnh chụp có số batches thấp bất thường | plugin GPU của UniText tách khi package cập nhật lúc Editor chạy · khởi động lại Editor trước mọi phép chụp, đo |
-| Đổi màu viền chữ phải sửa từng prefab | viền, bóng đặt thẳng trên component · kiểu chữ là `StylePreset` dùng chung gắn vào Style Presets, như material preset của TMP |
-| Gọi service trong Play làm game kẹt ở màn chờ | gọi trước khi scene chứa service nạp · `PlayProbe.WaitForSceneAsync` |
-| Ảnh chụp ngay sau đổi cỡ Game view vẫn bố cục cũ | layout và fitter cập nhật vài frame sau · chờ vài frame, hoặc chụp canvas ngoài Play |
-| Diff prefab sau khi lưu qua `PrefabEdit` có dòng mình không sửa | Unity ghi lại field mới có mặc định, cờ nội bộ (`m_WasSpriteAssigned`) · đọc diff trước khi commit để biết, không gỡ tay |
-| Đổi `SpriteRenderer` từ Sliced, Tiled sang Simple qua script, sprite phóng méo gấp nhiều lần | Editor quy `size` cũ vào `localScale` khi đổi `drawMode` · đặt scale sau khi đổi mode, đọc `bounds` trước khi lưu |
-| Ghi giá trị vào SerializedProperty ném lỗi kiểu, hoặc lưu xong giá trị vẫn như cũ | property là Float mà ghi `intValue`; Vector2 mà ghi `vector3Value` thì bỏ qua im lặng, lần lưu prefab vẫn kéo theo nhiễu serialize · đọc `propertyType` trước, đọc lại giá trị sau khi lưu |
-| `manage_camera` không ghi ảnh ra ngoài project, ảnh xuất hiện muộn | lệnh ghi bất đồng bộ vào `Assets/` · `UICapture` ghi đường dẫn bất kỳ |
-| Eval thất bại không dữ liệu ngay sau khi vào Play | Editor đang domain reload · thử lại |
+| dựng, lưu, apply prefab; sprite, border, atlas, bundle; hạt và shader trên canvas; chữ TMP, UniText; SerializedProperty; ảnh chụp lệch, diff có dòng lạ | Hành vi UGUI, prefab, sprite cần biết |

@@ -1,6 +1,6 @@
 # workflow — tra cứu
 
-Nền tảng, Sổ tay và bẫy của `workflow`. Đọc mục được bảng Tra cứu trong `SKILL.md` gọi.
+Nền tảng và Sổ tay của `workflow`. Đọc mục được bảng Tra cứu trong `SKILL.md` gọi.
 
 ## Git
 
@@ -26,10 +26,7 @@ Nền tảng, Sổ tay và bẫy của `workflow`. Đọc mục được bảng 
   phiên bản package chồng nhau chọn nhánh khác điều source gợi ý.
 - Hiệu ứng có sẵn mà asset không vẽ (object tắt, thiếu sprite, sai lớp): nêu trước khi thiết kế bản mới đứng trên nó.
 - Giá trị sống ngoài repo: bản trong repo chỉ là lưới đỡ; nghiệm thu giao developer đối chiếu bằng công cụ so.
-  *Bẫy:* hạ một hệ số trong asset rồi coi là đã sửa, trong khi console ngoài vẫn giữ số cũ.
 - Báo lại lỗi đã sửa làm mất tin vào phát hiện còn đúng.
-- *Bẫy:* đổi logic một nút rồi đổi luôn nhãn cho "đúng nghĩa" — developer bắt trả lại.
-- *Bẫy:* developer muốn bỏ một cơ chế vì vai của input đã đổi; đề xuất giữ cơ chế dưới tên mới, phải brainstorm lại.
 
 ## Nghiệm thu
 
@@ -37,20 +34,16 @@ Nền tảng, Sổ tay và bẫy của `workflow`. Đọc mục được bảng 
   của format. **State đầu** (cài mới, save cũ) dựng qua đúng đường hệ tạo ra nó, không `new` trong test.
 - **Case khẳng định "luôn"** chọn input mà bảo đảm có hiệu lực — input ngẫu nhiên rơi vào ca biên được phép thì đỏ oan.
 - **Chỗ nhiều vật chồng nhau trên ảnh** thì định vị vật bằng toạ độ runtime của nó ở frame đó rồi mới lấy mẫu.
-  *Bẫy:* lấy mẫu vật nền thay vì vật đang bay qua nó, báo sai màu.
 - **Dấu hiệu vét cạn, cụ thể:** *tầm nhìn* gồm state nội bộ sai khi màn hình đúng · *nhất quán chéo* gồm trước–sau refactor
   phải trùng.
 - **Điều kiện đo** (chế độ render, đơn vị, quality): số trong tài liệu mang theo đơn vị và điều kiện nó được đo; công cụ kiểm đổi điều kiện (chụp ở chế độ
-  render khác) không chứng minh gì cho điều kiện kia. *Bẫy:* chép bề dày từ tài liệu đo ở đơn vị khác · kiểm hiệu ứng hạt
-  bằng ảnh chụp ở chế độ canvas khác chế độ game chạy · code mẫu gắn prefab của canvas vào vật ngoài canvas, không vẽ gì.
+  render khác) không chứng minh gì cho điều kiện kia.
 - **Play qua công cụ chạy trên save thật của developer:** sao lưu đúng các key sẽ chạm trước khi vào, trả lại và so khớp
   trước khi báo (`playrun.sh` tự làm với PlayerPrefs; eval rời thì `PrefsSnapshot`, `docs/Editor/Probe.md`). Dừng ở phần
-  tĩnh (code, YAML, eval không vào Play) khi thứ cần kiểm developer cảm được. *Bẫy:* dò luồng bằng eval rời làm đổi tiến độ
-  và tài nguyên trên save của developer.
+  tĩnh (code, YAML, eval không vào Play) khi thứ cần kiểm developer cảm được.
 - **Vét cạn — liệt kê biên trước khi chạy:** rỗng, một phần tử, chạm giới hạn, trùng, ngoài dải, thứ tự đảo, hai sự kiện
   cùng lúc, frame đầu, object huỷ giữa chừng; rò rỉ sau hàng nghìn vòng. Test dựng dữ liệu riêng không thấy config đã trôi;
   luật thuần chạy qua eval không vào Play, Play chỉ còn cho wiring và đường host.
-- *Bẫy:* hàng trăm lần eval chép cùng một khung mà không đề xuất gom thành công cụ.
 
 ## Cheat
 
@@ -60,7 +53,7 @@ khối lượng (đủ điểm mốc cuối) · trạng thái đầu (save mới
 - **Hàng đọc** chỉ cho thứ màn hình không hiện, qua API sẵn có, không bọc thứ đã public. **Lệnh riêng** chỉ khi phải chạm
   `private`, gọi đúng lệnh thật của hệ.
 - **Lệnh thật có cổng** (khoá, cửa sổ thời gian) mà đường thật đóng cổng trước khi QA kịp bấm thì cheat là lệnh riêng vượt
-  cổng, đặt trong hệ. *Bẫy:* nút gọi lệnh thật chỉ chạm vào cổng đã khoá từ phiên đầu, bấm không đổi gì.
+  cổng, đặt trong hệ.
 - **Cheat đổi môi trường** để kiểm một kịch bản: lần theo kịch bản tới chỗ nó chạm hệ được đổi trước khi làm nút — kịch bản
   không đi qua hệ đó thì nút đúng mà vô nghĩa; cổng chặn im lặng dọc đường (anti-cheat, consent, cờ tắt) ghi vào kịch bản QA.
 - **Lệnh thật nằm sau ranh `internal` của SDK bên thứ ba** thì mở công cụ debug của chính SDK: reflection hay ghi lại khoá

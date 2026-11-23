@@ -1,6 +1,6 @@
 # docs — tra cứu
 
-Nền tảng, Sổ tay và bẫy của `docs`. Đọc mục được bảng Tra cứu trong `SKILL.md` gọi.
+Nền tảng và Sổ tay của `docs`. Đọc mục được bảng Tra cứu trong `SKILL.md` gọi.
 
 ## `.md`
 

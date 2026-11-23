@@ -1,6 +1,6 @@
 # editor-first — tra cứu
 
-Nền tảng, Sổ tay và bẫy của `editor-first`. Đọc mục được bảng Tra cứu trong `SKILL.md` gọi.
+Nền tảng và Sổ tay của `editor-first`. Đọc mục được bảng Tra cứu trong `SKILL.md` gọi.
 
 ## Wiring
 
@@ -21,8 +21,7 @@ Nền tảng, Sổ tay và bẫy của `editor-first`. Đọc mục được b�
 
 ## Sửa asset qua công cụ
 
-- **Lệnh lưu kéo theo mọi asset đang bẩn** trong Editor. *Bẫy:* lưu scene làm một asset cấu hình rơi dữ liệu của field đã
-  xoá khỏi code.
+- **Lệnh lưu kéo theo mọi asset đang bẩn** trong Editor.
 - **Sửa asset bằng text (shader, YAML) thì import lại file đó trước khi đọc qua API:** Editor chưa thấy file đổi thì trả bản
   cũ, không báo gì.
 - **Diff scene, prefab đọc bằng `--diff-algorithm=histogram`:** diff mặc định ghép nhầm các khối YAML na ná nhau, báo xoá
@@ -40,8 +39,7 @@ Nền tảng, Sổ tay và bẫy của `editor-first`. Đọc mục được b�
 > GUID mới cho bản sau và ghi lại `.meta` của nó. `.meta` đổi trong `git status` là Unity tự vá; khôi phục là tạo trùng lần
 > nữa. Reference cũ vẫn trỏ bản gốc, nên thứ chép theo (atlas, ô trong asset cấu hình, entry Addressables) vẫn trỏ thư mục
 > gốc: trỏ lại chúng vào bản chép là việc phải làm, rồi soát `AssetReference` gãy
-> (`docs/Editor/AddressableReferenceAudit.md`). *Bẫy:* `.meta` đổi được báo là vỡ reference; khôi phục xong Unity đổi lại,
-> và atlas chép vẫn pack thư mục cũ.
+> (`docs/Editor/AddressableReferenceAudit.md`).
 
 ## Gói asset từ ngoài
 

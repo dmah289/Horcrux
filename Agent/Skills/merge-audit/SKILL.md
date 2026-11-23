@@ -21,8 +21,7 @@ Skill công cụ. `<horcrux>` là gốc Horcrux trong dự án. Chi tiết lện
    dấu conflict, sinh GUID mới cho file nó đọc không được. **Nhánh đã tách hai phía (ahead và behind) thì `pull` là merge:**
    đọc skill này và dựng worktree trước lệnh merge đầu tiên, không thử ở checkout chính rồi mới chuyển. Worktree không cần
    index của checkout chính sạch, nên file developer đang sửa hay đã stage để nguyên, không `stash`; đưa nhánh lên merge bằng
-   `merge --ff-only`, lệnh này chỉ từ chối khi merge chạm đúng file đang bẩn. *Bẫy:* merge ở checkout chính bị từ
-   chối vì index có file đã stage; agent cất chúng rồi merge tiếp, conflict hiện ra trong cây Unity đang mở.
+   `merge --ff-only`, lệnh này chỉ từ chối khi merge chạm đúng file đang bẩn.
 4. **File cấu hình gộp hợp hai bên, không chọn một bên:** dependency và scope trong `Packages/manifest.json` cùng lock,
    define symbol theo platform, scope registry, assembly reference của asmdef. Chọn một bên là gỡ package hay define bên kia
    đang dùng; lỗi chỉ lộ lúc compile ở máy khác.

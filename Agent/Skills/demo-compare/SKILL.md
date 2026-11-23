@@ -65,8 +65,7 @@ cỡ, máy cũ sau khi đo. Developer nghiệm thu hình (`workflow` › Nghiệ
 Demo thường đã chừa dải trống trên cùng cho thanh trạng thái và lỗ camera. Cộng cả inset của máy lên trên dải đó là đếm hai lần: cả cụm
 trên tụt sâu trên máy có tai thỏ, còn ở Game view vẫn đúng. Inset chỉ đẩy phần vượt dải trống thiết kế. HUD và mọi khối world neo cùng
 mép đọc **cùng một quy tắc** (`code-design` › tra cứu › Bất biến: hai bản buộc khớp), để khe giữa chúng không đổi theo máy. Dải trống là số đo của thiết kế,
-nằm một chỗ cạnh phần tử trên cùng mà nó đo. *Bẫy:* HUD và cụm world cùng neo trong safe area, khớp demo ở Game view, trên máy
-punch-hole tụt cả cụm hơn trăm pixel xuống dưới dải trống demo đã chừa.
+nằm một chỗ cạnh phần tử trên cùng mà nó đo.
 
 **Neo là mép cộng khoảng cách, không là phần của vùng an toàn.** Vùng an toàn ngắn đi vì inset thì điểm đặt bằng tỉ lệ của nó chỉ dời một
 phần inset và còn nhích theo inset cạnh đối diện, trong khi HUD trong panel dời đủ. Chọn mép mà khối kề, đo khoảng cách từ mép đó.
@@ -77,22 +76,5 @@ Canvas HUD co theo một trục (thường khớp chiều cao). Khối world k�
 giữ trọn khung thiết kế — số lớn hơn giữa cỡ giữ bề rộng và cỡ giữ chiều cao — và khoảng từ mép tới khối đo bằng pixel thiết kế nhân cùng
 hệ số canvas, không bằng unit world. Hai luật khác nhau trùng đúng ở tỉ lệ demo nên Game view cỡ demo không bao giờ lộ; lệch lớn dần theo
 tỉ số hai aspect, rõ nhất trên tablet. Mỗi lần chỉnh bố cục so thêm ở Game view một màn rộng hơn demo (16:9, tablet) và một màn cao hơn.
-*Bẫy:* camera giữ bề rộng, khoảng cách tính bằng unit world: khớp demo ở tỉ lệ demo, trên tablet khối world cách HUD gấp
-nhiều lần demo; bị nghi là vùng an toàn trong khi Game view cùng cỡ máy đã ra trùng ảnh máy.
 
-## Bẫy
-
-| Triệu chứng | Nguyên nhân · cách tránh |
-|---|---|
-| Ảnh chụp khớp demo mà vào chơi khối đè HUD | chụp lúc phần tử hiện theo gameplay chưa hiện · ép hiện với nội dung dài nhất rồi mới đo |
-| Số khung object lệch pixel demo vài px dù hình đã khớp | bounds gồm viền trong suốt và bóng của art · khung chỉ để tìm cột; số so với demo lấy bằng dải màu cùng cột trên cả hai ảnh |
-| Developer đè demo mờ lên Game view thấy lệch hàng chục px, đo thật chỉ vài px | Game view khác tỉ lệ demo · đọc cỡ Game view trước khi tin ảnh đè; so demo chỉ ở đúng cỡ demo |
-| Khối toàn màn (popup) khớp demo trên điện thoại, trên tablet tiêu đề và nút tràn hai mép | canvas của nó match khác canvas HUD (popup không match height): khung thấp hơn khối thiết kế · khối toàn màn thu theo trục chật hơn, `min(1, rộng/thiết kế, cao/thiết kế)`; đọc Match của **đúng canvas chứa khối**, chụp thêm một cỡ tablet |
-| Tablet hay 16:9: khối world xa HUD, vật world nhỏ hơn vật cùng cỡ ở khối khác | camera giữ một trục khác trục canvas · camera giữ trọn khung thiết kế, khoảng cách đo pixel thiết kế (mục Tỉ lệ màn) |
-| Đúng ở Editor, lệch trên máy; lệch đều mọi khối cùng một mép | inset của máy, Game view không có · tái hiện trên Simulator với file máy đó |
-| Kết quả Simulator mang tên máy mới mà số là của máy cũ | chọn máy hỏng (tên sai) mà vẫn chạy · runner dừng khi chọn máy hỏng; đọc dòng chọn máy trong kết quả |
-| Simulator cùng cỡ mà không giống máy | máy mẫu của Unity là máy chung chung, inset và cutout khác máy thật · thêm file máy thật, kiểm bằng ảnh chụp máy |
-| Gradient shader dựng theo demo đúng màu tâm và mép mà sai nhịp tắt | hệ số đo ở sRGB của ảnh, shader nội suy ở Linear · `DemoCompare.FitRadialGlow` fit theo không gian màu project kèm số lệch mô phỏng; giao số chỉ sau khi chụp trong Play đúng chế độ canvas và `Diff` với demo |
-| Lớp tối alpha cao mà màn chơi phía sau vẫn rõ hơn demo nhiều; lớp phủ đặt đúng màu và % hoạ sĩ ghi mà nhạt hơn demo | project Linear trộn alpha trước khi đổi về sRGB: alpha 0.88 còn khoảng 38% độ sáng nhìn thấy, không phải 12%; màu + % của hoạ sĩ là phép trộn sRGB · so độ sáng nền sau lớp tối đo trên cả hai ảnh, không so alpha; lớp phủ thì fit lại trong Linear trên mọi pixel đặc của art bị phủ — chỉ có màu + % hoạ sĩ thì fit cả màu lẫn alpha (`DemoCompare.FitOverlay`), màu phủ đã chốt thì fit alpha (`DemoCompare.FitOverlayAlpha`: alpha sRGB nó trả khớp số hoạ sĩ thì phép đo đúng), kiểm bằng chụp trong Play |
-| `max` lệch lớn ở mép, góc ảnh demo dù nền đã khớp | demo xuất kèm khung viền, mỗi cạnh dày khác nhau · `Runs` ở mép tìm viền, đưa vào `exclude` trước khi tin số |
-| Đổi cỡ Game view thì bật thêm một cửa sổ Game nổi | Simulator đang chiếm chỗ view Play · công cụ đổi cỡ tự đưa Game view về; swap tay thì trả lại |
+Kinh nghiệm đã trả giá: `Memory/demo-compare.md`, đọc trọn trước khi làm.

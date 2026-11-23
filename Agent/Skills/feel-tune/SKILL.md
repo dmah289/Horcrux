@@ -11,9 +11,7 @@ Khi nào được vào Play và khi nào giao developer chơi thử: `workflow` 
 ## Luật
 
 1. **Không viết script khung mới** (vào Play, thử lại eval, bắt log, ghi file, khoá fps, chụp, ghép ảnh). Thiếu thì mở
-   rộng công cụ trong Horcrux hoặc class đường tắt của dự án, rồi dùng. *Bẫy:* dò một luồng treo bằng vài chục
-   eval rời và đọc console thô hàng trăm KB, trong khi `playrun.sh` + `PlayProbe` làm cả chuỗi trong một lệnh và in `LOG`
-   đã gọn.
+   rộng công cụ trong Horcrux hoặc class đường tắt của dự án, rồi dùng.
 2. **Không đọc dữ liệu thô vào ngữ cảnh.** Trace đọc qua `stat`, `diff`, `sig`; kết quả probe tóm tắt dưới 4 KB; ảnh là
    một sheet đã cắt và thu nhỏ.
 3. **Refactor phải giữ chuyển động thì chứng minh bằng trace**, không bằng mắt: quay mỗi frame ở cuối frame với frame rate

@@ -1,19 +1,14 @@
 # reuse-gate — tra cứu
 
-Nền tảng, Sổ tay và bẫy của `reuse-gate`. Đọc mục được bảng Tra cứu trong `SKILL.md` gọi.
+Nền tảng và Sổ tay của `reuse-gate`. Đọc mục được bảng Tra cứu trong `SKILL.md` gọi.
 
 ## Khảo sát
 
 - **Đường di sản song song** (hệ cũ còn sống cạnh hệ mới): đếm call site đường cũ trước khi thêm vào đường mới — nhánh sót
-  lại vẫn chạy, chỉ lệch cấu hình. *Bẫy:* một nửa số call site đã qua hệ mới, nửa kia còn đi hệ cũ nên không chỉnh được ở
-  một chỗ, hai nửa lệch nhau.
+  lại vẫn chạy, chỉ lệch cấu hình.
 - **Hệ port từ dự án khác** thì diff với **bản nguồn hiện tại** (kể cả giá trị mặc định trong scene), hỏi nhánh nào là lõi
   trước khi tối giản. Thứ developer nhớ là của dự án nguồn có thể nằm trong package nó cài: tìm cả package, rồi soát dự án
   đích đã cài sẵn chưa.
-- *Bẫy:* bê khuôn serialize giá trị runtime vào asset sang bài toán lưu state người chơi — state vào version control.
-- *Bẫy:* viết vòng tween và công thức riêng trong khi Horcrux đã có runner và hàm đúng hình dạng đó.
-- *Bẫy:* đã đọc skill nêu sẵn hàm dump và hàm đo, vẫn viết khung dump trong eval và script đo riêng, task sau lại viết lần
-  nữa.
 
 ## Dữ liệu có kiểu
 

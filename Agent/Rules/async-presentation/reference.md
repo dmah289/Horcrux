@@ -1,6 +1,6 @@
 # async-presentation — tra cứu
 
-Nền tảng, Sổ tay và bẫy của `async-presentation`. Đọc mục được bảng Tra cứu trong `SKILL.md` gọi.
+Nền tảng và Sổ tay của `async-presentation`. Đọc mục được bảng Tra cứu trong `SKILL.md` gọi.
 
 ## Stack async
 
@@ -33,29 +33,20 @@ Nền tảng, Sổ tay và bẫy của `async-presentation`. Đọc mục đư�
 - **Pool:** hệ hạt Stop Action `None`, không `Destroy(go, t)`; kéo dài trình diễn thì soát mọi đồng hồ ẩn của prefab.
 - **Vật thật nhường chỗ cho bản sao lúc diễn thì ẩn hình, không tắt GameObject:** vòng dọn của chủ hay duyệt theo
   `activeSelf`, vật tắt rơi khỏi đường về pool. Bản sao không nằm trong danh sách của chủ thì `finally` của lượt diễn tự trả.
-- *Bẫy:* lượt chờ chỉ có trong một điều kiện (từ một mốc tiến độ) — ngoài điều kiện hàm chờ trả ngay trước khi caller huỷ,
-  lỗi chỉ lộ khi điều kiện mở.
-- *Bẫy:* đường dọn màn đặt lại cỡ nghỉ cho vật đã co biến mất mà không tắt nó, vật rỗng hiện lại lúc nạp màn.
-- *Bẫy:* kiểm chỗ trống trước nhịp lấy đà; trong nhịp đó luồng khác lấy mất chỗ, vật vẫn diễn rồi đứng kẹt.
-- *Bẫy:* lượt diễn huỷ trước bước bật cờ ngoài, `finally` đọc cờ đó thành "đã bàn giao", trạng thái tạm kẹt lại.
-- *Bẫy:* tắt canvas lồng rồi mới trả sorting, canvas giữ sorting đã nâng.
 
 ## Trình diễn
 
 - **Mốc "đã thấy":** trượt từ A tới B cần A người chơi đã thấy (`currAnimatedScore`); view tắt, dựng lại, nhiều instance
   thì A trong view sai. Component thụ động trượt khi host gọi `PlayAsync(ct)`.
-- **Giá trị nghỉ đọc ở `Awake`.** *Bẫy:* nhún quanh scale 1 trên node scale khác 1 — co vĩnh viễn · gán scale 0 rồi mới bật
-  object tắt sẵn — `Awake` chụp nghỉ là 0.
+- **Giá trị nghỉ đọc ở `Awake`.**
 - **Chỗ nghỉ lần đầu:** bố cục tính được thì đặt cùng frame tạo vật; chờ frame chỉ khi đọc từ thứ engine dựng sau (layout
   UI, bounds), và ẩn vật tới lúc đặt xong. Đích là ô developer đặt.
 - **Một nhịp nhiều lớp:** đỉnh trùng nhau dù chỉnh số nào; căn bằng delay rời thì lệch ở lần chỉnh sau. Cú bùng (hạt, loé)
   bắn lúc nhịp **bắt đầu**: chờ tới đỉnh mới bắn, mắt đọc thành trễ. Nhịp nằm trong anim của hoạ sĩ (Spine, Animator) thì
   hiệu ứng neo vào **event đặt trong anim**; chặng code chạy song song với anim lấy thời lượng từ chính dữ liệu anim. Nhịp
   do code dựng thì mốc lấy từ hàm định nghĩa pha — chỉnh núm thì tiếng dời theo.
-- **Kết cục:** rời màn giữa lúc diễn không mất kết quả. *Bẫy:* delay mở màn kết bị override ngắn hơn nhịp vật cuối, màn kết
-  che mất cú diễn cuối.
-- **Phản hồi kéo dài:** nhạc suốt phiên phát từ thứ sống suốt phiên, không bật lại ở mỗi màn. *Bẫy:* nhạc nền gắn vào lúc
-  vào một màn, track đặt tên theo màn đó.
+- **Kết cục:** rời màn giữa lúc diễn không mất kết quả.
+- **Phản hồi kéo dài:** nhạc suốt phiên phát từ thứ sống suốt phiên, không bật lại ở mỗi màn.
 - **Chỉ dẫn** (tay chỉ, viền sáng) tắt ngay frame người chơi tác động, và bám vật người chơi sắp tác động: vật bắt đầu di chuyển kéo chỉ dẫn theo, chỉ dẫn còn
   lại đọc thành trễ.
 - **Dạy một thao tác có kết quả ngẫu nhiên trên trạng thái đã thiết kế: dựng trạng thái "trước" từ trạng thái đích, thao
