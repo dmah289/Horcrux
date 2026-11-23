@@ -137,8 +137,10 @@ cú lên hàng trước: LiftWithAnticipation (nhún lấy đà rồi cung Lift)
 chuyến. **Vì sao bây giờ:** kênh đầu tiên vòng `Step` ghi; các kênh khác đọc `apexT`, `ProgressAfter` của nó.
 
 **Ai gọi:** test của giai đoạn; trong dự án là `Tile.FlyToAsync` (`DurationForSpeed`), `Tile.BuildFlightState` (`ApexT`), `Tile.StepFlight`
-(`ArcY`, `ProgressAfter`, `PeakToLocal`), `Tile.StepFinale` và `Tile.AnimateToFrontRow` (`PeakToLocal`), `BoosterFlight.FlyAsync` (`ApexT`) và `BoosterFlight.SetDropIn`
-(`ArcY` trên y màn hình, gốc lerp tuyến tính) (GĐ10).
+(`ArcY`, `ProgressAfter`, `PeakToLocal`), `Tile.StepFinale` và `Tile.AnimateToFrontRow` (`PeakToLocal`), `Tile.BuildSuckMotion`
+(`DurationForSpeed`), `Tile.SinkIntoSlot` (`PeakToLocal`) (GĐ10). `ApexT` và `ArcY` trên y màn hình (gốc lerp tuyến tính): Horcrux
+`UIProxyFlight.FlyAsync`, `SetDropIn` nếu `Horcrux_UIProxyFlight_Plan.md` GĐ2 gõ trước; không thì dự án `BoosterFlight.FlyAsync`,
+`SetDropIn` (GĐ10).
 
 ### `Runtime/Utilities/PhysXHelper/HopCurve.cs` — file mới
 
@@ -185,8 +187,8 @@ namespace Horcrux.Runtime.Utilities.PhysXHelper
             return 1f - v * v;
         }
 
-        /// <summary>Độ cao nhìn thấy (world y) của thân: từ y0 lên y1 + fallHeight ở đỉnh rồi rơi về y1. Pha rơi chỉ phụ thuộc y1 và fallHeight
-        /// nên cú rơi giống nhau dù bay từ đâu.</summary>
+        /// <summary>Độ cao nhìn thấy của thân, cùng đơn vị y0, y1: từ y0 lên y1 + fallHeight ở đỉnh rồi rơi về y1. Pha rơi chỉ phụ thuộc y1
+        /// và fallHeight nên cú rơi giống nhau dù bay từ đâu.</summary>
         public static float ArcY(float t, float y0, float y1, float fallHeight, float apexT)
             => Mathf.LerpUnclamped(t <= apexT ? y0 : y1, y1 + fallHeight, Arc01(t, apexT));
     }
@@ -246,7 +248,7 @@ một `Tween.Custom` của Horcrux lái mọi kênh.
 `Tile.StepFlight` đủ hàm để trỏ về. **Vì sao bây giờ:** cả năm kênh đọc `apexT`, `Arc01`, `ProgressAfter` của GĐ1.
 
 **Ai gọi:** test của giai đoạn; `HopCurve.LeanRamp`, `FlightScale` gọi `Interpolator.SmoothStep` ngay trong giai đoạn; trong dự án là
-`Tile.StepFlight`, `Tile.BuildFlightState` (`LeanToward`) (GĐ10).
+`Tile.StepFlight`, `Tile.BuildFlightState` (`LeanToward`), `Tile.BuildSuckMotion` (`LeanToward`) (GĐ10).
 
 ### `Interpolator.cs` › thêm sau `RemapPrecomputed`, trước `SmootherStep`
 
@@ -1072,7 +1074,8 @@ Single, cú hút vào bình Pack rồi chìm, khay Extra Slot rơi vào ô), hai
 
 ### `Entities/Tile/Tile.cs`
 
-Thêm `using Horcrux.Runtime.Utilities.PhysXHelper;` và bốn hằng vào `Properties`, trước `[SerializeField] protected TileView _view;`:
+Thêm `using Horcrux.Runtime.Utilities.PhysXHelper;` nếu chưa có (`Horcrux_ArchedControlPoint_Plan.md` GĐ3 cũng thêm) và bốn hằng vào
+`Properties`, trước `[SerializeField] protected TileView _view;`:
 
 ```csharp
         private const float LEAN_RISE_END = 0.3f;
@@ -1098,7 +1101,9 @@ Thêm `using Horcrux.Runtime.Utilities.PhysXHelper;` và bốn hằng vào `Prop
 | `SinkIntoSlot` | `TileFlightCurve.PeakToLocal(suck.SinkDepth, transform.parent.lossyScale.y)` | `HopCurve.PeakToLocal(…)` |
 
 `Entities/Tile/TileSuckCurve.cs`: xoá `DashDuration` (thân trùng nguyên văn `DurationForSpeed`); `TileSuckCurveTests` xoá ba case
-`DashDuration_IsDistanceOverSpeed_Clamped` (GĐ1 đã phủ). `WindupBack`, `DashPoint`, `LeanHold` ở lại: một người dùng.
+`DashDuration_IsDistanceOverSpeed_Clamped` (GĐ1 đã phủ). `WindupBack`, `LeanHold` ở lại: một người dùng. `DashPoint` còn thì ở lại;
+`Horcrux_ArchedControlPoint_Plan.md` GĐ3 đã chạy thì nó đã thành `BezierCurveHelper.ComputeArchedControlPoint` và `TileSuckCurve.cs`
+không còn `using` Horcrux nào.
 
 `Entities/Tile/TileFlightCurve.cs` **xoá hẳn** (cả `.meta`); summary của `TileRiseTuning` trong `TileFeelTuning.cs`: "Hình dạng ở
 `TileFlightCurve.Rise*`" → "Hình dạng ở `HopCurve.LiftWithAnticipation`, `EaseOutUntil`".

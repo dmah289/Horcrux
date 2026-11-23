@@ -38,7 +38,8 @@ phụ thuộc Plan nào: trước hay sau `Horcrux_HopCurve_DipFlash_Plan.md` đ
 - **Mở rộng sau:** `CharmFlyArc`, `CharmCount` 0 B khi có caller mỗi frame (GĐ6) · `AnimationRegistry` đếm thay quét khi có số đo (GĐ3).
 - **Đã khảo sát:**
   - A: `TileFinaleCurve.cs`, `TileFinaleTuning` bản 2026-11-06 (công thức, `BEAT_COUNT`, năm mốc lắc, hai ease inline, 9 field và
-    mặc định; tooltip về `Tile`, GĐ9) · `Tile.cs`, `Tile.Editor.cs` (thứ tự gọi `Duration`, `Evaluate`, `Shadow01`, `EndLift`) ·
+    mặc định; tooltip về `Tile`, GĐ9) · `Tile.cs`, `Tile.Editor.cs` (thứ tự gọi `Duration`, `Evaluate`, `Shadow01`, `EndLift`,
+    `WiggleStart`) ·
     `TileFinaleCurveTests.cs` (19 case, chuyển nguyên văn) · Horcrux `DampedOscillator`, `HarmonicOscillator` (không hợp, `§0`),
     `Easer.Evaluate` (không hợp, GĐ1).
   - B: `AnimatingSystem.cs`, `IAnimate.cs` và 7 class (`Register` chống trùng, quét bỏ `null`, `Clear` ở `OnDisable` và
@@ -83,7 +84,8 @@ Pha lấy đà, t″ = t − T_l − 5 T_b, w = e_s(clamp01(t″ / T_w)):
 
 $$ \text{Lift} = L - D \cdot w, \qquad \text{Angle} = 0, \qquad \text{Scale} = S_l + (S_w - S_l) \cdot w $$
 
-Hai hàm phụ: bóng co theo độ nhấc `Shadow01 = clamp01(Lift / L)` (L = 0 → 0, không chia 0); độ cao lúc cất cánh `EndLift = L − D`.
+Ba hàm phụ: bóng co theo độ nhấc `Shadow01 = clamp01(Lift / L)` (L = 0 → 0, không chia 0); độ cao lúc cất cánh `EndLift = L − D`;
+mốc bắt đầu lắc `WiggleStart = T_l`.
 
 Liền mạch ở mọi chỗ nối — mốc → kỳ vọng (test GĐ1, GĐ2 khoá từng dòng):
 
@@ -113,8 +115,9 @@ mỗi frame: time ──► Evaluate(time, fromScale, spec) ──► TadaPose (
             │       bóng nằm lại, co theo Shadow01(pose.Lift, spec)              GĐ2
             ▼
 hết Duration: chuyến bay nối từ EndLift(spec), bóng từ Shadow01(EndLift)        GĐ2
+dựng Sequence: InsertCallback(WiggleStart(spec)) → tiếng, rung lúc bắt đầu lắc  GĐ2
             ▼
-tài liệu (GĐ8) · dự án: Tile.StepFinale, BuildFlightState dùng bản Horcrux (GĐ9)
+tài liệu (GĐ8) · dự án: Tile.StepFinale, BuildFlightState, BuildFlightMotion dùng bản Horcrux (GĐ9)
 ```
 
 ### Bản đồ hệ cuối
@@ -123,7 +126,7 @@ tài liệu (GĐ8) · dự án: Tile.StepFinale, BuildFlightState dùng bản Ho
   host (dự án)                                  Runtime/Utilities/Tweening/Tada/
   ────────────                                  ────────────────────────────────
   [SerializeField] TadaSpec spec  ──in──►  TadaCurve (static, không state)
-  Tween.Custom(0 → Duration(spec))             Duration · Evaluate → TadaPose · Shadow01 · EndLift
+  Tween.Custom(0 → Duration(spec))             Duration · Evaluate → TadaPose · Shadow01 · EndLift · WiggleStart
   StepFinale(time): pose = Evaluate(…)         WiggleKeys (6 mốc), OutQuad, InOutSine (private)
   ghi thân, gốc, bóng của mình
 ```
@@ -316,8 +319,8 @@ không gọi `Easer.Evaluate(EaseType, t)`: thêm một switch mỗi frame cho c
 
 ## Giai đoạn 2 — Bóng nằm lại và cửa nối sang chuyến bay
 
-**Mục tiêu:** `Shadow01` cho bóng co theo độ nhấc ở mỗi frame tada; `EndLift` cho chuyến bay bắt đầu từ độ cao tada để lại. Xong giai
-đoạn này host nối liền tada với chuyến bay không nhảy khung.
+**Mục tiêu:** `Shadow01` cho bóng co theo độ nhấc ở mỗi frame tada; `EndLift` cho chuyến bay bắt đầu từ độ cao tada để lại;
+`WiggleStart` cho host chèn tiếng, rung đúng mốc bắt đầu lắc. Xong giai đoạn này host nối liền tada với chuyến bay không nhảy khung.
 
 **Vì sao bây giờ:** cả hai chỉ đọc `Lift` của GĐ1; bóng và cú cất cánh là hai kênh còn lại của một host thật.
 
@@ -366,7 +369,8 @@ của `WindupDip` nói rõ, Inspector là nơi người tune đang nhìn.
 
 **Editor setup:** không.
 
-**Kiểm:** compile sạch; thêm vào `TadaCurveTests.cs` (5 case từ `TileFinaleCurveTests` và hai biên).
+**Kiểm:** compile sạch; thêm vào `TadaCurveTests.cs` (5 case từ `TileFinaleCurveTests`, hai biên, case `WiggleStart` mới — bản dự án
+chưa có test cho hàm này).
 
 | Case | Input | Kỳ vọng |
 |---|---|---|
@@ -377,7 +381,7 @@ của `WindupDip` nói rõ, Inspector là nơi người tune đang nhìn.
 | `LiftHeight` 0 | spec với 0; lift 0 và 0.2 | 0 — không `NaN` |
 | nối liền | `Shadow01(Evaluate(Duration).Lift)` so với `Shadow01(EndLift)` | bằng nhau |
 
-**Mốc commit:** `feat(tada): EndLift, Shadow01`.
+**Mốc commit:** `feat(tada): EndLift, Shadow01, WiggleStart`.
 
 ---
 
@@ -868,7 +872,7 @@ native mỗi frame bay (`== null` của `UnityEngine.Object`). Ô tuỳ chọn l
 
 `docs/Runtime/Tada/Tada.md` và `Tada.html`, `.md` mở đầu `Code: Runtime/Utilities/Tweening/Tada`: luồng *host dựng tween 0 → Duration →
 Evaluate mỗi frame → TadaPose → host ghi thân, gốc, bóng* (ASCII của Cơ chế A) · bảng ba pha và `§0` (công thức, bảng mốc → kỳ vọng) · bảng
-API (`Duration`, `Evaluate`, `EndLift`, `Shadow01`, `BEAT_COUNT`) · "Trước khi chạy": caller cần gốc và thân tách (`async-presentation`:
+API (`Duration`, `Evaluate`, `EndLift`, `Shadow01`, `WiggleStart`, `BEAT_COUNT`) · "Trước khi chạy": caller cần gốc và thân tách (`async-presentation`:
 sprite 2.5D tách gốc và thân, bóng là con của gốc), núm `TadaSpec` phơi `[SerializeField]` trên prefab của host · ví dụ nối sang chuyến bay
 (`EndLift`, `Shadow01(EndLift)`) · "Design decisions" gom **Quyết định** GĐ1–GĐ2 · ràng buộc giữa núm host phải tự giữ (`WindupDip ≤
 LiftHeight`; `LiftScale`, `WindupScale` so với cỡ host dùng trước và sau tada).
@@ -1033,7 +1037,7 @@ kèm con trỏ submodule.
 | File | GĐ1 | GĐ2 | GĐ3 | GĐ4 | GĐ5 | GĐ6 | GĐ7 | GĐ8 | GĐ9 |
 |---|---|---|---|---|---|---|---|---|---|
 | `Runtime/Utilities/Tweening/Tada/TadaSpec.cs`, `TadaPose.cs` | tạo | | | | | | | | |
-| `Runtime/Utilities/Tweening/Tada/TadaCurve.cs` | tạo | `EndLift`, `Shadow01` | | | | | | | |
+| `Runtime/Utilities/Tweening/Tada/TadaCurve.cs` | tạo | `WiggleStart`, `EndLift`, `Shadow01` | | | | | | | |
 | `Runtime/Utilities/Common/IAnimating.cs` | | | tạo | | | | | | |
 | `Runtime/Utilities/Common/AnimationRegistry.cs` | | | tạo | `Unregister`, `Clear` | | | | | |
 | `Runtime/Utilities/UI/ProgressBar.cs` | | | | | `Play`, `PlayAsync` | | | | |
