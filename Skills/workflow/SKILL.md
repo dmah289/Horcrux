@@ -39,7 +39,9 @@ vòng gom câu hỏi lại, **hỏi nhiều vòng tới khi hết chỗ mơ hồ
 
 **Chốt bằng kịch bản viết lại:** *ai làm gì → hệ phản ứng gì → thấy gì* · ca biên đã thống nhất · thứ cố ý không làm ·
 nghiệm thu bằng gì. Developer xác nhận mới làm; **chưa có câu trả lời thì chưa làm**. Khi triển khai, mỗi hành vi truy về
-một dòng kịch bản; thứ kịch bản không nói thì hỏi, không tự thêm.
+một dòng kịch bản; thứ kịch bản không nói thì hỏi, không tự thêm. **Hai câu trả lời trong một vòng chọi nhau** thì hỏi lại
+đúng chỗ va, kèm một ví dụ số mà hai cách hiểu cho ra hai kết quả khác nhau; không tự chọn câu nào thắng — hỏi lại bằng lời
+trừu tượng chỉ nhận về hai câu cũ.
 
 Giả định chỉ vá khe hở giữa chừng, đủ cả ba: **nhỏ** · **đảo ngược được** · nhãn tại chỗ dùng. Khó đảo ngược: ghi đè hay
 xoá dữ liệu đã author (level, save, asset) · migration schema, wire format · thứ ngoài version control. Hướng developer chưa
