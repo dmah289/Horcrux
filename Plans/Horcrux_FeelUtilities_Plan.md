@@ -360,6 +360,7 @@ namespace Horcrux.Runtime.Utilities.Common
 ```csharp
         public void Register(IAnimating item)
         {
+            // Chống trùng: đăng ký hai lần là ca thật; O(n) chỉ lúc vật vào sân.
             if (!_items.Contains(item))
                 _items.Add(item);
         }
