@@ -59,7 +59,9 @@ khối lượng (đủ điểm mốc cuối) · trạng thái đầu (save mới
 - **Lệnh thật nằm sau ranh `internal` của SDK bên thứ ba** thì mở công cụ debug của chính SDK: reflection hay ghi lại khoá
   lưu của SDK câm im lặng ở bản SDK sau.
 - **Lệnh rời trạng thái giữa chừng đi đường người chơi rời nó;** màn con còn mở lúc chuyển màn bị đóng theo nhánh huỷ của
-  chính nó — đếm hệ quả nhánh đó tự làm trước khi gọi thêm. Cheat không trừ thứ đường thật không trừ.
+  chính nó — đếm hệ quả nhánh đó tự làm trước khi gọi thêm. Cheat **rời** trạng thái không thu giá của nó (mạng, vé,
+  lượt) kể cả khi đường thật thu: bỏ bước trừ, thứ màn con tự trừ ở nhánh huỷ thì trả lại sau khi nó đóng. Cheat **giả
+  lập kết cục** (thua, thắng) đi y đường thật, kể cả bước trừ.
 - **Lệnh đặt thẳng một giá trị** bỏ qua việc đường thật làm khi giá trị đi qua ngưỡng: làm cùng việc đó, không thì hệ tự
   sửa lại ở nhịp sau.
 - **Cheat chọn cửa ghi không bắn tracking:** số cheat lẫn vào số liệu thì không lọc ra được.

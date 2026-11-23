@@ -21,3 +21,8 @@ Bài học đã trả giá khi làm việc với `reuse-gate`. Đọc trọn cù
 `2026-11` · vấp 1 · chuyển sang, chưa kiểm lại
 **Thấy:** đã đọc skill nêu sẵn hàm dump và hàm đo, vẫn viết khung dump trong eval và script đo riêng, task sau lại viết lần nữa. **Vì:** script dùng một lần cũng là code — viết tay thì số của hai lần đo không so được với nhau.
 **Làm:** gọi hàm skill đã nêu; thiếu thì mở rộng công cụ Horcrux, không viết bản riêng (`reuse-gate` › Có sẵn chưa).
+
+### CS0121 giữa hai extension method cùng tên
+`2026-10` · vấp 1 · đã đo
+**Thấy:** file vừa thêm `using` namespace Horcrux báo CS0121 ambiguous giữa extension của Horcrux và extension cùng tên của dự án. **Vì:** cả hai namespace cùng được `using` trong file đó.
+**Làm:** sửa `using` ở chính file đó — giữ bản Horcrux, bỏ `using` namespace extension của dự án nếu file không cần gì khác từ đó; không alias, không đụng file extension nào trong bước này; việc gộp hai bản là đề xuất riêng (`reuse-gate` › Có sẵn chưa).

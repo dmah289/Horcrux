@@ -78,6 +78,10 @@ Subagent là ngữ cảnh trắng; để nó tự tìm hiểu là thuế đọc 
 Plan**: trích đoạn tài liệu cần, đường dẫn file sẽ chạm, tiêu chí nghiệm thu; thiếu thì báo về, không tự đi đọc — trừ
 **code nó sẽ sửa**.
 
+**Chạy Plan bằng subagent:** hỏi gộp một lần trước task đầu (nhánh, commit mỗi task, điểm dừng) rồi chạy liền · mỗi
+subagent commit task của nó bằng pathspec · mọi bước chơi thử và duyệt art gom thành một kịch bản cuối · review mỗi task
+loại commit ngoài Plan chen giữa.
+
 ## Nghiệm thu — phép kiểm theo loại tiêu chí
 
 Neo khi phân vân: **công sức đắt nhất là của developer.**
@@ -114,7 +118,8 @@ Editor, script `Tools~`, skill); dự án chỉ giữ lớp nối. Developer đ�
 
 **Git:** commit chỉ mang phần của việc mình, không đụng thứ developer đã stage, không `stash` khi còn đường khác · commit
 trong Horcrux thì commit luôn con trỏ submodule ở dự án · sau một lượt chờ dài, đọc lại trạng thái trước bước ghi ra ngoài
-(push, commit, pop stash).
+(push, commit, pop stash) · việc áp nhiều bước Plan chia commit theo nhóm bước, theo thứ tự phụ thuộc, tên commit ghi
+bước, mỗi commit compile sạch; bước phụ thuộc Editor để lại và nêu ở mục Editor của báo cáo.
 
 ## Tra cứu — `workflow/reference.md`
 

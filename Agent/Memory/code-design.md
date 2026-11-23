@@ -46,3 +46,8 @@ Bài học đã trả giá khi làm việc với `code-design`. Đọc trọn c�
 `2026-11` · vấp 1 · chuyển sang, chưa kiểm lại
 **Thấy:** đổi tên field DTO theo yêu cầu rồi mới báo khoá ngoài repo phải đổi cùng build. **Vì:** định danh vừa là tên trong code vừa là khoá ngoài repo thì đổi tên là hai quyết định; máy còn build cũ, cấu hình ngoài phải đổi cùng lần phát hành.
 **Làm:** hỏi tách trước khi làm: giữ khoá dưới tên mới, hay đổi khoá kèm giá (`code-design` › Naming; `code-design` › tra cứu › Naming).
+
+### Service tiêm qua `Init` null lúc chạy, compile chỉ có warning CS0108
+`2026-10` · vấp 1 · đã đo
+**Thấy:** service null lúc chạy; build sạch lỗi, chỉ có `warning CS0108` — bước kiểm compile chỉ in lỗi nên không thấy. **Vì:** class con của base InitArgs khai báo `Awake` riêng, che `Awake` của base nên bước tiêm `Init` không chạy.
+**Làm:** viết `protected override void OnAwake()`; dò ca này bằng cách đếm `warning CS0108` trong output build (`code-design` › tra cứu › Stack và quy ước).

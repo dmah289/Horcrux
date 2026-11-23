@@ -41,3 +41,18 @@ Bài học đã trả giá khi làm việc với `workflow`. Đọc trọn cùng
 `2026-11` · vấp 1 · chuyển sang, chưa kiểm lại
 **Thấy:** nút gọi lệnh thật chỉ chạm vào cổng đã khoá từ phiên đầu, bấm không đổi gì. **Vì:** lệnh thật có cổng (khoá, cửa sổ thời gian) mà đường thật đóng cổng trước khi QA kịp bấm.
 **Làm:** cheat là lệnh riêng vượt cổng, đặt trong hệ (`workflow` › tra cứu › Cheat).
+
+### Hai mốc cách xa không so được vì diff thô ngập đổi tên
+`2026-10` · vấp 1 · đã đo
+**Thấy:** cần chứng minh refactor không đổi thuật toán giữa hai commit cách xa; diff thô hàng chục nghìn dòng vì nhiều đợt đổi tên và dời thư mục. **Vì:** đổi tên và dời file che mọi thay đổi thật.
+**Làm:** ghép cặp file bằng `git diff -M20%` rồi ghép tay phần còn lại · áp bảng đổi tên (lấy lại từ git history nếu Plan đổi tên đã xoá) lên bản cũ · diff bỏ `using` và khoảng trắng · **so riêng tập chuỗi ký tự** để đổi tên không che chuỗi · đọc tay mọi cặp còn lệch · hàm trùng tên ở hai namespace thì soát `using` từng file xem resolve về bản nào · prefab lọc guid, fileID nhưng **không** lọc `m_IsActive`, `m_Enabled`, `m_LocalPosition` (`workflow` › tra cứu › Nghiệm thu).
+
+### Commit gom file developer đã stage, hoặc lệnh pathspec hỏng cả cụm
+`2026-11` · vấp 1 · đã đo
+**Thấy:** commit lẫn prefab, scene developer tự stage, chạy nền nên không kịp dừng · `git add` file vừa `git rm` báo "did not match" làm hỏng cả lệnh · file mới không vào commit. **Vì:** `git commit` không pathspec lấy cả index; pathspec của commit không nhận file chưa track; file đã xoá khỏi index không còn để `git add`.
+**Làm:** soát cột index của `git status --short`; `git add -- <file mới>` trước; file đã `git rm` chỉ để trong pathspec của `git commit -- <paths>`; không chạy commit nền (`workflow` › tra cứu › Git).
+
+### `.meta` texture đổi sau khi import mà không ai sửa
+`2026-11` · vấp 1 · đã đo
+**Thấy:** `.meta` của texture vừa import hiện trong `git status` với mục platform Android, iOS không override. **Vì:** Unity tự thêm mục platform mặc định khi import.
+**Làm:** coi là nhiễu, để ngoài commit trừ khi developer muốn giữ.
