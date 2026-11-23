@@ -1,6 +1,6 @@
 # Plan — `SwirlPath`: một nhóm vật xoáy vào quanh tâm rồi bung về đúng chỗ cũ
 
-Bản tạm: category-jam `Scripts/Director/FanSwirl.cs` › `FanSwirlTuning`, `FanSwirl` (caller `ShuffleBooster`, test `Tests/EditMode/FanSwirlTests.cs`). Không phụ thuộc Plan nào. Chung file: category-jam `Scripts/Feel.md` › Nghiệm thu, dòng "Máy kiểm" với `Horcrux_FeelUtilities_Plan.md` GĐ9, `Horcrux_HopCurve_DipFlash_Plan.md` › Chuyển dự án — mỗi Plan chỉ đổi tên test của mình, thứ tự nào cũng được.
+Bản tạm: category-jam `Scripts/Director/FanSwirl.cs` › `FanSwirlTuning`, `FanSwirl` (caller `ShuffleBooster`, test `Tests/EditMode/FanSwirlTests.cs`). Không phụ thuộc Plan nào. Chung file: category-jam `Scripts/Feel.md` › Nghiệm thu, dòng "Máy kiểm" với `Horcrux_FeelUtilities_Plan.md` › Chuyển dự án, `Horcrux_HopCurve_DipFlash_Plan.md` › Chuyển dự án — mỗi Plan chỉ đổi tên test của mình, thứ tự nào cũng được.
 Kiểm: `bash "Assets/Horcrux/Editor/CompileCheck/Tools~/verify.sh" --csproj com.horcrux.runtime.csproj --tests Horcrux.EditModeTests`; chuyển dự án `--csproj CategoryJam.Gameplay.csproj,com.horcrux.runtime.csproj --tests CategoryJam.EditModeTests,Horcrux.EditModeTests`.
 
 ## Kịch bản

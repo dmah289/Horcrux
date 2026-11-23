@@ -5,7 +5,7 @@ Tất cả phải tuân thủ: **zero-GC** (thuần tính toán `float`/`struct`
 
 > **Tween = PrimeTween.** Mọi mục dưới đây có phần chuyển động theo thời gian (nảy, đếm, fade, flash, ramp `timeScale`) **chạy bằng PrimeTween** (`useUnscaledTime` khi cần chạy lúc `timeScale = 0`), không có runner tween tự viết. Phần còn lại ở đây là toán thuần (`Easer`, `Interpolator`, `SquashStretch`…) cấp **giá trị** cho tween qua `Tween.Custom`. `EaseType` giữ làm enum toán; tween dùng `PrimeTween.Ease`.
 >
-> **Item combo-exclusive:** `Plans/Horcrux_ComboTracker_Plan.md` chỉ giữ bộ đếm với cửa sổ theo count; meter, bridge Feedback và công thức phản hồi cố ý ở lại dự án (Ngữ cảnh đã chốt › Cố ý KHÔNG làm). `ComboMeter` trong category-jam là `ComboPill` vẽ bằng `ProgressBar.PlayAsync`; `ChainReaction`, `HapticPattern` (ramp) và 2 hộp công thức "Combo ASMR" chưa có plan nào giữ.
+> **Item combo-exclusive:** `Plans/Horcrux_ComboTracker_Plan.md` chỉ giữ bộ đếm với cửa sổ theo count; meter, bridge Feedback và công thức phản hồi cố ý ở lại dự án (› Không làm · Mở rộng sau). `ComboMeter` trong category-jam là `ComboPill` vẽ bằng `ProgressBar.PlayAsync`; `ChainReaction`, `HapticPattern` (ramp) và 2 hộp công thức "Combo ASMR" chưa có plan nào giữ.
 
 Đã có:
 - `HarmonicOscillator` (dao động điều hòa đơn giản, Sin/Cos).
@@ -259,7 +259,7 @@ Các mảng bổ sung mở rộng cảm giác ra ngoài đối tượng: camera,
 #### `FloatingText` — số bay lên rồi tan
 - Damage/điểm bật lên với overshoot + fade. Feedback tức thì. `Sequence` PrimeTween: `Ease.OutBack` cho scale, fade cho alpha.
 
-#### `ComboMeter` — không có plan Horcrux: category-jam vẽ bằng `ComboPill` + `ProgressBar.PlayAsync` (`Horcrux_ComboTracker_Plan.md` › Đã khảo sát)
+#### `ComboMeter` — không có plan Horcrux: category-jam vẽ bằng `ComboPill` + `ProgressBar.PlayAsync` (`Horcrux_ComboTracker_Plan.md` › Không làm, dòng `ComboMeter`)
 - Thanh combo phồng/co theo streak. Bản hiện thực: thanh co theo **cửa sổ combo còn lại** + nảy (`SquashStretch` + `EaseType.OutBack`) mỗi nhịp + đổi màu theo bậc.
 
 ### M. Môi trường sống động (ambient juice — nền ASMR)
