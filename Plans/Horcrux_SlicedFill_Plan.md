@@ -123,7 +123,8 @@ lúc dựng là bề rộng đầy. Thiếu pivot trái: ruột co về tâm. Th
 - Đổi `using` từ namespace của bản tạm sang `Horcrux.Runtime.Utilities` ở mọi caller (thanh tiến độ box, view thiết kế level trong
   tool Editor).
 - Xoá file bản tạm cùng `.meta`.
-- Chuyển test của bản tạm sang `Horcrux.EditModeTests`, xoá bản cũ.
+- Xoá test của bản tạm: test Horcrux viết ở GĐ1 đã phủ bảng case. Trước khi xoá, case nào của bản tạm bảng GĐ1 chưa có thì
+  thêm vào test Horcrux; giữ hai bản là hai nơi phải sửa khi hàm đổi.
 - Cập nhật tài liệu dự án nhắc bản tạm (bảng "chờ Horcrux", chỗ ghi đường dẫn bản tạm).
 
 **Kiểm:** grep tên type kèm namespace cũ ra 0; compile sạch; test xanh. **Mốc commit:** một commit ở dự án kèm con trỏ submodule.
@@ -145,6 +146,6 @@ Thanh máu trên đầu quái (world) · thanh tiến độ trên vật thể: b
 | File | GĐ |
 |---|---|
 | `Runtime/Utilities/Sprites/SlicedFill.cs` | 1 |
-| Test EditMode `SlicedFillTests` | 1 (viết), 2 (chuyển) |
+| Test EditMode `SlicedFillTests` | 1 (viết), 2 (xoá bản dự án) |
 | Caller và bản tạm của dự án | 2 |
 | `docs/Runtime/SlicedFill/SlicedFill.md`, `SlicedFill.html` (agent) | 3 |
