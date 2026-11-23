@@ -87,9 +87,10 @@ namespace Horcrux.Runtime.Implementations.RemoteConfigSystem
                 };
                 return true;
             }
-            catch
+            catch (Exception e)
             {
-                Debug.LogError($"Can't parse remote config value for key {firebaseKey} with value {serializedVal} to type {typeof(T)}");
+                // Lý do parse hỏng (khoá thiếu, sai kiểu) chỉ có trong exception; log thiếu nó thì phải dò JSON bằng mắt.
+                Debug.LogError($"Can't parse remote config value for key {firebaseKey} with value {serializedVal} to type {typeof(T)}: {e.Message}");
                 result = default;
                 return false;
             }

@@ -60,7 +60,10 @@ hưởng quyết định đang bàn**: **thấy gì** (đường dẫn, dòng) �
 · **developer biết chưa** — chủ ý hay đã trôi. Không kể lại code. Mỗi lượt review đọc lại file hiện tại: báo lại lỗi đã sửa
 làm mất tin vào phát hiện còn đúng. Số đọc từ hai file YAML chỉ so được khi quy về một kiểu, hoặc đọc qua API engine. Code
 có nhánh `#if` thì nhánh đang chạy đọc trên assembly đã compile, không suy từ source: define toàn cục và define theo phiên
-bản package chồng nhau chọn nhánh khác điều source gợi ý.
+bản package chồng nhau chọn nhánh khác điều source gợi ý. **Hành vi đọc giá trị sống ngoài repo (remote config, server) thì bản đang chạy là bản ngoài**,
+bản trong repo chỉ là lưới đỡ: sửa số trong repo chưa phải sửa hành vi. Phát hiện nêu cả hai bản; nghiệm thu giao developer
+đối chiếu bằng công cụ so. *Đã sai một lần:* hệ số nhân giá hạ về 1 trong asset được coi là đã sửa giá, trong khi console vẫn
+có thể giữ số cũ.
 
 ## Văn phong
 

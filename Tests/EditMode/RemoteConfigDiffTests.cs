@@ -91,8 +91,12 @@ namespace Horcrux.Tests
         // Compared after parse: key order and whitespace on the console do not count as a difference.
         [Test]
         public void JsonWithOtherKeyOrderAndSpaces_Match()
-            => Assert.AreEqual(RemoteConfigDiffStatus.Match,
-                Compare(Template(Param("k_rows", "[ { \"b\": \"x\", \"a\": 1 } ]")), "k_rows").Status);
+        {
+            var row = Compare(Template(Param("k_rows", "[ { \"b\": \"x\", \"a\": 1 } ]")), "k_rows");
+
+            Assert.AreEqual(RemoteConfigDiffStatus.Match, row.Status);
+            Assert.IsEmpty(row.Warnings);
+        }
 
         [Test]
         public void JsonWithOtherValue_Mismatch()
@@ -108,6 +112,55 @@ namespace Horcrux.Tests
 
             Assert.AreEqual(RemoteConfigDiffStatus.ConsoleUnparsable, row.Status);
             Assert.AreEqual("abc", row.ConsoleJson);
+        }
+
+        // Re-serialized console drops the key no member reads: status alone says Match while the console carries a dead key.
+        [Test]
+        public void ConsoleKeyNoMemberReads_Match_WarnsKeyPath()
+        {
+            var row = Compare(Template(Param("k_rows", "[{\"a\":1,\"b\":\"x\",\"rate\":3}]")), "k_rows");
+
+            Assert.AreEqual(RemoteConfigDiffStatus.Match, row.Status);
+            CollectionAssert.AreEqual(new[] { "console sends keys the app does not read: [].rate" }, row.Warnings);
+        }
+
+        // DTO without required keys: a missing (or renamed) key parses as default.
+        [Test]
+        public void ConsoleOmitsKey_Mismatch_WarnsKeyPath()
+        {
+            var row = Compare(Template(Param("k_rows", "[{\"a\":1}]")), "k_rows");
+
+            Assert.AreEqual(RemoteConfigDiffStatus.Mismatch, row.Status);
+            CollectionAssert.AreEqual(new[] { "console omits keys the app reads as default: [].b" }, row.Warnings);
+        }
+
+        // Newtonsoft reads keys ignoring case, so case alone is not a key difference.
+        [Test]
+        public void ConsoleKeysInOtherCase_NoKeyWarning()
+            => Assert.IsEmpty(Compare(Template(Param("k_rows", "[{\"A\":1,\"B\":\"x\"}]")), "k_rows").Warnings);
+
+        // A DTO requiring every key fails the same way on a renamed key; the key paths against the asset name both sides.
+        [Test]
+        public void UnparsableStructuredValue_WarnsKeyPathsAgainstAsset()
+        {
+            LogAssert.Expect(LogType.Error, new Regex("Can't parse remote config value for key k_rows"));
+
+            var row = Compare(Template(Param("k_rows", "[{\"a\":\"x\",\"c\":\"x\"}]")), "k_rows");
+
+            Assert.AreEqual(RemoteConfigDiffStatus.ConsoleUnparsable, row.Status);
+            CollectionAssert.AreEqual(new[]
+            {
+                "keys of the asset value missing on console: [].b",
+                "console keys absent from the asset value: [].c",
+            }, row.Warnings);
+        }
+
+        [Test]
+        public void UnparsableScalar_NoKeyWarning()
+        {
+            LogAssert.Expect(LogType.Error, new Regex("Can't parse remote config value for key k_count"));
+
+            Assert.IsEmpty(Compare(Template(Param("k_count", "[1]")), "k_count").Warnings);
         }
 
         [Test]

@@ -163,10 +163,10 @@ Cùng một hàm `TryParseValueFromString` cho remote, cache, nút `ImportJson` 
 | `int` · `long` | `Parse` | |
 | `bool` | `bool.Parse` | nhận `true`/`false` không phân biệt hoa thường; `1`/`0` là trượt |
 | `float` · `double` | `Parse` với `InvariantCulture` | máy locale dấu phẩy vẫn đúng; server phải dùng dấu chấm |
-| còn lại | `JsonConvert.DeserializeObject<T>` | khớp tên property không phân biệt hoa thường, không đổi tên: đổi tên field thì key cũ trên server rơi thành `default` **im lặng**. Key thừa bị bỏ qua |
+| còn lại | `JsonConvert.DeserializeObject<T>` | khớp tên property không phân biệt hoa thường, không đổi tên: đổi tên field thì key cũ trên server rơi thành `default` **im lặng**; DTO `[JsonObject(ItemRequired = Required.Always)]` thì cả giá trị bị từ chối, giữ cache. Key thừa luôn bị bỏ qua im lặng. Tool `RemoteConfigDiff` liệt kê cả hai |
 
 Giá trị có cấu trúc khai `RemoteConfig<MyData>` với class dữ liệu thuần, không `RemoteConfig<string>` rồi tự parse — parse
-hai nơi che lỗi khỏi log của hệ. JSON hỏng thì hệ tự `LogError` và giữ cache; consumer không `try/catch`.
+hai nơi che lỗi khỏi log của hệ. JSON hỏng thì hệ tự `LogError` kèm lý do của exception (khoá thiếu, sai kiểu) và giữ cache; consumer không `try/catch`.
 
 ## 5. Vòng đời
 

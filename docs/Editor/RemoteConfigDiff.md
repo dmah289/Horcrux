@@ -22,6 +22,7 @@ app. Chạy sau khi dán giá trị lên console, trước khi publish hay trư�
 | Danh sách biến lấy bằng cách gọi hàm private `GetRemoteConfigFields` của collection qua reflection | đúng tập biến runtime fetch: tool tự quét field thì lệch runtime ở field private của lớp cha (runtime không thấy) |
 | Giá trị console parse bằng hàm private `TryParseValueFromString` của chính `RemoteConfig<T>` | cùng luật với máy người chơi: string giữ nguyên chữ, số theo `InvariantCulture`, enum theo tên, còn lại `JsonConvert`. Parse hỏng thì runtime tự `LogError` (Console đỏ một dòng mỗi key hỏng là đúng: máy người chơi cũng hỏng ở đó) |
 | So sau khi parse hai bên rồi serialize lại bằng `JsonConvert`, so `JToken.DeepEquals` | thứ tự khoá, khoảng trắng, `1.50` với `1.5` không phải lệch; khác giá trị thật mới là lệch |
+| Giá trị JSON so thêm **đường khoá** của chữ thô console với bản đã serialize lại, ra cảnh báo chứ không đổi trạng thái | serialize lại bỏ khoá không member nào đọc và điền default cho member console thiếu, nên `Match` vẫn giấu được khoá chết và khoá đổi tên. Khoá ở trên console vẫn không hại gì máy người chơi, nên chỉ là cảnh báo |
 
 **Cố ý KHÔNG làm**
 
@@ -61,6 +62,13 @@ Template JSON ──► "parameters" + "parameterGroups.*.parameters" ──► 
 | `conditionalValues` | key có giá trị theo điều kiện: user trúng điều kiện nhận giá trị khác `defaultValue` |
 | `allowFetching is off` | console có key mà biến tắt fetch: runtime bỏ giá trị console |
 | `firebaseKey is empty` · `also used by field …` | khoá rỗng hay hai biến cùng khoá |
+| `console sends keys the app does not read: …` | parse được, chữ thô console có đường khoá mà type không có member: khoá chết, hoặc tên cũ của field đã đổi |
+| `console omits keys the app reads as default: …` | parse được, type có member mà console không gửi: máy người chơi đọc ra default im lặng (DTO không đòi đủ khoá) |
+| `keys of the asset value missing on console: …` · `console keys absent from the asset value: …` | `ConsoleUnparsable` và cả hai bên là object hay mảng JSON: so đường khoá với giá trị asset. DTO đòi đủ khoá bị đổi tên khoá thì hai dòng này gọi tên cả khoá mới lẫn khoá cũ |
+
+Đường khoá lấy từ `JsonWireContract.CollectKeyPaths` (`docs/Editor/JsonWireContract.md`), cùng dạng test wire format của dự án
+dùng: `a.b`, phần tử mảng gộp dưới `[]` (`segments[].start_coin`). Đường mô tả **hình dạng**, nên một phần tử thiếu khoá mà
+phần tử khác có thì không hiện. So không phân biệt hoa thường, như Newtonsoft khớp property. Giá trị vô hướng không có khoá để so.
 
 ## Trước khi chạy
 
@@ -78,6 +86,8 @@ Template JSON ──► "parameters" + "parameterGroups.*.parameters" ──► 
 | int bằng nhau · string `"123"` · float `1.50` với `1.5` · JSON khác thứ tự khoá và khoảng trắng | `Match` |
 | int khác · JSON khác giá trị | `Mismatch`, hai giá trị |
 | int nhận `"abc"` | `ConsoleUnparsable`, giữ chữ thô, runtime log một dòng |
+| mảng có khoá thừa `rate` · thiếu khoá `b` · khoá khác hoa thường | `Match` kèm `[].rate` không ai đọc · `Mismatch` kèm `[].b` đọc ra default · không cảnh báo |
+| mảng không parse được, có khoá `c` thay cho `b` · int nhận `[1]` | `ConsoleUnparsable` kèm hai dòng `[].b` và `[].c` · không cảnh báo khoá |
 | key thiếu ở console · key thiếu ở asset | `AssetOnly` · `ConsoleOnly`, xếp sau dòng asset, theo chữ |
 | `useInAppDefault` | `ConsoleInAppDefault` |
 | `conditionalValues` · fetch tắt mà console có key · hai biến cùng khoá | cảnh báo tương ứng; fetch tắt mà console không có key thì không cảnh báo |
@@ -85,3 +95,5 @@ Template JSON ──► "parameters" + "parameterGroups.*.parameters" ──► 
 | field đánh dấu không phải `RemoteConfig<T>` | `InvalidField` |
 | JSON hỏng · không có `parameters` lẫn `parameterGroups` | `TryCompare` false kèm lỗi |
 | báo cáo | một dòng mỗi row, `|` trong giá trị được escape |
+
+Đối chứng: tắt phần so đường khoá thì đúng ba case cảnh báo khoá đỏ.

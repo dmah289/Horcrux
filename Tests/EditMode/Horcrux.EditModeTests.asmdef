@@ -4,7 +4,7 @@
     "references": [ "com.horcrux.runtime", "com.horcrux.editor", "UniTask", "Unity.TextMeshPro", "UnityEngine.UI", "UnityEngine.TestRunner", "UnityEditor.TestRunner", "LightSide.UniText" ],
     "includePlatforms": [ "Editor" ],
     "overrideReferences": true,
-    "precompiledReferences": [ "nunit.framework.dll" ],
+    "precompiledReferences": [ "nunit.framework.dll", "Newtonsoft.Json.dll" ],
     "autoReferenced": false,
     "defineConstraints": [ "UNITY_INCLUDE_TESTS" ]
 }

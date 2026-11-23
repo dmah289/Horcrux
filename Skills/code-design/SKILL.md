@@ -218,7 +218,10 @@ khi viết ở chỗ người vi phạm đang nhìn** (Tooltip, XML doc, tài li
   code nằm trong namespace anh em gõ `Time.` sẽ trỏ vào namespace đó (CS0234), buộc viết đủ `UnityEngine.Time` ở mọi hệ sau.
   Tên hệ thêm hậu tố (`TimeSystem`) hay danh từ khác.
 - **Đổi tên là đổi cả hệ** (NT10): code, comment, chuỗi debug, tài liệu cùng lần, kiểm bằng grep; `.cs` và thư mục đổi
-  trong Project window để giữ GUID. Khoá wire format, dữ liệu ngoài repo không đổi theo. Asset trong repo đổi key YAML cùng
+  trong Project window để giữ GUID. Khoá wire format, dữ liệu ngoài repo không đổi theo. Định danh vừa là tên trong code vừa là
+  khoá ngoài repo (field DTO của remote config, save, tracking) thì yêu cầu đổi tên là **hai quyết định**: hỏi tách trước khi
+  làm — giữ khoá dưới tên mới, hay đổi khoá kèm giá (máy còn build cũ, cấu hình ngoài phải đổi cùng lần phát hành). *Đã sai
+  một lần:* đổi tên field DTO remote theo yêu cầu rồi mới báo khoá console phải đổi cùng build. Asset trong repo đổi key YAML cùng
   lần, không `FormerlySerializedAs` — attribute đó chỉ là cầu cho asset không sửa tay được, gỡ sau khi asset đã lưu tên mới.
   **Đổi đơn vị cũng vậy:** grep mọi hằng mang đơn vị trước lần chạy đầu. **Sổ tay** — phạm vi chọn theo **kiểu**, không
   theo tên; quét **mọi** định danh cũ trên **mọi** YAML (kể cả `propertyPath`, `m_MethodName`); đổi bằng luật máy móc thì

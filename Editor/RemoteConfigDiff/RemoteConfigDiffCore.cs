@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Text;
+using Horcrux.Editor.WireContract;
 using Horcrux.Runtime.Abstractions.RemoteConfigSystem;
 using Horcrux.Runtime.Implementations.RemoteConfigSystem;
 using Newtonsoft.Json;
@@ -160,19 +161,81 @@ namespace Horcrux.Editor.RemoteConfigDiff
             object[] args = { param.Value, null };
             bool parsed = (bool)variableType.GetMethod("TryParseValueFromString", PrivateInstance).Invoke(variable, args);
 
+            JToken consoleRaw = TryParseContainer(param.Value);
+
             if (!parsed)
             {
                 row.Status = RemoteConfigDiffStatus.ConsoleUnparsable;
                 row.ConsoleJson = param.Value;
+                // A renamed key fails a DTO that requires every key; diffing key paths against the asset names it.
+                AddKeyPathWarnings(row, JToken.Parse(row.AssetJson), consoleRaw,
+                    "keys of the asset value missing on console: ", "console keys absent from the asset value: ");
                 return row;
             }
 
             row.ConsoleJson = JsonConvert.SerializeObject(args[1]);
-            row.Status = JToken.DeepEquals(JToken.Parse(row.AssetJson), JToken.Parse(row.ConsoleJson))
+            JToken consoleParsed = JToken.Parse(row.ConsoleJson);
+            row.Status = JToken.DeepEquals(JToken.Parse(row.AssetJson), consoleParsed)
                 ? RemoteConfigDiffStatus.Match
                 : RemoteConfigDiffStatus.Mismatch;
 
+            // Re-serializing drops keys no member reads and fills members the console omits, so Match can hide both.
+            AddKeyPathWarnings(row, consoleParsed, consoleRaw,
+                "console omits keys the app reads as default: ", "console sends keys the app does not read: ");
+
             return row;
+        }
+
+        /// <summary>Warns with the key paths only one side has; skipped unless both sides are JSON objects or arrays.</summary>
+        private static void AddKeyPathWarnings(RemoteConfigDiffRow row, JToken expected, JToken sent,
+            string onlyExpectedPrefix, string onlySentPrefix)
+        {
+            if (expected is not JContainer || sent is not JContainer)
+                return;
+
+            // Newtonsoft matches property names ignoring case, so a key differing only in case is still read.
+            var expectedPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var sentPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            JsonWireContract.CollectKeyPaths(expected, expectedPaths);
+            JsonWireContract.CollectKeyPaths(sent, sentPaths);
+
+            AddPathsWarning(row, onlyExpectedPrefix, expectedPaths, sentPaths);
+            AddPathsWarning(row, onlySentPrefix, sentPaths, expectedPaths);
+        }
+
+        private static void AddPathsWarning(RemoteConfigDiffRow row, string prefix, HashSet<string> paths, HashSet<string> other)
+        {
+            var only = new List<string>();
+
+            foreach (string path in paths)
+            {
+                if (!other.Contains(path))
+                    only.Add(path);
+            }
+
+            if (only.Count == 0)
+                return;
+
+            only.Sort(StringComparer.Ordinal);
+            row.Warnings.Add(prefix + string.Join(", ", only));
+        }
+
+        /// <summary>Null unless the console text is a JSON object or array: scalars have no keys to compare.</summary>
+        private static JToken TryParseContainer(string text)
+        {
+            string trimmed = text?.TrimStart();
+
+            if (string.IsNullOrEmpty(trimmed) || (trimmed[0] != '{' && trimmed[0] != '['))
+                return null;
+
+            try
+            {
+                return JToken.Parse(text);
+            }
+            catch (JsonReaderException)
+            {
+                return null;
+            }
         }
 
         private static bool IsRemoteConfigOfT(Type type)
