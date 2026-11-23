@@ -79,14 +79,17 @@ thị tĩnh. Trang: header → mục lục trỏ `id` → `<main>` → footer gh
   đoạn thay nó nói vì sao thay.
 - Xoá API cũ của Horcrux là việc riêng, không nằm trong Plan thêm.
 
-**Sổ tay** — đầu Plan: "Ngữ cảnh đã chốt" · bảng "Đã khảo sát" · phụ thuộc Plan nào · luồng mô tả · bản đồ hệ cuối · `§0`.
+**Sổ tay** — đầu Plan: khối mở (ngày · nguồn bản tạm kèm đường dẫn · ai gõ giai đoạn nào · "chạy được, thấy được" mỗi giai
+đoạn · lệnh kiểm · commit ở repo nào · phụ thuộc và chung file với Plan nào · đã compile, chạy bản mẫu gì trước khi ghi) ·
+"Ngữ cảnh đã chốt" · bảng "Đã khảo sát" (*nguồn · lấy gì · không lấy, vì sao*) · luồng mô tả · bản đồ hệ cuối · `§0`. Tên dự
+án nguồn chỉ ở khối mở, hàng bản tạm của "Đã khảo sát" và giai đoạn chuyển dự án; phần còn lại trung tính.
 Mỗi giai đoạn: mục tiêu (chặng nào, xong thì hệ làm thêm được gì) · vì sao bây giờ · sơ đồ tương tác · chỗ thêm theo neo
 (`File` › region › neo → đoạn mới) · Interfaces nó consumes, produces · "toán → code" · *quyết định, phương án bỏ, vì sao* ·
 Editor setup của giai đoạn · kiểm (compile, thấy gì, bảng case input → kỳ vọng, biên theo `workflow` › tra cứu › Nghiệm
 thu) · danh sách cheat · mốc commit. Cuối Plan: bảng file → giai đoạn đã chạm.
 
 - Plan chỉ có Horcrux: "chạy được, thấy được" mỗi giai đoạn là compile sạch và bảng case xanh, "thấy trong game" là giai
-  đoạn cuối — dự án chuyển sang bản Horcrux, xoá bản tạm, kèm kịch bản chơi thử.
+  đoạn cuối — dự án chuyển sang bản Horcrux, xoá bản tạm, xoá Plan, kèm kịch bản chơi thử; tài liệu hệ ở giai đoạn ngay trước.
 - Code Editor không có test thì caller là nút của dự án: nối dự án ngay trong giai đoạn, xoá bản tạm cùng tên cùng lúc.
 - Nhiều utility độc lập trong một Plan: mỗi cơ chế một luồng, bản đồ và chuỗi giai đoạn riêng, chung Ngữ cảnh đã chốt, Đã
   khảo sát, tài liệu và chuyển dự án.

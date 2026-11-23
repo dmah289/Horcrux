@@ -48,7 +48,8 @@ trên chức năng còn nằm trong Plan chờ gõ** thì coi Plan đó đã tri
 *phụ thuộc Plan nào*.
 
 **Nơi đặt:** không gọi type dự án → Horcrux `Foundations/` (hệ) hoặc `Utilities/` (helper thuần) · dựng trên nhiều hệ
-Horcrux, không mang domain → `Composites/` · gọi domain dự án → dự án · lõi chung + lớp nối → **tách** (NT8).
+Horcrux, không mang domain → `Composites/` · bọc SDK bên thứ ba → `Vendors/<Vendor>/`, namespace `Horcrux.Vendors.<Vendor>`,
+mỗi package phụ thuộc thêm một assembly con · gọi domain dự án → dự án · lõi chung + lớp nối → **tách** (NT8).
 
 **Ai gõ gì trong Horcrux.**
 
