@@ -11,14 +11,18 @@ class chỉ nối vào service của SRDebugger, ngoài Play `SRDebug.Instance` 
 com.horcrux.srdebugger.csproj,Assembly-CSharp.csproj` chạy từ gốc dự án) · GĐ2 bốn category hiện đủ trong panel, lệnh xong hàng đọc đổi ngay. GĐ1 commit trong
 `Assets/Horcrux`, GĐ2 commit ở dự án kèm con trỏ submodule. Không phụ thuộc Plan nào, không có lõi toán.
 
-Code GĐ1 đã compile thử bằng csc trên DLL của dự án (SRDebugger `com.zego.srdebugger`, Unity 6000.0.73f1, C# 9).
+Code GĐ1 đã compile thử bằng csc trên DLL của dự án (SRDebugger `com.zego.srdebugger`, Unity 6000.0.73f1, C# 9), kèm một stub gọi
+đúng các lệnh GĐ2 của Economy. `SkipToAllowed` đã chạy qua reflection trên enum `None, Fan, ExtraSlot, Pack, Magnet, AddBox` với
+allowed `Fan, ExtraSlot, Magnet`: tới từ ExtraSlot nhận Pack → Magnet · tới từ Magnet nhận AddBox → Fan (vòng qua None) · lùi từ
+Fan nhận None → Magnet · lùi từ Magnet nhận Pack → ExtraSlot.
 
 ---
 
 ## Ngữ cảnh đã chốt
 
 - **Người dùng:** class cheat của dự án (một `MonoBehaviour` mỗi hệ, đặt trong scene service) dựng một category trong tab Options
-  của SRDebugger. Từ bốn class hiện có: hàng chỉ đọc, ô nhập (int, enum, string), nút lệnh, nút mở panel debug của SDK.
+  của SRDebugger. Từ bốn class hiện có: hàng chỉ đọc, ô nhập (int, enum, string), nút lệnh, nút mở panel debug của SDK, ô số kèm
+  nút Set (Economy: booster, coin, mạng), ô chọn enum bỏ qua giá trị canh (Economy: loại booster).
 - **Chỗ đặt:** `Vendors/SRDebugger/`, assembly riêng `com.horcrux.srdebugger`, namespace `Horcrux.Vendors.SRDebuggerOptions`.
   Bật bằng `versionDefines` như `Vendors/Adjust`: dự án không cài SRDebugger thì assembly không compile, không lỗi. Tên class,
   namespace đổi tuỳ ý trước khi gõ.
@@ -38,12 +42,18 @@ Code GĐ1 đã compile thử bằng csc trên DLL của dự án (SRDebugger `co
   - `AddPanelOpener` tách khỏi `AddCommand`, không phải một cờ trên `AddCommand`. Panel SDK (Zego `CanvasSdkDebugger` sort 400)
     nằm dưới panel SRDebugger: hiện ra nhưng không nhận chạm. Luật "ẩn SRDebugger trước" do class giữ, caller không cần biết.
   - Ô nhập cũng được báo lại sau lệnh. Economy hiện ô số dư thật cho tới khi QA gõ, Set xong phải về số dư mới.
+  - `AddAmountSetter` từ chối số ngoài `min..max` kèm log, không kẹp: kẹp im lặng làm QA tưởng mình đã đặt đúng số vừa gõ. `max`
+    là delegate vì trần đổi trong phiên (mạng tối đa tăng khi mua gói).
+  - `AddChoice` đổi lựa chọn thì bỏ số đã gõ ở **mọi** ô số, không chỉ ô phụ thuộc: số gõ cho lựa chọn cũ, giữ lại là đặt nhầm
+    sang lựa chọn mới. Một category có một ô chọn là ca hiện có; category có hai ô chọn độc lập thì tách category.
+  - Ô số và nút Set là **một** lệnh `AddAmountSetter`, không phải `AddInput` + `AddCommand` caller tự nối: số đang gõ dở là trạng
+    thái của cặp ô đó, caller giữ thì mỗi cặp lại một field `int?` và một hàm kiểm miền.
 
 ### Đã khảo sát
 
 | Nguồn | Lấy gì | Không lấy, vì sao |
 |---|---|---|
-| 4 class `*DebugOptions` dự án | khối `Register`/`Unregister`, comment hai ca `null`, cách đếm `order` | phần lệnh, setter, `TryTakePending`: từ vựng dự án |
+| 4 class `*DebugOptions` dự án | khối `Register`/`Unregister`, comment hai ca `null`, cách đếm `order` | phần lệnh: từ vựng dự án. `TryTakePending` và `SelectBooster` + `Wrap` của Economy không mang tên booster hay coin, nên thành `AddAmountSetter`, `AddChoice` |
 | SRDebugger `OptionDefinition` | `Create<T>(name, getter, setter, category, sortPriority)`, `FromMethod(name, Action, category, sortPriority)` | constructor `MethodReference`: `FromMethod` đủ |
 | SRDebugger `DynamicOptionContainer` | `AddOption`; thêm sau `AddOptionContainer` vẫn hiện (bắn `OptionAdded`) | `RemoveOption`: chưa caller |
 | SRF `PropertyReference.NotifyValueChanged()` | cách báo hàng đọc lại | — |
@@ -56,12 +66,14 @@ Code GĐ1 đã compile thử bằng csc trên DLL của dự án (SRDebugger `co
 ```
 Awake của class cheat dự án: new DebugOptionsCategory("Cheat Economy")
         ▼
-AddRow / AddInput / AddCommand / AddPanelOpener ──► OptionDefinition vào container, order tăng dần
+AddRow / AddInput / AddAmountSetter / AddChoice / AddCommand / AddPanelOpener ──► OptionDefinition vào container, order tăng dần
         ▼
 Attach ──► SRDebug.Instance null? ──có──► dừng (SRDebugger tắt)
         │ không
         ▼ AddOptionContainer: category hiện trong tab Options
 QA bấm lệnh ──► run() của dự án ──► RefreshRows: mọi hàng, ô nhập NotifyValueChanged ──► panel vẽ số mới
+QA gõ ô số ──► giữ số đã gõ, ô hiện số đó ──► bấm Set: chưa gõ? dừng · ngoài min..max? log lỗi, giữ số · còn: write() ──► RefreshRows
+QA bấm mũi tên ô chọn ──► SkipToAllowed theo chiều bấm ──► write() ──► bỏ mọi số đã gõ ──► RefreshRows
 QA bấm nút mở panel SDK ──► HideDebugPanel ──► openPanel() của dự án (Zego.SdkDebugger.Show)
         ▼
 OnDestroy: Detach ──► chưa attach? dừng · Instance null (thoát app)? dừng · còn: RemoveOptionContainer
@@ -81,7 +93,7 @@ OnDestroy: Detach ──► chưa attach? dừng · Instance null (thoát app)? 
 
 ## Giai đoạn 1 — Assembly và class `DebugOptionsCategory`
 
-**Mục tiêu:** dự án dựng được một category đủ bốn loại hàng mà không chạm `SRDebug.Instance`, `DynamicOptionContainer`, `order`.
+**Mục tiêu:** dự án dựng được một category đủ sáu loại hàng mà không chạm `SRDebug.Instance`, `DynamicOptionContainer`, `order`.
 
 **Vì sao bây giờ:** class ngắn (một màn hình) và mỗi member đã có caller thật trong bốn class dự án; chia nhỏ hơn thì giai đoạn đầu
 không có category nào chuyển được trọn.
@@ -124,14 +136,16 @@ không có category nào chuyển được trọn.
 
 ### `Vendors/SRDebugger/DebugOptionsCategory.cs` — file mới
 
-Ai gọi từng member (sau GĐ2): `AddRow` cả bốn class · `AddInput` Economy (enum, int), Level (int), UserSegmentation (string) ·
-`AddCommand` cả bốn · `AddPanelOpener` Tracking · `RefreshRows` setter của Economy (`SelectBooster`) và Level (`SetLevelInput`).
+Ai gọi từng member (sau GĐ2): `AddRow` Tracking, Level, UserSegmentation · `AddInput` Level (int), UserSegmentation (string) ·
+`AddAmountSetter` Economy (Booster, Coin, Live) · `AddChoice` Economy (Booster Type) · `AddCommand` cả bốn · `AddPanelOpener`
+Tracking · `RefreshRows` setter của Level (`SetLevelInput`).
 
 ```csharp
 using System;
 using System.Collections.Generic;
 using SRDebugger;
 using SRDebugger.Services;
+using UnityEngine;
 
 namespace Horcrux.Vendors.SRDebuggerOptions
 {
@@ -149,6 +163,9 @@ namespace Horcrux.Vendors.SRDebuggerOptions
         // SRDebugger re-reads a getter only on bind, panel open, tab change or when told: RefreshRows tells every row here.
         private readonly List<OptionDefinition> _valueRows = new();
 
+        // What QA typed into each amount field and has not set yet; null shows the live value.
+        private readonly List<TypedAmount> _typedAmounts = new();
+
         private int _nextOrder;
         private bool _isAttached;
 
@@ -165,6 +182,54 @@ namespace Horcrux.Vendors.SRDebuggerOptions
         /// <summary>Editable field QA types into; refreshed like a row, so it can show the live value until edited.</summary>
         public void AddInput<T>(string name, Func<T> read, Action<T> write) =>
             AddValueRow(OptionDefinition.Create(name, read, write, _category, _nextOrder++));
+
+        /// <summary>
+        /// Field "{label} Amount" showing the live value until QA types, and button "Set {label}" writing the typed value. Set
+        /// before typing does nothing; a value outside min..max is refused with an error log, not clamped, so QA sees the typo.
+        /// </summary>
+        public void AddAmountSetter(string label, Func<int> read, Action<int> write, int min = 0, Func<int> max = null)
+        {
+            var typed = new TypedAmount();
+            _typedAmounts.Add(typed);
+            AddValueRow(OptionDefinition.Create(label + " Amount", () => typed.Value ?? read(), value => typed.Value = value,
+                _category, _nextOrder++));
+            AddCommand("Set " + label, () =>
+            {
+                // Nothing typed: the field already shows the live value.
+                if (typed.Value is not int value)
+                    return;
+
+                int upper = max?.Invoke() ?? int.MaxValue;
+
+                if (value < min || value > upper)
+                {
+                    Debug.LogError($"[{_category}] {label} must be in {min}..{upper}, got {value}");
+                    return;
+                }
+
+                typed.Value = null;
+                write(value);
+            });
+        }
+
+        /// <summary>
+        /// Enum field stopping only at allowed values. SRDebugger's enum field steps through every value, sentinels (None, Count)
+        /// included: values outside allowed are skipped in the direction QA pressed. A new choice drops amounts typed for the old
+        /// one and refreshes every row.
+        /// </summary>
+        public void AddChoice<T>(string name, IReadOnlyList<T> allowed, Func<T> read, Action<T> write) where T : struct, Enum
+        {
+            var order = (T[])Enum.GetValues(typeof(T));
+            AddValueRow(OptionDefinition.Create(name, read, value =>
+            {
+                write(SkipToAllowed(order, allowed, read(), value));
+
+                for (int i = 0; i < _typedAmounts.Count; i++)
+                    _typedAmounts[i].Value = null;
+
+                RefreshRows();
+            }, _category, _nextOrder++));
+        }
 
         /// <summary>Button; after it runs, every row and input re-reads its value.</summary>
         public void AddCommand(string name, Action run)
@@ -230,7 +295,32 @@ namespace Horcrux.Vendors.SRDebuggerOptions
             _container.AddOption(row);
         }
 
+        // SRDebugger hands the enum value next to the current one: the next in enum order means QA pressed forward.
+        private static T SkipToAllowed<T>(T[] order, IReadOnlyList<T> allowed, T current, T requested) where T : struct, Enum
+        {
+            EqualityComparer<T> equal = EqualityComparer<T>.Default;
+            int count = order.Length;
+            int step = equal.Equals(order[(Array.IndexOf(order, current) + 1) % count], requested) ? 1 : count - 1;
+            int index = Array.IndexOf(order, requested);
+
+            for (int i = 0; i < count; i++, index = (index + step) % count)
+            {
+                for (int j = 0; j < allowed.Count; j++)
+                {
+                    if (equal.Equals(allowed[j], order[index]))
+                        return order[index];
+                }
+            }
+
+            return current;
+        }
+
         #endregion
+
+        private sealed class TypedAmount
+        {
+            public int? Value;
+        }
     }
 }
 ```
@@ -241,6 +331,10 @@ Chỗ dễ gõ sai:
   vendor, mọi type SRDebugger phải gõ `global::`.
 - Hai lambda trong `AddCommand`, `AddPanelOpener` cấp phát một lần lúc dựng category, không ở hot path.
 - `_isAttached` chỉ phục vụ `Detach`: owner gọi `Attach` đúng một lần ở `Awake`.
+- `typed.Value is not int value` là pattern C# 9: `value` có giá trị sau nhánh `return`. Viết `typed.Value == null` rồi dùng
+  `typed.Value.Value` cũng được.
+- `SkipToAllowed` lùi bằng `+ count - 1` chứ không `- 1`: `%` của số âm trong C# ra số âm.
+- `TypedAmount` là class, không phải struct: lambda của ô và của nút phải trỏ cùng một chỗ giữ số đã gõ.
 
 **Quyết định, phương án bỏ:**
 - Dựng container ngay cả khi SRDebugger tắt (bản dự án hiện thoát sớm trước khi dựng): vài `OptionDefinition` lúc boot rẻ hơn hai
@@ -263,8 +357,21 @@ nguyên: cùng tên category, cùng tên và thứ tự hàng, cùng lệnh.
 Mỗi class:
 - field `_container`, `OptionDefinition _…Row`, `_stateRows` → một field `DebugOptionsCategory _options`;
 - `OnAwake`/`Awake`: `new` → `Add*` theo đúng thứ tự cũ → `Attach()`; `OnDestroy`: `_options?.Detach()`;
-- bỏ mọi `…Row.Property.NotifyValueChanged()` sau lệnh; trong setter làm đổi hàng khác (`SelectBooster`, `SetLevelInput`) gọi
+- bỏ mọi `…Row.Property.NotifyValueChanged()` sau lệnh; trong setter làm đổi hàng khác (`SetLevelInput`) gọi
   `_options.RefreshRows()`;
+- `EconomyCheatDebugOptions`: bỏ `_pending…Amount`, `TryTakePending`, `SelectBooster`, `Wrap`, `EnumOrder`, `LogPrefix`; lệnh Set
+  nhận số đích, phần kiểm miền và giữ số đã gõ do class làm:
+  ```csharp
+  _options = new DebugOptionsCategory(Category);
+  _options.AddChoice("Booster Type", CategoryBoosterConfig.AllBoosterType, () => _selectedBooster, value => _selectedBooster = value);
+  _options.AddAmountSetter("Booster", () => _boosters.GetBoosterAmount(_selectedBooster), SetBooster);
+  _options.AddCommand("Replay Unlock Tut", ReplayUnlockTutorial);
+  _options.AddAmountSetter("Coin", _coins.GetCoin, _coins.SetCoin);
+  _options.AddAmountSetter("Live", () => _lives.LiveLeft, SetLive, max: () => _maxLive.GetMaxLive);
+  _options.Attach();
+  ```
+  `SetBooster(int target)` cộng phần chênh như cũ, `SetLive(int target)` giữ bước bắt đồng hồ hồi khi rời mức đầy. Log lỗi đổi
+  từ `[EconomyCheatDebugOptions]: amount must be in 0..max` sang `[Cheat Economy] Live must be in 0..5, got 9`;
 - `TrackingDebugOptions`: `OpenSdkDebugger` → `AddPanelOpener("Open SDK Debugger", Zego.SdkDebugger.Show)`;
 - `UserSegmentationDebugOptions`: guard `host == null` giữ trước khi dựng category.
 
@@ -279,7 +386,9 @@ Sau đó:
 - **developer chơi thử** trên Editor:
   1. Bật Play, mở SRDebugger, vào tab Options.
   2. Bốn category Tracking, Cheat Economy, Cheat Level, User Segmentation có đủ hàng, đúng thứ tự cũ.
-  3. Economy: chọn booster, Set Booster, Set Coin. Số dư cập nhật ngay, không phải đóng mở panel.
+  3. Economy: chọn booster, Set Booster, Set Coin, Set Live. Số dư cập nhật ngay, không phải đóng mở panel. Bấm mũi tên Booster
+     Type qua lại: không bao giờ dừng ở `None` hay loại không có trong game; gõ số Booster rồi đổi loại thì ô về số dư của loại
+     mới. Set Live 99: Console báo lỗi, số mạng giữ nguyên.
   4. Level: đổi ô Level thì hàng "Level → file" đổi theo.
   5. Tracking › Open SDK Debugger: panel SRDebugger ẩn, panel Zego bấm được.
   6. Dừng Play: Console không có lỗi từ `Detach`.

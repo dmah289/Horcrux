@@ -158,7 +158,10 @@ Cheat đổi môi trường để QA kiểm một kịch bản thì lần theo k
 không đi qua hệ đó thì nút đúng mà vô nghĩa; cổng chặn im lặng dọc đường (anti-cheat, consent, cờ tắt) ghi vào kịch bản QA.
 Lệnh thật nằm sau ranh `internal` của SDK bên thứ ba thì mở công cụ debug của chính SDK: reflection hay ghi lại khoá lưu của
 SDK câm im lặng ở bản SDK sau. Lệnh rời trạng thái giữa chừng đi đường người chơi rời nó; popup còn mở
-lúc chuyển màn bị đóng theo nhánh huỷ của chính nó — đếm hệ quả nhánh đó tự làm trước khi gọi thêm. Panel có trong **build chính thức, không `#if`** — QA kiểm bản người chơi cầm.
+lúc chuyển màn bị đóng theo nhánh huỷ của chính nó — đếm hệ quả nhánh đó tự làm trước khi gọi thêm. Lệnh đặt thẳng một giá
+trị bỏ qua việc đường thật làm khi giá trị đi qua ngưỡng (rời mức đầy thì bắt đồng hồ hồi): làm cùng việc đó, không thì hệ tự
+sửa lại ở nhịp sau. Cheat chọn cửa ghi không bắn tracking: số cheat lẫn vào số liệu thì không lọc ra được. Ô nhập ngoài miền
+người chơi tới được thì từ chối kèm log, không kẹp — QA thấy mình gõ sai. Panel có trong **build chính thức, không `#if`** — QA kiểm bản người chơi cầm.
 Lệnh, cửa đọc `private` và suy luận thuộc **hệ**, không phụ thuộc công cụ debug — hệ framework mang được sang dự án dùng
 panel khác; lớp nối với panel thuộc dự án. **Đưa về trạng thái đầu** đi qua chủ giữ state: thay bản trong RAM lẫn bản lưu,
 flush, rồi **thoát app** — xoá kho lưu giữa phiên bị flush lúc pause/quit ghi đè, việc chỉ chạy lúc boot (grant, cache dẫn

@@ -51,16 +51,18 @@ gờ sáng, bóng, chỗ của icon. Đó không phải rect của Image, vì re
 đè lên viền. Đo vùng đó trên art (`DemoCompare.InnerRegion`), đặt rect của chữ đúng vùng, nghiệm thu bằng chuỗi dài nhất có
 thật; soát cả thư mục prefab sau mỗi lần thay art bằng `PrefabAudit.TextFit`. Khung mọc cao theo số dòng thì bề ngang chữ vẫn
 theo lòng. Mỗi loại chữ co theo
-chiều nào thì xem `async-presentation` › Trình diễn vật thể có chất liệu (khối Nền tảng về autosize).
+chiều nào thì xem `async-presentation` › Trình diễn vật thể có chất liệu (khối Nền tảng về autosize). Chữ có phần chạy theo nhịp
+(chấm loading, số đếm) neo về phía phần đứng yên: căn giữa thì phần đứng yên trượt mỗi nhịp. Khung chữ trên demo là trạng thái dài
+nhất.
 
 **Chữ art là một chồng lớp; dựng đủ mọi lớp demo có, mỗi lớp đúng số.** Thường gồm ruột (màu phẳng hay gradient), một hay
 vài vòng viền, bóng đổ lệch xuống hoặc chéo, đôi khi gờ sáng, bóng trong. Bóng đổ cho chữ khối nổi: thiếu nó chữ dẹt dù màu
 và khung đều đúng. Trước khi chọn kiểu chữ, tách chữ demo thành lớp bằng số: cắt một đường qua nét dày từ nền vào tới ruột,
-kéo tiếp sang phía bóng; mỗi dải màu là một lớp, cho màu và bề dày px. Màu lấy ở lõi dải, không ở pixel mép (khử răng cưa
+kéo tiếp sang phía bóng; mỗi dải màu là một lớp, cho màu và bề dày px (`DemoCompare.Layers`). Màu lấy ở lõi dải, không ở pixel mép (khử răng cưa
 trộn màu lớp kề); ruột gradient thì đo cả hai đầu. Bề dày đo bằng px ở cỡ demo rồi mới đổi ra đơn vị của kiểu chữ: đơn vị
 tương đối theo cỡ chữ thì đổi cỡ là đổi bề dày. Kiểu chữ có sẵn chỉ dùng khi khớp số từng lớp; giống bằng mắt chưa đủ, và
 sửa kiểu dùng chung là đổi mọi chữ khác đang dùng nó. **Nghiệm thu theo lớp:** cùng đường cắt trên demo và ảnh chụp ra cùng
-số dải, màu và bề dày từng dải khớp. Khung bao đo bằng màu ruột không thấy viền và bóng; lớp mỏng chiếm ít pixel nên chìm
+số dải, màu và bề dày từng dải khớp (`DemoCompare.LayerDiff`). Khung bao đo bằng màu ruột không thấy viền và bóng; lớp mỏng chiếm ít pixel nên chìm
 trong `Diff` trung bình. Màu đặt đúng số mà ảnh chụp ra khác thì tìm khâu đổi màu (không gian màu, alpha cha, tint, lớp
 đè), không chỉnh mò tới khi giống. *Đã sai một lần:* chữ dựng khớp khung và `Diff`, developer nghiệm thu thấy màu lệch,
 viền dày mỏng khác demo, bóng đổ bị bỏ hẳn.
@@ -93,7 +95,10 @@ vỡ — grep đường dẫn cũ sau mỗi lần dời).
 
 **Thứ không nên pack: to hơn trang, hoặc chỉ một trong vài bản hiện.** Nền toàn màn vượt trang thì để lẻ; nền theo loại máy
 (mobile, tablet) chỉ một bản hiện, pack chung là nạp cả hai. Sprite to nhưng vừa trang (`BIG`) thì so hai phương án bằng số — trang
-nhỏ hơn cộng texture lẻ, với trang lớn chứa nó: texture lẻ cỡ lẻ trên Android rơi về format nặng hơn nên thường thua.
+nhỏ hơn cộng texture lẻ, với trang lớn chứa nó: texture lẻ cỡ lẻ trên Android rơi về format nặng hơn nên thường thua. Art của
+scene nằm sẵn trong build (boot, loading) không vào atlas đi Addressables: scene kéo cả trang vào build thêm một bản và giữ trang
+trong bộ nhớ suốt lúc scene sống — để lẻ, hoặc atlas riêng không đi Addressables. Soát bằng Addressables Analyze, rule
+`Check Scene to Addressable Duplicate Dependencies`.
 
 **Atlas mà nhiều bundle cùng dùng là entry Addressables tường minh**, không thì mỗi bundle chép một bản (`DUP`). Group theo vòng
 đời: thứ mọi màn dùng nạp lúc boot, thứ của một màn đi với màn. Khai ở bảng layout của dự án (`AddressablesLayout`), không thêm tay.
