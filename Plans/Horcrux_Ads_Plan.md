@@ -1246,6 +1246,8 @@ giãn cách, placement, màn nào muốn banner — ví dụ tên trung tính), 
 
 ## Giai đoạn 7 — Dự án dùng bản Horcrux (agent)
 
+**Chung file:** `LiveSystem_PopupRefillLiveOffer`, `PopupOfferRevive`, `PopupAddBox` cũng sửa ở `Horcrux_SpendGate_Plan.md` GĐ3 — làm GĐ này sau.
+
 1. **Bốn popup rewarded** — `LiveSystem_PopupRefillLiveOffer`, `PopupOfferRevive`, `PopupWin`, `PopupAddBox`: đổi
    `Service.Get<IAdService>()` thành `IAdService.Service`. Thêm `using Horcrux.Runtime.Abstractions.Ads;`; giữ `using Core;` nếu file
    còn dùng thứ khác trong đó. Placement giữ nguyên chuỗi `refill_live`, `revive`, `win_x2`, `add_box`.

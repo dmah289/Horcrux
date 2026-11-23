@@ -1420,7 +1420,7 @@ IXxxService  (đọc/ghi + event Changed)
 
 ### 14a. Currency
 
-**Use case**: kiếm/tiêu coin · thanh coin + animation coin bay vào ví · kiểm "đủ tiền không", thiếu thì toast + mở shop · mọi giao dịch có `placement` để đối soát với §12.
+**Use case**: kiếm/tiêu coin · thanh coin + animation coin bay vào ví · kiểm "đủ tiền không", thiếu thì toast + mở shop (qua cửa trả giá) · mọi giao dịch có `placement` để đối soát với §12.
 
 ```csharp
 public interface ICurrencyService : IService<ICurrencyService>
@@ -1428,7 +1428,6 @@ public interface ICurrencyService : IService<ICurrencyService>
     int Balance { get; }
     void Add(int amount, string placement);
     void Consume(int amount, string placement);
-    bool TryConsume(int amount, string placement);        // false = không đủ (KHÔNG tự mở UI)
     event Action<int, int> Changed;                       // (cũ, mới) → UI tween từ cũ→mới
 }
 
@@ -1439,18 +1438,9 @@ public interface ICurrencyCollector                        // animation gom coin
 }
 ```
 
-**Quyết định:** `TryConsume` **không** tự mở toast/shop. Lý do: hành vi "thiếu tiền thì làm gì" khác nhau theo ngữ cảnh (im lặng ở nơi này, mở shop ở nơi khác) và nếu nhồi vào service thì service phụ thuộc §7 + §11. Đặt helper ở tầng game:
+**Cửa trả giá:** `Plans/Horcrux_SpendGate_Plan.md` — nút gọi `wallet.TrySpend(amount, context)` trên `ISpendWallet<TContext>`: đủ thì ví `Consume`, thiếu thì ví `OnShortage` và không trừ. Ví nằm ở tầng game, mỗi loại tài nguyên một ví, nối service tiền với shop.
 
-```csharp
-// tầng game, KHÔNG trong SDK
-static bool RequireCoin(int amount, string placement)
-{
-    if (ICurrencyService.Service.TryConsume(amount, placement)) return true;
-    IToastService.Service.Show(LocKeys.NotEnoughCoin);
-    IShopService.Service.Open();
-    return false;
-}
-```
+**Quyết định:** service tiền không có `TryConsume`, không tự mở toast/shop. Thiếu tiền làm gì là luật của **loại tài nguyên** (coin → shop coin), đặt ở `OnShortage` của ví; service tiền tự mở shop thì phụ thuộc §7 + §11. Ngữ cảnh một lần trả là type parameter `TContext` của ví (placement, nhóm tracking, placement của shop), không `string`: tracking cần nhiều trường.
 
 **Cạm bẫy:** `Changed(cũ, mới)` là bắt buộc — UI cần **cả hai** để tween số nhảy; chỉ có "mới" thì phải tự cache, mỗi UI cache một bản → lệch nhau.
 
@@ -1479,6 +1469,11 @@ public interface ILivesService : IService<ILivesService>
     void Add(int amount);
     void Consume();
     void RefillToMax();
+
+    // Đặt cọc mạng (bảng dưới)
+    bool HasStake { get; }                      // rời màn bây giờ có mất tim không → hỏi xác nhận hay rời thẳng
+    void Stake();                               // mốc cam kết (nước đi đầu): ghi cọc vào save, chưa trừ; đang infinity thì bỏ qua
+    void Settle(bool lost);                     // kết cục: lost → trừ một tim và xoá cọc trong cùng cửa ghi; không → chỉ xoá cọc
     event Action Changed;
 }
 ```
@@ -1508,28 +1503,24 @@ timeToNext = lastRefillUtc + interval − now;
 
 **Đặt cọc mạng — mất mạng theo kết cục mà người chơi rời được giữa chừng.** Thua mất một tim, thắng không mất; người chơi
 có thể bỏ màn (về Home, chơi lại) hay app bị kill trước khi có kết cục. Mạng không trừ lúc vào màn mà **đặt cọc** ở mốc cam
-kết, rồi tất toán ở mỗi đường ra:
-
-```csharp
-    bool HasStake { get; }                      // rời màn bây giờ có mất tim không → hỏi xác nhận hay rời thẳng
-    void Stake();                               // mốc cam kết (nước đi đầu): ghi cọc vào save, chưa trừ
-    void Settle(bool lost);                     // kết cục: lost → Consume (xoá cọc trong cùng cửa); không → chỉ xoá cọc
-```
+kết (`Stake`), rồi tất toán ở mỗi đường ra:
 
 | Đường ra | Gọi |
 |---|---|
 | thắng | `Settle(false)` |
-| thua · bỏ màn sau khi người chơi xác nhận | `Settle(true)` |
+| thua — kết cục đã chốt, tức sau khi người chơi từ chối hồi sinh · bỏ màn sau khi người chơi xác nhận | `Settle(true)` |
+| hồi sinh · huỷ hộp xác nhận (nút đóng) | không gọi gì, chơi tiếp, cọc giữ nguyên |
 | bỏ màn khi `!HasStake` (chưa đi nước nào) | không gọi gì, không hỏi |
-| huỷ hộp xác nhận (nút đóng) | không gọi gì, chơi tiếp, cọc giữ nguyên |
-| boot thấy `HasStake` (phiên trước chết giữa màn) | `Settle(true)` |
+| cheat rời màn (bỏ, chơi lại, nhảy level) | `Settle(false)` — cheat rời trạng thái không thu giá; cheat giả lập thua đi đường thua |
+| load save thấy cọc còn (phiên trước chết giữa màn) | service tự `Settle(true)` lúc load, game không gọi |
 
-| Chi tiết | Vì sao |
-|---|---|
-| Cọc ở nước đi đầu, không lúc vào màn | vào xem rồi rời không tốn tim, và không phải hỏi; hộp xác nhận chỉ hiện khi có giá thật |
-| Cọc nằm trong save, không trong RAM | app bị kill không bắn mốc nào tin được, pause bắn cả khi quảng cáo che app; cọc còn lúc boot là bỏ giữa chừng — chặn mẹo kill app để né thua |
-| `Consume` xoá cọc trong cùng cửa ghi | kill app giữa "trừ" và "xoá cọc" thì lần boot sau trừ thêm lần nữa |
-| Đang infinity thì không đặt cọc | màn bắt đầu miễn phí thì bỏ giữa chừng cũng miễn phí. Giả định (cần xác nhận): hết infinity giữa màn rồi thua vẫn mất tim |
+- **Cọc ở nước đi đầu, không lúc vào màn:** vào xem rồi rời không tốn tim; hộp xác nhận chỉ hiện khi có giá thật.
+- **Cọc nằm trong save, tất toán lúc load:** app bị kill không bắn mốc nào tin được (pause bắn cả khi quảng cáo che app); cọc còn lúc
+  load là bỏ giữa chừng — chặn mẹo kill app để né thua. Service tự làm trước lần đọc `Count` đầu tiên, không caller nào phải nhớ.
+- **Trừ và xoá cọc cùng một cửa ghi:** kill app giữa hai bước thì lần load sau trừ thêm lần nữa.
+- **Đang infinity thì không đặt cọc:** màn bắt đầu miễn phí thì bỏ giữa chừng cũng miễn phí. Giả định (cần xác nhận): hết infinity
+  giữa màn rồi thua vẫn mất tim.
+- Giá trả bằng tài nguyên khác ở giữa màn (hồi sinh bằng coin) đi qua cửa trả giá của §14a, không qua cọc.
 
 ### 14c. Reward
 
