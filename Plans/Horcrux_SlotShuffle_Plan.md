@@ -5,10 +5,11 @@ bàn "ngược ý đồ" (tile thuộc box đang mở rời hàng trước), ép
 mang domain dự án nào nên lên Horcrux: một hàm thuần xếp lại n item vào chính n slot chúng đang đứng, theo nhóm slot mỗi item ưa,
 không item nào đứng yên khi tránh được, ngẫu nhiên theo nguồn caller đưa.
 
-**Phân công:** GĐ1–2 developer gõ, agent viết test theo bảng case rồi compile · GĐ3 (tài liệu) agent làm. **Chạy được, thấy
-được** ở GĐ1–2 = compile sạch + bảng case xanh trong `Tests/EditMode/SlotShuffleTests.cs`. Dự án chưa có bản tạm: caller đầu
-tiên là task xáo bàn level mở khoá Shuffle của category-jam — kịch bản riêng, viết theo API của Plan này, "thấy trong game" ở
-task đó. GĐ1–3 commit trong `Assets/Horcrux` kèm con trỏ submodule ở dự án. Không phụ thuộc Plan nào; `Runtime/Utilities/Permutation/`
+**Phân công:** GĐ1–3 developer gõ, agent viết test theo bảng case rồi compile · GĐ4 (tài liệu) và GĐ5 (chuyển dự án) agent
+làm. **Chạy được, thấy được** ở GĐ1–3 = compile sạch + bảng case xanh trong `Tests/EditMode/SlotShuffleTests.cs`; "thấy trong
+game" ở GĐ5. Dự án đang chạy **bản tạm** `Assets/_CategoryJam/Scripts/Utilities/SlotShuffle.cs` (namespace
+`CategoryJam.Gameplay.Utilities`, code GĐ1–3 nguyên văn), caller là `ShuffleBooster` xáo và trả bàn level mở khoá Shuffle. GĐ1–4
+commit trong `Assets/Horcrux` kèm con trỏ submodule ở dự án; GĐ5 commit ở dự án. Không phụ thuộc Plan nào; `Runtime/Utilities/Permutation/`
 chưa có, GĐ1 tạo. Có `§0`.
 
 ## Ngữ cảnh đã chốt
@@ -37,10 +38,12 @@ chưa có, GĐ1 tạo. Có `§0`.
 | Horcrux `Runtime/Utilities/` | chỗ đặt, style hàm thuần (`CountdownFormatter`) | chưa có hàm xáo hay hoán vị nào |
 | category-jam `Utilities/Extensions/ListExtensions.cs` `KShuffle` | Fisher–Yates | bản có seed gọi `UnityEngine.Random.InitState`: đè trạng thái ngẫu nhiên toàn cục |
 | category-jam `Director/ShuffleBooster.cs` `RotateTileIdsRandomly` | ý "mỗi tile nhận id của tile khác" | hoán vị một vòng bằng đổi cặp kề nhau, không có khái niệm nhóm; đổi sang hàm này là đổi phân phối của booster đang chạy |
-| `System.Buffers.ArrayPool<int>` | hai mảng tạm | — |
+| `System.Buffers.ArrayPool<T>` | mảng tạm (`int` ở `Assign`, `bool` ở `ApplyBySwaps`) | — |
 
-- **Mở rộng sau:** public `Shuffle<T>(Span<T>, Func<int, int>)` cạnh `Assign` khi dự án bỏ `KShuffle(seed)` (6 call site ở
-  category-jam, mỗi lần gọi reseed `UnityEngine.Random` toàn cục) · overload nhiều nhóm như ở "Không làm".
+- **Mở rộng sau:** public `Shuffle<T>(Span<T>, Func<int, int>)` cạnh `Assign` khi có caller xáo một dãy bằng nguồn riêng. Không
+  thay `KShuffle(seed)` của category-jam: 3 chỗ gọi trong `LevelLoader` (khoá kệ, golden tile) chủ ý seed lại luồng
+  `UnityEngine.Random` toàn cục, và luồng đó được seed theo level để khoá kệ, box cứu ra giống nhau mỗi lần chơi — đổi nguồn là đổi
+  bố cục mọi level · overload nhiều nhóm như ở "Không làm".
 
 ## Luồng mô tả — xáo một bàn
 
@@ -54,6 +57,8 @@ caller có n item, item i đứng ở slot i; mỗi slot có dấu hay không; m
       slot còn giữ item cũ đổi với một slot cùng dấu, hoặc đang chứa item cùng ưa thích     GĐ2
                               ▼
       itemOfSlot[j] = item slot j nhận → caller ghi dữ liệu item vào slot
+                              ▼
+      chỗ chứa chỉ tráo được: ApplyBySwaps tráo dọc từng vòng; trả về: Invert rồi ApplyBySwaps        GĐ3
 ```
 
 ## Bản đồ hệ cuối
@@ -68,6 +73,9 @@ caller có n item, item i đứng ở slot i; mỗi slot có dấu hay không; m
      └─ MoveItemsOffOwnSlot ─────────► nextIndex (một lần mỗi slot còn giữ item cũ)
      ▼
   itemOfSlot ──► caller: slot j nhận dữ liệu của item itemOfSlot[j]
+     │
+     ├─ SlotShuffle.ApplyBySwaps(itemOfSlot, owner, swap) ──► swap(owner, a, b) của caller
+     └─ SlotShuffle.Invert(itemOfSlot, slotOfItem) ──► ApplyBySwaps: chỗ chứa về gốc
 ```
 
 ---
@@ -333,38 +341,176 @@ khi không có nhóm; ghép với ràng buộc nhóm thì mất bảo đảm t�
 
 ---
 
-## Giai đoạn 3 — Tài liệu `docs/Runtime/SlotShuffle/SlotShuffle.md` và `SlotShuffle.html` (agent)
+## Giai đoạn 3 — Áp hoán vị bằng tráo cặp, hoán vị ngược
+
+**Mục tiêu:** caller có chỗ chứa chỉ đổi được bằng tráo cặp (object giữ cả state lẫn view, không chép dữ liệu ra được) áp kết quả
+`Assign` lên chỗ chứa đó, và trả về trạng thái gốc bằng hoán vị ngược — không tự viết vòng tráo. Xong giai đoạn này "xáo rồi trả
+về đúng bàn gốc" là ba lời gọi.
+
+**Vì sao bây giờ:** caller đầu tiên cần đúng hai việc này. `Tile` của category-jam chỉ có `SwapIdWith` để đổi (ID, variant), nên
+bản tạm đã phải viết vòng tráo theo chu trình và vòng đảo mảng; hai thứ đó không mang domain nào.
+
+### `SlotShuffle.cs` › thêm sau `Assign`
+
+```csharp
+        /// <summary>Ghi vào <paramref name="slotOfItem"/>[i] slot đang nhận item i: hoán vị ngược của <paramref name="itemOfSlot"/>.</summary>
+        public static void Invert(ReadOnlySpan<int> itemOfSlot, Span<int> slotOfItem)
+        {
+            if (slotOfItem.Length != itemOfSlot.Length)
+                throw new ArgumentException("[SlotShuffle]: itemOfSlot, slotOfItem phải dài bằng nhau.");
+
+            for (int slot = 0; slot < itemOfSlot.Length; slot++)
+                slotOfItem[itemOfSlot[slot]] = slot;
+        }
+
+        /// <summary>
+        /// Slot j nhận thứ đang ở slot <paramref name="itemOfSlot"/>[j], chỉ bằng tráo cặp: cho chỗ chứa không chép dữ liệu ra
+        /// được. Tráo dọc từng vòng của hoán vị, vòng dài k tốn k − 1 lần tráo.
+        /// </summary>
+        /// <param name="swap">Tráo thứ đang ở hai slot; nhận lại owner để caller truyền lambda static.</param>
+        public static void ApplyBySwaps<TOwner>(ReadOnlySpan<int> itemOfSlot, TOwner owner, Action<TOwner, int, int> swap)
+        {
+            if (swap == null) throw new ArgumentNullException(nameof(swap));
+            int count = itemOfSlot.Length;
+            if (count == 0) return;
+
+            var placedBuffer = ArrayPool<bool>.Shared.Rent(count);
+            try
+            {
+                var isPlaced = placedBuffer.AsSpan(0, count);
+                // Không phải hoán vị thì vòng tráo không khép, vòng lặp treo: chặn trước khi đụng dữ liệu caller.
+                isPlaced.Clear();
+                foreach (int item in itemOfSlot)
+                {
+                    if ((uint)item >= (uint)count || isPlaced[item])
+                        throw new ArgumentException("[SlotShuffle]: itemOfSlot phải là hoán vị của 0..n-1.");
+                    isPlaced[item] = true;
+                }
+
+                isPlaced.Clear();
+                for (int start = 0; start < count; start++)
+                {
+                    if (isPlaced[start]) continue;
+
+                    // Slot nhận thứ ở nguồn của nó; thứ của start dời tới nguồn, đi tiếp tới khi vòng khép về start.
+                    int slot = start;
+                    while (itemOfSlot[slot] != start)
+                    {
+                        isPlaced[slot] = true;
+                        swap(owner, slot, itemOfSlot[slot]);
+                        slot = itemOfSlot[slot];
+                    }
+
+                    isPlaced[slot] = true;
+                }
+            }
+            finally
+            {
+                ArrayPool<bool>.Shared.Return(placedBuffer);
+            }
+        }
+```
+
+Dùng ở caller (category-jam, `ShuffleBooster`):
+
+```csharp
+SlotShuffle.Assign(lookFrom, isSlotMarked, prefersMarked, new System.Random(seed).Next);
+SlotShuffle.ApplyBySwaps(lookFrom, tiles, static (tiles, a, b) => tiles[a].SwapIdWith(tiles[b]));
+// … lượt dạy xong:
+SlotShuffle.Invert(lookFrom, restoreFrom);
+SlotShuffle.ApplyBySwaps(restoreFrom, tiles, static (tiles, a, b) => tiles[a].SwapIdWith(tiles[b]));
+```
+
+**Vì sao vòng tráo đúng.** Đi từ `start`: tráo `slot` với nguồn `s = itemOfSlot[slot]` cho `slot` đúng thứ của `s` (nguồn chưa bị
+đụng trong vòng này), còn `s` nhận thứ của `start` — quy nạp, thứ của `start` luôn nằm ở slot vừa nhận. Vòng khép khi nguồn của
+`slot` là `start`: `slot` đang giữ đúng thứ của `start`. Mỗi slot của vòng đúng chỗ sau một lần tráo, slot cuối không cần tráo.
+**Trả về:** sau khi áp `σ`, slot `j` giữ thứ gốc của `σ(j)`; thứ gốc của `k` nằm ở slot `σ⁻¹(k)`, nên áp `σ⁻¹` đưa mọi thứ về chỗ. **Kiểm chứng:** bản Python cùng vòng tráo, vét cạn mọi hoán vị `n ≤ 7` (5 914 hoán vị): áp đúng và
+round-trip 0 sai; đối chứng của bảng case ra `"bcaefd"` sau 8 lần tráo.
+
+**Quyết định** — `swap` nhận lại `owner`: lambda `static` không bắt biến, không cấp phát closure (`code-design` › Hình dạng). —
+Kiểm hoán vị trước khi tráo: mảng trùng phần tử làm vòng `while` không khép, game treo thay vì nổ; một lượt `O(n)` trên cùng bộ đệm.
+— `Invert` không kiểm hoán vị: chỉ số ngoài dải tự ném, đầu vào thường là kết quả `Assign`. — Phương án bỏ: trả danh sách cặp
+tráo cho caller tự chạy — thêm một bộ đệm caller phải thuê, caller nào cũng viết lại vòng chạy.
+
+| Consumes | Produces |
+|---|---|
+| `itemOfSlot` của `Assign` hoặc bất kỳ hoán vị nào | `SlotShuffle.Invert`, `SlotShuffle.ApplyBySwaps` |
+
+**Sơ đồ tương tác sau GĐ3**
+
+```
+  caller ──► SlotShuffle.Assign ──► itemOfSlot ──► SlotShuffle.ApplyBySwaps+ ──swap(owner, a, b)──► chỗ chứa của caller
+                                        │
+                                        └──► SlotShuffle.Invert+ ──► slotOfItem ──► ApplyBySwaps+ ──► chỗ chứa về gốc
+```
+
+**Editor setup:** không.
+
+**Kiểm:** compile sạch; bảng GĐ1–2 vẫn xanh. Test dùng mảng `char` làm chỗ chứa, `swap` tráo hai ô.
+
+| Case | Input | Kỳ vọng |
+|---|---|---|
+| áp đúng | chỗ chứa `"abcdef"`, `itemOfSlot` `[2, 0, 1, 5, 3, 4]` | `"cabfde"` (slot j giữ ký tự gốc ở slot `itemOfSlot[j]`) |
+| số lần tráo | như trên (hai vòng dài 3) | 4 lần gọi `swap` |
+| hoán vị đồng nhất | `[0, 1, 2, 3]` | 0 lần gọi `swap` |
+| round-trip | `n` 8, `Assign` 200 seed, áp rồi áp `Invert` | chỗ chứa về đúng ban đầu |
+| `Invert` | `[2, 0, 1]` | `[1, 2, 0]` |
+| không phải hoán vị | `[0, 0, 1]` | `ArgumentException`, 0 lần gọi `swap` |
+| ngoài dải | `[0, 3, 1]` | `ArgumentException` |
+| thiếu `swap` | `swap` null | `ArgumentNullException` |
+| lệch độ dài `Invert` | 3 và 2 | `ArgumentException` |
+| rỗng | `n` 0 | không ném, không gọi `swap` |
+| đối chứng | bỏ dòng `isPlaced[slot] = true` cuối vòng | case "áp đúng" đỏ: `"bcaefd"`, 8 lần tráo (vòng đã khép bị đi lại) |
+
+**Mốc commit:** `feat(permutation): SlotShuffle.Invert, ApplyBySwaps`.
+
+---
+
+## Giai đoạn 4 — Tài liệu `docs/Runtime/SlotShuffle/SlotShuffle.md` và `SlotShuffle.html` (agent)
 
 `.md` mở đầu `Code: Runtime/Utilities/Permutation`. Mục: ba bảo đảm và thứ tự ưu tiên · `§0` ở trên (trần, ghép theo chỉ số, bước
-gỡ, ca đứng yên bắt buộc, bảng mốc) · bảng API `Assign` · "Design decisions" gom "Không làm", "Quyết định trái trực giác" và các
-**Quyết định** của GĐ1–2 · "Dùng": caller giữ dữ liệu item theo chỉ số slot gốc, ghi `data[itemOfSlot[j]]` vào slot `j`; muốn trả
-về bàn gốc thì giữ bản dữ liệu gốc và ghi lại · nguồn ngẫu nhiên: `System.Random(seed).Next` cho kết quả cố định, không dùng
-`UnityEngine.Random.InitState`. Ví dụ tên trung tính (`Piece`, `Spot`). Không có "Trước khi chạy": hàm thuần, không wire. `.html`
-chọn từ `.md`: kịch bản (dồn vật đặc biệt vào vùng khuất; xáo lại điểm spawn mỗi đợt, quân mạnh ra xa; chia lại bài, lá chủ chốt
-úp xuống), cách dùng, flow ghép theo chỉ số, lưu ý (ưa thích thắng đổi chỗ; độ dài ba mảng; seed cố định).
+gỡ, ca đứng yên bắt buộc, bảng mốc) · bảng API `Assign`, `Invert`, `ApplyBySwaps` · "Design decisions" gom "Không làm", "Quyết định
+trái trực giác" và các **Quyết định** của GĐ1–3 · "Dùng": caller giữ dữ liệu item theo chỉ số slot gốc, ghi `data[itemOfSlot[j]]`
+vào slot `j`; chỗ chứa chỉ tráo được thì `ApplyBySwaps`; trả về trạng thái gốc thì ghi lại bản gốc đã giữ, hoặc `Invert` rồi
+`ApplyBySwaps` · nguồn ngẫu nhiên: `System.Random(seed).Next` cho kết quả cố định, không dùng `UnityEngine.Random.InitState`. Ví dụ
+tên trung tính (`Piece`, `Spot`). Không có "Trước khi chạy": hàm thuần, không wire. `.html` chọn từ `.md`: kịch bản (dồn vật đặc
+biệt vào vùng khuất rồi trả về sau lượt dạy; xáo lại điểm spawn mỗi đợt, quân mạnh ra xa; chia lại bài, lá chủ chốt úp xuống), cách
+dùng, flow ghép theo chỉ số, lưu ý (ưa thích thắng đổi chỗ; độ dài ba mảng; seed cố định).
 
 **Mốc commit:** `docs(permutation): SlotShuffle.md`.
 
 ---
 
-## Dùng ở category-jam (task riêng, viết theo API này)
+## Giai đoạn 5 — Chuyển category-jam sang bản Horcrux (agent)
 
-Kịch bản xáo bàn level mở khoá Shuffle chốt ở task đó; phần chạm hàm này dự kiến:
+Chạy sau khi GĐ1–3 compile sạch và bảng case xanh. Caller duy nhất là `ShuffleBooster`
+(`Assets/_CategoryJam/Scripts/Director/ShuffleBooster.cs`), bản tạm đã gọi đủ `Assign`, `Invert`, `ApplyBySwaps`:
 
-| Ô | Giá trị |
+| Ô | Giá trị trong code |
 |---|---|
-| slot | tile đang thấy mà Shuffle đổi được (hàng trước + hàng sau, tầng ≤ 6, có ID), theo một thứ tự cố định |
-| item `i` | cặp (ID, variant) gốc của slot `i` |
-| `isSlotMarked[j]` | slot `j` ở hàng sau, hoặc là tile "?" ở hàng trước — chỗ người chơi không nhặt được ID vào box |
-| `prefersMarked[i]` | ID của item `i` thuộc một box đang mở |
-| `nextIndex` | `new System.Random(levelNumber).Next` — bàn lộn xộn cố định theo level |
+| slot | tile hàng trước có ID, rồi tile hàng sau có ID — chép ra `_scrambledTiles` vì `FrontLayerTiles`, `BackLayerTiles` là bộ đệm dùng chung |
+| item `i` | cặp (ID, variant) đang ở slot `i` |
+| `isSlotMarked[j]` | `j >= frontCount || tile.IsHidden` — chỗ người chơi không nhặt được ID vào box |
+| `prefersMarked[i]` | `ActiveBoxTileIdsAndAmount.ContainsKey(tile.ID)` |
+| `nextIndex` | `new System.Random(seed).Next`, seed là số level |
+| `swap` của `ApplyBySwaps` | `tiles[a].SwapIdWith(tiles[b])` — cách duy nhất đổi (ID, variant) mà giữ ảnh trong tập có sẵn |
 
-Trả về bàn GD: ghi lại (ID, variant) gốc đã giữ, không cần hoán vị ngược.
+**Việc:** thêm `using Horcrux.Runtime.Utilities.Permutation;` vào `ShuffleBooster.cs` (giữ `using CategoryJam.Gameplay.Utilities;`:
+`KShuffle` của luồng Shuffle thường nằm ở đó) · xoá `Assets/_CategoryJam/Scripts/Utilities/SlotShuffle.cs` và `.meta` (static
+class, không asset nào giữ GUID của nó) · sửa dòng "Mở rộng sau" về bản tạm trong `Assets/_CategoryJam/Scripts/Tutorial/Tutorial.md`.
+
+**Kiểm:** grep `CategoryJam.Gameplay.Utilities.SlotShuffle` và đường dẫn bản tạm ra 0 · `verify.sh` xanh. Kịch bản chơi thử
+(developer): vào level mở khoá Shuffle trên save mới — bàn lộn xộn ngay khi tắt loading, hàng trước không có tile của box đang
+mở trừ khi bàn không đủ chỗ; Show me rồi bấm Shuffle Free — bàn về đúng như Level Editor; thoát trước Show me rồi vào lại — bàn
+xáo giống hệt lần trước.
+
+**Mốc commit (dự án):** `refactor(shuffle): dùng SlotShuffle của Horcrux, xoá bản tạm`.
 
 ## File → giai đoạn
 
-| File | GĐ1 | GĐ2 | GĐ3 |
-|---|---|---|---|
-| `Runtime/Utilities/Permutation/SlotShuffle.cs` | tạo, `Assign`, `FillMarkedFirstShuffled`, `Shuffle` | `MoveItemsOffOwnSlot`, gọi trong `Assign`, sửa summary | |
-| `Tests/EditMode/SlotShuffleTests.cs` (agent) | tạo | thêm case | |
-| `docs/Runtime/SlotShuffle/SlotShuffle.md`, `.html` (agent) | | | tạo |
+| File | GĐ1 | GĐ2 | GĐ3 | GĐ4 | GĐ5 |
+|---|---|---|---|---|---|
+| `Runtime/Utilities/Permutation/SlotShuffle.cs` | tạo, `Assign`, `FillMarkedFirstShuffled`, `Shuffle` | `MoveItemsOffOwnSlot`, gọi trong `Assign`, sửa summary | `Invert`, `ApplyBySwaps` | | |
+| `Tests/EditMode/SlotShuffleTests.cs` (agent) | tạo | thêm case | thêm case | | |
+| `docs/Runtime/SlotShuffle/SlotShuffle.md`, `.html` (agent) | | | | tạo | |
+| dự án: `ShuffleBooster.cs`, bản tạm `SlotShuffle.cs`, `Tutorial.md` (agent) | | | | | thêm `using`, xoá bản tạm, sửa dòng Mở rộng sau |

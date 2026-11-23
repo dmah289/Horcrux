@@ -112,6 +112,9 @@ lệch là dòng trôi — kèm vài dòng có sẵn quanh chỗ thêm. File m�
 đang có code: giai đoạn 0 là bản đồ hệ hiện tại, chỗ đổi viết đoạn cũ → đoạn mới. Code tạm để chặng đầu chạy chỉ khi vài
 dòng và giai đoạn thay nó nói vì sao thay — mọc thêm hơn viết lại.
 
+**Thuật toán trong Plan chứng minh bằng bản mẫu chạy được trước khi ghi:** code Plan chưa qua compiler mà developer gõ nguyên
+và tin. Bản mẫu cùng thuật toán, ngôn ngữ nào cũng được, vét cạn các bảo đảm; `§0` ghi phép kiểm, số lượt và đối chứng.
+
 **Lõi developer viết, test agent viết:** Plan chỉ có danh sách case theo giai đoạn, agent viết test sau khi đọc code thật.
 Việc phát sinh lúc làm Plan thì đầu ra là Plan, không tạo file code. **Plan chạm cả Horcrux lẫn consumer thì phần Horcrux
 chỉ thêm** (member mới mang mặc định, API cũ giữ) — mỗi giai đoạn một mốc compile sạch và một commit; xoá API cũ là việc

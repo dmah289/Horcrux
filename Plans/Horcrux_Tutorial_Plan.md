@@ -25,6 +25,9 @@ com.horcrux.runtime.csproj,CategoryJam.Gameplay.csproj,Assembly-CSharp.csproj --
   canvas gần nhất đang bật, và raycaster của canvas cha không quét graphic của canvas lồng — tắt raycaster lúc nghỉ là nút không bấm được
   ngoài tutorial. `Lift` nhớ trạng thái raycaster, đặt theo `passesInput`, `Drop` trả lại. (Cần kiểm trên consumer `CanvasSpotlight` hiện
   có: nếu widget của nó vẫn bấm được lúc nghỉ với raycaster tắt thì ghi lại lý do ở đây.)
+- **`TutorialGate` nhiều chủ:** `Restrict` trả `Restriction` của chủ gọi (`Change` đổi luật tại chỗ, `Drop` gỡ đúng luật đó), item
+  qua khi mọi luật đang giữ đều nhận. Cửa nhặt có hai chủ thật — kịch bản dạy nhặt và lớp khoá của bàn dựng sẵn cho một lượt dạy —
+  một khe chung thì chủ ghi sau đè luật chủ trước, và nhả của bên này gỡ luôn luật bên kia.
 
 ## Đã khảo sát
 

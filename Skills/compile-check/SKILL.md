@@ -12,8 +12,8 @@ Skill công cụ. `<horcrux>` là gốc Horcrux trong dự án. Chi tiết: `doc
 1. **Mỗi task code kết bằng một lần `verify.sh` xanh.** Báo cáo dán dòng tool in ra, không viết "đã compile sạch".
 2. **Không chép ba lệnh vào plan, task, constraint.** Plan ghi một dòng `bash <verify.sh> --csproj … --tests …` với tên
    của dự án.
-3. **Lỗi build sau khi dời file là lỗi tạm.** Editor đang mở tự sinh lại csproj; chạy lại trước khi kết luận — bước
-   recompile mới là sự thật.
+3. **Lỗi build sau khi thêm hay dời file là lỗi tạm** (type mới báo không tồn tại): csproj chưa có file. Editor đang mở tự
+   sinh lại csproj; chạy lại trước khi kết luận — bước recompile mới là sự thật.
 4. **PlayMode không qua tool này** (cần Play, chiếm Editor); developer chạy trong Window > General > Test Runner.
 5. **Thiếu mục thì mở rộng `verify.sh`**, không viết script kiểm mới bên cạnh.
 6. **Đọc output thẳng, không pipe qua `tail`, `head`:** tool đã in gọn từng bước; pipe giữ mọi dòng tới khi lệnh xong, lệnh

@@ -17,7 +17,8 @@ mở skill công cụ mới kèm hàng trong bảng chỉ dẫn. *Đã sai một
 
 **Commit trong Horcrux thì commit luôn con trỏ submodule ở dự án**, kể cả khi chỉ đổi skill, tài liệu hay Plan. Con trỏ là thứ
 duy nhất ghi dự án đi với bản Horcrux nào: bỏ lại thì máy khác, nhánh khác, phiên agent sau đọc bản cũ, và `git status` luôn
-bẩn che mất thay đổi thật.
+bẩn che mất thay đổi thật. Submodule hay đứng ở detached HEAD: commit xong thì đưa nhánh lên commit đó, không để commit không
+nhánh nào giữ.
 
 ## Phỏng vấn — hỏi tới khi chốt kịch bản
 
@@ -104,6 +105,10 @@ Neo khi phân vân: **công sức đắt nhất là của developer.**
 | đúng–sai xác định được mà làm tay chậm, sót | vét cạn | agent, **tự đề xuất** |
 | cảm giác chơi, nhịp, độ khó, hình ảnh | **chơi thử** | **developer** |
 | kịch bản hành vi trên build (event, kinh tế, save, tutorial) | chơi qua kịch bản, cheat rút đường | developer, QA |
+
+**Phép kiểm phải đỏ được.** Case khẳng định "luôn" chọn input mà bảo đảm có hiệu lực — input ngẫu nhiên rơi vào ca biên được
+phép thì đỏ oan, và người đọc học cách bỏ qua màu đỏ. Mỗi bước của thuật toán có ít nhất một case đỏ khi bỏ bước đó; chạy đối
+chứng một lần và ghi kết quả cạnh case.
 
 **Cảm giác — dừng và giao, không dựng proxy.** Báo *"cần chơi thử"* kèm kịch bản: *vào đâu* · *làm gì* (chuỗi ngắn nhất) ·
 *nhìn gì* · *khác trước ra sao* · *dấu hiệu hỏng*. **Developer chơi là cảm được thì agent không vào Play qua công cụ**: dừng

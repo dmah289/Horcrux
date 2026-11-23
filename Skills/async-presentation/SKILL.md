@@ -71,9 +71,13 @@ Dữ liệu đổi ở một nơi, người chơi thấy ở nơi khác, có khi
 - **Chỉ dẫn nhường ngay cho hành động của người chơi.** Tay chỉ, viền sáng bám vật người chơi sắp tác động thì tắt ngay frame
   người chơi tác động, không fade: vật bắt đầu di chuyển kéo chỉ dẫn theo, và chỉ dẫn còn lại đọc thành trễ.
 - **Ép dùng một hành động ngẫu nhiên trên trạng thái đã thiết kế: dựng trạng thái "trước" từ trạng thái đích, hành động đưa về
-  đúng đích.** Chạy ngẫu nhiên thật thì ý đồ của người thiết kế mất ngay lượt dạy. Trạng thái "trước" dựng sau mọi thứ đọc bản
-  thiết kế lúc vào (mục tiêu, gợi ý được chọn theo nó), trước lần vẽ đầu, và khoá input tới khi hành động xong; đường không chạy
-  được chỉ dẫn thì trả về đích ngay, không diễn.
+  đúng đích.** Chạy ngẫu nhiên thật thì ý đồ của người thiết kế mất ngay lượt dạy. Trạng thái "trước" là **cái hành động giải**,
+  không ngẫu nhiên thuần — ngẫu nhiên thuần có thể ra trạng thái vẫn ổn, cú dạy trông như không làm gì — và tất định theo nội
+  dung, để người kiểm và người thiết kế thấy đúng một bản. Dựng sau mọi thứ đọc bản thiết kế lúc vào (mục tiêu, gợi ý được chọn
+  theo nó), trước lần vẽ đầu, và khoá input tới khi hành động xong; đường không chạy được chỉ dẫn thì trả về đích ngay, không diễn.
+- **Trạng thái tạm có một nghĩa vụ trả, nghĩa vụ đi theo bên đang cầm.** Bên dựng trả nó trên mọi đường ra cho tới mốc bàn giao
+  cho bên khác trả; `finally` quyết theo biến cục bộ ghi ngay sau mốc đó, không đọc trạng thái ngoài bật sau vài bước. *Đã sai
+  một lần:* kịch bản huỷ trước bước bật cờ ngoài, `finally` đọc cờ đó thành "đã bàn giao", trạng thái tạm kẹt lại.
 - **Kết cục có hai mốc: sự thật ghi ngay, trình diễn neo vào thứ người chơi thấy.** Thắng, thua ghi save và báo hệ khác ở
   mốc xảy ra rồi mới diễn, để rời màn giữa lúc diễn không mất kết quả. Màn kết bắt đầu theo sự kiện nhìn thấy (vật cuối rời
   đi, chạm đích), không theo delay cố định: delay chỉ đúng với nhịp anim lúc chỉnh. *Đã sai một lần:* delay mở popup thắng
