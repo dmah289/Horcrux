@@ -149,13 +149,13 @@ Code đã nằm trong file dời ở GĐ1 — developer đọc lại đúng ba c
 | `TutorialSpotlight.cs` › `DimAsync(0)`, `ResetNow` | gọi `DropAllLifts` |
 
 **Quyết định** — sorting suy từ canvas lớp phủ (`rootCanvas.sortingOrder + 1`), không phải số cấu hình: nút nâng luôn ngay trên lớp tối và
-dưới popup (lớp phủ 8, popup 10 ở dự án nguồn); một số cố định như 3103 của `CanvasSpotlight` vượt cả popup. — Trả về trong `finally` của
+dưới popup (lớp phủ 8, popup 20 ở dự án nguồn); một số cố định như 3103 của `CanvasSpotlight` vượt cả popup. — Trả về trong `finally` của
 service: kịch bản bị huỷ giữa chừng không để nút kẹt sorting cao.
 
 **Quyết định** — `tier` thay vì để Unity chọn: hai canvas Overlay cùng sorting order vẽ theo thứ tự engine tự chọn, đổi theo instance
 (vật bay vào nút đè ba nút, chui dưới nút thứ tư). Thứ phải đè một canvas nâng khác lấy bậc cao hơn. **Giới hạn:** lớp phủ + 1 + `tier`
-phải nhỏ hơn sorting của popup, không thì hoà với popup và lại không cố định thứ tự; ở dự án nguồn bậc 1 đã bằng popup (10) — chỉ an
-toàn vì popup đóng trước khi bậc 1 được nâng. Dự án cần bậc cao hơn khi popup còn mở thì giãn sorting giữa lớp phủ và popup.
+phải nhỏ hơn sorting của popup, không thì hoà với popup và lại không cố định thứ tự: chừa khe giữa lớp phủ và popup (dự án nguồn
+chừa 9…19, bậc tới 10). Ghi tầng canvas của dự án trong tài liệu dự án để người sau thêm canvas không lấp khe.
 
 **Quyết định** — `Lift` nhận target tắt chỉ `LogError`, không tự bật: sorting đặt lên canvas lồng đang tắt không ăn (bật lên vẫn vẽ dưới
 lớp tối), nhưng bật hộ là đổi hành vi quan sát được của consumer. `Drop` không log: `DimAsync(0)`, `ResetNow` dọn cả target đã bị chủ tắt
