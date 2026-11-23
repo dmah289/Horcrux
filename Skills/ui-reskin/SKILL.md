@@ -43,7 +43,9 @@ dựng đúng số đó. Rect của art gồm cả bóng và viền trong suốt
 và ngôn ngữ; cỡ cố định vừa chữ demo sẽ tràn khi giá nhiều chữ số hơn hay sang ngôn ngữ dài hơn. Mỗi lần thay art, xét từng
 chữ: chữ nào có thể đổi thì bật autosize, cỡ tối đa là cỡ demo. Khung co là **vùng chữ được phép nằm**: lòng nút trừ viền,
 gờ sáng, bóng, chỗ của icon. Đó không phải rect của Image, vì rect gồm cả phần trong suốt và trang trí, chữ co trong đó vẫn
-đè lên viền. Đo vùng đó trên art, đặt rect của chữ đúng vùng, nghiệm thu bằng chuỗi dài nhất có thật. Mỗi loại chữ co theo
+đè lên viền. Đo vùng đó trên art (`DemoCompare.InnerRegion`), đặt rect của chữ đúng vùng, nghiệm thu bằng chuỗi dài nhất có
+thật; soát cả thư mục prefab sau mỗi lần thay art bằng `PrefabAudit.TextFit`. Khung mọc cao theo số dòng thì bề ngang chữ vẫn
+theo lòng. Mỗi loại chữ co theo
 chiều nào thì xem `async-presentation` › Trình diễn vật thể có chất liệu (khối Nền tảng về autosize).
 
 **Chữ art là một chồng lớp; dựng đủ mọi lớp demo có, mỗi lớp đúng số.** Thường gồm ruột (màu phẳng hay gradient), một hay
@@ -150,6 +152,7 @@ sách file của task, không `add` cả thư mục.
 | Hạt trên canvas vẽ thành khối màu đặc ở Play, Prefab Mode và ảnh chụp canvas vẫn đúng | material hạt dùng shader không dành cho UI, cần dữ liệu camera mà canvas Overlay không có · hạt bake vào canvas (UIParticle) dùng shader UI, kiểm trong Play ở đúng chế độ render của game |
 | Hạt UI phải phủ một khối rộng mà vẫn bung từ một điểm; đổi Shape sang Box thì hạt như đứng yên | Shape tính theo đơn vị thế giới, nhân scale bake (UIParticle) và scale các node — đổi ra px theo khung cần phủ trước khi đặt · Box phát dọc trục Z của shape, nhìn từ camera là bay vào màn: Spherical Direction để hạt toả trong mặt phẳng màn |
 | Lớp phủ màu đặt cùng sprite với art ra bản tối của art, không ra màu phủ | shader UI mặc định nhân màu Image với texture · phủ bằng bản trắng của art giữ nguyên alpha (`SpriteSilhouette.Create`, art đổi thì gọi lại), hoặc shader thay màu giữ alpha — material khác thì tách batch; màu + % hoạ sĩ fit lại theo `demo-compare` › Bẫy |
+| Console báo material "doesn't have a texture property '_MainTex'" từ `Canvas.SendWillRenderCanvases` | Graphic gán texture của nó vào `_MainTex` mỗi lần canvas dựng lại, kể cả khi shader không lấy mẫu texture · shader UI viết tay khai `[PerRendererData] _MainTex`; nằm dưới Mask, RectMask2D thì cần thêm khối stencil, `_ColorMask` và `_ClipRect` như `UI/Default`, thiếu thì không bị cắt |
 | Glow màu trên nền màu đậm ra trắng, hồng | blend cộng cộng cả màu nền · glow cần giữ màu dùng alpha blend; cộng chỉ cho ánh sáng trên nền tối |
 | Số đo pixel lệch đều một tỉ lệ | texture nguồn vượt Max Size nên bị thu lúc import · `SpriteSlicing.Report` báo `SHRUNK`, nâng Max Size |
 | Chữ TMP có `<sprite=0>` không hiện gì, không lỗi | sprite asset có face info bằng 0 · `TmpSpriteAssetBuilder.Create` |

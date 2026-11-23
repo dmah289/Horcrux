@@ -67,6 +67,7 @@ Cách dùng chúng trong một task reskin ở `Skills/ui-reskin/SKILL.md`. Đ�
 | `ListOverrides(string prefabPath, string filter = null)` | một dòng mỗi override (định dạng dưới), `+` object, component thêm vào, `-` component gỡ. Override bắt buộc (vị trí, tên root instance) không in |
 | `RevertOverrides(string prefabPath, Func<string, bool> select, bool apply = false)` | gỡ override có dòng được `select` chọn; `apply` false chỉ in. Override bắt buộc không bao giờ gỡ |
 | `PruneNoise(string prefabPath, bool apply = false)` | `RevertOverrides` với mọi dòng `~` |
+| `TextFit(string folder)` | soát chữ đổi theo dữ liệu có co trong vùng art: mỗi prefab có UniText một khối, mỗi chữ `node \| size s \| auto min-max` (hay `auto off`) `\| set by Type.field`. Chữ do code ghi là chữ có script giữ reference tới nó hay GameObject của nó, hoặc script không phải UI cùng object. Dòng nghi mở đầu `!`: `fixed` (code ghi mà tắt autosize) · `image rect` (autosize mà phủ đúng rect Image cha, co trong cả art nên đè viền). Script ở prefab khác, scene, hay ghi qua `Find` thì không thấy: chữ không cờ chưa chắc tĩnh |
 
 Dòng override: `~ variant | boosters/booster_1:RectTransform.m_AnchoredPosition.x = 12`
 
@@ -139,6 +140,7 @@ của art; Image dùng bản trắng ra đúng màu đặt trên Image. Bản tr
 | `BBox(string imagePath, RectInt region, Func<Color32, bool> match)` | `x0,y0 x1,y1 (w x h)`, góc tính vào; không có là `none` |
 | `Near(Color32 color, int tolerance)` | điều kiện cho `BBox`: lệch từng kênh RGB ≤ tolerance |
 | `Runs(string imagePath, bool vertical, int index, int from, int to, int tolerance = 30, int minLength = 3)` | dải màu liền dọc cột (hay hàng) `index`: `a-b r,g,b`; lệch tổng ba kênh so với pixel đầu dải quá tolerance là dải mới. Tách lớp chữ art, viền nút: tolerance ~6, `minLength` 1, đường cắt qua nét dày và kéo sang phía bóng; dải 1 px giữa hai lớp là khử răng cưa, màu lớp lấy ở dải dày |
+| `InnerRegion(string imagePath, int tolerance = 24, int seedX = -1, int seedY = -1)` | lòng art, vùng chữ được phép nằm: `x0,y0 x1,y1 (w x h)`. Từ seed (mặc định tâm ảnh) đi bốn phía tới chỗ hai pixel kề lệch quá tolerance (tổng RGBA), nên lòng gradient vẫn liền một vùng, viền, gờ sáng, mép trong suốt cắt. Đo trên hàng và cột qua seed: góc bo nằm ngoài, chữ cao gần bằng lòng thì đo lại với `seedY` ở mép chữ. Lòng có icon thì đặt seed vào phần dành cho chữ. Số là px của art; Image đổi cỡ hay `pixelsPerUnitMultiplier` khác 1 thì quy đổi |
 | `TemplateMatch(string artPath, string imagePath, RectInt region, float minScale, float maxScale, float step = 0.02f)` | chỗ và tỉ lệ đặt art (PNG có alpha) khớp nhất: `x,y w x h scale s rmse e`, x, y góc trên trái, `s` = w / bề rộng art; so pixel art alpha ≥ 128. Dò thô ở ảnh thu nhỏ (tới 8 lần, art thu còn ≥ 8 px) với bước `step`, rồi dò tinh quanh điểm thô, mỗi bề rộng nguyên trong ±step một lần. Vùng 700×600 với art ~300 px mất ~3 s. rmse cao mà vị trí đúng thường là chữ, số vẽ đè trên art trong demo |
 | `ContactSheet(string folder, string outPath, int cell = 256, int columns = 6)` | ghép mọi PNG theo tên thành lưới (ô giữ tỉ lệ, nền xám); trả `i: tên WxH` theo thứ tự ô |
 | `Diff(string demoPath, string capturePath, params RectInt[] exclude)` | ảnh chụp đưa về cỡ demo; mỗi pixel ngoài `exclude` lấy kênh RGB lệch nhất (0–255): `mean m p95 p max x at x,y (n px)`; không còn pixel là `none`. Số lệch còn lại để báo sau khi dựng |
@@ -182,7 +184,9 @@ alpha sRGB thấp hơn alpha Linear; `FitOverlay` trên art nhiều tông: Gamma
 phần tư lúc để nguyên số, art một màu và alpha 0 thì ném; `Diff`, `SideBySide` theo khối tìm đúng pixel lệch trong khối ở hai gốc khác
 nhau, `exclude` tính trong khối, vùng ra ngoài ảnh thì ném, phóng không nội suy; `SpriteSilhouette.Create` ra RGB trắng đúng alpha,
 chép PPU, border, override Android, gọi lại sau khi art đổi giữ GUID, nguồn đặc thì ném. Asset tạm ở
-`Assets/HorcruxUIReskinTestTemp`, xoá sau mỗi test. `Tests/EditMode/HiddenArtTests.cs`: `List` gom theo object tắt ngoài cùng;
+`Assets/HorcruxUIReskinTestTemp`, xoá sau mỗi test. `Tests/EditMode/TextFitAuditTests.cs`: `InnerRegion` ra đúng lòng gradient
+trong viền (so với seed thay vì pixel kề thì lòng bị cắt), seed trên viền ra dải viền, seed ngoài ảnh thì ném; `TextFit` chỉ đánh
+dấu chữ autosize phủ rect Image và chữ script giữ mà cỡ cố định, chữ autosize thụt vào và nhãn tĩnh không cờ. `Tests/EditMode/HiddenArtTests.cs`: `List` gom theo object tắt ngoài cùng;
 `Clear` chạy thử không đổi, gỡ thật chỉ thành override của variant, từ chối gốc đang bật; art đã gỡ trên variant không còn trong
 `AtlasAudit.Usage`.
 

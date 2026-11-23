@@ -2,8 +2,10 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 using Horcrux.Editor.Common;
+using LightSide;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 using Object = UnityEngine.Object;
 
@@ -104,6 +106,22 @@ namespace Horcrux.Editor.UIReskin
         public static string PruneNoise(string prefabPath, bool apply = false) =>
             RevertOverrides(prefabPath, line => line.StartsWith("~"), apply);
 
+        /// <summary>
+        /// Soát chữ đổi theo dữ liệu có co trong vùng art không: mỗi prefab có UniText một khối, mỗi chữ một dòng
+        /// <c>node | size s | auto min-max | set by Type.field</c>. Dòng nghi mở đầu <c>!</c>: <c>fixed</c> khi script giữ chữ mà
+        /// tắt autosize, <c>image rect</c> khi chữ autosize phủ đúng rect Image cha.
+        /// </summary>
+        public static string TextFit(string folder)
+        {
+            var sb = new StringBuilder();
+            foreach (var guid in AssetDatabase.FindAssets("t:Prefab", new[] { folder }))
+            {
+                var path = AssetDatabase.GUIDToAssetPath(guid);
+                ReadOnly(path, root => AppendTextFit(sb, path, root));
+            }
+            return sb.ToString();
+        }
+
         private struct Entry
         {
             public PropertyModification Modification;
@@ -170,6 +188,80 @@ namespace Horcrux.Editor.UIReskin
                 }
                 if (property.objectReferenceValue == null && property.objectReferenceInstanceIDValue != 0)
                     Lines.Append("  missing ref: ").Append(Prefix).Append('.').Append(path).Append('\n');
+            }
+        }
+
+        private static void AppendTextFit(StringBuilder sb, string path, GameObject root)
+        {
+            var texts = root.GetComponentsInChildren<UniTextBase>(true);
+            if (texts.Length == 0)
+                return;
+
+            // script giữ reference tới chữ (hay GameObject của nó) là dấu hiệu chữ do code ghi, đổi theo dữ liệu
+            var setters = new Dictionary<Object, string>();
+            foreach (var behaviour in root.GetComponentsInChildren<MonoBehaviour>(true))
+            {
+                if (behaviour == null || behaviour is UIBehaviour)
+                    continue;
+                var visitor = new SetterVisitor { Setters = setters, Owner = behaviour.GetType().Name };
+                SerializedPropertyWalker.Walk(new SerializedObject(behaviour), ref visitor);
+            }
+
+            sb.Append(path).Append('\n');
+            foreach (var text in texts)
+            {
+                var so = new SerializedObject(text);
+                var auto = so.FindProperty("autoSize").boolValue;
+                if (!setters.TryGetValue(text, out var setter) && !setters.TryGetValue(text.gameObject, out setter))
+                    setter = ScriptOnSameObject(text.gameObject);
+                var flag = setter != null && !auto ? "fixed" : auto && FillsParentImage(text.rectTransform) ? "image rect" : null;
+
+                sb.Append(flag != null ? "! " : "  ").Append(PathOf(root, text.transform))
+                    .Append(" | size ").Append(so.FindProperty("fontSize").floatValue);
+                if (auto)
+                    sb.Append(" | auto ").Append(so.FindProperty("minFontSize").floatValue).Append('-').Append(so.FindProperty("maxFontSize").floatValue);
+                else
+                    sb.Append(" | auto off");
+                if (setter != null)
+                    sb.Append(" | set by ").Append(setter);
+                if (flag != null)
+                    sb.Append(" | ").Append(flag);
+                sb.Append('\n');
+            }
+        }
+
+        // script không phải UI cùng object (bản địa hoá, bộ đếm) thường ghi chữ qua GetComponent, không qua ô kéo thả
+        private static string ScriptOnSameObject(GameObject go)
+        {
+            foreach (var behaviour in go.GetComponents<MonoBehaviour>())
+                if (behaviour != null && !(behaviour is UIBehaviour))
+                    return behaviour.GetType().Name;
+            return null;
+        }
+
+        private static bool FillsParentImage(RectTransform rect)
+        {
+            if (rect.parent == null || !rect.parent.TryGetComponent<Image>(out var image))
+                return false;
+            var own = new Vector3[4];
+            var parent = new Vector3[4];
+            rect.GetWorldCorners(own);
+            image.rectTransform.GetWorldCorners(parent);
+            return Vector3.Distance(own[0], parent[0]) < 0.5f && Vector3.Distance(own[2], parent[2]) < 0.5f;
+        }
+
+        private struct SetterVisitor : IReferencePropertyVisitor
+        {
+            public Dictionary<Object, string> Setters;
+            public string Owner;
+
+            public void Visit(SerializedObject so, SerializedProperty property, RefPropertyKind kind)
+            {
+                if (kind != RefPropertyKind.ObjectReference || property.objectReferenceValue == null ||
+                    property.propertyPath.Contains("m_PersistentCalls"))
+                    return;
+                if (!Setters.ContainsKey(property.objectReferenceValue))
+                    Setters[property.objectReferenceValue] = Owner + "." + property.propertyPath;
             }
         }
 
