@@ -8,13 +8,17 @@ cập nhật description, xoá file mồi của skill đã bỏ) và hook dướ
 
 Không tham số thì là hook: đọc JSON trên stdin, rẽ theo `hook_event_name`.
 
-    SessionStart                 lệch như `install --check` thì báo agent và developer chạy `install`.
+    SessionStart startup         lệch như `install --check` thì báo agent và developer chạy `install`.
+    SessionStart compact         nhắc agent đọc lại trọn luật nền: sau compact chỉ còn bản tóm tắt.
     PreToolUse  Bash|PowerShell  chặn `git add -A|-u|.`, `git commit -a`, commit không pathspec (`-- <paths>`) ngoài lúc
                                  merge; commit vào `Agent/` mà `check_agent.py` báo lỗi ở chính file được commit.
     PreToolUse  Edit|Write       chặn sửa mục developer-only của `horcrux.md`.
     PostToolUse Edit|Write       ghi file `.cs` agent vừa sửa vào `Library/HorcruxVerify/agent-edits/<session>.txt`.
     Stop                         không cho dừng khi có `.cs` agent sửa sau lần `verify.sh` OK cuối
                                  (`Library/HorcruxVerify/last-ok`); lần chặn thứ hai trong cùng lượt dừng thì để qua.
+
+Mỗi lần chặn hay nhắc ghi một dòng vào `Library/HorcruxVerify/hook-log.jsonl` (luật: git-add-all, git-commit-all,
+commit-no-pathspec, agent-check, dev-only, verify-stale, install-drift, compact-reread); `context_audit.py hooks` đếm.
 
 Hook hỏng (ngoại lệ) thì im lặng để qua: một hook lỗi không được chặn việc của developer.
 """
@@ -25,6 +29,7 @@ import pathlib
 import re
 import subprocess
 import sys
+import time
 
 TOOLS = pathlib.Path(__file__).resolve().parent
 AGENT = TOOLS.parent
@@ -48,7 +53,21 @@ def state_dir(data):
     return project_dir(data) / "Library" / "HorcruxVerify"
 
 
-def deny(reason):
+def log_event(data, rule, detail=""):
+    """Một dòng mỗi lần hook chặn hay nhắc, để `context_audit.py hooks` đếm luật nào bị vấp."""
+    try:
+        log = state_dir(data) / "hook-log.jsonl"
+        log.parent.mkdir(parents=True, exist_ok=True)
+        with log.open("a", encoding="utf-8") as f:
+            f.write(json.dumps({"t": time.strftime("%Y-%m-%dT%H:%M:%S"), "session": data.get("session_id", ""),
+                                "event": data.get("hook_event_name", ""), "rule": rule,
+                                "detail": " ".join(detail.split())[:200]}, ensure_ascii=False) + "\n")
+    except OSError:
+        pass
+
+
+def deny(data, rule, detail, reason):
+    log_event(data, rule, detail)
     print(json.dumps({"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "deny",
                                              "permissionDecisionReason": reason}}, ensure_ascii=False))
 
@@ -150,24 +169,28 @@ def pre_shell(data):
             bad = [a for a in args if a in ("-A", "--all", "-u", "--update", ".", "*", ":/") or
                    short_flags([a], "A") or short_flags([a], "u")]
             if bad:
-                return deny(f"`git add {' '.join(bad)}` gom cả file developer đang sửa. Add từng file: "
+                return deny(data, "git-add-all", command,
+                            f"`git add {' '.join(bad)}` gom cả file developer đang sửa. Add từng file: "
                             "`git add -- <file mới>` (workflow › Git).")
         if sub != "commit":
             continue
         if "--all" in args or short_flags([a for a in args if not a.startswith("--")], "a"):
-            return deny("`git commit -a` lấy mọi file đã sửa. Commit theo pathspec: `git commit -m … -- <paths>`.")
+            return deny(data, "git-commit-all", command,
+                        "`git commit -a` lấy mọi file đã sửa. Commit theo pathspec: `git commit -m … -- <paths>`.")
         if "--" in args:
             paths = [where / p for p in args[args.index("--") + 1:]]
         elif any(a.startswith("--pathspec-from-file") for a in args) or in_merge(where):
             continue
         else:
-            return deny("Commit không pathspec lấy cả index, kể cả file developer đã stage. Ghi rõ phần của việc: "
+            return deny(data, "commit-no-pathspec", command,
+                        "Commit không pathspec lấy cả index, kể cả file developer đã stage. Ghi rõ phần của việc: "
                         "`git commit -m … -- <paths>` (workflow › Git).")
         top = git(where, "rev-parse", "--show-toplevel")
         if top and (pathlib.Path(top) / "Agent" / "horcrux.md").exists():
             errs = agent_errors(pathlib.Path(top), paths)
             if errs:
-                return deny("check_agent.py báo lỗi ở file sắp commit — sửa trước khi commit:\n" + "\n".join(errs))
+                return deny(data, "agent-check", "; ".join(errs),
+                            "check_agent.py báo lỗi ở file sắp commit — sửa trước khi commit:\n" + "\n".join(errs))
 
 
 # ---------- sửa file ----------
@@ -194,7 +217,8 @@ def pre_edit(data):
                 return  # Edit sẽ tự báo không khớp
             new = new.replace(a, b) if e.get("replace_all") else new.replace(a, b, 1)
     if check_agent.dev_block(old) != check_agent.dev_block(new.replace("\r\n", "\n")):
-        deny("Mục developer-only của horcrux.md chỉ developer gõ. Thấy lỗi ở đó thì báo trong chat, không sửa.")
+        deny(data, "dev-only", path,
+             "Mục developer-only của horcrux.md chỉ developer gõ. Thấy lỗi ở đó thì báo trong chat, không sửa.")
 
 
 def post_edit(data):
@@ -227,6 +251,7 @@ def stop(data):
     stale = [p for p in log.read_text(encoding="utf-8").splitlines()
              if compiled(p) and os.path.exists(p) and os.path.getmtime(p) > ok_time]
     if stale:
+        log_event(data, "verify-stale", " ".join(stale))
         names = ", ".join(pathlib.Path(p).name for p in stale[:5]) + (" …" if len(stale) > 5 else "")
         print(json.dumps({"decision": "block", "reason":
                           f"Có {len(stale)} file .cs sửa sau lần verify.sh OK cuối ({names}). Chạy compile-check "
@@ -237,7 +262,7 @@ def stop(data):
 # ---------- cài vào dự án ----------
 
 HOOKS = [  # (sự kiện, matcher, timeout giây); mọi sự kiện gọi cùng một lệnh
-    ("SessionStart", "startup", 10),
+    ("SessionStart", "startup|compact", 10),
     ("PreToolUse", "Bash|PowerShell|Edit|Write", 30),
     ("PostToolUse", "Edit|Write", 10),
     ("Stop", None, 10),
@@ -324,10 +349,28 @@ def install(check):
     return 0
 
 
+def reread_list(project):
+    a = agent_rel(project)
+    files = [f"{a}/horcrux.md"]
+    for name in check_agent.ALWAYS:
+        files += [f"{a}/Rules/{name}/RULE.md", f"{a}/Memory/{name}.md", f"docs/agent-memory/{name}.md"]
+    return [f for f in files if (project / f).exists()]
+
+
 def session_start(data):
     project = project_dir(data)
+    if data.get("source") == "compact":
+        # Luật đọc bằng Read chỉ còn bản tóm tắt sau compact; CLAUDE.md thì được nạp lại nguyên văn.
+        log_event(data, "compact-reread")
+        msg = ("Phiên vừa compact: nội dung luật đọc đầu phiên chỉ còn bản tóm tắt. Trước bước tiếp, đọc lại trọn "
+               + ", ".join(f"`{f}`" for f in reread_list(project))
+               + ", và rule, skill, memory hàng bảng chỉ dẫn của việc đang làm.")
+        print(json.dumps({"hookSpecificOutput": {"hookEventName": "SessionStart", "additionalContext": msg}},
+                         ensure_ascii=False))
+        return
     acts = plan(project)
     if acts:
+        log_event(data, "install-drift", ", ".join(f"{v} {p.name}" for v, p, _ in acts))
         what = ", ".join(f"{verb} {path.relative_to(project).as_posix()}" for verb, path, _ in acts[:4])
         msg = (f"Bộ Agent của dự án lệch Horcrux ({len(acts)} mục: {what}{' …' if len(acts) > 4 else ''}). Chạy "
                f"`python -X utf8 -I {agent_rel(project)}/Tools~/agent_hooks.py install` rồi commit phần đổi.")

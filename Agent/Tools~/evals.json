@@ -1,0 +1,37 @@
+{
+  "_": "Ca cho agent_evals.py. Prompt trung tính (không domain dự án). must_read: khoá như context_audit ({base} = luật nền); reply_has / reply_lacks: regex, không phân biệt hoa thường, trên mọi chữ agent viết ra kể cả plan. reply_lacks bắt dạng code (`StartCoroutine\\(`), không bắt chữ: agent viết 'không dùng coroutine' là đúng, bắt chữ thì đỏ oan.",
+  "cases": [
+    {
+      "name": "tween-nut-bam",
+      "rules": ["code-design", "async-presentation"],
+      "prompt": "Viết một component Unity: khi người chơi bấm vào nút thì nút phóng to 1.2 lần rồi thu về cỡ cũ trong 0.25 giây; bấm liên tiếp không được làm nút to dần.",
+      "must_read": ["{base}", "Rules/code-design/RULE.md", "Rules/async-presentation/RULE.md"],
+      "reply_has": ["PrimeTween"],
+      "reply_lacks": ["StartCoroutine\\(", "IEnumerator\\s+\\w+\\s*\\(", "\\.DOScale\\(", "using DG\\.Tweening"]
+    },
+    {
+      "name": "merge-nhanh",
+      "rules": ["merge-audit", "compile-check"],
+      "prompt": "Tôi cần merge nhánh feature/abc vào develop. Lên kế hoạch các bước.",
+      "must_read": ["{base}", "Skills/merge-audit/SKILL.md", "Skills/compile-check/SKILL.md"],
+      "reply_has": ["merge_audit", "worktree"],
+      "reply_lacks": []
+    },
+    {
+      "name": "build-nang",
+      "rules": ["build-size"],
+      "prompt": "Bản build Android tuần này nặng hơn tuần trước khoảng 30 MB. Lên kế hoạch tìm nguyên nhân.",
+      "must_read": ["{base}", "Skills/build-size/SKILL.md"],
+      "reply_has": ["apk_report"],
+      "reply_lacks": []
+    },
+    {
+      "name": "ghi-bai-hoc",
+      "rules": ["docs", "workflow"],
+      "prompt": "Ghi lại bài học: sprite mới thêm vào thư mục mà atlas không tự có, phải bấm Pack Preview thì Play mới thấy đúng.",
+      "must_read": ["{base}", "Rules/docs/RULE.md"],
+      "reply_has": ["Memory/"],
+      "reply_lacks": []
+    }
+  ]
+}

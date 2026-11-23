@@ -69,6 +69,9 @@ phương án cuối.
   thuật, không tên màn, tính năng, kịch bản của game nào.
 - **Trần** ở `horcrux.md` › Cổng ghi. Phần đọc đầu phiên thêm vào thì cắt chỗ khác; `RULE.md` vượt trần là dấu hiệu chi
   tiết chưa dời sang tra cứu.
+- **Sửa luật thì đo, không đoán** (`Agent/Tools~/`): context nạp trước–sau (`context_audit.py plan`) · ca hành vi chạm
+  luật đó, trước và sau khi sửa (`agent_evals.py run --rule <tên>`). Dọn hay đề xuất nâng bậc lấy số từ
+  `context_audit.py hooks` (luật hook chặn nhiều) và `files` (file nặng mà ít phiên cần, file không phiên nào đọc).
 
 ## Kỷ luật viết — mọi loại tài liệu
 

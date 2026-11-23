@@ -82,6 +82,10 @@ Plan**: trích đoạn tài liệu cần, đường dẫn file sẽ chạm, tiê
 subagent commit task của nó bằng pathspec · mọi bước chơi thử và duyệt art gom thành một kịch bản cuối · review mỗi task
 loại commit ngoài Plan chen giữa.
 
+**Soát chéo khi bằng chứng là phán đoán** (khớp ảnh với demo, review diff, soát merge, duyệt Plan): agent làm đã tin kết
+luận, đọc lại chỉ thấy điều xác nhận nó. Subagent soát nhận **vật** (diff, ảnh, file, tiêu chí), không nhận kết luận của
+agent làm; agent làm phân xử từng phát hiện bằng bằng chứng, nêu cả phát hiện bác bỏ.
+
 ## Nghiệm thu — phép kiểm theo loại tiêu chí
 
 Neo khi phân vân: **công sức đắt nhất là của developer.**

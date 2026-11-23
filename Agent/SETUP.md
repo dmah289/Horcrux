@@ -34,11 +34,15 @@ in phần lệch, không ghi.
 | Hook | Chặn gì | Luật |
 |---|---|---|
 | mở phiên | không chặn; báo khi file mồi hay hook lệch Horcrux | mục này |
+| sau compact | không chặn; nhắc agent đọc lại trọn luật nền, vì luật đọc bằng Read chỉ còn bản tóm tắt | `horcrux.md` › Luật đọc |
 | trước lệnh shell | `git add -A`, `-u`, `.` · `git commit -a` · commit không `-- <paths>` (trừ lúc merge) · commit vào `Agent/` khi `check_agent.py` báo lỗi ở chính file đó | `workflow` › Việc lặp lại và git · `horcrux.md` › Cổng ghi |
 | trước sửa file | sửa mục developer-only của `horcrux.md` | `horcrux.md` › Yêu cầu của developer |
 | sau sửa file, khi dừng | báo xong khi còn `.cs` agent sửa sau lần `verify.sh` OK cuối; chặn một lần mỗi lượt dừng | `compile-check` › Luật |
 
 Không thấy: `.cs` sửa bằng lệnh shell, vì hook chỉ ghi file sửa qua Edit, Write.
+
+Mỗi lần chặn hay nhắc ghi một dòng vào `Library/HorcruxVerify/hook-log.jsonl` (ở lại máy); đếm bằng
+`python -X utf8 -I Assets/Horcrux/Agent/Tools~/context_audit.py hooks`.
 
 File mồi skill và hook chỉ tới máy khác khi đi theo git: dự án ignore cả `.claude/` thì máy khác không có gì. Soát bằng
 `git check-ignore -v .claude/settings.json`; bị ignore thì đổi dòng `.claude/` thành `.claude/*`, `!.claude/settings.json`,
