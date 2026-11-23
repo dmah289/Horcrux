@@ -1,71 +1,65 @@
-# Plan — `TextFitFrame` lên Horcrux
+# Plan — `TextFitFrame`: khung Sliced cao theo số dòng chữ, đáy khung đứng yên
 
-Ngày 2026-11-06. Nguồn: category-jam `Assets/_CategoryJam/Scripts/Entities/Box/TextFitFrame.cs` (bản 2026-11-05, chữ UniText),
-host thật `CategoryNameTag` trên `name_tab` của `Assets/_CategoryJam/Addressables/Box/CategoryBox.prefab`. Test EditMode
-`Assets/_CategoryJam/Tests/EditMode/TextFitFrameTests.cs` (5 case) chuyển sang Horcrux; `CategoryNameTagPrefabTests.cs` ở lại dự án.
+Bản tạm: category-jam `Scripts/Entities/Box/TextFitFrame.cs`, test `Tests/EditMode/TextFitFrameTests.cs`; host `CategoryNameTag` trên `name_tab` của `Addressables/Box/CategoryBox.prefab`. Không phụ thuộc Plan nào.
+Kiểm: `bash "<horcrux>/Editor/CompileCheck/Tools~/verify.sh" --csproj com.horcrux.runtime.csproj,Horcrux.EditModeTests.csproj --tests Horcrux.EditModeTests`; chuyển dự án `--csproj CategoryJam.Gameplay.csproj,CategoryJam.EditModeTests.csproj,com.horcrux.runtime.csproj --tests CategoryJam.EditModeTests,Horcrux.EditModeTests`.
 
-**Phân công:** GĐ1–2 developer gõ, agent viết test theo bảng case rồi compile · GĐ3 (tài liệu), GĐ4 (dự án chuyển sang bản
-Horcrux, xoá bản tạm, chuyển test) agent làm. **Chạy được, thấy được** ở GĐ1–2 = compile sạch + bảng case xanh trong
-`Tests/EditMode/TextFitFrameTests.cs` (assembly `Horcrux.EditModeTests`); thấy trong game ở GĐ4. GĐ1–3 commit trong
-`Assets/Horcrux`, GĐ4 commit ở dự án kèm con trỏ submodule. Không phụ thuộc Plan nào, không có `§0`.
+## Kịch bản
 
-## Ngữ cảnh đã chốt
+| Tình huống | Hệ làm gì | Host / người chơi thấy |
+|---|---|---|
+| tên một dòng | đo, `ExtraHeight` 0 | khung cỡ prefab |
+| tên hai dòng (ngắt cứng hay wrap) | `ExtraHeight` = bước dòng; khung cao thêm, dời lên phần nằm dưới pivot | khung ôm hai dòng, đáy ở chỗ prefab đặt; host trượt theo `ExtraHeight` |
+| tên quá trần dòng (cao hơn khung chữ) | autosize UniText co chữ cả hai chiều tới `MinFontSize` | chữ nhỏ lại trong khung chữ; khung cao tối đa `rect.height` − một dòng |
+| chữ rỗng | hiệu âm kẹp 0 | khung nghỉ |
+| hai dòng rồi một dòng | đo lại từ khung nghỉ đã chụp | khung về nghỉ |
+| object đang tắt lúc `SetText` đầu | `MeasureText` chạy layout ngay lúc gọi | đo và đặt khung đúng |
+| chữ hay khung có scale khác 1 | nhân scale chữ, chia scale khung | `ExtraHeight` theo không gian cha; đáy đứng yên |
+| `text` và `frame` khác cha | `LogError` ở `SetText` đầu, vẫn chạy | Console đỏ; khung lệch |
+| `frame` Draw Mode Simple | `LogError` ở `SetText` đầu | khung không cao lên |
+| `text` hay `frame` trống | `NullReferenceException` ở `SetText` đầu | lỗi setup lộ ngay |
 
-- **Mục tiêu:** nhãn chữ trên khung `SpriteRenderer` Sliced trong world — khung cao theo số dòng, **đáy khung đứng yên**; trần
-  số dòng là chiều cao khung chữ trong prefab, tràn thì autosize của UniText co chữ. Host đọc phần cao thêm để tự đặt vị trí.
-- **Chỗ đặt:** `Runtime/Utilities/UI/TextFitFrame.cs`, namespace `Horcrux.Runtime.Utilities.UI`; tài liệu
-  `docs/Runtime/TextFitFrame/TextFitFrame.md`. `com.horcrux.runtime` và `Horcrux.EditModeTests` đã tham chiếu `LightSide.UniText`
-  (không sửa asmdef); `SplitterAttribute` ở `Horcrux.Runtime.Utilities`, namespace cha, không cần `using`.
-- **Tên:** giữ `TextFitFrame`; field `text`, `frame` giữ tên (prefab serialize theo tên), GUID script giữ (GĐ4); tên class đổi
-  tuỳ ý trước khi gõ. Kiểu chữ `UniTextBase` — nhận cả `UniText` (Canvas) lẫn `UniTextWorld` (host thật).
-- **Đo được ở UniText** (`MeasureText`, `UniTextBase_Layout.cs`): autosize co **cả hai chiều** khi tràn `maxWidth × maxHeight`,
-  tới `MinFontSize` · thiếu `maxWidth` đo một dòng không wrap, thiếu `maxHeight` bỏ qua autosize — truyền cả hai từ `rect` khung
-  chữ · chạy layout ngay lúc gọi, không cần object bật · trả kích thước **outer** (gồm `Padding`) — hiệu hai phép đo triệt tiêu
-  padding · chữ rỗng thấp hơn một dòng — hiệu âm kẹp 0 · bước dòng theo Line Height Mode của **cả dự án** (`UniTextSettings`),
-  không theo component.
-- **Không làm:** tự co chữ hay đo bề ngang (autosize đủ cho mọi tên thật) · tween chiều cao khung (host tự trượt theo
-  `ExtraHeight`) · tính lại khi đổi font, cỡ chữ lúc chạy (giá trị authoring) · guard `text`, `frame` null (`NullReferenceException`
-  ở `SetText` đầu đã trỏ đúng dòng) · đếm dòng bằng `GetRangeBounds` (lý do ở GĐ1).
-- **Đã khảo sát:** `TextFitFrame.cs` dự án (cả cơ chế; bỏ namespace dự án, `using Horcrux.Runtime.Utilities;` thừa) ·
-  `CategoryNameTag.cs` (host gọi `fit.SetText(name)` rồi `hiddenLocalPos + Vector3.down * (fit.ExtraHeight * transform.localScale.y)`)
-  · `TextFitFrameTests.cs` dự án (bảng case; fixture nạp asset dự án nên không lấy) · `CategoryNameTagPrefabTests.cs` (đo "như lúc
-  render"; ở lại dự án) · `CategoryBox.prefab` › `name_tab` (setup thật cho Editor setup GĐ3, số nháp) · UniText
-  `UniTextFontProvider` (`Font` trống thì `SystemFont.Default` — fixture không cần asset font) · Horcrux `Utilities/UI/` (tham
-  chiếu `UniTextBase` như `UniTextTypewriter`; chưa có cái nào fit khung) · `ContentSizeFitter` + `Image` Sliced (không hợp:
-  Canvas, không phải world).
-
-## Luồng mô tả — một tên đi qua khung
-
-```
-host ghi tên ──► SetText: chữ vào khung chữ, autosize co khi quá trần dòng ──► ExtraHeight = phần chữ cao hơn một dòng   GĐ1
-                                                       ▼
-            lần đầu: chụp khung nghỉ (cao, y, pivot), kiểm setup ──► khung cao thêm ExtraHeight, đáy đứng yên              GĐ2
-                                                       ▼
-            host đọc ExtraHeight để đặt vị trí · tài liệu (GĐ3) · dự án dùng bản Horcrux, test sang Horcrux (GĐ4)
-```
-
-## Bản đồ hệ cuối
+## Flow
 
 ```
                  SetText(value)                              Text = value · MeasureText(khung) · MeasureText("A")
   host ─────────────────────────────► TextFitFrame ─────────────────────────────────────────────► UniTextBase text
-    ▲                                   │                                                          (autosize co trong khung chữ)
-    │ ExtraHeight                       │ size.y = nghỉ + ExtraHeight / scaleY
-    └───────────────────────────────────┤ localPosition.y = restY + ExtraHeight × pivotY
+    ▲                                   │  Runtime/Utilities/UI/TextFitFrame.cs                    (autosize co trong khung chữ)
+    │ ExtraHeight                       │ lần đầu: CaptureRestLayout (LogError khác cha, Simple)
+    └───────────────────────────────────┤ size.y = nghỉ + ExtraHeight / scaleY
+                                        │ localPosition.y = restY + ExtraHeight × pivotY
                                         ▼
                                 SpriteRenderer frame (Sliced)
 ```
 
+## Thuật toán
+
+| Đại lượng | Công thức |
+|---|---|
+| `E` (`ExtraHeight`, không gian cha) | `max(0, MeasureText(khung).y − MeasureText("A").y) × text.localScale.y` |
+| `size.y` khung | `restH + E / frame.localScale.y` |
+| `localPosition.y` khung | `restY + E · p`, `p = sprite.pivot.y / sprite.rect.height` |
+| bất biến đáy | `y − size.y · scaleY · p` = `restY − restH · scaleY · p`: không còn `E`, đúng với mọi pivot |
+
+| Sự thật UniText (`MeasureText`, `UniTextBase_Layout.cs`) | Hệ quả |
+|---|---|
+| autosize co **cả hai chiều** khi tràn `maxWidth × maxHeight`, tới `MinFontSize` | trần số dòng là chiều cao khung chữ |
+| thiếu `maxWidth` đo một dòng không wrap; thiếu `maxHeight` bỏ qua autosize | truyền cả hai từ `rect` khung chữ |
+| chạy layout ngay lúc gọi, không cần object bật | đo được cùng frame đặt chữ |
+| trả kích thước **outer** (gồm `Padding`) | hiệu hai phép đo triệt tiêu padding |
+| chữ rỗng thấp hơn một dòng | hiệu âm, kẹp 0 |
+| bước dòng theo Line Height Mode của **cả dự án** (`UniTextSettings`) | đổi mode là đổi bước dòng của mọi khung chữ |
+
 ---
 
-## Giai đoạn 1 — Chữ vào khung chữ, đo phần cao hơn một dòng
+## GĐ1 — xong thì host đặt được vị trí theo số dòng dù chưa có khung
 
-**Mục tiêu:** host `SetText(value)`, chữ hiện trong khung chữ (autosize của UniText co khi quá trần dòng), `ExtraHeight` cho biết
-chữ cao hơn một dòng chuẩn bao nhiêu theo không gian cha. Xong giai đoạn này host đặt được vị trí theo số dòng dù chưa có khung.
+```
+  host ──SetText+──► TextFitFrame+ ──Text = · MeasureText(khung) · MeasureText("A")──► UniTextBase
+    ▲                    │
+    └──── ExtraHeight+ ──┘
+```
 
-**Vì sao bây giờ:** `ExtraHeight` là con số duy nhất mọi thứ sau cần — khung (GĐ2) và host đều đọc nó; đo đúng trước, vẽ sau.
-
-### `Runtime/Utilities/UI/TextFitFrame.cs` — file mới
+`Runtime/Utilities/UI/TextFitFrame.cs` — file mới:
 
 ```csharp
 using LightSide;
@@ -98,6 +92,7 @@ namespace Horcrux.Runtime.Utilities.UI
         {
             text.Text = value;
 
+            // MeasureText trả theo không gian của chữ; host đọc theo không gian cha.
             ExtraHeight = MeasureExtraTextHeight() * text.transform.localScale.y;
         }
 
@@ -116,7 +111,9 @@ namespace Horcrux.Runtime.Utilities.UI
             var rect = ((RectTransform)text.transform).rect;
             var box = new TextMeasureOptions { maxWidth = rect.width, maxHeight = rect.height };
             var textHeight = text.MeasureText(box).y;
+            // Mốc không truyền khung: một dòng ở cỡ chuẩn; truyền khung thì mốc trôi theo cỡ đang co.
             var oneLineHeight = text.MeasureText(OneLine).y;
+            // Hiệu hai phép đo, không đếm dòng: chữ đã co thì khung cao đúng phần vượt thật.
             return Mathf.Max(0f, textHeight - oneLineHeight);
         }
 
@@ -125,70 +122,40 @@ namespace Horcrux.Runtime.Utilities.UI
 }
 ```
 
-**Khác với bản dự án:** namespace `Horcrux.Runtime.Utilities.UI` thay `CategoryJam.Gameplay.Entities`; bỏ
-`using Horcrux.Runtime.Utilities;` (`Splitter` ở namespace cha). Thân member khớp nguyên văn.
+`Tests/EditMode/TextFitFrameTests.cs` (agent), không asset dự án:
 
-**Quyết định** — `ExtraHeight` là hiệu hai phép đo, không đếm dòng: chữ bị autosize co thì khung cao thêm đúng phần chữ thật sự
-vượt một dòng chuẩn, không phải "số dòng × bước dòng" ở cỡ đã co. Phương án bỏ: đếm dòng qua `GetRangeBounds` — ngoài vòng render
-mọi dòng cùng `yMin`. — `OneLine` đo không truyền khung: một dòng `"A"` ở cỡ chuẩn (autosize không bị ràng buộc dừng ở
-`MaxFontSize`) là mốc "khung prefab vừa một dòng"; truyền khung thì mốc trôi theo cỡ chữ đang co. Struct `static readonly` vì
-không đổi giữa các lần gọi. — Nhân `localScale.y` của chữ: `MeasureText` trả theo không gian của chữ, host đọc theo không gian
-cha. — `ExtraHeight` công khai: host cần phần cao thêm để tính điểm ẩn.
-
-| Consumes | Produces |
+| Fixture | Dựng |
 |---|---|
-| `LightSide.UniTextBase.Text`, `MeasureText(TextMeasureOptions)`; `RectTransform.rect` của chữ | `TextFitFrame.SetText`, `ExtraHeight` |
-
-**Sơ đồ tương tác sau GĐ1** (`+` là phần mới)
-
-```
-  host ──SetText+──► TextFitFrame+ ──Text = · MeasureText(khung) · MeasureText("A")──► UniTextBase
-    ▲                    │
-    └──── ExtraHeight+ ──┘
-```
-
-**Editor setup:** không — fixture test dựng bằng code; prefab thật đã nối sẵn (GĐ4).
-
-**Kiểm:** compile sạch. Dự án lúc này có hai `TextFitFrame` ở hai namespace, không đụng nhau: `CategoryNameTag` chưa `using`
-namespace Horcrux.
-
-Fixture `Tests/EditMode/TextFitFrameTests.cs` (agent, không asset dự án): cha `GameObject`; chữ `UniTextWorld` trên
-`RectTransform` con của cha, `Font` để trống (UniText lấy font hệ thống làm font chính), `WordWrap` bật, Center, Bottom,
-`MinFontSize` nhỏ, `MaxFontSize` = cỡ chuẩn, `AutoSize` bật; chiều cao rect = `MeasureText{text = "A\nA", maxWidth}` đo lúc
-`AutoSize` tắt ở cỡ chuẩn cộng một chút dư; `TextFitFrame` gắn trên cha, nối `text` qua `SerializedObject`; `TearDown`
-`DestroyImmediate` cha. Bước dòng kỳ vọng tính **độc lập** từ metric font chính (`text.FontProvider.PrimaryFont` sau lần đo đầu:
-`FaceInfo.lineHeight / UnitsPerEm × cỡ chuẩn` khi `UniTextSettings.DefaultLineHeightMode` là `Primary`; `LineHeightScale × cỡ
-chuẩn` khi `Scaled`), không lấy từ `ExtraHeight`.
+| chữ | `UniTextWorld` trên `RectTransform` con của cha; `Font` trống (UniText lấy font hệ thống), Word Wrap, Center, Bottom, Auto Size, Min nhỏ, Max = cỡ chuẩn; cao = `MeasureText{text = "A\nA", maxWidth}` lúc Auto Size tắt + chút dư |
+| nối | `TextFitFrame` trên cha, `text` qua `SerializedObject`; `TearDown` `DestroyImmediate` cha |
+| bước dòng kỳ vọng | từ metric font chính (`text.FontProvider.PrimaryFont` sau lần đo đầu), không từ `ExtraHeight`: `FaceInfo.lineHeight / UnitsPerEm × cỡ chuẩn` khi `DefaultLineHeightMode` `Primary` · `LineHeightScale × cỡ chuẩn` khi `Scaled` |
 
 | Case | Input | Kỳ vọng |
 |---|---|---|
 | rỗng | `SetText("")` | `ExtraHeight` 0 |
 | một dòng | `SetText("Food")` | `ExtraHeight` 0; chữ ở cỡ chuẩn |
-| hai dòng ngắt cứng | `SetText("Food\nFood")` | `ExtraHeight` = bước dòng; cỡ chữ vẫn cỡ chuẩn (`MeasureText{autoSize = false}.y` bằng `MeasureText{khung}.y`) |
-| hai dòng do wrap | chữ không có `\n`, rộng hơn `rect.width` | `ExtraHeight` = bước dòng (chứng minh `maxWidth` được truyền) |
+| hai dòng ngắt cứng | `SetText("Food\nFood")` | `ExtraHeight` = bước dòng (> 0 — đỏ khi fixture không layout được); cỡ chữ vẫn cỡ chuẩn (`MeasureText{autoSize = false}.y` bằng `MeasureText{khung}.y`) |
+| hai dòng do wrap | chữ không có `\n`, rộng hơn `rect.width` | `ExtraHeight` = bước dòng — đỏ nếu không truyền `maxWidth` |
 | ba dòng tràn | `SetText("Food\nFood\nFood")` | đối chứng `MeasureText{autoSize = false}.y` > `rect.height`; `MeasureText{khung}.y` ≤ `rect.height`; `ExtraHeight` ≤ `rect.height` − một dòng cỡ chuẩn |
 | hai dòng rồi một dòng | `SetText` hai dòng rồi `"Food"` | `ExtraHeight` về 0 |
 | object tắt trước lần đầu | `SetActive(false)` cha rồi `SetText` hai dòng | `ExtraHeight` = bước dòng |
-| chữ scale khác 1 | `text.localScale.y` = 2, hai dòng | `ExtraHeight` = 2 × bước dòng |
+| chữ scale khác 1 | `text.localScale.y` = 2, hai dòng | `ExtraHeight` = 2 × bước dòng — đỏ nếu bỏ nhân scale |
 | gọi lặp | `SetText` hai dòng hai lần | `ExtraHeight` không đổi giữa hai lần |
-
-**Cheat của giai đoạn:** fixture không layout được (font không nạp, `MeasureText` trả chỉ padding) thì mọi ca 0 xanh giả — ca hai
-dòng khẳng định `ExtraHeight` > 0 và ca ba dòng có đối chứng "không co thì tràn" chặn. Kỳ vọng bước dòng chép từ `ExtraHeight`
-là test tự chứng minh — tính từ metric font như trên.
-
-**Mốc commit:** `feat(text): TextFitFrame đo phần chữ cao hơn một dòng`.
 
 ---
 
-## Giai đoạn 2 — Khung cao theo chữ, đáy đứng yên
+## GĐ2 — xong thì tab tên hai dòng có khung ôm đủ hai dòng, đáy khung ở chỗ prefab đặt
 
-**Mục tiêu:** lần `SetText` đầu chụp khung nghỉ (chiều cao, `localPosition.y`, pivot sprite) và kiểm hai lỗi setup không có
-exception; mỗi `SetText` đặt `frame.size.y` = nghỉ + `ExtraHeight` và dời khung đúng phần pivot nằm trên đáy. Xong giai đoạn này
-tab tên hai dòng có khung ôm đủ hai dòng, đáy khung vẫn ở chỗ prefab đặt.
+```
+  host ──SetText──► TextFitFrame ──Text = · MeasureText ×2──► UniTextBase
+    ▲                    │ lần đầu: CaptureRestLayout+ (LogError khác cha, Simple)
+    │ ExtraHeight        │ size.y+ = nghỉ + ExtraHeight / scaleY
+    └────────────────────┤ localPosition.y+ = restY + ExtraHeight × pivotY
+                         ▼
+                 SpriteRenderer frame+ (Sliced)
+```
 
-**Vì sao bây giờ:** khung cộng `ExtraHeight` của GĐ1; chụp nghỉ phải xảy ra trước lần đổi `size` đầu nên sinh cùng giai đoạn.
-
-### `TextFitFrame.cs` › `Properties` › thêm sau `text`, trước `OneLine`
+`TextFitFrame.cs` › `Properties` › thêm sau `text`, trước `OneLine`:
 
 ```csharp
         [SerializeField] private UniTextBase text;
@@ -202,42 +169,46 @@ tab tên hai dòng có khung ôm đủ hai dòng, đáy khung vẫn ở chỗ pr
         private static readonly TextMeasureOptions OneLine = new() { text = "A" };
 ```
 
-### `TextFitFrame.cs` › `API` › `SetText` — đoạn cũ → đoạn mới
-
-Cũ:
+`TextFitFrame.cs` › `API` › `SetText` — cũ:
 
 ```csharp
         public void SetText(string value)
         {
             text.Text = value;
 
+            // MeasureText trả theo không gian của chữ; host đọc theo không gian cha.
             ExtraHeight = MeasureExtraTextHeight() * text.transform.localScale.y;
         }
 ```
 
-Mới — chụp nghỉ trước lần đổi `size` đầu; khung cao rồi dời:
+Mới:
 
 ```csharp
         public void SetText(string value)
         {
+            // Chụp ở SetText đầu, không Awake: Awake không chạy trên object tắt hay prefab LoadPrefabContents.
             if (!_hasRestLayout) CaptureRestLayout();
 
             text.Text = value;
 
+            // MeasureText trả theo không gian của chữ; host đọc theo không gian cha.
             ExtraHeight = MeasureExtraTextHeight() * text.transform.localScale.y;
+            // size của Sliced tính theo đơn vị sprite, trước scale của transform.
             frame.size = new Vector2(frame.size.x, _restFrameHeight + ExtraHeight / frame.transform.localScale.y);
 
             var framePos = frame.transform.localPosition;
+            // Dời lên đúng phần cao thêm nằm dưới pivot: đáy đứng yên với mọi pivot.
             framePos.y = _restFrameLocalY + ExtraHeight * _framePivotY;
             frame.transform.localPosition = framePos;
         }
 ```
 
-### `TextFitFrame.cs` › `Class Methods` › thêm trước `MeasureExtraTextHeight`
+`TextFitFrame.cs` › `Class Methods` › thêm trước `MeasureExtraTextHeight`:
 
 ```csharp
         private void CaptureRestLayout()
         {
+            // LogError, không ném: hai lỗi này hỏng im lặng; vẫn chạy để thấy khung sai ngay trong Editor.
             if (text.transform.parent != frame.transform.parent)
                 Debug.LogError("[TextFitFrame]: text and frame must share one parent; extra height is measured in that space.", this);
 
@@ -251,68 +222,7 @@ Mới — chụp nghỉ trước lần đổi `size` đầu; khung cao rồi d�
         }
 ```
 
-**Khác với bản dự án:** không — file sau giai đoạn này khớp nguyên văn bản dự án trừ namespace và dòng `using` đã bỏ ở GĐ1.
-
-**Quyết định** — Đáy đứng yên: khung cao thêm `ExtraHeight / scaleY` đơn vị sprite quanh pivot, tức `ExtraHeight` đơn vị cha;
-phần nằm dưới pivot là `ExtraHeight × pivotY`, dời khung lên đúng bấy nhiêu thì đáy giữ nguyên với mọi pivot. Kiểm: đáy =
-`y − size.y × scaleY × pivotY`; thay `y' = restY + E·p`, `size' = restH + E/scaleY` → `restY − restH·scaleY·p`, không còn `E`.
-Phương án bỏ: bắt pivot sprite ở đáy — sprite khung của dự án pivot giữa, đổi pivot là đổi art. — Chia `ExtraHeight` cho
-`localScale.y` của khung: `size` của Sliced tính theo đơn vị sprite, trước scale của transform. — `LogError` thay vì exception
-cho hai lỗi setup: khác cha thì `ExtraHeight` đo ở không gian sai, khung lệch im lặng; Simple thì gán `size` bị bỏ qua, khung
-không cao lên; cả hai không ném gì nên phải nói ra, nhưng không chặn phần còn lại chạy để developer thấy khung sai ngay trong
-Editor. — Chụp nghỉ ở `SetText` đầu, không ở `Awake`: `Awake` không chạy trên object chưa bật hay prefab mở bằng
-`LoadPrefabContents` (test dữ liệu thật); chụp một lần vì sau lần đổi `size` đầu khung không còn là khung nghỉ.
-
-| Consumes | Produces |
-|---|---|
-| GĐ1; `SpriteRenderer.size`, `drawMode`, `sprite.pivot`, `sprite.rect`; `Transform.localPosition`, `localScale` | `frame` (field authoring); `SetText` đặt khung |
-
-**Sơ đồ tương tác sau GĐ2**
-
-```
-  host ──SetText──► TextFitFrame ──Text = · MeasureText ×2──► UniTextBase
-    ▲                    │ lần đầu: CaptureRestLayout+ (LogError khác cha, Simple)
-    │ ExtraHeight        │ size.y+ = nghỉ + ExtraHeight / scaleY
-    └────────────────────┤ localPosition.y+ = restY + ExtraHeight × pivotY
-                         ▼
-                 SpriteRenderer frame+ (Sliced)
-```
-
-**Editor setup:** không — fixture test dựng bằng code; bảng "Trước khi chạy" cho prefab thật ở GĐ3.
-
-**Kiểm:** compile sạch. Fixture thêm khung: `SpriteRenderer` con của cha, sprite từ `Sprite.Create` trên `Texture2D` nhỏ với
-`border` khác 0 và pivot tham số hoá (đáy, giữa), `drawMode = Sliced`, `size = (x, nghỉ)`; nối `frame` qua `SerializedObject`;
-`TearDown` huỷ thêm texture và sprite. Đáy khung = `localPosition.y − size.y × localScale.y × pivotY`, chụp trước `SetText` đầu.
-
-| Case | Input | Kỳ vọng |
-|---|---|---|
-| rỗng, một dòng | `SetText("")`, `SetText("Food")` | `size.y` = nghỉ; đáy = đáy nghỉ |
-| hai dòng | `SetText("Food\nFood")` | `size.y` = nghỉ + bước dòng; đáy = đáy nghỉ |
-| pivot giữa | sprite pivot y 0.5, hai dòng | `localPosition.y` = nghỉ + bước dòng / 2; đáy = đáy nghỉ |
-| pivot đáy | sprite pivot y 0, hai dòng | `localPosition.y` = nghỉ; đáy = đáy nghỉ |
-| khung scale khác 1 | `frame.localScale.y` = 2, hai dòng | `size.y` = nghỉ + bước dòng / 2; đáy = đáy nghỉ |
-| ba dòng tràn | `SetText("Food\nFood\nFood")` | `size.y` ≤ nghỉ + (`rect.height` − một dòng cỡ chuẩn); đáy = đáy nghỉ |
-| hai dòng rồi một dòng | | `size.y` = nghỉ; đáy = đáy nghỉ |
-| nghỉ chụp một lần | `SetText` hai dòng hai lần liên tiếp | `size.y` không cộng dồn (vẫn nghỉ + bước dòng) |
-| object tắt trước lần đầu | `SetActive(false)` cha rồi hai dòng | khung vẫn cao đúng, đáy đứng yên |
-| khác cha | `text` dời sang cha khác | `LogAssert.Expect(LogType.Error, …)` khớp thông điệp; không exception |
-| Draw Mode Simple | `frame.drawMode = Simple` | `LogAssert.Expect` thông điệp Draw Mode |
-
-**Cheat của giai đoạn:** fixture chỉ dùng pivot đáy thì số hạng `ExtraHeight × pivotY` bằng 0, công thức dời khung sai vẫn xanh —
-ca pivot giữa bắt buộc. Fixture scale 1 cả hai transform giấu hai phép nhân chia scale — hai ca scale khác 1 (chữ ở GĐ1, khung ở
-đây) bắt buộc.
-
-**Mốc commit:** `feat(text): TextFitFrame đặt khung cao theo chữ, đáy đứng yên`.
-
----
-
-## Giai đoạn 3 — Tài liệu `docs/Runtime/TextFitFrame/TextFitFrame.md` và `TextFitFrame.html` (agent)
-
-Mở đầu bằng `Code: Runtime/Utilities/UI/`. Mục: luồng `SetText` → đo → đặt khung (ASCII ở trên) · bảng API (`SetText`,
-`ExtraHeight`, hai field) · "Đo được ở UniText" và "Design decisions" gom các **Quyết định** của GĐ1–2 · "Dùng trong dự án": host
-gọi `SetText` rồi đọc `ExtraHeight × localScale.y` của chính nó để đặt vị trí, tên trung tính · **Trước khi chạy** (bảng dưới).
-`.html` chọn từ `.md`: kịch bản (một dòng, hai dòng, tràn), cách dùng ("Trước khi chạy" nguyên vẹn, `SetText` rồi đọc
-`ExtraHeight`), flow, lưu ý (khác cha, Draw Mode, Line Height Mode).
+Editor setup — host mới (prefab category-jam đã nối sẵn):
 
 | # | Thao tác | Thiếu thì hỏng ở đâu |
 |---|---|---|
@@ -325,60 +235,46 @@ gọi `SetText` rồi đọc `ExtraHeight × localScale.y` của chính nó đ�
 | 7 | Không ai khác tween vị trí `frame` | `TextFitFrame` ghi `localPosition.y` của khung mỗi lần `SetText`, tween khác bị ghi đè |
 | 8 | Line Height Mode (Project Settings của UniText) chốt trước khi dựng khung chữ ở bước 3 | đổi mode là đổi bước dòng: khung chữ hai dòng thành hơn hoặc kém hai dòng |
 
-**Mốc commit:** `docs(text): TextFitFrame.md`.
+`Tests/EditMode/TextFitFrameTests.cs` (agent) — fixture thêm khung `SpriteRenderer` con của cha: sprite `Sprite.Create` trên `Texture2D` nhỏ, `border` ≠ 0, pivot tham số (đáy, giữa), `drawMode = Sliced`, `size = (x, nghỉ)`, `frame` qua `SerializedObject`; `TearDown` huỷ texture, sprite. Đáy = `localPosition.y − size.y × localScale.y × pivotY`, chụp trước `SetText` đầu.
+
+| Case | Input | Kỳ vọng |
+|---|---|---|
+| rỗng, một dòng | `SetText("")`, `SetText("Food")` | `size.y` = nghỉ; đáy = đáy nghỉ |
+| hai dòng | `SetText("Food\nFood")` | `size.y` = nghỉ + bước dòng; đáy = đáy nghỉ |
+| pivot giữa | sprite pivot y 0.5, hai dòng | `localPosition.y` = nghỉ + bước dòng / 2; đáy = đáy nghỉ — ca bắt buộc: pivot đáy làm số hạng `ExtraHeight × pivotY` bằng 0 |
+| pivot đáy | sprite pivot y 0, hai dòng | `localPosition.y` = nghỉ; đáy = đáy nghỉ |
+| khung scale khác 1 | `frame.localScale.y` = 2, hai dòng | `size.y` = nghỉ + bước dòng / 2; đáy = đáy nghỉ — đỏ nếu bỏ chia scale |
+| ba dòng tràn | `SetText("Food\nFood\nFood")` | `size.y` ≤ nghỉ + (`rect.height` − một dòng cỡ chuẩn); đáy = đáy nghỉ |
+| hai dòng rồi một dòng | | `size.y` = nghỉ; đáy = đáy nghỉ |
+| nghỉ chụp một lần | `SetText` hai dòng hai lần liên tiếp | `size.y` không cộng dồn (vẫn nghỉ + bước dòng) |
+| object tắt trước lần đầu | `SetActive(false)` cha rồi hai dòng | khung vẫn cao đúng, đáy đứng yên |
+| khác cha | `text` dời sang cha khác | `LogAssert.Expect(LogType.Error, …)` khớp thông điệp; không exception |
+| Draw Mode Simple | `frame.drawMode = Simple` | `LogAssert.Expect` thông điệp Draw Mode |
 
 ---
 
-## Giai đoạn 4 — Dự án dùng bản Horcrux, xoá bản tạm, chuyển test (agent)
+## Chuyển dự án (agent)
 
-**Mục tiêu:** `CategoryNameTag` và `CategoryNameTagPrefabTests` dùng `Horcrux.Runtime.Utilities.UI.TextFitFrame`; prefab
-`CategoryBox` giữ nguyên component và hai ô đã nối nhờ giữ GUID; bản tạm và test dự án của nó xoá. `CategoryNameTag.cs` không đổi
-dòng nào ngoài `using`.
-
-Developer gõ file mới nên Unity gán GUID mới; prefab trỏ script bằng GUID cũ sẽ báo "Missing script". Bước này đặt GUID cũ cho
-`.meta` của bản Horcrux và xoá bản tạm trong một lần.
-
-| File | Việc |
+| Chỗ | Đổi |
 |---|---|
-| `Assets/Horcrux/Runtime/Utilities/UI/TextFitFrame.cs.meta` | chỉ dòng `guid:` ← GUID đọc từ `.meta` bản tạm |
-| `Assets/_CategoryJam/Scripts/Entities/Box/TextFitFrame.cs` + `.meta` | xoá |
-| `Assets/_CategoryJam/Tests/EditMode/TextFitFrameTests.cs` + `.meta` | xoá — bảng case đã nằm ở `Tests/EditMode/TextFitFrameTests.cs` của Horcrux từ GĐ1–2 |
-| `Assets/_CategoryJam/Scripts/Entities/Box/CategoryNameTag.cs` | thêm `using Horcrux.Runtime.Utilities.UI;` |
-| `Assets/_CategoryJam/Tests/EditMode/CategoryNameTagPrefabTests.cs` | thêm cùng `using` |
-| `CategoryJam.Gameplay.asmdef`, `CategoryJam.EditModeTests.asmdef` | không đổi: đã tham chiếu `com.horcrux.runtime` |
+| `docs/Runtime/TextFitFrame/TextFitFrame.md`, `.html` | tạo, `Code: Runtime/Utilities/UI/`: Flow · Thuật toán · bảng API (`SetText`, `ExtraHeight`, hai field) · Không làm · host gọi `SetText` rồi đọc `ExtraHeight × localScale.y` của chính nó để đặt vị trí · "Trước khi chạy" = Editor setup GĐ2 · lưu ý khác cha, Draw Mode, Line Height Mode |
+| `Runtime/Utilities/UI/TextFitFrame.cs.meta` | Editor đóng; `guid:` ← GUID đọc từ `.meta` bản tạm (hiện `8809b76d80bd8f74f8c8ded05e441248`, đọc lại từ file), cùng lần xoá bản tạm để `CategoryBox.prefab` giữ component và hai ô đã nối |
+| `Entities/Box/TextFitFrame.cs`, `Tests/EditMode/TextFitFrameTests.cs` của dự án (+ `.meta`) | xoá — bảng case đã ở `TextFitFrameTests.cs` của Horcrux |
+| `CategoryNameTag.cs`, `Tests/EditMode/CategoryNameTagPrefabTests.cs` | thêm `using Horcrux.Runtime.Utilities.UI;`; không đổi dòng nào khác |
+| GUID không giữ được (Editor ghi đè) | `CategoryBox.prefab` › `name_tab`: thêm lại `TextFitFrame`, kéo `name_top_text` vào `text`, `name_tab_frame` vào `frame`, lưu prefab |
+| grep | `TextFitFrame` trong `.cs` của `Assets/_CategoryJam` chỉ còn hai file trên; `8809b76d` chỉ ở `.meta` Horcrux và `CategoryBox.prefab`; Console không "Missing script"; `CategoryNameTagPrefabTests` xanh |
+| Plan này | xoá cùng `.meta` |
+| chơi thử | level có box tên category hai dòng và box tên một dòng → tab tên trượt ra khi tile đầu đáp, trượt vào khi nắp rơi: khung hai dòng cao đúng hai dòng, đáy cùng chỗ tab một dòng, lúc ẩn đỉnh tab hai dòng không ló trên thân box; hỏng: khung không cao lên (Missing script, Draw Mode) · chữ hai dòng tràn khung · tab hai dòng ló khi ẩn |
 
-**Thứ tự**
+## Không làm · Mở rộng sau
 
-1. Đóng Unity Editor (sửa `.meta` khi Editor mở thì Unity ghi đè).
-2. Đọc `guid:` trong `Assets/_CategoryJam/Scripts/Entities/Box/TextFitFrame.cs.meta` (hiện là `8809b76d80bd8f74f8c8ded05e441248`;
-   đọc lại từ file, không chép từ Plan).
-3. Ghi GUID đó vào `guid:` của `.cs.meta` bản Horcrux; xoá bản tạm `.cs` + `.meta` và `TextFitFrameTests.cs` + `.meta` của dự án.
-4. Thêm `using` ở hai file dự án.
-5. Mở Editor, đợi compile.
-
-Phương án bỏ: chuyển file bằng Project window của Unity để giữ GUID rồi sửa tại chỗ — GUID giữ được nhưng giai đoạn Horcrux và
-giai đoạn dự án dính vào một commit đôi, và developer không còn gì để gõ ở GĐ1–2.
-
-**Editor setup:** không, khi GUID giữ được. Nếu không giữ được (Editor đã mở và ghi đè): mở `CategoryBox.prefab`, trên `name_tab`
-thêm lại `TextFitFrame`, kéo `name_top_text` vào ô `text` và `name_tab_frame` vào ô `frame`, lưu prefab.
-
-**Kiểm:** `grep -rn "TextFitFrame" Assets/_CategoryJam --include=*.cs` chỉ còn `CategoryNameTag.cs` và
-`CategoryNameTagPrefabTests.cs`; `grep -rl 8809b76d Assets` chỉ còn `.meta` của Horcrux và `CategoryBox.prefab` · compile sạch,
-Console không "Missing script" · `CategoryBox.prefab` › `name_tab` vẫn có `TextFitFrame` với hai ô đã nối · `CategoryNameTagPrefabTests`
-xanh · `Horcrux.EditModeTests` › `TextFitFrameTests` xanh · **cần chơi thử** (developer): vào một level có box tên category hai dòng
-và box tên một dòng; nhìn tab tên trượt ra khi tile đầu đáp và trượt vào khi nắp rơi: khung tên hai dòng cao đúng hai dòng, đáy
-khung ở cùng chỗ với tab một dòng, lúc ẩn đỉnh tab hai dòng không ló trên thân box; dấu hiệu hỏng: khung không cao lên (Missing
-script hay Draw Mode), chữ hai dòng tràn ra ngoài khung, tab hai dòng ló khi ẩn.
-
-**Mốc commit:** repo dự án `refactor(text): TextFitFrame dùng bản Horcrux` kèm con trỏ submodule.
-
----
-
-## File → giai đoạn
-
-| File | GĐ1 | GĐ2 | GĐ3 | GĐ4 |
-|---|---|---|---|---|
-| `Runtime/Utilities/UI/TextFitFrame.cs` | tạo: `text`, `OneLine`, `ExtraHeight`, `SetText`, `MeasureExtraTextHeight` | `frame`, bốn field nghỉ, `CaptureRestLayout`, `SetText` đặt khung | | `.meta` nhận GUID cũ |
-| `Tests/EditMode/TextFitFrameTests.cs` (agent) | tạo | thêm fixture khung, case | | |
-| `docs/Runtime/TextFitFrame/TextFitFrame.md`, `.html` (agent) | | | tạo | |
-| dự án: `CategoryNameTag.cs`, `CategoryNameTagPrefabTests.cs`; xoá `Entities/Box/TextFitFrame.cs`, `Tests/EditMode/TextFitFrameTests.cs` | | | | đổi |
+| | Phương án | Vì sao |
+|---|---|---|
+| bỏ | đếm dòng qua `GetRangeBounds` | ngoài vòng render mọi dòng cùng `yMin` |
+| bỏ | bắt pivot sprite ở đáy | sprite khung của dự án pivot giữa; đổi pivot là đổi art |
+| bỏ | tự co chữ hay đo bề ngang | autosize của UniText đủ cho mọi tên thật |
+| bỏ | tween chiều cao khung | host tự trượt theo `ExtraHeight` |
+| bỏ | tính lại khi đổi font, cỡ chữ lúc chạy | giá trị authoring |
+| bỏ | guard `text`, `frame` null | `NullReferenceException` ở `SetText` đầu đã trỏ đúng dòng |
+| bỏ | `ContentSizeFitter` + `Image` Sliced | chỉ cho Canvas, khung ở đây là sprite world |
+| bỏ | chuyển file bằng Project window để giữ GUID | Horcrux và dự án dính một commit đôi; developer không còn gì để gõ |
