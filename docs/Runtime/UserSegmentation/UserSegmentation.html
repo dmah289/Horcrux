@@ -381,7 +381,7 @@ Commit   entry.Value = state                     luôn: SessionCount, LastCampai
   <div class="note bad"><strong>Cheat không đi qua <code>ReportCampaign</code>.</strong> Lệnh thật bỏ qua camp khi hành vi đã quyết tập, mà QA cần thử camp cả lúc đang ở <code>purchased</code>; trong Editor Adjust không trả lời nên cheat là đường duy nhất.</div>
   <div class="note"><strong>Thiếu package Adjust</strong> thì hệ vẫn chạy: mọi user ở tập <code>default</code>.</div>
   <div class="note"><strong>Lỗi "order must be lower" của bước Adjust</strong> cũng hiện khi host thiếu Initializer: đọc dòng lỗi của host in trước nó.</div>
-  <div class="note bad"><strong>Thêm một cột là bốn chỗ cùng lần:</strong> field và dòng <code>Pick</code> · mọi hàng trong asset · mọi hàng trên console · danh sách cột trong test. DTO đòi đủ khoá nên một hàng console thiếu cột mới làm <strong>cả pool</strong> bị từ chối: game chạy bằng giá trị asset, chỉ một dòng <code>LogError</code> lúc boot. Lên console trước khi phát hành bản có cột đó.</div>
+  <div class="note bad"><strong>Thêm một cột là bốn chỗ cùng lần:</strong> field và dòng <code>Pick</code> · mọi hàng trong asset · mọi hàng trên console · danh sách cột trong test. DTO đòi đủ khoá nên một hàng console thiếu cột mới làm <strong>cả pool</strong> bị từ chối: game chạy bằng giá trị asset, chỉ một dòng <code>LogError</code> lúc boot. Lên console trước khi phát hành bản có cột đó, rồi soát bằng <code>RemoteConfigDiff</code> với template console (<code>docs/Editor/RemoteConfigDiff.md</code>): hàng thiếu khoá hiện là "console không parse được".</div>
 </section>
 
 </main>

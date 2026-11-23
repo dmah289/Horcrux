@@ -264,7 +264,8 @@ duy nhất thử tập theo camp.
 - **Lỗi "order must be lower" của bước Adjust** cũng hiện khi host thiếu Initializer: đọc dòng lỗi của host in trước nó.
 - **Thêm một cột là bốn chỗ cùng lần:** field và dòng `Pick` · mọi hàng trong asset · mọi hàng trên console · danh sách cột trong
   test. DTO đòi đủ khoá nên một hàng console thiếu cột mới làm **cả pool** bị từ chối: game chạy bằng giá trị asset, chỉ một dòng
-  `LogError` lúc boot. Lên console trước khi phát hành bản có cột đó.
+  `LogError` lúc boot. Lên console trước khi phát hành bản có cột đó, rồi soát bằng `RemoteConfigDiff` với template console
+  (`docs/Editor/RemoteConfigDiff.md`): hàng thiếu khoá hiện là "console không parse được".
 - **Collection giả trong test** phải điền `Key` cho `userSegmentState` như mọi entry base tự khai (`Persistence.md`, mục
   Bẫy và quyết định).
 - **"Phiên" ở đây không phải session của Adjust hay Firebase.** Hai SDK đó mặc định tính phiên mới khi app ở nền quá 30 phút;
