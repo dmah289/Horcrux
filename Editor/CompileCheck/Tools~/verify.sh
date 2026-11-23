@@ -8,6 +8,7 @@
 #   --timeout  giây chờ mỗi assembly test (mặc định 600).
 #   --ready-wait  giây chờ Editor đang bận (import sau pull, merge) về ready trước bước Unity (mặc định 600). Không Editor nào mở project thì không chờ.
 #   Test fail ghi vào Library/HorcruxVerify/<assembly>.fail; lượt sau đánh dấu fail mới, in fail đã hết so với lượt đó.
+#   OK thì ghi Library/HorcruxVerify/last-ok (giờ epoch, kèm hậu tố khi bỏ bước Unity) — mốc cho hook Stop của Agent.
 #   UNITY_CLI ép đường dẫn unity.exe (mặc định tìm `unity` trên PATH). Chạy từ gốc project hoặc đặt --project.
 set -u
 PROJECT="$PWD"; CSPROJ=""; TESTS=""; UNITY=1; RUN_TESTS=1; TIMEOUT=600; READY_WAIT=600
@@ -45,7 +46,12 @@ for key in sys.argv[1].split("."):
 print("" if cur is None else (json.dumps(cur, ensure_ascii=False) if isinstance(cur, (dict, list)) else cur))
 ' "$1"; }
 
-finish() { [ -z "$FAIL" ] && { echo "verify: OK${1:-}"; exit 0; }; echo "verify: FAIL$FAIL"; exit 1; }
+# OK thì ghi mốc last-ok: hook Stop (Agent/Tools~/agent_hooks.py) so mtime file .cs agent đã sửa với mốc này.
+finish() {
+  [ -n "$FAIL" ] && { echo "verify: FAIL$FAIL"; exit 1; }
+  mkdir -p "$PROJECT/Library/HorcruxVerify" && echo "$(date +%s)${1:-}" > "$PROJECT/Library/HorcruxVerify/last-ok"
+  echo "verify: OK${1:-}"; exit 0
+}
 
 # Trạng thái Editor đang mở project (cột state của `unity status`: ready hay trạng thái bận); rỗng khi không Editor nào mở.
 editor_state() {

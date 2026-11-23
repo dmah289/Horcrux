@@ -31,6 +31,7 @@ làm điều kiện commit.
 | `AssetDatabase.Refresh` qua `script eval` **trước bước build** khi Editor mở | Editor không focus thì chưa nạp file sửa từ ngoài: recompile trả `up_to_date` trên bản cũ và báo xanh giả; file mới từ pull, merge chưa vào csproj nên build báo `CS0246` giả |
 | Editor đang bận (import sau pull) thì chờ tới `--ready-wait`, không báo `FAIL unity` | import vài chục file mất vài phút, lệnh gửi lúc đó timeout; không Editor nào mở project thì không chờ |
 | Ghi tên test fail vào `Library/HorcruxVerify/<assembly>.fail` | fail có sẵn trước task chỉ phân biệt được với fail task gây ra bằng tên, không bằng số; `Library` không vào git, mỗi máy một mốc |
+| OK thì ghi `Library/HorcruxVerify/last-ok`, FAIL thì để nguyên | hook Stop của Agent (`Agent/Tools~/agent_hooks.py`) so mtime file `.cs` agent sửa với mốc này để chặn báo xong khi chưa kiểm; mốc chỉ dời khi kiểm xanh |
 | Đợi `unity status` ra `ready` (tối đa 60 s) giữa recompile và test | recompile xong còn domain reload, Pipeline ngắt vài giây; `test run` gửi lúc đó trả `EDITOR_NOT_RUNNING` |
 | `test run` trả `success: false` thì hỏi `test status`, không báo hỏng ngay | kết nối CLI rớt giữa lượt ("socket hang up") trong khi test vẫn chạy trong Editor. Editor bận (domain reload vì file đổi giữa lượt) thì chờ tới `--ready-wait`; `test status` không có kết quả thì gửi lại `test run` một lần — reload cắt lượt test. Chỉ khi không về `ready` mới báo Editor mất |
 

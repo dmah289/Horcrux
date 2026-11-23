@@ -32,7 +32,32 @@ skill, không chép nội dung.
 
 Horcrux thêm skill mới thì thêm file mồi tương ứng.
 
-## 4. Kiểm
+## 4. Hook
+
+Gộp vào `hooks` của `.claude/settings.json` ở gốc dự án (giữ hook đã có). Mọi sự kiện gọi cùng một lệnh;
+`Agent/Tools~/agent_hooks.py` rẽ theo sự kiện. Windows cần Git Bash (lệnh đọc `$CLAUDE_PROJECT_DIR` theo cú pháp bash).
+
+```json
+"PreToolUse":  [{ "matcher": "Bash|PowerShell|Edit|Write", "hooks": [{ "type": "command", "command": "<lệnh>", "timeout": 30 }] }],
+"PostToolUse": [{ "matcher": "Edit|Write", "hooks": [{ "type": "command", "command": "<lệnh>", "timeout": 10 }] }],
+"Stop":        [{ "hooks": [{ "type": "command", "command": "<lệnh>", "timeout": 10 }] }]
+```
+
+`<lệnh>` là `python -X utf8 -I "$CLAUDE_PROJECT_DIR/Assets/Horcrux/Agent/Tools~/agent_hooks.py"` (trong JSON viết `\"`).
+
+| Hook | Chặn gì | Luật |
+|---|---|---|
+| trước lệnh shell | `git add -A`, `-u`, `.` · `git commit -a` · commit không `-- <paths>` (trừ lúc merge) · commit vào `Agent/` khi `check_agent.py` báo lỗi ở chính file đó | `workflow` › Việc lặp lại và git · `horcrux.md` › Cổng ghi |
+| trước sửa file | sửa mục developer-only của `horcrux.md` | `horcrux.md` › Yêu cầu của developer |
+| sau sửa file, khi dừng | báo xong khi còn `.cs` agent sửa sau lần `verify.sh` OK cuối; chặn một lần mỗi lượt dừng | `compile-check` › Luật |
+
+Không thấy: `.cs` sửa bằng lệnh shell, vì hook chỉ ghi file sửa qua Edit, Write.
+
+File mồi skill và hook chỉ tới máy khác khi đi theo git: dự án ignore cả `.claude/` thì máy khác không có gì. Soát bằng
+`git check-ignore -v .claude/settings.json`; bị ignore thì đổi dòng `.claude/` thành `.claude/*`, `!.claude/settings.json`,
+`!.claude/skills/` (worktree, `settings.local.json` vẫn ở lại máy).
+
+## 5. Kiểm
 
 ```bash
 python -X utf8 -I Assets/Horcrux/Agent/Tools~/check_agent.py all
