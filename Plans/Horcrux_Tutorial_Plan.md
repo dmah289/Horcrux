@@ -124,6 +124,12 @@ Mới:
 
 và bỏ `using CategoryJam.Gameplay.Config.Persistence;`.
 
+**Giữ `UnityEngine.Time` viết đủ** (`TutorialHand.cs` trong vòng tay lướt, `TutorialService.cs` trong vòng đếm giây rảnh): namespace mới
+`Horcrux.Runtime.Implementations.Tutorial` là anh em của `Horcrux.Runtime.Implementations.Time` (`TimeService.cs`), nên `Time.` rút gọn
+trỏ vào namespace đó, lỗi CS0234. Gốc là tên namespace trùng type Unity (`code-design` › Naming); đổi `…Implementations.Time` thành
+`…Implementations.TimeSystem` (khớp `docs/Runtime/TimeSystem`) là đổi API công khai — làm thành việc riêng nếu developer chốt, không gộp
+vào lần dời này.
+
 **Editor setup:** mở `Resources/Config/GamePersistenceDataCollection` › mục Tutorial › `Key` vẫn là `tutorial_progress`. Trống thì tiến độ
 không lưu, tutorial Level 1 dạy lại mỗi lần mở app.
 
@@ -179,6 +185,149 @@ hợp lệ.
 
 ---
 
+## Giai đoạn 2b — `CalloutPlacement`: đặt hộp thoại thành hàm thuần
+
+**Mục tiêu:** phép đặt hộp thoại và mũi tên cạnh đích tách khỏi `RectTransform`, có bảng case; hộp thoại trong game y như trước trừ hai
+chỗ ghi ở "Đổi hành vi".
+
+**Vì sao bây giờ:** là phần sửa nhiều lượt nhất ở dự án nguồn (mũi tên rời đuôi, giữ trong safe area, mũi tên rời tâm hộp khi thiếu chỗ)
+mà bảng case GĐ2 không phủ; phép tính lẫn với đổi đơn vị canvas → pixel trong `TutorialBubble.PlaceNextToTarget`, chỉ kiểm được bằng mắt.
+Hàm không mang gì của tutorial: tooltip, khung gợi ý cạnh nút dùng lại được.
+
+**Chỗ đặt:** `Runtime/Utilities/Layout/CalloutPlacement.cs`, namespace `Horcrux.Runtime.Utilities.Layout` (cùng chỗ
+`Horcrux_ViewportAnchor_Plan.md`). Tên đổi tuỳ ý trước khi gõ.
+
+**Quyết định** — đầu mũi tên tính **từ hộp**, không từ đích: khi cả trên lẫn dưới đều không đủ chỗ, hộp bị kẹp vào vùng; tính từ đích thì
+mũi tên đứng ở mép đích, tách khỏi hộp. Ràng buộc cứng (hộp trong vùng, mũi tên dính hộp) đi trước thẩm mỹ (đầu mũi tên chạm mép đích).
+— Hàm làm việc bằng pixel màn hình; đổi đơn vị là việc của component, vì chỉ nó biết canvas.
+
+### `Runtime/Utilities/Layout/CalloutPlacement.cs` — file mới
+
+```csharp
+using UnityEngine;
+
+namespace Horcrux.Runtime.Utilities.Layout
+{
+    /// <summary>Kết quả đặt một khung nổi. Mọi số là pixel màn hình.</summary>
+    public readonly struct CalloutLayout
+    {
+        public readonly Vector2 BoxCenter;
+        public readonly Vector2 ArrowTip;
+        public readonly bool Above;
+
+        public CalloutLayout(Vector2 boxCenter, Vector2 arrowTip, bool above)
+        {
+            BoxCenter = boxCenter;
+            ArrowTip = arrowTip;
+            Above = above;
+        }
+    }
+
+    /// <summary>
+    /// Đặt khung nổi (hộp thoại, tooltip) cạnh một đích, trong một vùng chữ nhật (safe area trừ lề). Ràng buộc cứng trước: hộp nằm
+    /// trong vùng, mũi tên dính hộp. Rồi thẩm mỹ: mũi tên trên tâm đích, hộp căn giữa mũi tên, chỉ lệch khi chạm mép vùng.
+    /// </summary>
+    public static class CalloutPlacement
+    {
+        /// <param name="arrowSize">(0, 0) khi không có mũi tên; <see cref="CalloutLayout.ArrowTip"/> khi đó không dùng.</param>
+        /// <param name="arrowCornerInset">Khoảng tối thiểu từ mép vùng tới mép mũi tên, để mũi tên không rơi vào góc bo của hộp.</param>
+        public static CalloutLayout Place(Rect target, Vector2 boxSize, Vector2 arrowSize, float targetGap, float arrowGap,
+            float arrowCornerInset, Rect bounds, bool preferAbove)
+        {
+            Vector2 halfBox = boxSize * 0.5f;
+            bool hasArrow = arrowSize.y > 0f;
+            // Đầu mũi tên tới mép gần của hộp.
+            float span = hasArrow ? arrowSize.y + arrowGap : 0f;
+
+            float aboveY = target.yMax + targetGap + span + halfBox.y;
+            float belowY = target.yMin - targetGap - span - halfBox.y;
+            bool aboveFits = aboveY + halfBox.y <= bounds.yMax;
+            bool belowFits = belowY - halfBox.y >= bounds.yMin;
+            // Phía được xin, trừ khi chỉ phía kia vừa.
+            bool above = preferAbove ? aboveFits || !belowFits : !belowFits && aboveFits;
+            float boxY = ClampCentered(above ? aboveY : belowY, halfBox.y, bounds.yMin, bounds.yMax);
+
+            float halfArrow = hasArrow ? arrowSize.x * 0.5f + arrowCornerInset : 0f;
+            float arrowX = ClampCentered(target.center.x, halfArrow, bounds.xMin, bounds.xMax);
+            float boxX = ClampCentered(arrowX, halfBox.x, bounds.xMin, bounds.xMax);
+
+            // Từ hộp, không từ đích: hộp bị kẹp vào vùng thì mũi tên đi theo hộp.
+            float tipY = above ? boxY - halfBox.y - span : boxY + halfBox.y + span;
+            return new CalloutLayout(new Vector2(boxX, boxY), new Vector2(arrowX, tipY), above);
+        }
+
+        /// <summary>Kẹp tâm một đoạn dài 2×half vào [min, max]; đoạn dài hơn vùng thì đặt giữa vùng.</summary>
+        private static float ClampCentered(float center, float half, float min, float max)
+            => max - min < 2f * half ? (min + max) * 0.5f : Mathf.Clamp(center, min + half, max - half);
+    }
+}
+```
+
+### `TutorialBubble.cs` — field mới, `PlaceNextToTarget` cũ → mới
+
+Field mới, dưới `arrowGap`:
+
+```csharp
+        [Tooltip("Canvas units kept between the arrow's sides and the safe area's edges, so the arrow never sits on the box's rounded corner.")]
+        [SerializeField, Min(0f)] private float arrowCornerInset;
+```
+
+Cũ: cả thân `PlaceNextToTarget` (khoảng 40 dòng, từ `Rect frame = …` tới `arrow.localEulerAngles = …`).
+
+Mới:
+
+```csharp
+        private void PlaceNextToTarget()
+        {
+            Rect frame = _target.GetScreenFrame(_worldCamera).Rect;
+            // Root is never scaled by the pop, so its lossy scale is the canvas scale: canvas units to screen pixels.
+            float toPixels = selfRect.lossyScale.x;
+            float margin = screenMargin * toPixels;
+            Rect safe = Screen.safeArea;
+            Rect bounds = Rect.MinMaxRect(safe.xMin + margin, safe.yMin + margin, safe.xMax - margin, safe.yMax - margin);
+
+            CalloutLayout layout = CalloutPlacement.Place(frame, selfRect.rect.size * toPixels,
+                _hasArrow ? arrow.rect.size * toPixels : Vector2.zero, targetGap * toPixels, arrowGap * toPixels,
+                arrowCornerInset * toPixels, bounds, _side == TutorialBubbleSide.Above);
+
+            selfRect.position = layout.BoxCenter;
+            if (!_hasArrow) return;
+            arrow.position = layout.ArrowTip;
+            arrow.localEulerAngles = new Vector3(0f, 0f, layout.Above ? 0f : 180f);
+        }
+```
+
+và thêm `using Horcrux.Runtime.Utilities.Layout;`.
+
+**Đổi hành vi** (hai chỗ, đều ở cạnh màn; ca thường y như trước):
+
+| Ca | Trước | Sau |
+|---|---|---|
+| cả trên lẫn dưới không đủ chỗ | hộp kẹp vào vùng, mũi tên đứng ở mép đích, tách khỏi hộp | mũi tên dính hộp, đầu mũi tên có thể đè lên đích |
+| hộp rộng hơn vùng | sát mép trái, tràn phải | giữa vùng, tràn đều hai bên |
+
+`arrowCornerInset` mặc định 0: mũi tên vẫn có thể sát mép như trước; đặt bằng bán kính bo của hộp trên prefab.
+
+**Editor setup:** prefab lớp phủ › `TutorialBubble` › `Arrow Corner Inset` = bán kính góc bo của ảnh hộp (đơn vị canvas). Canvas của hộp
+thoại phải là **Screen Space – Overlay**: `selfRect.position` được gán bằng pixel màn hình, chỉ đúng trên Overlay.
+
+| Case (agent viết, EditMode, `Tests/EditMode/CalloutPlacementTests.cs`) | Input (vùng `(0,0,1000,2000)`, hộp 400×100, mũi tên 40×30, `targetGap` 10, `arrowGap` 8, inset 0, trừ khi ghi khác) | Kỳ vọng |
+|---|---|---|
+| giữa màn | đích `(450,900,100,100)`, xin trên | `Above` true, hộp `(500,1098)`, mũi tên `(500,1010)` |
+| sát mép trái | đích `(0,900,40,100)` | mũi tên x 20, hộp x 200 |
+| sát mép trái, có inset | như trên, inset 24 | mũi tên x 44, hộp x 200 |
+| trên không đủ chỗ | đích `(450,1900,100,80)`, xin trên | `Above` false, hộp `(500,1802)`, mũi tên `(500,1890)` |
+| dưới không đủ chỗ | đích `(450,20,100,80)`, xin dưới | `Above` true, hộp y 198, mũi tên y 110 |
+| cả hai không đủ | vùng `(0,0,1000,300)`, đích `(450,100,100,100)`, xin trên | `Above` true, hộp `(500,250)`, mũi tên `(500,162)` |
+| không mũi tên | `arrowSize` (0,0), đích như ca đầu | hộp `(500,1060)` |
+| hộp rộng hơn vùng | hộp 1200×100, đích như ca đầu | hộp x 500 |
+
+**Kiểm:** compile sạch, bảng case xanh · chơi lượt dạy level 1: hộp thoại và mũi tên đứng như trước ở mọi bước.
+
+**Mốc commit:** Horcrux `feat(layout): CalloutPlacement; TutorialBubble đặt hộp qua nó`.
+
+---
+
 ## Giai đoạn 3 — Consumer `CanvasSpotlight` chuyển sang `ITutorialService`, xoá `CanvasSpotlight`
 
 **Mục tiêu:** không còn lớp tối thứ hai; widget Home dạy bằng cùng tay, cùng hộp thoại với gameplay.
@@ -210,7 +359,8 @@ Overlay, sort order trên HUD, dưới popup); mỗi widget được dạy: `Can
 ## Giai đoạn 4 — Tài liệu (agent)
 
 `docs/Runtime/Tutorial/Tutorial.md` và `.html` từ `Scripts/Tutorial/Tutorial.md` của dự án nguồn, bỏ kịch bản Level 1, tên dự án, số
-preset; mục "Trước khi chạy" cho prefab lớp phủ, neo, entry lưu. Xoá Plan này sau khi tài liệu xong.
+preset; mục "Trước khi chạy" cho prefab lớp phủ (canvas hộp thoại là Screen Space – Overlay), neo, entry lưu; `CalloutPlacement` một
+mục trong tài liệu Layout của Horcrux. Xoá Plan này sau khi tài liệu xong.
 
 ## Giai đoạn 5 — Dự án nguồn dùng bản Horcrux (agent)
 
@@ -221,6 +371,9 @@ grep `Tutorial/Core` trong comment, tài liệu dự án ra 0.
 
 - Tay chỉ theo hướng (ngón trỏ chéo, tay đứng một phía như `HighlightConfig.HandDirection`) khi có widget mà tay đè lên nhãn.
 - `DimAsync` nhận thời lượng khi một lễ cần tối dần theo nhịp riêng.
+- `SpineHandTapBeat` ở lại dự án (phụ thuộc Spine). Phần không dính Spine — mốc trong anim lặp đã đi qua chưa giữa hai frame, tính cả lúc
+  quấn về đầu (`Crossed(prev, now, mark)`) — lên `Runtime/Utilities` khi có người gọi thứ hai (anim Animator theo `normalizedTime`, tay
+  chỉ của dự án khác).
 
 ## File → giai đoạn
 
@@ -230,6 +383,8 @@ grep `Tutorial/Core` trong comment, tài liệu dự án ra 0.
 | `Runtime/Implementations/Composites/Tutorial/*` | dời vào; `TutorialService.ProgressEntry` | đọc | | |
 | `Shader/ui_spotlight_dim.shader`, `ui_tap_ripple.shader` | dời vào | | | |
 | `Tests/EditMode/TutorialLiftTests.cs` (agent) | | tạo | | |
+| `Runtime/Utilities/Layout/CalloutPlacement.cs`; `TutorialBubble.cs` › `PlaceNextToTarget` | | GĐ2b | | |
+| `Tests/EditMode/CalloutPlacementTests.cs` (agent) | | GĐ2b | | |
 | `CanvasSpotlight` (+ tài liệu) | | | xoá | |
 | `docs/Runtime/Tutorial/*` (agent) | | | | tạo |
 | dự án: `Scripts/Tutorial/Core/` | xoá | | | |
