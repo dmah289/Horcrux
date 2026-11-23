@@ -34,8 +34,8 @@ namespace Horcrux.Tests
             Directory.Delete(_pngFolder, true);
         }
 
-        // Nút 40x20: lề trong suốt 2 px, viền tối 3 px, lòng gradient dọc 8 mỗi hàng. So với seed thay vì pixel kề thì hàng
-        // thứ tư tính từ tâm lệch 32 > 24, lòng bị cắt còn 7 hàng: case đỏ khi bỏ bước so pixel kề.
+        // Nút 40x20: lề trong suốt 2 px, viền tối 3 px, lòng gradient dọc 8 mỗi hàng. Đối chứng đã chạy, so với seed thay vì
+        // pixel kề trên cùng ảnh: "5,7 34,13 (30 x 7)" — hàng thứ tư tính từ tâm lệch 32 > 24, case đỏ.
         [Test]
         public void InnerRegion_FindsGradientFaceInsideOutline()
         {
