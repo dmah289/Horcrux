@@ -14,15 +14,16 @@ mọi thứ agent viết ra (runtime, Editor, tooling, script tạm, tài liệu
 | **Skill** | quy trình cho **một loại việc** có đầu có cuối | `Skills/<việc>/SKILL.md` | developer duyệt |
 | **Hồ sơ developer** | developer là ai, làm việc thế nào | mục cuối file này | chỉ developer |
 
-Thứ chỉ đúng cho một hệ nằm ở Plan hoặc tài liệu module; thứ chỉ đúng cho một dự án hay một máy nằm ở `CLAUDE.md` và
-memory của máy đó — không vào `Agent/`. Mỗi điều định nghĩa ở **một** nơi; nơi khác trỏ sang, không chép lại.
+Thứ chỉ đúng cho một hệ nằm ở Plan hoặc tài liệu module; thứ chỉ đúng cho một dự án nằm ở `CLAUDE.md` và memory dự án,
+cho một máy ở memory máy (mục Memory) — không vào `Agent/`. Mỗi điều định nghĩa ở **một** nơi; nơi khác trỏ sang, không
+chép lại.
 
 ## Luật đọc
 
-1. Vào session: đọc **trọn** file này, `Rules/workflow/RULE.md`, `Rules/reuse-gate/RULE.md`, và `Memory/workflow.md`,
-   `Memory/reuse-gate.md` nếu có, trước mọi việc.
-2. Mỗi tác vụ tra **bảng chỉ dẫn**: rule và skill hàng đó gọi thì **đọc trọn trước khi chạm miền**, kèm
-   `Memory/<cùng tên>.md` nếu có. Cột *Bắt buộc* tuân thủ từng luật, *Thêm khi chạm* áp khi chạm tới; nhiều hàng thì gộp.
+1. Vào session: đọc **trọn** file này, `Rules/workflow/RULE.md`, `Rules/reuse-gate/RULE.md`, và memory `workflow.md`,
+   `reuse-gate.md` ở cả hai tầng chung và dự án (mục Memory) nếu có, trước mọi việc.
+2. Mỗi tác vụ tra **bảng chỉ dẫn**: rule và skill hàng đó gọi thì **đọc trọn trước khi chạm miền**, kèm memory
+   `<cùng tên>.md` ở tầng chung và tầng dự án nếu có. Cột *Bắt buộc* tuân thủ từng luật, *Thêm khi chạm* áp khi chạm tới; nhiều hàng thì gộp.
 3. `reference.md` cạnh `RULE.md` hay `SKILL.md` giữ chi tiết của luật, Nền tảng, Sổ tay; **không đọc sẵn**. File có
    `reference.md` thì kết bằng bảng **Tra cứu** (*chạm gì → mục nào*): việc chạm tới thì **đọc trọn mục đó trước khi làm**.
 4. Không chắc việc đang làm có chạm một miền không thì đọc rule của miền đó — đọc thừa rẻ hơn phạm luật.
@@ -79,8 +80,18 @@ viết lý do bằng nội dung.
 
 ## Memory
 
-Hai tầng. **Chung:** `Memory/` ở đây, đi theo git. **Máy và dự án:** memory riêng của máy. Phép phân tầng: *dự án khác
-dùng Horcrux có vấp cái này không?*
+Ba tầng; ghi ở tầng **cao nhất** còn đúng, vì máy khác chỉ nhận được hai tầng đầu.
+
+| Tầng | Chỗ | Nhận gì |
+|---|---|---|
+| **Chung** — mặc định | `Memory/<miền hoặc skill>.md` ở đây | mọi thứ dự án khác dùng Horcrux cũng vấp được |
+| **Dự án** | `docs/agent-memory/<cùng tên>.md` ở gốc dự án, đi theo git | từ vựng, con số, quyết định chỉ dự án này có |
+| **Máy** | memory riêng của máy | chỉ thứ gắn với máy: đường dẫn cài đặt, bản đã cài, cấu hình local |
+
+**Khái quát trước khi hạ tầng.** Bài học vấp ở một dự án thì tách *cơ chế* (vì sao vấp, cách làm) khỏi *từ vựng* (tên type,
+đường dẫn, con số, scene). Cơ chế viết lại không gọi tên dự án (NT8) và lên tầng chung; tầng dự án chỉ giữ phần từ vựng,
+trỏ về khối chung. Chỉ khi không tách được cơ chế nào mới ghi trọn ở dự án. Thứ đúng cho mọi máy của dự án không vào
+memory máy. Quyết định của developer ở tầng dự án ghi `### <chủ đề>` · `` `YYYY-MM` · developer chốt `` rồi nội dung.
 
 ```markdown
 ### <dấu hiệu nhận ra — không phải tên giải pháp>
@@ -88,7 +99,8 @@ dùng Horcrux có vấp cái này không?*
 **Thấy:** <triệu chứng>. **Vì:** <nguyên nhân>. **Làm:** <cách làm>.
 ```
 
-- **Ghi ngay lúc vấp**, không đợi cuối phiên. Trước khi ghi, tìm dấu hiệu trong `Memory/`: đã có thì sửa khối cũ.
+- **Ghi ngay lúc vấp**, không đợi cuối phiên. Trước khi ghi, tìm dấu hiệu ở cả ba tầng: đã có thì sửa khối cũ; khối ở
+  tầng thấp mà cơ chế khái quát được thì dời lên.
 - **Vấp lại dù đã ghi** thì tăng số "vấp" — chỉ khi đó, không tăng mỗi lần đọc. Lên 2 thì **buộc đề xuất nâng cấp**.
 - **Thang nâng cấp**, chọn bậc cao nhất làm được; nâng xong xoá khối khỏi memory:
   ① *sửa gốc* — đổi API, tool của Horcrux để không vấp được nữa (đề xuất) · ② *máy canh* — hook, phép kiểm trong tool
@@ -107,11 +119,12 @@ Một điều mới đi từ trên xuống, dừng ở câu đầu tiên trả l
 |---|---|---|---|
 | 0 | Có "vì sao" lặp lại được không? | *Không → không ghi* (hằng số, tên, trạng thái task, thứ git đã ghi) | |
 | 1 | Chỉ đúng cho bài toán hoặc hệ đang làm? | Plan (đang dựng) · tài liệu module (đã dựng) | ghi thẳng |
-| 2 | Chỉ đúng cho dự án hoặc máy này? | *ràng buộc* → `CLAUDE.md` của dự án · *sự thật, bài học* → memory máy | đề xuất · ghi thẳng |
-| 3 | Nói về chính developer? | mục developer-only | **agent không ghi**, nêu trong báo cáo |
-| 4 | Là chuỗi bước cho một loại việc sẽ lặp lại? | `Skills/<việc>/` | đề xuất |
-| 5 | Là **lựa chọn** của ta — có phương án hợp lệ khác mà ta không chọn? | `Rules/<miền>/RULE.md` | đề xuất |
-| 6 | Là **sự thật** về engine, thư viện, công cụ? | `Memory/<miền>.md`; chưa rõ miền thì `Memory/inbox.md` | ghi thẳng |
+| 2 | Chỉ đúng cho máy này — đường dẫn cài đặt, bản đã cài, cấu hình local? | memory máy | ghi thẳng |
+| 3 | Chỉ đúng cho dự án này? **Khái quát trước** (mục Memory): phần cơ chế đi tiếp xuống câu 5–7, chỉ phần từ vựng dừng ở đây | *ràng buộc* → `CLAUDE.md` của dự án · *sự thật, bài học, quyết định* → `docs/agent-memory/` | đề xuất · ghi thẳng |
+| 4 | Nói về chính developer? | mục developer-only | **agent không ghi**, nêu trong báo cáo |
+| 5 | Là chuỗi bước cho một loại việc sẽ lặp lại? | `Skills/<việc>/` | đề xuất |
+| 6 | Là **lựa chọn** của ta — có phương án hợp lệ khác mà ta không chọn? | `Rules/<miền>/RULE.md` | đề xuất |
+| 7 | Là **sự thật** hay **bài học** về engine, thư viện, công cụ, cách làm việc? | `Memory/<miền>.md`; chưa rõ miền thì `Memory/inbox.md` | ghi thẳng |
 
 Qua cổng rồi đối chiếu: đã có thì thôi · là trường hợp riêng của luật đang có thì trỏ về · mâu thuẫn thì nêu để developer
 phân xử. **Trần:** file này 26 KB · mỗi `RULE.md` 13 KB · mỗi file memory 8 KB; vượt thì không ghi thêm cho tới khi dọn

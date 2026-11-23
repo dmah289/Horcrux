@@ -56,3 +56,8 @@ Bài học đã trả giá khi làm việc với `workflow`. Đọc trọn cùng
 `2026-11` · vấp 1 · đã đo
 **Thấy:** `.meta` của texture vừa import hiện trong `git status` với mục platform Android, iOS không override. **Vì:** Unity tự thêm mục platform mặc định khi import.
 **Làm:** coi là nhiễu, để ngoài commit trừ khi developer muốn giữ.
+
+### Session ở worktree, việc cần Editor không làm được
+`2026-11` · vấp 1 · đã đo · đúng với session mở trong git worktree
+**Thấy:** tới lúc sửa prefab, scene hay art chưa track mới phát hiện worktree thiếu submodule, thiếu art, và hook chặn ghi checkout chính. **Vì:** Editor và MCP chỉ mở trên checkout chính; mở worktree trong Editor phải init submodule, chép art, import lại Library rất lâu.
+**Làm:** việc cần Editor thì hỏi ngay đầu task làm ở đâu; được làm ở checkout chính thì ghi file ở scratchpad rồi chép sang, giữ kiểu xuống dòng của file gốc; không commit nếu developer chưa bảo.
