@@ -10,8 +10,7 @@ thiết kế, sprite nền phủ kín màn; tính **một lần** ở boot.
 **Phân công:** GĐ1–3 developer gõ, agent viết test theo bảng case rồi compile · GĐ4 (hai partial `*.Editor.cs`), GĐ5 (tài liệu), GĐ6
 (dự án chuyển sang bản Horcrux, giữ GUID) agent làm. **Chạy được, thấy được** ở GĐ1–3 = compile sạch + bảng case xanh trong
 `Tests/EditMode/ViewportLayoutTests.cs`; thấy ở Scene view ở GĐ4, trong game ở GĐ6. GĐ1–5 commit trong `Assets/Horcrux`, GĐ6 commit ở
-dự án kèm con trỏ submodule. Không phụ thuộc Plan nào; `Horcrux_BandFit_Plan.md`, `Horcrux_HorizontalRow_Plan.md` đặt file cùng
-`Runtime/Utilities/Layout/`. Không có `§0`: ba công thức một dòng nằm ở giai đoạn sinh ra chúng.
+dự án kèm con trỏ submodule. Không phụ thuộc Plan nào. Không có `§0`: ba công thức một dòng nằm ở giai đoạn sinh ra chúng.
 
 ## Ngữ cảnh đã chốt
 
@@ -395,8 +394,10 @@ transform. Mốc camera đặt tay ortho 9.6, aspect 9:16: `(0, 0)` → `(−5.4
 
 Offset: canvas HUD khớp chiều cao nên một pixel thiết kế là `H / designResolution.y` pixel màn trên **cả hai trục**. Quy ra viewport:
 trục y chia `H` còn `1 / designResolution.y`; trục x chia `W` còn `H / (designResolution.y · W) = 1 / (designResolution.y · aspect)`.
-Ở cỡ thiết kế một unit là `designResolution.y / (2 · orthographicSize)` pixel, nên offset unit cũ `u` đổi thành `u · designResolution.y /
-(2 · orthographicSize)` pixel thiết kế và vị trí giữ nguyên (dự án: 10.5 unit, 1 unit = 2340 / 22.75 ≈ 102.86 px, −4.9 unit = −504 px).
+Một unit là `designResolution.x / designWidthUnits` pixel thiết kế — số này chỉ phụ thuộc thiết kế, không phụ thuộc aspect máy, PPU của
+art hay cỡ camera Game view lúc đo; ở aspect thiết kế nó bằng `designResolution.y / (2 · orthographicSize)`, ở aspect khác thì không.
+Offset unit cũ `u` đổi thành `u · designResolution.x / designWidthUnits` pixel thiết kế và vị trí giữ nguyên (dự án: 10.5 unit,
+1 unit = 1080 / 10.5 ≈ 102.86 px, −4.9 unit = −504 px).
 
 Dải trống: màn cao `H` pixel, inset trên `i = H − safeArea.yMax`, dải trống thiết kế `h = top · H`. Mép trên safe area chỉ hạ
 
@@ -451,7 +452,7 @@ lệch nhau thì khe giữa chúng đổi theo máy; một asset là một ngu�
 
 | # | Thao tác | Thiếu thì |
 |---|---|---|
-| 1 | Gắn `ViewportAnchor` lên object cần neo; **Viewport Point** là mép đo từ đó, `(0,0)` dưới trái → `(1,1)` trên phải; **Design Pixel Offset** là khoảng đo trên demo theo pixel; **Respect Safe Area** bật cho vật kề HUD ở mép đó | object đứng ở vị trí prefab, không theo màn · điểm giữa màn thay cho mép: lệch HUD trên máy có inset |
+| 1 | Gắn `ViewportAnchor` lên object cần neo; **Viewport Point** là mép đo từ đó, `(0,0)` dưới trái → `(1,1)` trên phải; **Design Pixel Offset** là khoảng đo trên demo theo pixel thiết kế; khoảng có sẵn theo unit world thì nhân `designResolution.x / designWidthUnits`, không theo PPU của art hay cỡ camera Game view lúc chụp; **Respect Safe Area** bật cho vật kề HUD ở mép đó | object đứng ở vị trí prefab, không theo màn · điểm giữa màn thay cho mép: lệch HUD trên máy có inset · quy unit theo PPU hay camera lúc chụp: vật lệch khỏi demo một khoảng tỉ lệ với offset |
 | 2 | `ViewportCamera` › ô **Anchors**: kéo từng anchor vào, **theo thứ tự muốn đặt** — anchor con sau anchor cha | anchor không trong mảng: không ai gọi, đứng yên; con trước cha: con đặt xong bị cha kéo đi |
 | 3 | Hai vật kề nhau ở hai hệ toạ độ (world và canvas HUD) neo **cùng một mép, cùng luật co giãn** (dự án: cụm trên `y = 1`, cụm dưới `y = 0`, trong safe area, offset pixel demo) | ở màn thấp hai vật đè nhau |
 | 4 | Project › **Create › Horcrux › Layout › Safe Area Headroom**, một asset cho mỗi thiết kế màn; **Top** = khoảng từ mép trên canvas tới mép trên phần tử HUD cao nhất, chia chiều cao canvas, đo ở cỡ demo | `top = 0`: máy tai thỏ dời cả cụm trên đúng bằng inset, tụt dưới dải trống demo đã chừa |

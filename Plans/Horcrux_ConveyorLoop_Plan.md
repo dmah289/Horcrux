@@ -1,46 +1,57 @@
-# Plan — `ConveyorLoop` lên Horcrux
+# Plan — `ConveyorLoop`: hàng vật trượt quay vòng giữ nguyên khe
 
 Ngày 2026-11-23. Nguồn: category-jam `Assets/_CategoryJam/Scripts/Entities/Shelf/ShelfMover.cs` (`LoopLength`, `WrapIntoLoop`,
-`RegisterBounds`), `Tests/EditMode/ShelfMoverTests.cs`. Một hàng vật dài ngắn khác nhau trượt cùng nhịp trên một trục; vật qua
-biên lùi đúng một vòng nên khe giữa các vật giữ nguyên mãi.
+`RegisterBounds`), `Tests/EditMode/ShelfMoverTests.cs`, đã chơi thử. Một hàng vật dài ngắn khác nhau trượt cùng nhịp trên một trục;
+vật qua biên lùi đúng một vòng nên khe giữa các vật giữ nguyên mãi.
 
-**Phân công:** GĐ1–2 developer gõ, agent viết test theo bảng case rồi compile · GĐ3 (tài liệu), GĐ4 (category-jam chuyển sang bản
-Horcrux, xoá `ShelfMover`) agent làm. **Chạy được, thấy được** ở GĐ1–2 = compile sạch + bảng case xanh trong
-`Tests/EditMode/ConveyorLoopTests.cs`; thấy trong game ở GĐ4. GĐ1–3 commit trong `Assets/Horcrux`, GĐ4 commit ở dự án kèm con trỏ
-submodule. Không phụ thuộc Plan nào; chung thư mục `Runtime/Utilities/Layout/` với `Horcrux_HorizontalRow_Plan.md`,
-`Horcrux_ViewportAnchor_Plan.md` — plan nào gõ trước thì tạo thư mục.
+**Phân công:** GĐ1–2 developer gõ, agent viết test theo bảng case rồi compile · GĐ3 (tài liệu) · GĐ4 (category-jam chuyển sang bản
+Horcrux, xoá `ShelfMover`, xoá Plan) agent làm.
+**Chạy được, thấy được:** GĐ1–2 compile sạch + bảng case xanh trong `Tests/EditMode/ConveyorLoopTests.cs`; thấy trong game ở GĐ4.
+**Lệnh kiểm** (chạy từ gốc dự án): `bash "<horcrux>/Editor/CompileCheck/Tools~/verify.sh" --csproj com.horcrux.runtime.csproj,Horcrux.EditModeTests.csproj --tests Horcrux.EditModeTests`.
+**Commit:** GĐ1–3 trong `Assets/Horcrux`; GĐ4 ở dự án kèm con trỏ submodule.
+**Phụ thuộc:** không. **Chung file:** `Runtime/AssemblyInfo.cs` — `Horcrux_SpriteFill_Plan.md` GĐ1 cũng cần dòng
+`InternalsVisibleTo("Horcrux.EditModeTests")`; Plan gõ trước tạo file, Plan sau thấy dòng đã có thì bỏ qua.
+**Đã kiểm trước khi ghi:** `ConveyorLoop.cs` sau GĐ1 và sau GĐ2, cùng `AssemblyInfo.cs`, qua `csc -langversion:9` trên
+`UnityEngine.CoreModule` của Editor 6000.0.73f1 và `com.horcrux.runtime.dll` (cho `AxisType`); assembly tên `Horcrux.EditModeTests`
+đọc được `Count`, `Length`, assembly tên khác báo CS1061 (đối chứng `InternalsVisibleTo`). Bản mẫu C# cùng thuật toán chạy ba hàng của
+bảng GĐ1 (case 2, 4, 5), tổng 8051 bước, mỗi hàng 3 vòng: lệch vị trí vòng so với vật 0 tối đa 4·10⁻⁴, khe mép nhỏ nhất của hàng xếp
+sát 0.5999 (đặt 0.6); đối chứng lấy vòng = n × khoảng tâm trung bình cho hàng đó ra khe nối −0.54 (đè nhau). `§0`: có — độ dài vòng là
+công thức suy ra, không hiển nhiên.
 
 ## Ngữ cảnh đã chốt
 
-- **Người dùng:** hàng vật trượt vòng trên một trục: kệ trượt trong game sort/jam (category-jam, hàng ngang trộn kệ 3 ô và 1 ô) ·
-  băng chuyền món trong game merge · tấm nền parallax rộng khác nhau · đoàn xe chạy vòng. Vật là con cùng một cha.
+- **Người dùng:** hàng vật trượt vòng trên một trục, vật là con cùng một cha: kệ trượt trong game sort, hàng trộn vật dài và vật ngắn ·
+  băng chuyền món trong game merge · tấm nền parallax rộng khác nhau · đoàn xe chạy vòng.
 - **Mục tiêu:** một class thuần giữ thành viên, biên, độ dài vòng của **một** hàng; chủ (dự án) giữ một bản mỗi hàng và gọi
-  `Advance` mỗi frame. Hành vi trùng bản dự án ở mọi frame (bảng case dời nguyên từ `ShelfMoverTests`).
+  `Advance` mỗi frame. Hành vi trùng bản dự án ở mọi frame.
+- **Ranh giới:** gom vật thành hàng, quyết quãng mỗi frame, quyết lúc dừng là việc của chủ. `ConveyorLoop` chỉ dời và lùi vòng.
 - **Chỗ đặt, tên:** `Runtime/Utilities/Layout/ConveyorLoop.cs`, namespace `Horcrux.Runtime.Utilities.Layout`, assembly
-  `com.horcrux.runtime` (không thêm reference). Tên đổi tuỳ ý trước khi gõ.
-- **Không làm:** tốc độ riêng từng vật (khe chỉ giữ được khi cả hàng chung nhịp; caller nhân tốc độ vào quãng) · gom vật theo hàng
-  (luật gom là của dự án: theo toạ độ làm tròn, theo dữ liệu level) · `Clear` để dùng lại (chủ dựng bản mới mỗi level, vài object).
+  `com.horcrux.runtime` (không thêm reference). Trục dùng `Horcrux.Runtime.Utilities.Common.AxisType` có sẵn. Tên đổi tuỳ ý trước khi gõ.
+- **Cố ý không làm:** tốc độ riêng từng vật — khe chỉ giữ được khi cả hàng chung nhịp; caller nhân tốc độ vào quãng · gom vật theo hàng
+  — luật gom thuộc dự án (theo toạ độ làm tròn, theo dữ liệu level) · `Clear` để dùng lại — chủ dựng bản mới mỗi level, vài object.
 - **Quyết định trái trực giác:**
   - `Remove` **không** tính lại biên và vòng: vật còn lại giữ khe, chỗ vật rời thành ô trống chạy theo hàng. Tính lại từ chỗ đứng
-    giữa chừng là dựng vòng trên vị trí đã trượt — vật đè nhau.
+    giữa chừng là dựng vòng trên vị trí đã trượt, vật đè nhau.
   - Biên và vòng tính từ chỗ đứng **lúc `Add`**; thêm sau lần `Advance` đầu là lỗi setup, `LogError` rồi bỏ qua.
   - Một lần lùi vòng mỗi `Advance` (`if`, không `while`): quãng một frame nhỏ hơn vòng nhiều bậc (vòng ≥ hai bề ngang màn hình).
-  - Hàng dưới hai vật đứng yên: một vật không định nghĩa được khoảng cách tới vật kế nên không có vòng.
-- **Mở rộng sau:** tốc độ riêng từng vật — khi có hàng cố ý trượt lệch nhịp; khác hợp đồng "khe giữ nguyên" nên là class khác.
+  - Hàng dưới hai vật đứng yên: một vật không có khoảng cách tới vật kế nên không có vòng.
+- **Mở rộng sau:** tốc độ riêng từng vật khi có hàng cố ý trượt lệch nhịp — khác hợp đồng "khe giữ nguyên" nên là class khác ·
+  `Count`, `Length` thành `public` khi chủ thứ hai cần đọc (giờ `internal`, chỉ test đọc).
 
-**Đã khảo sát**
+## Đã khảo sát
 
 | Nguồn | Lấy | Không lấy, vì sao |
 |---|---|---|
-| `ShelfMover.cs` | `LoopLength` nguyên văn · luật lùi đúng một vòng giữ phần vượt · biên từ chỗ đứng lúc đăng ký · `Unregister` không tính lại | hai `static Dictionary` gom hàng (state static sống qua lần Play khi tắt domain reload, gom là luật dự án) · vận tốc riêng từng kệ |
-| `ShelfMoverTests.cs` | năm case làm bảng case GĐ1 | — |
-| `EntitiesManager`, `LevelLoader`, `Shelf` | thứ tự đăng ký: đặt `localPosition` → đăng ký; kệ trống trả pool sau khi đăng ký cả hàng | — |
-| `FallingShelfColumns.cs` | khuôn chủ: class thuần do `EntitiesManager` sở hữu, dựng ở `LevelLoader`, `Clear` lúc dispose | — |
-| `_GameDesign` `MovingRowCheck.cs` | caller thứ hai của `LoopLength` (tool level) — lý do giữ hàm static public | — |
-| Dữ liệu level (`Base_*.asset`) | 2842 ô đều `speed: 0` (game đọc thành 1), `motion` chỉ 0/2/3 | — |
-| Horcrux `Runtime/Utilities/`, `Plans/` | chưa có cơ chế vòng | — |
+| category-jam `ShelfMover.cs` (bản tạm) | `LoopLength` nguyên văn · luật lùi đúng một vòng giữ phần vượt · biên từ chỗ đứng lúc đăng ký · `Unregister` không tính lại | hai `static Dictionary` gom hàng: state static sống qua lần Play khi tắt domain reload, gom là luật dự án · vận tốc riêng từng kệ · `_spacingOffset`: cả hai prefab đều 0 · `OnDrawGizmos` vẽ biên từ registry static: hết registry thì chủ tự vẽ nếu cần |
+| category-jam `ShelfMoverTests.cs` | năm case làm bảng case GĐ1 | — |
+| category-jam `EntitiesManager`, `LevelLoader`, `Shelf` | thứ tự: đặt `localPosition` → đăng ký; kệ trống trả pool sau khi đăng ký cả hàng | — |
+| category-jam `FallingShelfColumns.cs` | khuôn chủ: class thuần do `EntitiesManager` sở hữu, dựng ở `LevelLoader`, `Clear` lúc dispose | — |
+| category-jam `_GameDesign` `MovingRowCheck.cs` | caller thứ hai của `LoopLength` (tool level) — lý do giữ hàm static public | — |
+| category-jam dữ liệu level (`Content/Levels/Source/Base_*.asset`, 134 file) | 2842 ô đều `speed: 0` (game đọc thành 1); `motion` chỉ 0/2/3; 26 level có kệ trượt, mỗi level một hàng, không hàng nào trộn chiều 2 và 3 | — |
+| Horcrux `Runtime/Utilities/Common/AxisType.cs` | enum trục `X, Y, Z`, ép `int` ra đúng chỉ số `Vector3` | enum trục riêng: trùng thứ đã có |
+| Horcrux `Runtime/Utilities/`, `Plans/` | — | chưa có cơ chế vòng |
 
-## Luồng mô tả — một hàng qua một level
+## Luồng — một hàng qua một level
 
 ```
 chủ đặt localPosition các vật ──► new ConveyorLoop(axis, margin) ──► Add(vật, nửa bề dài) từng vật      GĐ1
@@ -56,10 +67,10 @@ tài liệu (GĐ3) · category-jam chuyển sang bản Horcrux, xoá ShelfMover 
 
 ```
 chủ (dự án: gom vật theo hàng, quyết quãng mỗi frame, quyết khi nào dừng)
-   │ new(axis, margin) · Add · Remove · Advance · Count · Length
+   │ new(AxisType, margin) · Add · Remove · Advance
    ▼
-ConveyorLoop ── _members, _halfLengths (song song theo chỉ số) · _min, _max, Length
-   ├─ RebuildBounds (mỗi Add) ──► LoopLength(vị trí, nửa bề dài)       static, tool level gọi thẳng
+ConveyorLoop ── _members, _halfLengths (song song theo chỉ số) · _min, _max · Length, Count (internal, test đọc)
+   ├─ RebuildBounds (mỗi Add) ──► LoopLength(vị trí, nửa bề dài)       static public, tool level gọi thẳng
    └─ Advance ──► WrapIntoLoop từng vật ──► localPosition[trục]
 ```
 
@@ -82,8 +93,8 @@ $L = S + h_l + g + h_f$, với $g$ là khe mép ở chỗ nối.
 ② Tổng khe mép của $n - 1$ cặp kề nhau = khoảng tâm trừ phần vật chiếm. Vật giữa góp hai nửa bề dài, hai vật đầu mỗi vật một:
 $$G = S - \left(2\sum_i h_i - h_f - h_l\right)$$
 
-③ Chỗ nối lấy khe mép **trung bình**: $g = G / (n - 1)$. Lấy khoảng cách tâm trung bình thì sai khi vật khác cỡ — kệ 1 ô xen kệ
-3 ô kéo tâm trung bình hẹp lại, hai kệ 3 ô hai đầu đè nhau ở chỗ nối.
+③ Chỗ nối lấy khe mép **trung bình**: $g = G / (n - 1)$. Lấy khoảng cách tâm trung bình thì sai khi vật khác cỡ — vật ngắn xen vật
+dài kéo tâm trung bình hẹp lại, hai vật dài ở hai đầu đè nhau ở chỗ nối (đối chứng ở dòng "Đã kiểm": khe nối −0.54).
 
 $$L = S + h_f + h_l + \frac{G}{n - 1}$$
 
@@ -91,7 +102,7 @@ $$L = S + h_f + h_l + \frac{G}{n - 1}$$
 |---|---|---|
 | mọi vật cùng $h$, tâm cách đều $d$ | $L = n \cdot d$ (hàng một loại vật quay như lưới đều) | GĐ1 case 1 |
 | cùng $h$, cách không đều | $L = n \cdot S / (n - 1)$: $n$ lần khoảng tâm trung bình | GĐ1 case 1 |
-| N N S N N S N N xếp sát, mép cách đều 0.6 | $g = 0.6$, $L = 48$ | GĐ1 case 2 |
+| N N S N N S N N xếp sát, mép cách đều 0.6 | $g = 0.6$, $L = 48$ | GĐ1 case 2, bản mẫu |
 | $n < 2$ | không có vòng, $L = 0$ | GĐ1 case 3 |
 
 ---
@@ -99,19 +110,36 @@ $$L = S + h_f + h_l + \frac{G}{n - 1}$$
 ## Giai đoạn 1 — Một hàng trượt quay vòng
 
 **Mục tiêu:** chủ dựng loop, `Add` từng vật đã đứng đúng chỗ, gọi `Advance` mỗi frame; mọi vật trượt cùng nhịp, khe giữa mọi cặp kề
-nhau giữ nguyên sau nhiều vòng, kể cả frame lệch nhịp. Xong là hàng kệ trượt của category-jam chạy được trên bản Horcrux.
+nhau giữ nguyên sau nhiều vòng, kể cả frame lệch nhịp. Xong là một hàng trượt chạy được trên bản Horcrux.
 
 **Vì sao bây giờ:** đây là lõi; mọi thứ khác (rời hàng, guard) chỉ có nghĩa khi hàng đã chạy.
+
+**Sơ đồ sau GĐ1** (`+` là phần mới)
+
+```
+  chủ ──new+(AxisType, margin) · Add+ · Advance+──► ConveyorLoop+ ──localPosition[trục]──► vật
+                                                      └─ RebuildBounds+ ──► LoopLength+ (static)
+  test ──Count+ · Length+ (internal)──► ConveyorLoop
+```
 
 **Toán → code:** §0 nằm trọn trong `LoopLength` — `edgeGapSum` là $G$, giá trị trả về là $L$. Luật lùi vòng ở `WrapIntoLoop`:
 vật đi chiều dương qua `_max + _margin` thì trừ `Length`, chiều âm qua `_min − _margin` thì cộng. **Trừ đúng một vòng, giữ phần
 đã vượt** — đặt vật về một điểm cố định làm vật hụt phần vượt mỗi lần quay vòng, frame giật hụt nhiều, lệch cộng dồn tới khi đè
-vật kề (đã sai một lần ở bản dự án).
+vật kề.
+
+### `Runtime/AssemblyInfo.cs` — file mới (bỏ qua nếu đã có dòng này)
+
+```csharp
+using System.Runtime.CompilerServices;
+
+[assembly: InternalsVisibleTo("Horcrux.EditModeTests")]
+```
 
 ### `Runtime/Utilities/Layout/ConveyorLoop.cs` — file mới
 
 ```csharp
 using System.Collections.Generic;
+using Horcrux.Runtime.Utilities.Common;
 using UnityEngine;
 
 namespace Horcrux.Runtime.Utilities.Layout
@@ -122,13 +150,6 @@ namespace Horcrux.Runtime.Utilities.Layout
     /// </summary>
     public sealed class ConveyorLoop
     {
-        /// <summary>Trục trượt; số là chỉ số thành phần của Vector3.</summary>
-        public enum Axis
-        {
-            X = 0,
-            Y = 1,
-        }
-
         #region Properties
 
         private readonly int _axis;
@@ -141,14 +162,15 @@ namespace Horcrux.Runtime.Utilities.Layout
         private float _max;
 
         /// <summary>Độ dài một vòng; 0 khi hàng chưa đủ hai vật.</summary>
-        public float Length { get; private set; }
+        internal float Length { get; private set; }
 
-        public int Count => _members.Count;
+        internal int Count => _members.Count;
 
         #endregion Properties
 
+        /// <param name="axis">Trục trượt; chỉ số thành phần của localPosition.</param>
         /// <param name="margin">Vật đi quá vật xa nhất lúc dựng thêm đoạn này mới lùi vòng: đủ để khuất ngoài màn hình.</param>
-        public ConveyorLoop(Axis axis, float margin)
+        public ConveyorLoop(AxisType axis, float margin)
         {
             _axis = (int)axis;
             _margin = margin;
@@ -249,23 +271,31 @@ namespace Horcrux.Runtime.Utilities.Layout
 | ai giữ hàng | hai `static Dictionary` trong `ShelfMover`, khoá là toạ độ làm tròn | một instance mỗi hàng, chủ giữ: không state static, luật gom ở dự án |
 | bước trượt | mỗi vật tự `Step`, vận tốc riêng | `Advance` dời cả hàng một quãng: khe chỉ giữ được khi chung nhịp, nên nhịp chung là cấu trúc, không là kỷ luật |
 | chiều lùi vòng | theo enum chuyển động của kệ | theo dấu quãng: framework không biết từ vựng chuyển động của dự án |
+| trục | enum chuyển động của dự án | `AxisType` của Horcrux |
 | `_spacingOffset` cộng vào vòng | ô Inspector, cả hai prefab đều 0 | bỏ: không có call site khác mặc định |
 
-**Interfaces:** produces `ConveyorLoop(Axis, float)` · `Add(Transform, float)` · `Advance(float)` · `Count` · `Length` ·
-`static LoopLength(IReadOnlyList<float>, IReadOnlyList<float>)`.
+**Consumes / Produces:** consumes `AxisType`, `Transform.localPosition` · produces `ConveyorLoop(AxisType, float)`,
+`Add(Transform, float)`, `Advance(float)`, `static LoopLength(IReadOnlyList<float>, IReadOnlyList<float>)`; `internal` `Count`,
+`Length`.
 
-**Kiểm:** compile sạch (`bash "<horcrux>/Editor/CompileCheck/Tools~/verify.sh" --csproj com.horcrux.runtime.csproj,Horcrux.EditModeTests.csproj --tests Horcrux.EditModeTests`).
-Agent viết `Tests/EditMode/ConveyorLoopTests.cs` (vật là `GameObject` tạm con một root, `DestroyImmediate` ở `TearDown`;
-`STEP = 0.05`, sai số khe `0.01`):
+**Quyết định:** `Count`, `Length` là `internal` — chỉ test đọc; public cho chủ không ai gọi · `LoopLength` static public — tool level
+của dự án tính vòng không dựng hàng · `AxisType` có cả `Z`: `localPosition[2]` chạy đúng, không chặn.
+
+**Editor setup:** không.
+
+**Kiểm:** lệnh kiểm ở đầu Plan. Agent viết `Tests/EditMode/ConveyorLoopTests.cs` (vật là `GameObject` tạm con một root,
+`DestroyImmediate` ở `TearDown`; `STEP = 0.05`, sai số khe `0.01`; "khoảng cách vòng" của vật i = `(x_i − x_0) mod Length`):
 
 | # | Case | Input | Kỳ vọng |
 |---|---|---|---|
 | 1 | vòng hàng một loại, cách không đều | x {−21, −14, 0, 7, 14}, h 3.2 | `LoopLength` = 5 × 35 / 4 = 43.75 |
-| 2 | chỗ nối hàng xếp sát giữ khe mép | N N S N N S N N tại {−24, −17, −12, −7, 0, 5, 10, 17}, N h 3.2, S h 1.2, quãng âm 3 vòng | mỗi bước: khe mép mọi cặp kề = 0.6 |
+| 2 | chỗ nối hàng xếp sát giữ khe mép | N N S N N S N N tại {−24, −17, −12, −7, 0, 5, 10, 17}, N h 3.2, S h 1.2, quãng âm 3 vòng | mỗi bước: khe mép mọi cặp kề theo vòng = 0.6 |
 | 3 | dưới hai vật | 0 vật, 1 vật | `LoopLength` = 0; `Advance(1)` không dời vật |
 | 4 | hàng trộn cỡ giữ khe sau nhiều vòng | N S N S N tại {−24, −12, 0, 12, 24}, quãng dương 3 vòng | khoảng cách vòng từ vật 0 tới mọi vật không đổi |
 | 5 | frame lệch nhịp | 5 vật h 3.2 cách 7, `System.Random(7)`: bước `STEP × [0.7, 1.3]`, 1/40 bước là 1 | như case 4 |
-| 6 | trục Y | 3 vật h 1 trên y {−7, 0, 7}, `Axis.Y`, quãng âm 3 vòng | x không đổi; khoảng cách vòng theo y không đổi |
+| 6 | trục Y | 3 vật h 1 trên y {−7, 0, 7}, `AxisType.Y`, quãng âm 3 vòng | x không đổi; khoảng cách vòng theo y không đổi |
+
+Case 2 đỏ khi chỗ nối lấy khoảng tâm trung bình (khe nối −0.54); case 5 đỏ khi lùi vòng đặt vật về điểm cố định.
 
 **Mốc commit:** `feat(layout): ConveyorLoop — hàng trượt quay vòng giữ khe` (Horcrux).
 
@@ -273,11 +303,18 @@ Agent viết `Tests/EditMode/ConveyorLoopTests.cs` (vật là `GameObject` tạm
 
 ## Giai đoạn 2 — Vật rời hàng giữa chừng, thêm sai thời điểm
 
-**Mục tiêu:** chủ bỏ một vật khỏi hàng (kệ trống trả về pool lúc dựng level): vật còn lại chạy tiếp, giữ khe, chỗ trống chạy theo
+**Mục tiêu:** chủ bỏ một vật khỏi hàng (vật trống trả về pool lúc dựng level): vật còn lại chạy tiếp, giữ khe, chỗ trống chạy theo
 hàng. Thêm vật sau khi hàng đã chạy thì Console báo đỏ, hàng không đổi.
 
 **Vì sao bây giờ:** category-jam trả kệ trống về pool **sau** khi đăng ký cả hàng (`LevelLoader.FinalizeLevelSetup`); thiếu
 `Remove` thì GĐ4 không chuyển được.
+
+**Sơ đồ sau GĐ2**
+
+```
+  chủ ──Add (guard+ _hasAdvanced) · Advance (đánh dấu+) · Remove+──► ConveyorLoop ──► vật
+                                                       Remove+: bỏ khỏi _members, _halfLengths; biên, Length giữ
+```
 
 ### `ConveyorLoop.cs` › region `Properties` › sau `private float _max;`
 
@@ -325,10 +362,12 @@ hàng. Thêm vật sau khi hàng đã chạy thì Console báo đỏ, hàng khô
         }
 ```
 
-*Quyết định, phương án bỏ:* tính lại biên khi `Remove` — bỏ, vì vị trí lúc đó đã trượt (lý do ở "Ngữ cảnh đã chốt") · `Remove`
-vật lạ thì `LogError` — bỏ, vì chủ trả mọi kệ trống về pool, kể cả kệ không trượt; bỏ qua là hợp đồng.
+**Consumes / Produces:** consumes GĐ1 · produces `Remove(Transform)`.
 
-**Interfaces:** produces `Remove(Transform)`.
+**Quyết định, phương án bỏ:** tính lại biên khi `Remove` — bỏ, vì vị trí lúc đó đã trượt (lý do ở "Ngữ cảnh đã chốt") · `Remove`
+vật lạ thì `LogError` — bỏ, vì chủ trả mọi vật trống về pool, kể cả vật không trượt; bỏ qua là hợp đồng.
+
+**Editor setup:** không.
 
 **Kiểm:** bảng case thêm vào `ConveyorLoopTests.cs`:
 
@@ -345,15 +384,15 @@ vật lạ thì `LogError` — bỏ, vì chủ trả mọi kệ trống về poo
 
 ## Giai đoạn 3 — Tài liệu (agent)
 
-`docs/Runtime/ConveyorLoop/ConveyorLoop.md` (`Code: Runtime/Utilities/Layout/`; luồng, §0 rút gọn, API, quyết định trái trực giác,
-hai bài học "đã sai một lần" của bản dự án: đặt về điểm cố định khi quay vòng · vòng lấy khoảng tâm trung bình) và
-`ConveyorLoop.html` chọn từ `.md`. Tên trung tính, không tên dự án.
+`docs/Runtime/ConveyorLoop/ConveyorLoop.md` (`Code: Runtime/Utilities/Layout/ConveyorLoop.cs`; luồng, §0 rút gọn, API, quyết định
+trái trực giác, hai bẫy: đặt về điểm cố định khi quay vòng · vòng lấy khoảng tâm trung bình) và `ConveyorLoop.html` chọn từ `.md`.
+Tên trung tính, không tên dự án.
 
 **Mốc commit:** `docs(layout): ConveyorLoop` (Horcrux).
 
 ---
 
-## Giai đoạn 4 — category-jam dùng bản Horcrux, xoá `ShelfMover` (agent)
+## Giai đoạn 4 — category-jam dùng bản Horcrux, xoá `ShelfMover`, xoá Plan (agent)
 
 **Mục tiêu:** kệ trượt chạy y như trước trên `ConveyorLoop`; `grep ShelfMover` không còn gì; registry static biến mất.
 
@@ -363,7 +402,7 @@ hai bài học "đã sai một lần" của bản dự án: đặt về điểm 
 | Member | Làm gì |
 |---|---|
 | `const float MARGIN = 2f` | biên khuất, thay `ShelfMover.OFFSET` (tool level đọc chung) |
-| `Add(Transform shelf, ShelfMotion motion, float speed, Vector2 halfExtents)` | trục và dấu từ `motion`, khoá hàng = `(trục, RoundToInt(toạ độ ngang trục))`; hàng chưa có thì `new ConveyorLoop(trục, MARGIN)` và nhận `speed` của kệ đầu; nhớ kệ → hàng |
+| `Add(Transform shelf, ShelfMotion motion, float speed, Vector2 halfExtents)` | trục (`AxisType`) và dấu từ `motion`, khoá hàng = `(trục, RoundToInt(toạ độ ngang trục))`; hàng chưa có thì `new ConveyorLoop(trục, MARGIN)` và nhận `speed`, dấu của kệ đầu; nhớ kệ → hàng |
 | `Remove(Transform shelf)` | tra kệ → hàng, `loop.Remove` |
 | `Advance(float distanceScale)` | mỗi hàng `loop.Advance(dấu × speed × distanceScale)` |
 | `Clear()` | bỏ mọi hàng |
@@ -379,9 +418,12 @@ hai bài học "đã sai một lần" của bản dự án: đặt về điểm 
 | `LevelLoader.InstantiateShelves` | sau hai vòng `PrepareForLevel`: mỗi kệ trượt `entitiesManager.ConveyorRows.Add(shelf.transform, shelf.Motion, shelf.Speed, shelf.Capacity == 1 ? LevelBoundsFitter.SINGLE_SHELF_CELL_EXTENTS : LevelBoundsFitter.SHELF_CELL_EXTENTS)` |
 | `LevelLoader.FinalizeLevelSetup` › vòng trả kệ trống | `entitiesManager.ConveyorRows.Remove(shelf.Item1.transform)` ngay trước `Return` |
 | `Shelf` | bỏ ô `mover`, `Mover`, `mover.Begin` trong `PrepareForLevel`, `mover.Stop` trong `OnReturnToPool` |
-| `_GameDesign` `MovingRowCheck`, `MovingRowCheckTests`, `MovingRowLayoutTests` | `ShelfMover.LoopLength` → `ConveyorLoop.LoopLength`; `ShelfMover.OFFSET` → `ShelfConveyorRows.MARGIN`; comment nhắc `ShelfMover` viết lại theo tên mới |
-| `Tests/EditMode/ShelfMoverTests.cs` | → `ShelfConveyorRowsTests.cs`, chỉ giữ case gom hàng: kệ 1 ô lẻ chạy theo hàng (`LoneSingleInRow_MovesWithRow`) · hai hàng khác y chạy độc lập · `RightToLeft` đi chiều âm. Case vòng, khe đã ở Horcrux |
-| `Entities.md` | cây `Shelf` bỏ `ShelfMover`; đoạn băng chuyền trỏ `ShelfConveyorRows` + Horcrux `ConveyorLoop`; hai bài học quay vòng chuyển sang tài liệu Horcrux, ở đây trỏ sang |
+| `_GameDesign/Script/LevelEditor/Shelf/MovingRowCheck.cs`, `_GameDesign/Tests/EditMode/MovingRowCheckTests.cs`, `MovingRowLayoutTests.cs` | `ShelfMover.LoopLength` → `ConveyorLoop.LoopLength`; `ShelfMover.OFFSET` → `ShelfConveyorRows.MARGIN`; comment nhắc `ShelfMover` viết lại theo tên mới |
+| `_GameDesign/Tests/EditMode/CategoryJam.GameDesign.Tests.asmdef` › `references` | thêm `"com.horcrux.runtime"`: hai file test trên gọi thẳng `ConveyorLoop.LoopLength`, reference assembly không bắc cầu |
+| `_GameDesign/Script/LevelEditor/Shelf/MovingRowAnalysis.cs`, `MovingRowLayout.cs`, `_GameDesign/Script/LevelEditor/Window/CellTab.cs`, `_GameDesign/Tests/EditMode/MovingZoneTests.cs` | chỉ comment nhắc `ShelfMover` → `ShelfConveyorRows` / `ConveyorLoop` |
+| `Tests/EditMode/ShelfMoverTests.cs` | → `ShelfConveyorRowsTests.cs`: giữ `LoneSingleInRow_MovesWithRow` (kệ 1 ô lẻ chạy theo hàng), thêm hai case gom hàng mới — hai hàng khác y chạy độc lập · `RightToLeft` đi chiều âm. Case vòng, khe đã ở Horcrux |
+| `Entities.md` | cây `Shelf` bỏ `ShelfMover`; đoạn băng chuyền trỏ `ShelfConveyorRows` + Horcrux `ConveyorLoop`; hai bẫy quay vòng chuyển sang tài liệu Horcrux, ở đây trỏ sang; dòng "NormalShelf và NormalMovingShelf chỉ khác đúng mảnh này" sửa theo prefab sau bước 1 |
+| `Assets/Horcrux/Plans/Horcrux_ConveyorLoop_Plan.md` + `.meta` | xoá |
 
 **Editor setup** (thứ tự bắt buộc — xoá script trước thì prefab giữ một script missing):
 
@@ -389,26 +431,28 @@ hai bài học "đã sai một lần" của bản dự án: đặt về điểm 
    `SingleMovingShelf.prefab` (sửa YAML từ bản đã commit: dòng `- component:` và khối `--- !u!114`, diff chỉ còn đúng hai khối).
 2. Xoá `ShelfMover.cs` và `.meta`, rồi bỏ ô `mover` khỏi `Shelf`.
 
-*Tương đương hành vi:* thuật toán dời nguyên văn; khác duy nhất là tốc độ chung cả hàng lấy từ kệ đầu — mọi ô dữ liệu hiện tại
-`speed: 0` (đọc thành 1) nên không ô nào đổi.
+Sau bước 1, prefab kệ thường và kệ trượt (cùng cỡ) giống hệt nhau; gộp hay giữ do developer quyết, Plan không đổi prefab nào khác.
 
-**Kiểm:** `verify.sh` với `CategoryJam.Gameplay.csproj,CategoryJam.Editor.csproj,CategoryJam.GameDesign.csproj,CategoryJam.EditModeTests.csproj,CategoryJam.GameDesign.Tests.csproj`
-và test `CategoryJam.EditModeTests,CategoryJam.GameDesign.Tests,Horcrux.EditModeTests` xanh · `grep -r ShelfMover Assets/_CategoryJam Assets/_GameDesign`
-rỗng.
+*Tương đương hành vi:* thuật toán dời nguyên văn. Khác: tốc độ và chiều chung cả hàng lấy từ kệ đầu — dữ liệu hiện tại mọi ô
+`speed: 0` (đọc thành 1) và không hàng nào trộn chiều (soát 134 level ở "Đã khảo sát"), nên không ô nào đổi.
+
+**Kiểm:** `bash "<horcrux>/Editor/CompileCheck/Tools~/verify.sh" --csproj CategoryJam.Gameplay.csproj,CategoryJam.Editor.csproj,CategoryJam.GameDesign.csproj,CategoryJam.EditModeTests.csproj,CategoryJam.GameDesign.Tests.csproj --tests CategoryJam.EditModeTests,CategoryJam.GameDesign.Tests,Horcrux.EditModeTests`
+xanh · `grep -r ShelfMover Assets/_CategoryJam Assets/_GameDesign` rỗng.
 
 **Chơi thử (developer):** vào level có hàng kệ trượt trộn kệ 3 ô và 1 ô, cả hai chiều · nhìn hàng chạy hết ít nhất hai vòng ·
 khoảng cách giữa các kệ không đổi, chỗ nối hàng không đè, kệ trống bị trả về pool lúc vào level để lại ô trống chạy theo hàng
-như trước · dấu hiệu hỏng: kệ đứng yên, hai kệ đè nhau, kệ nhảy giữa màn hình. Dùng booster thì hàng dừng như trước.
+như trước · dùng booster thì hàng dừng như trước · dấu hiệu hỏng: kệ đứng yên, hai kệ đè nhau, kệ nhảy giữa màn hình.
 
 **Mốc commit:** `refactor(shelf): kệ trượt chạy trên Horcrux ConveyorLoop, xoá ShelfMover` (dự án, kèm con trỏ submodule).
 
 ---
 
-## File → giai đoạn
+## File → GĐ
 
 | File | GĐ |
 |---|---|
+| `Runtime/AssemblyInfo.cs` (nếu chưa có) | 1 |
 | `Runtime/Utilities/Layout/ConveyorLoop.cs` | 1, 2 |
 | `Tests/EditMode/ConveyorLoopTests.cs` | 1, 2 |
 | `docs/Runtime/ConveyorLoop/ConveyorLoop.md`, `.html` | 3 |
-| category-jam `ShelfConveyorRows.cs`, `EntitiesManager.cs`, `LevelLoader.cs`, `Shelf.cs`, `ShelfMover.cs` (xoá), hai prefab kệ trượt, `MovingRowCheck.cs`, `MovingRowCheckTests.cs`, `MovingRowLayoutTests.cs`, `ShelfMoverTests.cs` → `ShelfConveyorRowsTests.cs`, `Entities.md` | 4 |
+| category-jam `ShelfConveyorRows.cs`, `EntitiesManager.cs`, `LevelLoader.cs`, `Shelf.cs`, `ShelfMover.cs` (xoá), hai prefab kệ trượt, `MovingRowCheck.cs`, `MovingRowCheckTests.cs`, `MovingRowLayoutTests.cs`, `CategoryJam.GameDesign.Tests.asmdef`, `MovingRowAnalysis.cs`, `MovingRowLayout.cs`, `CellTab.cs`, `MovingZoneTests.cs`, `ShelfMoverTests.cs` → `ShelfConveyorRowsTests.cs`, `Entities.md`; Plan này (xoá) | 4 |

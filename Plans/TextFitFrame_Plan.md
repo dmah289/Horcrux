@@ -318,7 +318,7 @@ gọi `SetText` rồi đọc `ExtraHeight × localScale.y` của chính nó đ�
 |---|---|---|
 | 1 | `text` và `frame` là **hai con cùng một cha**; `TextFitFrame` gắn trên cha đó hoặc nơi host với tới | `LogError` ở `SetText` đầu; `ExtraHeight` đo ở không gian sai, khung lệch |
 | 2 | `frame` (`SpriteRenderer`): Draw Mode **Sliced** (hoặc Tiled), sprite có border | `LogError`; khung không đổi chiều cao |
-| 3 | Chiều cao `Rect Transform` của `text` = **chiều cao đúng số dòng tối đa** ở cỡ chuẩn (vd 2 dòng); bề ngang = **lòng khung trừ viền**, đo trên art của `frame` | chiều cao khung chữ chính là trần số dòng; sai thì autosize co chữ sớm hoặc muộn hơn dự kiến · bề ngang bằng cả khung thì tên dài nhất xuống dòng, co muộn và đè lên viền |
+| 3 | Chiều cao `Rect Transform` của `text` = **chiều cao đúng số dòng tối đa** ở cỡ chuẩn (vd 2 dòng); bề ngang = **lòng khung trừ viền**, đo trên ảnh art của `frame` bằng `Horcrux.Editor.UIReskin.DemoCompare.InnerRegion(đường dẫn ảnh)` (trả vùng lòng theo pixel; chia PPU của sprite ra unit) | chiều cao khung chữ chính là trần số dòng; sai thì autosize co chữ sớm hoặc muộn hơn dự kiến · bề ngang bằng cả khung thì tên dài xuống dòng muộn, co muộn, chữ đè lên viền |
 | 4 | `text`: Auto Size bật, **Max = cỡ chuẩn** (= Font Size), Min đủ nhỏ, Word Wrap bật | Max lớn hơn cỡ chuẩn thì chữ một dòng phình to; tắt Auto Size thì chữ dài tràn khung chữ; tắt Word Wrap thì không bao giờ xuống dòng |
 | 5 | `text`: Vertical Alignment **Bottom** | dòng cuối không nằm sát đáy khung chữ nên khung không ôm chữ; padding tuỳ ý |
 | 6 | Kéo `text` và `frame` vào hai ô của `TextFitFrame` | `NullReferenceException` ở `SetText` đầu |
