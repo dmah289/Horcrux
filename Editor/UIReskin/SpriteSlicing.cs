@@ -49,6 +49,31 @@ namespace Horcrux.Editor.UIReskin
             return best != null ? best : throw new ArgumentException("không có sprite trong " + texturePath);
         }
 
+        /// <summary>
+        /// Art một mảnh mà importer Multiple tự cắt: chuyển Single và xoá bảng mảnh cũ trong .meta (danh sách mảnh và bảng
+        /// internalID → tên), reimport, trả <c>đường dẫn: n mảnh cũ -> Single tên</c>. Reference tới mảnh cũ gãy: soát trước khi gọi.
+        /// </summary>
+        public static string MakeSingle(string texturePath)
+        {
+            var importer = (TextureImporter)AssetImporter.GetAtPath(texturePath);
+            var oldSlices = 0;
+            foreach (var asset in AssetDatabase.LoadAllAssetsAtPath(texturePath))
+                if (asset is Sprite)
+                    oldSlices++;
+
+            importer.spriteImportMode = SpriteImportMode.Single;
+            // Đổi mode không xoá ba bảng của mảnh cũ; bảng sót lại giữ tên và fileID mảnh cũ qua mỗi lần reimport.
+            var serialized = new SerializedObject(importer);
+            serialized.Update();
+            serialized.FindProperty("m_SpriteSheet.m_Sprites").ClearArray();
+            serialized.FindProperty("m_SpriteSheet.m_NameFileIdTable").ClearArray();
+            serialized.FindProperty("m_InternalIDToNameTable").ClearArray();
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+            importer.SaveAndReimport();
+
+            return texturePath + ": " + oldSlices + " mảnh cũ -> Single " + AssetDatabase.LoadAssetAtPath<Sprite>(texturePath).name;
+        }
+
 #if HORCRUX_SPRITE_EDITOR
         /// <summary>
         /// Đặt border cho một mảnh (Single hay Multiple), reimport, trả <c>tên: cũ -> mới</c>. spriteName null chỉ được khi

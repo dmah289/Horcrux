@@ -20,6 +20,10 @@ duy nhất ghi dự án đi với bản Horcrux nào: bỏ lại thì máy khác
 bẩn che mất thay đổi thật. Submodule hay đứng ở detached HEAD: commit xong thì đưa nhánh lên commit đó, không để commit không
 nhánh nào giữ.
 
+**Working tree có sửa dở của developer thì commit chỉ mang phần của việc mình:** file trùng thì tách theo hunk qua một index
+tạm, không đụng thứ developer đã stage; soát `git show --stat` sau mỗi commit. Commit theo pathspec lấy nội dung working tree,
+bỏ qua phần đã tách vào index. Công cụ: `docs/Editor/PartialCommit.md`.
+
 ## Phỏng vấn — hỏi tới khi chốt kịch bản
 
 Không đoán rồi làm (NT5): đoán thừa là hàm không caller, đoán thiếu là chữ ký chặn hướng dùng thật. Hỏi đủ năm nhóm, mỗi
@@ -118,7 +122,8 @@ developer **không cảm được**: trace chứng minh refactor giữ chuyển 
 **Hướng dẫn developer tự làm là output phải nghiệm thu:** mỗi giá trị, thứ tự, tên ô đã dựng thử trên engine, ở đúng điều kiện
 nơi dùng thật (chế độ render, đơn vị, quality). Số trong tài liệu mang theo đơn vị và điều kiện nó được đo. Công cụ kiểm đổi điều
 kiện (chụp ở chế độ render khác) thì không chứng minh gì cho điều kiện kia. *Đã sai một lần:* chép bề dày viền từ tài liệu đo ở
-đơn vị khác; kiểm hiệu ứng hạt bằng ảnh chụp chế độ Camera, game chạy Overlay thì ra khối màu đặc.
+đơn vị khác; kiểm hiệu ứng hạt bằng ảnh chụp chế độ Camera, game chạy Overlay thì ra khối màu đặc; code mẫu trong Plan gắn prefab hạt của canvas
+vào vật ngoài canvas, không vẽ gì.
 
 **Vét cạn khi có đáp án xác định được và ít nhất một dấu hiệu** — agent làm kể cả chưa được yêu cầu, vì đây là bằng chứng:
 *sức* (không gian đầu vào lớn, lặp nhiều) · *thiên kiến* (ca biên khó nghĩ hết — **liệt kê biên trước khi chạy**: rỗng,

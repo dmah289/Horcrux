@@ -713,7 +713,8 @@ Một tài liệu cho ba component và asset, mở đầu `Code: Runtime/Utiliti
   `SafeAreaHeadroom.Absorb(Rect, float)`, field serialize).
 - **Core algorithm:** ortho lấy max hai luật của GĐ1 kèm bốn mốc màn; offset pixel thiết kế quy ra viewport của GĐ2; công thức
   `shift = max(0, i − h)` của GĐ2 kèm hai mốc máy.
-- **Design decisions:** các **Quyết định** của GĐ1–4 kèm ba bẫy *đã sai một lần*: `Screen` ở `Awake` khi Editor không focus; đổi
+- **Design decisions:** các **Quyết định** của GĐ1–4 kèm các bẫy *đã sai một lần*: quy khoảng unit world ra `designPixelOffset`
+  theo `designResolution.x / designWidthUnits` px mỗi unit, không theo PPU của art hay cỡ camera Game view lúc chụp; `Screen` ở `Awake` khi Editor không focus; đổi
   đơn vị camera thì grep mọi hằng khoảng cách trong code (kể cả hằng scale) trước lần Play đầu; safe area thô đếm inset hai lần trên dải
   trống demo đã chừa, Game view không bao giờ lộ; camera chỉ giữ bề rộng làm tablet giãn khe HUD–world và co bàn chơi về sàn.
 - **Kịch bản dùng** (tên trung tính): cụm kề HUD trên neo `y = 1` trong safe area với offset pixel demo âm, panel HUD và camera kéo cùng một asset
@@ -721,7 +722,7 @@ Một tài liệu cho ba component và asset, mở đầu `Code: Runtime/Utiliti
   Single, Full Rect, ngoài atlas.
 - **Testing:** kiểm trên máy tai thỏ bằng Device Simulator (`docs/Editor/Probe.md`, `DEVICES`) trước khi build.
 
-`.html` chọn từ `.md`: kịch bản dùng, "Trước khi chạy" nguyên vẹn, flow boot, lưu ý (ba bẫy đã sai một lần, Game view dọc trước
+`.html` chọn từ `.md`: kịch bản dùng, "Trước khi chạy" nguyên vẹn, flow boot, lưu ý (các bẫy đã sai một lần, Game view dọc trước
 khi Play).
 
 **Mốc commit:** `docs(layout): ViewportAnchor.md`.

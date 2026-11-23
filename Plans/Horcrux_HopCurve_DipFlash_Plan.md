@@ -34,7 +34,7 @@ cuối, sổ "đang diễn") cùng khuôn "struct núm + class toán", làm trư
   `PunchScale` hay `startDelay` (GĐ7) · lún vị trí cho nắp box (nắp dừng ngay khi đóng) · nở ba nhịp `TileView.PlayPopIn` (đang chờ
   làm lại ở dự án; xét lại nếu foods_jam vẫn giữ hình cũ) · lắc xoay `TileView.PlayReject`, `PlayLandRock` (hai bản khác chia thời gian
   và biên độ; lên khi có người dùng thứ ba, hoặc developer chọn đổi sang `DampedOscillator` — việc đó đổi cảm giác).
-- **Đã khảo sát:** `TileFlightCurve.cs` (16 hàm, 5 hằng; `Tile.cs` gọi 14) · `BoxFeelTuning`, `BoxReceiveTuning`, `BoxAnimation` (ba
+- **Đã khảo sát:** `TileFlightCurve.cs` (16 hàm, 5 hằng; `Tile.cs` gọi 14, `BoosterFlight.cs` gọi `ApexT`, `ArcY`) · `TileSuckCurve.cs` (`DashDuration` trùng `DurationForSpeed`) · `BoxFeelTuning`, `BoxReceiveTuning`, `BoxAnimation` (ba
   struct, hai hàm đường cong, `InsertFlash`, khung nảy trong `InsertReceiveAccents`) · `CacheTileSlot`, `CategoryBox`,
   `SingleShelfAmountBar`, `ShelfPromoteTuning` (`PlaySpring`, hai bản pop giống hệt, `LandPitch`) · test dự án `TileFlightCurveTests`
   (82 dòng), `BoxFeelCurveTests` (11) chuyển theo giai đoạn · Horcrux `Interpolator` (có `SmootherStep`, chưa có cubic), `SquashStretch`
@@ -1066,7 +1066,7 @@ prefab giữ nguyên giá trị. Cảm giác không đổi một khung.
 
 **Trước khi sửa:** quay mốc trace bằng `docs/tools/feel_trace/trace.cs` trên code hiện tại (kịch bản phủ khung nảy và bộ đếm nảy, ô cache
 nhún khi nhận và khi dồn trái, tile cuối đón mạnh rồi nắp chạm, nén–giãn khi vọt và loé nắp, chuyến bay hai pha, tada, thanh đếm kệ
-Single), hai lần cùng chữ ký 0 chênh rồi mới sửa.
+Single, cú hút vào bình Pack rồi chìm, khay Extra Slot rơi vào ô), hai lần cùng chữ ký 0 chênh rồi mới sửa.
 
 ### `Entities/Tile/Tile.cs`
 
@@ -1094,6 +1094,11 @@ Thêm `using Horcrux.Runtime.Utilities.PhysXHelper;` và bốn hằng vào `Prop
 | `StepRise` | `TileFlightCurve.ProgressAfter(t, rise.SinkEnd)` · `RiseRamp(k, rise.ScaleEnd)` · `RiseRamp(k, rise.TintEnd)` · `RiseLift(t, peak, rise.SinkDepth, rise.SinkEnd)` · `LeanRamp(k)` | `HopCurve.ProgressAfter(…)` · `HopCurve.EaseOutUntil(…)` ×2 · `HopCurve.LiftWithAnticipation(…)` · `HopCurve.LeanRamp(k, LEAN_RISE_END, LEAN_FALL_START)` |
 
 `Entities/Tile/TileFlightCurve.cs` **xoá hẳn** (cả `.meta`); summary của `TileRiseTuning` trong `TileFeelTuning.cs`: "Hình dạng ở
+| `BuildSuckMotion` | `TileFlightCurve.LeanToward(to.x - from.x, suck.TiltDegrees)` · `TileSuckCurve.DashDuration(Vector3.Distance(back, to), suck)` | `HopCurve.LeanToward(to.x - from.x, suck.TiltDegrees, LEAN_MIN_DX)` · `HopCurve.DurationForSpeed(Vector3.Distance(back, to), suck.Speed, suck.MinDuration, suck.MaxDuration)` |
+| `SinkIntoSlot` | `TileFlightCurve.PeakToLocal(suck.SinkDepth, transform.parent.lossyScale.y)` | `HopCurve.PeakToLocal(…)` |
+
+`Entities/Tile/TileSuckCurve.cs`: xoá `DashDuration` (thân trùng nguyên văn `DurationForSpeed`); `TileSuckCurveTests` xoá ba case
+`DashDuration_IsDistanceOverSpeed_Clamped` (GĐ1 đã phủ). `WindupBack`, `DashPoint`, `LeanHold` ở lại: một người dùng.
 `TileFlightCurve.Rise*`" → "Hình dạng ở `HopCurve.LiftWithAnticipation`, `EaseOutUntil`".
 
 ### `Entities/Box/`
@@ -1180,4 +1185,4 @@ kèm con trỏ submodule.
 | `Tests/EditMode/DipSpecTests.cs`, `AccentSpecTests.cs`, `LaunchSpecTests.cs` (agent) | | | | tạo | | tạo | | tạo | | |
 | `Tests/PlayMode/CharmAccentTests.cs` (agent) | | | | | tạo | thêm case | thêm case | | | |
 | `docs/Runtime/HopCurve/`, `docs/Runtime/CharmAccent/` (`.md` + `.html`), `docs/Runtime/Interpolator/Interpolator.html`, `Plans/FeelingPlan.md` (agent) | | | | | | | | | tạo, sửa | |
-| dự án: `Tile.cs`, `TileFeelTuning.cs`, xoá `TileFlightCurve.cs`, `BoxFeelTuning.cs`, `BoxReceiveTuning.cs`, `BoxAnimation.cs`, `CategoryBox.cs`, `SingleShelfAmountBar.cs`, `CacheTileSlot.cs`, `ShelfPromoteTuning.cs`, hai test, `Feel.md`, `Structure.md`, ba prefab | | | | | | | | | | đổi |
+| dự án: `Tile.cs`, `TileFeelTuning.cs`, `TileSuckCurve.cs`, `TileSuckCurveTests.cs`, xoá `TileFlightCurve.cs`, `BoxFeelTuning.cs`, `BoxReceiveTuning.cs`, `BoxAnimation.cs`, `CategoryBox.cs`, `SingleShelfAmountBar.cs`, `CacheTileSlot.cs`, `ShelfPromoteTuning.cs`, hai test, `Feel.md`, `Structure.md`, ba prefab | | | | | | | | | | đổi |

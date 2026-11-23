@@ -96,6 +96,7 @@ theo tay. Prefab gốc của variant còn giữ art; build nướng variant thà
 |---|---|
 | `Report(string folder)` | mỗi texture Sprite: cỡ nguồn, `max`, `SHRUNK` khi nguồn vượt Max Size (rect và border đã co, số đo từ art gốc lệch), mode, PPU; từng mảnh với rect, border `(trái,dưới,phải,trên)` |
 | `LargestSlice(string texturePath)` | mảnh lớn nhất. `LoadAssetAtPath<Sprite>` trả mảnh đầu, có khi là mảnh vụn |
+| `MakeSingle(string texturePath)` | chuyển Single, xoá ba bảng của mảnh cũ trong `.meta` (`sprites`, `nameFileIdTable`, `internalIDToNameTable`), reimport; trả `đường dẫn: n mảnh cũ -> Single tên`. Chỉ đổi mode thì bảng cũ sót lại qua mọi lần reimport. Reference tới mảnh cũ gãy: tìm nơi dùng trước khi gọi. Không cần package 2D Sprite |
 | `SetBorder(string texturePath, Vector4 border, string spriteName = null)` | Single hay Multiple; trả `tên: cũ -> mới` hoặc `(giữ)`. `spriteName` null chỉ khi có đúng một mảnh |
 
 ### `ComponentTransplant`

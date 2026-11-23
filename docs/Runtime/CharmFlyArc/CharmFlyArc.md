@@ -82,5 +82,6 @@ Huỷ (hoặc object huỷ) thì dừng ở số đang hiện, không nhảy t�
 |---|---|
 | Quên điền field của spec | struct không có giá trị mặc định: `speed = 0` bị `[Min]` chặn trong Inspector, nhưng spec dựng bằng code thì chia 0, `await` treo |
 | `WhenAll` mà một bên bị huỷ | cùng token thì cùng dừng, mỗi bên dừng tại chỗ, scale/vị trí không đồng bộ về đích |
+| Một `controlOffset` dùng cho cả bay sang trái lẫn sang phải | pháp tuyến `(−dy, dx)` quay theo hướng bay: `controlOffset` dương vồng lên khi bay sang phải, võng xuống khi bay sang trái |
 | Gọi trên object inactive | tween vẫn chạy nhưng frame không vẽ; bật object trước khi gọi |
 | Object bị trả pool khi tween đang chạy | phải huỷ token hoặc `Stop()` tween; PrimeTween không tự biết |

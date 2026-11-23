@@ -205,6 +205,36 @@ namespace Horcrux.Tests
             }
         }
 
+        [Test]
+        public void MakeSingle_ClearsStaleSlices_AndStaysStableOnReimport()
+        {
+            var path = ImportSprite("sliced.png", 40, 20);
+            var importer = (TextureImporter)AssetImporter.GetAtPath(path);
+            importer.spriteImportMode = SpriteImportMode.Multiple;
+#pragma warning disable CS0618
+            importer.spritesheet = new[]
+            {
+                new SpriteMetaData { name = "sliced_0", rect = new Rect(0, 0, 20, 20), pivot = new Vector2(0.5f, 0.5f) },
+                new SpriteMetaData { name = "sliced_1", rect = new Rect(20, 0, 20, 20), pivot = new Vector2(0.5f, 0.5f) },
+            };
+#pragma warning restore CS0618
+            importer.SaveAndReimport();
+
+            Assert.AreEqual(path + ": 2 mảnh cũ -> Single sliced", SpriteSlicing.MakeSingle(path));
+
+            var metaAfter = File.ReadAllText(path + ".meta");
+            Assert.That(metaAfter, Does.Not.Contain("sliced_0"));
+            Assert.That(metaAfter, Does.Not.Contain("sliced_1"));
+            var sprites = 0;
+            foreach (var asset in AssetDatabase.LoadAllAssetsAtPath(path))
+                if (asset is Sprite)
+                    sprites++;
+            Assert.AreEqual(1, sprites);
+
+            AssetDatabase.ImportAsset(path, ImportAssetOptions.ForceUpdate);
+            Assert.AreEqual(metaAfter, File.ReadAllText(path + ".meta"));
+        }
+
         private string WritePng(string name, int width, int height, System.Func<int, int, Color> pixel)
         {
             var texture = new Texture2D(width, height, TextureFormat.RGBA32, false);

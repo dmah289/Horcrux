@@ -17,10 +17,15 @@ quanh từng callback trong vòng dispatch).
   Cặp "chờ rồi làm" vào chủ đời dài (điều phối màn), caller gọi một hàm. *Đã sai một lần:* lượt chờ chỉ có từ một mốc
   (quảng cáo theo level) — dưới mốc hàm chờ trả ngay trước khi caller huỷ, lỗi chỉ lộ khi mốc mở.
 - **Hàm mở tiến trình sở hữu trạng thái cuối ở mọi đường ra** (xong, huỷ, thời lượng 0) qua **một** `try/finally` bọc toàn
-  thân — trạng thái cuối và callback đúng một lần. Caller chỉ `await`, ghép `WhenAll`.
+  thân — trạng thái cuối và callback đúng một lần. Caller chỉ `await`, ghép `WhenAll`. Đường dọn từ ngoài (reset màn) về
+  đúng trạng thái cuối của đường ra tự nhiên. *Đã sai một lần:* dọn màn đặt lại cỡ nghỉ cho vật đã co biến mất mà không tắt
+  nó, vật rỗng hiện lại suốt lúc nạp màn.
 - **Chạm object Unity thì `finally` và callback guard `if (x != null)`**, không `?.`/`??` (bỏ qua so null của Unity).
   `onComplete` một chủ. Về pool giữa chừng cũng là đường ra: bỏ liên kết **trước** khi dừng tween, sau `await` kiểm liên kết
   còn là của mình mới ghi.
+- **Điều kiện kiểm trước một lượt chờ là bản chết sau lượt chờ:** chỗ đã nhắm (ô trống, đích, lượt) kiểm lại ngay trước bước
+  người chơi thấy; mất rồi thì bỏ bước, không diễn nửa chừng. *Đã sai một lần:* kiểm ô trống trước nhịp lấy đà; trong nhịp đó
+  luồng khác lấy mất ô, vật vẫn trồi lên rồi đứng kẹt.
 - **Vật thật nhường chỗ cho bản sao lúc diễn thì ẩn hình, không tắt GameObject:** vòng dọn của chủ hay duyệt theo `activeSelf`,
   huỷ giữa lượt diễn thì vật tắt rơi khỏi đường về pool. Bản sao không nằm trong danh sách của chủ thì `finally` của lượt diễn tự trả.
 - **Object về pool không chứa con tự huỷ theo đồng hồ riêng** — hệ hạt Stop Action `None`, không `Destroy(go, t)`; kéo dài
@@ -42,8 +47,10 @@ quanh từng callback trong vòng dispatch).
 >   chưa là entry) chỉ lộ ở lần nạp: sau khi chép, đổi tên, xoá asset thì soát bằng `docs/Editor/AddressableReferenceAudit.md`.
 > - **PrimeTween**, không tự viết runner: UI đặt `useUnscaledTime`; object huỷ hay về pool thì dừng tween; exception trong
 >   callback bị bọc thành log chung — `PRIME_TWEEN_SAFETY_CHECKS` để biết tween nào. `startDelay` lặp ở **mỗi** cycle; trễ
->   một lần thì `ChainDelay` trong Sequence. `await` tween hay Sequence đã `Stop()` trả về như chạy xong — huỷ theo token
->   thì kiểm token sau `await`.
+>   một lần thì `ChainDelay` trong Sequence. `await` tween hay Sequence bị `Stop()` trả về như chạy xong — dừng kiểu này
+>   thì kiểm token của mình sau `await`. Gắn `SetCancellationToken(ct)` thì huỷ làm `await` **ném**
+>   `OperationCanceledException`: dòng kiểm token sau đó là code chết; handler `async void`, `UniTaskVoid` bắt nó riêng trước
+>   catch chung, không thì huỷ đúng hợp đồng thành log đỏ.
 > - Anim UI dùng `Time.unscaledDeltaTime` (popup chạy khi `timeScale` = 0) · data lớn cho GPU, Job: `NativeArray` · tài
 >   nguyên nặng (`RenderTexture`, `Texture2D`) cache, dọn ở `OnDestroy()`.
 > - Tham số mặc định của method `virtual` lấy theo kiểu khai báo lúc gọi, không theo override.
@@ -105,6 +112,12 @@ Chất liệu quyết *cái gì được biến dạng*; phần vui đến từ 
 - **Đích chuyến bay đọc lại mỗi frame, không chốt lúc cất cánh:** chủ mới có thể đang trượt, lún, căn lại; chốt thì vật đáp
   chỗ cũ rồi giật. Giá là một lần đọc vị trí mỗi frame — rẻ hơn mọi cờ chọn vật nào được bám.
 - **Cú thu thập:** đích cỡ theo lòng vật chứa, nhỏ hơn đỉnh chuyến bay, cỡ về 0 tốc độ lúc chạm.
+- **Vật chui vào vật chứa:** vật chứa tách mép trước khỏi thân; vật vào bay trên cả vật chứa, lúc đáp mới xuống giữa lòng và
+  mép rồi chìm dưới mép. Nắp và mép nằm ngoài vùng vật chiếm lúc đáp — đo bằng số trên prefab trước khi giao chơi thử.
+  Nhiều vật liên tiếp qua cùng một cửa thì cửa mở một lần cho cả loạt; cửa giật theo từng vật đọc thành rối. Hết việc thì vật
+  chứa rút lui tại chỗ, không bay ngược về nguồn tranh chú ý với thứ vừa nhận.
+- **Lực tác động một nhóm lan theo khoảng cách:** cả nhóm cùng báo trước (rung) để người chơi thấy ai bị nhắm, rồi bị kéo so le
+  từ gần ra xa — đọc được hướng của lực.
 - **Sprite giữ tỉ lệ hoạ sĩ vẽ;** cỡ và vị trí đo pixel trên ảnh đích, quy về phần đặc của sprite.
 
 > **Nền tảng** — autosize TextMeshPro chỉ co khi tràn **chiều cao**; từ rộng hơn bề ngang bị ngắt giữa từ. "Tối đa n dòng"
