@@ -307,6 +307,127 @@ namespace Horcrux.Tests
             Assert.Throws<System.ArgumentException>(() => DemoCompare.FitOverlayAlpha(overlay, backgrounds, new Color32[1]));
         }
 
+        [Test]
+        public void RegionDiffAndSideBySide_CompareOneBlockAtDifferentOrigins()
+        {
+            // Khối 10×8 (cột, hàng đầu xanh, còn lại đỏ) ở (20,30) trên demo, ở (4,4) trên ảnh chụp; ảnh chụp lệch đúng góc dưới phải.
+            Color Block(int lx, int ly) => lx == 0 || ly == 0 ? Color.blue : Color.red;
+            var demo = WritePng("block_demo.png", 60, 50, (x, y) => x >= 20 && x < 30 && y >= 30 && y < 38 ? Block(x - 20, y - 30) : Color.black);
+            var capture = WritePng("block_capture.png", 18, 16, (x, y) =>
+                x == 13 && y == 11 ? Color.white : x >= 4 && x < 14 && y >= 4 && y < 12 ? Block(x - 4, y - 4) : Color.green);
+            var region = new RectInt(20, 30, 10, 8);
+
+            // Đỏ và trắng lệch 255 ở kênh G, B; 1/80 pixel: mean 3.19. Toạ độ và exclude tính trong khối.
+            Assert.AreEqual("mean 3.19 p95 0 max 255 at 9,7 (80 px)", DemoCompare.Diff(demo, region, capture, new Vector2Int(4, 4)));
+            Assert.AreEqual("mean 0 p95 0 max 0 at 0,0 (79 px)", DemoCompare.Diff(demo, region, capture, new Vector2Int(4, 4), new RectInt(9, 7, 1, 1)));
+            Assert.Throws<System.ArgumentException>(() => DemoCompare.Diff(demo, region, capture, new Vector2Int(10, 10)));
+
+            var output = Path.Combine(_pngFolder, "block_side.png");
+            DemoCompare.SideBySide(demo, region, capture, new Vector2Int(4, 4), output, 3);
+            var sheet = new Texture2D(2, 2);
+            sheet.LoadImage(File.ReadAllBytes(output));
+            // Hai khối phóng 3 lần (30×24) cách nhau khe 20 px; Texture2D gốc dưới trái.
+            Assert.AreEqual(new Vector2Int(80, 24), new Vector2Int(sheet.width, sheet.height));
+            Color TopLeft(int x, int y) => sheet.GetPixel(x, sheet.height - 1 - y);
+            Assert.AreEqual(Color.blue, TopLeft(2, 2));
+            Assert.AreEqual(Color.red, TopLeft(29, 23));
+            Assert.AreEqual(Color.magenta, TopLeft(40, 10));
+            Assert.AreEqual(Color.blue, TopLeft(50, 2));
+            Assert.AreEqual(Color.white, TopLeft(79, 23));
+            Object.DestroyImmediate(sheet);
+        }
+
+        [Test]
+        public void SpriteSilhouette_WhitensKeepsAlphaAndImportSettings_RegeneratesInPlace()
+        {
+            var source = Folder + "/frame.png";
+            File.Copy(WritePng("frame.png", 20, 10, (x, y) => new Color(0.2f, 0.4f, 0.8f, x < 5 ? 0f : x / 20f)), source);
+            AssetDatabase.ImportAsset(source);
+            var importer = (TextureImporter)AssetImporter.GetAtPath(source);
+            importer.textureType = TextureImporterType.Sprite;
+            importer.spriteImportMode = SpriteImportMode.Single;
+            importer.spritePixelsPerUnit = 50;
+            importer.spriteBorder = new Vector4(2, 3, 4, 1);
+            importer.mipmapEnabled = false;
+            var android = importer.GetPlatformTextureSettings("Android");
+            android.overridden = true;
+            android.maxTextureSize = 512;
+            android.format = TextureImporterFormat.ASTC_6x6;
+            importer.SetPlatformTextureSettings(android);
+            importer.SaveAndReimport();
+
+            var white = Folder + "/frame_white.png";
+            Assert.AreEqual(white + ": frame_white 20x10 border (2,3,4,1) | atlas: none", SpriteSilhouette.Create(source, white));
+            AssertWhiteWithAlphaOf(source, white);
+            var made = (TextureImporter)AssetImporter.GetAtPath(white);
+            Assert.AreEqual(SpriteImportMode.Single, made.spriteImportMode);
+            Assert.AreEqual(50f, made.spritePixelsPerUnit);
+            var madeAndroid = made.GetPlatformTextureSettings("Android");
+            Assert.IsTrue(madeAndroid.overridden);
+            Assert.AreEqual(512, madeAndroid.maxTextureSize);
+            Assert.AreEqual(TextureImporterFormat.ASTC_6x6, madeAndroid.format);
+
+            // Art đổi: gọi lại cùng đích thì ghi đè, GUID giữ.
+            var guid = AssetDatabase.AssetPathToGUID(white);
+            File.Copy(WritePng("frame2.png", 20, 10, (x, y) => new Color(1f, 0f, 0f, y < 5 ? 0f : 0.5f)), source, true);
+            AssetDatabase.ImportAsset(source, ImportAssetOptions.ForceUpdate);
+            SpriteSilhouette.Create(source, white);
+            Assert.AreEqual(guid, AssetDatabase.AssetPathToGUID(white));
+            AssertWhiteWithAlphaOf(source, white);
+
+            Assert.Throws<System.ArgumentException>(() => SpriteSilhouette.Create(ImportSprite("opaque.png", 8, 8), Folder + "/opaque_white.png"));
+        }
+
+        [Test]
+        public void FitOverlay_MatchesDesignerSrgbBlendInProjectColorSpace()
+        {
+            // Art nhiều tông xanh (như khung nút), cột đầu trong suốt không tính; lớp phủ xanh đậm 30% như hoạ sĩ ghi.
+            var art = WritePng("overlay_art.png", 64, 32, (x, y) => new Color(0.05f + x / 80f, 0.2f + y / 60f, 0.5f + x / 200f, x < 4 ? 0f : 1f));
+            var linear = QualitySettings.activeColorSpace == ColorSpace.Linear;
+
+            var fit = DemoCompare.FitOverlay(art, new Color32(0, 21, 69, 255), 0.3f);
+            Assert.AreEqual(linear, fit.FittedInLinear);
+            StringAssert.EndsWith("(1920 px)", fit.Error);
+            if (linear)
+            {
+                // Trộn Linear sáng hơn sRGB: cần alpha cao hơn số hoạ sĩ. Một cặp màu, alpha không khớp đúng mọi tông ở Linear
+                // (art này trải rộng hơn khung nút thật: p99 4.3), nhưng phải gần hơn hẳn để nguyên số (p99 32.5).
+                Assert.Greater(fit.Alpha, 0.33f, fit.ToString());
+                Assert.Less(P99(fit.Error) * 4f, P99(fit.AsIsError), fit.ToString());
+            }
+            else
+            {
+                Assert.AreEqual(0.3f, fit.Alpha, 0.01f, fit.ToString());
+                Assert.LessOrEqual(P99(fit.Error), 1f, fit.ToString());
+            }
+
+            var flat = WritePng("overlay_flat.png", 8, 8, (x, y) => new Color(0.2f, 0.4f, 0.8f, 1f));
+            Assert.Throws<System.ArgumentException>(() => DemoCompare.FitOverlay(flat, new Color32(0, 21, 69, 255), 0.3f));
+            Assert.Throws<System.ArgumentOutOfRangeException>(() => DemoCompare.FitOverlay(art, new Color32(0, 21, 69, 255), 0f));
+        }
+
+        private static float P99(string error)
+        {
+            var match = System.Text.RegularExpressions.Regex.Match(error, @"p99 ([0-9.]+)");
+            Assert.IsTrue(match.Success, error);
+            return float.Parse(match.Groups[1].Value, System.Globalization.CultureInfo.InvariantCulture);
+        }
+
+        private static void AssertWhiteWithAlphaOf(string sourcePath, string whitePath)
+        {
+            var source = new Texture2D(2, 2);
+            var white = new Texture2D(2, 2);
+            source.LoadImage(File.ReadAllBytes(sourcePath));
+            white.LoadImage(File.ReadAllBytes(whitePath));
+            var a = source.GetPixels32();
+            var b = white.GetPixels32();
+            Assert.AreEqual(a.Length, b.Length);
+            for (var i = 0; i < a.Length; i++)
+                Assert.AreEqual(new Color32(255, 255, 255, a[i].a), b[i], "pixel " + i);
+            Object.DestroyImmediate(source);
+            Object.DestroyImmediate(white);
+        }
+
         private string WritePng(string name, int width, int height, System.Func<int, int, Color> pixel)
         {
             var texture = new Texture2D(width, height, TextureFormat.RGBA32, false);

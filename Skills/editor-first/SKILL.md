@@ -42,7 +42,9 @@ nối. Hệ không gánh lỗi quên setup; đổi lại hệ **nợ** mục "Tr
 
 **Agent làm thao tác Editor qua công cụ (MCP, eval) khi được giao** thì kết quả là asset đã lưu (prefab, scene,
 `ScriptableObject`) developer mở ra thấy, không phải code chạy lúc boot làm thay. Lệnh lưu kéo theo mọi asset đang bẩn
-trong Editor: soát `git status` ngay sau, file ngoài phạm vi thì báo developer. File mới do package tự sinh khi Editor chạm
+trong Editor: soát `git status` ngay sau, file ngoài phạm vi thì báo developer. Diff scene, prefab đọc bằng
+`--diff-algorithm=histogram`: diff mặc định ghép nhầm các khối YAML na ná nhau, báo xoá cả dòng không đổi.
+File mới do package tự sinh khi Editor chạm
 (setting trong `Resources`) là cấu hình của build, không phải rác: thiếu nó build chạy mặc định trong code, khác Editor — so
 hai giá trị rồi hỏi commit. *Đã sai một lần:* lưu scene làm asset cấu
 hình rơi dữ liệu của field đã xoá khỏi code. Lưu prefab bằng `SaveAsPrefabAsset` ghi lại cả field chưa serialize và override

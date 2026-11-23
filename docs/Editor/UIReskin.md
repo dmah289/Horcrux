@@ -99,6 +99,15 @@ theo tay. Prefab gốc của variant còn giữ art; build nướng variant thà
 | `MakeSingle(string texturePath)` | chuyển Single, xoá ba bảng của mảnh cũ trong `.meta` (`sprites`, `nameFileIdTable`, `internalIDToNameTable`), reimport; trả `đường dẫn: n mảnh cũ -> Single tên`. Chỉ đổi mode thì bảng cũ sót lại qua mọi lần reimport. Reference tới mảnh cũ gãy: tìm nơi dùng trước khi gọi. Không cần package 2D Sprite |
 | `SetBorder(string texturePath, Vector4 border, string spriteName = null)` | Single hay Multiple; trả `tên: cũ -> mới` hoặc `(giữ)`. `spriteName` null chỉ khi có đúng một mảnh |
 
+### `SpriteSilhouette` — bản trắng của art
+
+| Member | Hợp đồng |
+|---|---|
+| `Create(string sourceTexturePath, string destinationPath)` | ghi PNG RGB trắng, alpha từng pixel của file art gốc (không đọc texture đã nén); chép cài đặt import của nguồn (`TextureImporterSettings`, nén mặc định, override Standalone, Android, iPhone, WebGL), border và pivot của mảnh, đặt Single. Gọi lại cùng đích: pixel không đổi thì giữ file, đổi thì ghi đè; GUID giữ. Nguồn không phải Sprite, có khác một mảnh, mảnh không phủ cả ảnh, hay không có pixel trong suốt thì ném. Trả `đích: tên WxH border (l,b,r,t) \| atlas: …` (`none` khi chưa atlas nào pack) |
+
+Dùng khi cần phủ màu phẳng theo đúng hình art: shader UI mặc định nhân màu Image với texture, Image dùng chính art ra bản tối
+của art; Image dùng bản trắng ra đúng màu đặt trên Image. Bản trắng cùng thư mục art thì tự vào atlas của art, vẽ chung batch.
+
 ### `ComponentTransplant`
 
 | Member | Hợp đồng |
@@ -126,16 +135,23 @@ theo tay. Prefab gốc của variant còn giữ art; build nướng variant thà
 | Member | Hợp đồng |
 |---|---|
 | `SideBySide(string demoPath, string capturePath, string outPath, int y0 = 0, int y1 = -1)` | demo trái, ảnh chụp đưa về cỡ demo bên phải, khe 20 px hồng; dải hàng `y0..y1`; vạch vàng mỗi 100 px theo y tuyệt đối, dày 3 px ở mỗi 500 |
+| `SideBySide(string demoPath, RectInt demoRegion, string capturePath, Vector2Int captureOrigin, string outPath, int zoom = 2)` | một khối: vùng `demoRegion` của demo trái, vùng cùng cỡ bắt đầu ở `captureOrigin` của ảnh chụp phải, không đổi cỡ; khe 20 px hồng; mỗi pixel phóng `zoom` lần không nội suy. Vùng ra ngoài ảnh thì ném |
 | `BBox(string imagePath, RectInt region, Func<Color32, bool> match)` | `x0,y0 x1,y1 (w x h)`, góc tính vào; không có là `none` |
 | `Near(Color32 color, int tolerance)` | điều kiện cho `BBox`: lệch từng kênh RGB ≤ tolerance |
 | `Runs(string imagePath, bool vertical, int index, int from, int to, int tolerance = 30, int minLength = 3)` | dải màu liền dọc cột (hay hàng) `index`: `a-b r,g,b`; lệch tổng ba kênh so với pixel đầu dải quá tolerance là dải mới. Tách lớp chữ art, viền nút: tolerance ~6, `minLength` 1, đường cắt qua nét dày và kéo sang phía bóng; dải 1 px giữa hai lớp là khử răng cưa, màu lớp lấy ở dải dày |
 | `TemplateMatch(string artPath, string imagePath, RectInt region, float minScale, float maxScale, float step = 0.02f)` | chỗ và tỉ lệ đặt art (PNG có alpha) khớp nhất: `x,y w x h scale s rmse e`, x, y góc trên trái, `s` = w / bề rộng art; so pixel art alpha ≥ 128. Dò thô ở ảnh thu nhỏ (tới 8 lần, art thu còn ≥ 8 px) với bước `step`, rồi dò tinh quanh điểm thô, mỗi bề rộng nguyên trong ±step một lần. Vùng 700×600 với art ~300 px mất ~3 s. rmse cao mà vị trí đúng thường là chữ, số vẽ đè trên art trong demo |
 | `ContactSheet(string folder, string outPath, int cell = 256, int columns = 6)` | ghép mọi PNG theo tên thành lưới (ô giữ tỉ lệ, nền xám); trả `i: tên WxH` theo thứ tự ô |
 | `Diff(string demoPath, string capturePath, params RectInt[] exclude)` | ảnh chụp đưa về cỡ demo; mỗi pixel ngoài `exclude` lấy kênh RGB lệch nhất (0–255): `mean m p95 p max x at x,y (n px)`; không còn pixel là `none`. Số lệch còn lại để báo sau khi dựng |
+| `Diff(string demoPath, RectInt demoRegion, string capturePath, Vector2Int captureOrigin, params RectInt[] exclude)` | như trên trên một khối, so 1:1 không đổi cỡ: khối nằm chỗ khác nhau trên hai ảnh (ảnh `Variants` có lề 4 px, bố cục đã dời). `exclude` và `at` tính trong khối, 0,0 là góc trên trái khối. Vùng ra ngoài ảnh thì ném |
 | `FitRadialGlow(string demoPath, params RectInt[] exclude)` | dò thông số shader `Horcrux/ui_radial_glow` (`Shader/ui_radial_glow.shader`) từ demo mà rect nền phủ kín: trả `RadialGlowFit`. Fit trong không gian màu project (Linear thì linear, đúng chỗ shader nội suy): lưới thô trên ~1500 mẫu, dò mẫu trên ~40 000; màu tâm, mép giải đóng bằng hồi quy theo trọng số. Demo 363×783 mất ~13 s. Ngoài `exclude` còn dưới 16 pixel thì ném |
 | `RadialGlowFit` | `Center` (uv gốc dưới trái), `Radius` (× chiều cao rect), `Falloff`, `CenterColor`, `EdgeColor` (màu Inspector), `FittedInLinear`, `ModelDiff` (bản render mô phỏng so với demo, định dạng `Diff`). `ApplyTo(Material)` ghi đúng các ô và lưu asset; material không dùng `ui_radial_glow` thì ném. `ToString()` in một dòng theo tên ô |
 | `FitOverlayAlpha(Color32 overlay, Color32[] backgrounds, Color32[] observed)` | alpha cho lớp phủ màu `overlay` để, trộn trong không gian màu project lên `backgrounds[i]`, ra `observed[i]` đo trên demo; bình phương tối thiểu trên ba kênh của mọi mẫu. Số mẫu khác nhau hay 0, hoặc overlay trùng mọi background thì ném. Trả `OverlayAlphaFit` |
 | `OverlayAlphaFit` | `Alpha` (cho project), `GammaAlpha` (trộn sRGB như tool thiết kế; khớp số hoạ sĩ đặt thì phép đo đúng), `FittedInLinear`, `MaxError` (kênh lệch nhất, 0–255: overlay khác sắc demo thì alpha không bù được, số này lớn) |
+| `FitOverlay(string artPath, Color32 designerColor, float designerAlpha)` | màu **và** alpha cho lớp phủ lên art để project ra đúng phép trộn sRGB hoạ sĩ ghi (màu + %). Mẫu: mọi pixel đặc (alpha 255) của art; đích: trộn sRGB làm tròn lên từng pixel. Alpha dò lưới 0.01 rồi 0.001 trên tối đa 20 000 mẫu, chọn theo p99 lệch nhìn thấy; màu giải đóng mỗi alpha. Gamma ra lại số hoạ sĩ. Art gần một màu (độ sáng chênh < 8) thì ném: alpha không xác định, dùng `FitOverlayAlpha`. Trả `OverlayFit` |
+| `OverlayFit` | `Color` (màu Inspector), `Alpha`, `ImageColor` (hai thứ gộp, gán thẳng vào Image), `FittedInLinear`, `Error` của bản fit và `AsIsError` khi đặt nguyên số hoạ sĩ, cùng dạng `mean m p99 p max x (n px)` theo kênh lệch nhất 0–255 |
+
+`FitOverlayAlpha` hay `FitOverlay`: màu phủ đã chốt (đo được, hoạ sĩ không cho phép đổi) thì `FitOverlayAlpha`; chỉ có màu + %
+của hoạ sĩ và lớp phủ đè lên art nhiều tông thì `FitOverlay` — trong Linear, một mình alpha không đưa được mọi tông về cùng lúc.
 
 `exclude` của `Diff`, `FitRadialGlow` gồm mọi thứ không phải nền: logo, chữ, cả **khung viền ảnh demo** — demo xuất từ tool thiết kế
 có thể kèm viền xám dày khác nhau mỗi cạnh; đo bằng `Runs` ở mép trước khi tin số `max`. `GlowShape.Weight` là bản C# của frag
@@ -162,7 +178,10 @@ return Horcrux.Editor.UIReskin.PrefabAudit.Report("Assets/MyGame/Popups");
 render bằng oracle riêng, có khối logo che giữa; `PruneNoise` gỡ vị trí do LayoutGroup ghi và giữ cỡ cố ý, chạy thử không đổi file; `SetBorder` trả giá trị cũ và ghi;
 sprite asset TMP mang face info, metric, version; `CopyLogic` nối reference sang object mới; `World` đặt sprite pivot lệch giữa khung ở
 đúng px/unit, `pose` chạy mỗi ảnh, object nguồn không đổi; `FitOverlayAlpha` lấy lại alpha trộn bằng `Color.linear` (oracle riêng),
-alpha sRGB thấp hơn alpha Linear. Asset tạm ở
+alpha sRGB thấp hơn alpha Linear; `FitOverlay` trên art nhiều tông: Gamma ra lại 0.3, Linear cần alpha cao hơn và lệch p99 dưới một
+phần tư lúc để nguyên số, art một màu và alpha 0 thì ném; `Diff`, `SideBySide` theo khối tìm đúng pixel lệch trong khối ở hai gốc khác
+nhau, `exclude` tính trong khối, vùng ra ngoài ảnh thì ném, phóng không nội suy; `SpriteSilhouette.Create` ra RGB trắng đúng alpha,
+chép PPU, border, override Android, gọi lại sau khi art đổi giữ GUID, nguồn đặc thì ném. Asset tạm ở
 `Assets/HorcruxUIReskinTestTemp`, xoá sau mỗi test. `Tests/EditMode/HiddenArtTests.cs`: `List` gom theo object tắt ngoài cùng;
 `Clear` chạy thử không đổi, gỡ thật chỉ thành override của variant, từ chối gốc đang bật; art đã gỡ trên variant không còn trong
 `AtlasAudit.Usage`.
@@ -173,11 +192,19 @@ Kiểm bằng chạy thật trên một dự án: `Report` 16 prefab popup; `Lis
 màn loading 363×783 (loại logo, chữ, khung viền): bản mô phỏng lệch mean 0.46, p95 1; material ghi số đó trên canvas Overlay, chụp
 trong Play ở 1080×2340, `Diff` với demo mean 0.51, p95 1 — max 14 ở bóng logo sát vùng loại trừ, có ở cả hai. `HiddenArt.Clear` gỡ 280
 reference art trên skin cũ của PopupShop, Pause, Setting, RefillLive: các popup thôi nạp hai atlas cũ (một trang 1024×2048 của
-shop) và một texture lẻ; chụp trong Play không đổi hình, không lỗi mới.
+shop) và một texture lẻ; chụp trong Play không đổi hình, không lỗi mới. `FitOverlay` trên khung nút 182×188 (24 869 pixel đặc) với
+màu + % hoạ sĩ `#001545` 30% trong project Linear: `#001350` alpha 0.448, lệch p99 2.79, max 3.72; để nguyên số hoạ sĩ lệch p99 14.9 —
+cùng kết quả bản fit viết tay trước đó; đặt số fit lên Image, chụp trong Play, lòng khung lệch demo ≤ 2. `SpriteSilhouette.Create`
+sinh lại bản trắng của khung đó: pixel trùng bản đã commit, file và `.meta` không đổi, tự vào atlas của khung. `Diff` theo khối giữa
+nút khoá trên demo (477, 2063) và trong ảnh Play (479, 2026): mean 5.54, p95 23, max ở mép ổ khoá lệch 1 px; `SideBySide` theo khối
+phóng 2 lần thay bốn script ghép ảnh viết tay.
 
 ## Mở rộng sau
 
 - `FitRadialGlow` nhận vùng của rect nền trên demo, khi có nền không phủ kín demo (panel, popup). Bản hiện tại coi cả ảnh là rect.
 - Fit cho shader gradient khác (`vertical_screen_gradient`) theo cùng khuôn `GlowShape` + hồi quy màu, khi có màn dựng bằng nó.
+
+- `FitOverlay` nhận màu đo trên demo (art và demo căn theo `TemplateMatch`) thay cho màu + % hoạ sĩ, khi có demo mà hoạ sĩ không ghi số.
+- `SpriteSilhouette.Create` cho art nhiều mảnh (chép bảng mảnh qua sprite data provider), khi có khung cần phủ nằm trong sheet.
 
 - `PruneNoise` nhận thêm driver của dự án (fitter tự viết khai `DrivenRectTransformTracker`), khi override do chúng ghi xuất hiện.

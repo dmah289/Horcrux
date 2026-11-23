@@ -57,6 +57,44 @@ namespace Horcrux.Editor.UIReskin
             return DiffStats(demo, Load(capturePath).Resized(demo.Width, demo.Height), exclude);
         }
 
+        /// <summary>
+        /// Như <see cref="Diff(string,string,RectInt[])"/> nhưng chỉ trên một khối: vùng demoRegion của demo so 1:1 với vùng cùng cỡ
+        /// bắt đầu ở captureOrigin của ảnh chụp, không đưa về cùng cỡ. Dùng khi khối nằm chỗ khác nhau trên hai ảnh: ảnh
+        /// <c>UICapture.Variants</c> có lề, bố cục đã dời. exclude và toạ độ <c>at</c> tính trong khối (0,0 là góc trên trái khối).
+        /// </summary>
+        public static string Diff(string demoPath, RectInt demoRegion, string capturePath, Vector2Int captureOrigin, params RectInt[] exclude)
+        {
+            var demo = Load(demoPath).Cropped(demoRegion, demoPath);
+            var capture = Load(capturePath).Cropped(new RectInt(captureOrigin, demoRegion.size), capturePath);
+            return DiffStats(demo, capture, exclude);
+        }
+
+        /// <summary>
+        /// Khối demoRegion của demo bên trái, khối cùng cỡ ở captureOrigin của ảnh chụp bên phải, khe 20 px hồng; mỗi pixel phóng
+        /// zoom lần không nội suy để thấy từng pixel viền. Không có vạch lưới: hai khối đã thẳng hàng theo gốc của chúng.
+        /// </summary>
+        public static string SideBySide(string demoPath, RectInt demoRegion, string capturePath, Vector2Int captureOrigin, string outPath,
+            int zoom = 2)
+        {
+            if (zoom < 1)
+                throw new ArgumentOutOfRangeException(nameof(zoom), zoom, "zoom từ 1");
+            var demo = Load(demoPath).Cropped(demoRegion, demoPath);
+            var capture = Load(capturePath).Cropped(new RectInt(captureOrigin, demoRegion.size), capturePath);
+            int cropWidth = demo.Width * zoom, width = cropWidth * 2 + Gap, height = demo.Height * zoom;
+            var output = new Pixels(width, height);
+            for (var y = 0; y < height; y++)
+            for (var x = 0; x < width; x++)
+            {
+                Color32 c;
+                if (x < cropWidth) c = demo.At(x / zoom, y / zoom);
+                else if (x < cropWidth + Gap) c = GapColor;
+                else c = capture.At((x - cropWidth - Gap) / zoom, y / zoom);
+                output.Set(x, y, c);
+            }
+            output.Save(outPath);
+            return outPath;
+        }
+
         /// <summary>Khung bao các pixel trong region thoả match: <c>x0,y0 x1,y1 (w x h)</c>, hai góc đều tính vào; không có thì <c>none</c>.</summary>
         public static string BBox(string imagePath, RectInt region, Func<Color32, bool> match)
         {
@@ -317,6 +355,17 @@ namespace Horcrux.Editor.UIReskin
                         result.Set(x, y, Color32.Lerp(top, bottom, ty));
                     }
                 }
+                return result;
+            }
+
+            /// <summary>Bản chép của một vùng; vùng lọt ra ngoài ảnh thì ném kèm cỡ ảnh, không cắt bớt im lặng.</summary>
+            public Pixels Cropped(RectInt region, string source)
+            {
+                if (region.width <= 0 || region.height <= 0 || region.x < 0 || region.y < 0 || region.xMax > Width || region.yMax > Height)
+                    throw new ArgumentException($"vùng {region.x},{region.y} {region.width}x{region.height} nằm ngoài ảnh {Width}x{Height}: {source}");
+                var result = new Pixels(region.width, region.height);
+                for (var y = 0; y < region.height; y++)
+                    Array.Copy(_data, (region.y + y) * Width + region.x, result._data, y * region.width, region.width);
                 return result;
             }
 

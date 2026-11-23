@@ -48,12 +48,14 @@ suy từ ảnh chụp, bằng cách so với Game view cùng cỡ màn (các kh�
 theo từng dải màu mới được dùng làm chuẩn để sửa và nghiệm thu; không trùng thì file máy sai, chưa phải lỗi code.
 
 **Đo bằng số, cùng một phép đo cho mọi ảnh.** Demo, ảnh Game view, ảnh Simulator, ảnh máy đo bằng cùng hàm dò dải màu, cùng cột, cùng
-tolerance. Khung object chỉ để tìm cột. Đè ảnh mờ lên màn chỉ để nhìn, không để kết luận: hai ảnh khác tỉ lệ thì khối neo theo bề rộng
+tolerance. Khối nằm chỗ khác nhau trên hai ảnh (ảnh chụp riêng một khối, bố cục đã dời) thì so theo khối với gốc riêng mỗi ảnh, không
+cắt ghép ảnh ngoài Editor. Khung object chỉ để tìm cột. Đè ảnh mờ lên màn chỉ để nhìn, không để kết luận: hai ảnh khác tỉ lệ thì khối neo theo bề rộng
 và khối co theo chiều cao trôi khác nhau. Khớp khung chưa phải khớp hình: chữ art, nút có viền và bóng so theo từng lớp
 (`ui-reskin` › Tổ chức prefab, chữ art).
 
 **So ở trạng thái cao nhất.** Phần tử chỉ hiện theo gameplay (chữ nhiều dòng, badge, thứ trượt ra) ép hiện với nội dung dài nhất rồi mới
-đo; đo lúc nó ẩn thì khe trông rộng, dời quá tay.
+đo; đo lúc nó ẩn thì khe trông rộng, dời quá tay. Ép trạng thái trong Play thì tắt thứ đang giữ trạng thái đó trước: code ghi lại hình
+theo nhịp riêng (làm mờ nút chưa dùng được, đổi khối hiện), đè lên trạng thái ép và làm sai số đo màu.
 
 **Mỗi phép đo là một lệnh chạy lại được.** Kịch bản đo của màn nằm ở dự án, chạy mọi cỡ và mọi máy trong một lần; Editor trả về view,
 cỡ, máy cũ sau khi đo. Developer nghiệm thu hình (`workflow` › Nghiệm thu); agent báo số lệch còn lại ở từng chế độ.
@@ -91,6 +93,6 @@ lần demo, dải bàn chơi còn nửa và scale fit kẹt sàn; developer nghi
 | Kết quả Simulator mang tên máy mới mà số là của máy cũ | chọn máy hỏng (tên sai) mà vẫn chạy · runner dừng khi chọn máy hỏng; đọc dòng chọn máy trong kết quả |
 | Simulator cùng cỡ mà không giống máy | máy mẫu của Unity là máy chung chung, inset và cutout khác máy thật · thêm file máy thật, kiểm bằng ảnh chụp máy |
 | Gradient shader dựng theo demo đúng màu tâm và mép mà sai nhịp tắt | hệ số đo ở sRGB của ảnh, shader nội suy ở Linear · `DemoCompare.FitRadialGlow` fit theo không gian màu project kèm số lệch mô phỏng; giao số chỉ sau khi chụp trong Play đúng chế độ canvas và `Diff` với demo |
-| Lớp tối alpha cao mà màn chơi phía sau vẫn rõ hơn demo nhiều; lớp phủ đặt đúng màu và % hoạ sĩ ghi mà nhạt hơn demo | project Linear trộn alpha trước khi đổi về sRGB: alpha 0.88 còn khoảng 38% độ sáng nhìn thấy, không phải 12%; màu + % của hoạ sĩ là phép trộn sRGB · so độ sáng nền sau lớp tối đo trên cả hai ảnh, không so alpha; lớp phủ thì fit lại màu và alpha trong Linear trên mọi pixel đặc của art bị phủ (`DemoCompare.FitOverlayAlpha`: alpha sRGB nó trả khớp số hoạ sĩ thì phép đo đúng), kiểm bằng chụp trong Play |
+| Lớp tối alpha cao mà màn chơi phía sau vẫn rõ hơn demo nhiều; lớp phủ đặt đúng màu và % hoạ sĩ ghi mà nhạt hơn demo | project Linear trộn alpha trước khi đổi về sRGB: alpha 0.88 còn khoảng 38% độ sáng nhìn thấy, không phải 12%; màu + % của hoạ sĩ là phép trộn sRGB · so độ sáng nền sau lớp tối đo trên cả hai ảnh, không so alpha; lớp phủ thì fit lại trong Linear trên mọi pixel đặc của art bị phủ — chỉ có màu + % hoạ sĩ thì fit cả màu lẫn alpha (`DemoCompare.FitOverlay`), màu phủ đã chốt thì fit alpha (`DemoCompare.FitOverlayAlpha`: alpha sRGB nó trả khớp số hoạ sĩ thì phép đo đúng), kiểm bằng chụp trong Play |
 | `max` lệch lớn ở mép, góc ảnh demo dù nền đã khớp | demo xuất kèm khung viền, mỗi cạnh dày khác nhau · `Runs` ở mép tìm viền, đưa vào `exclude` trước khi tin số |
 | Đổi cỡ Game view thì bật thêm một cửa sổ Game nổi | Simulator đang chiếm chỗ view Play · công cụ đổi cỡ tự đưa Game view về; swap tay thì trả lại |
