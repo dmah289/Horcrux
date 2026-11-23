@@ -30,20 +30,22 @@ làm điều kiện commit.
 | Lỗi build lọc bằng `sort -u` | MSBuild in mỗi lỗi hai lần (một của compiler, một của tổng kết) |
 | `AssetDatabase.Refresh` qua `script eval` trước `script recompile` | Editor không focus thì chưa nạp file sửa từ ngoài; recompile trả `up_to_date` trên bản cũ và bước này báo xanh giả |
 | Đợi `unity status` ra `ready` (tối đa 60 s) giữa recompile và test | recompile xong còn domain reload, Pipeline ngắt vài giây; `test run` gửi lúc đó trả `EDITOR_NOT_RUNNING` |
+| `test run` trả `success: false` thì hỏi `test status`, không báo hỏng ngay | kết nối CLI rớt giữa lượt ("socket hang up") trong khi test vẫn chạy trong Editor; chỉ khi `unity status` không còn `ready` mới báo Editor mất |
 
 ## Luồng dữ liệu
 
 ```
 --csproj a,b ──► chọn builder (MSBUILD › dotnet › MSBuild Rider/VS) ──► build -v q -clp:ErrorsOnly ──► "build a: ok" | dòng lỗi CS/MSB | mã thoát ≠ 0
 --project   ──► unity status ready? ──► AssetDatabase.Refresh ──► script recompile ──► poll recompile_status tới completed|up_to_date ──► errors[]
---tests X,Y ──► test run --mode EditMode --filter_type assembly --filter X ──► (in_progress? poll test status) ──► Summary + test fail
+--tests X,Y ──► test run --mode EditMode --filter_type assembly --filter X ──► (success false? Editor ready → test status | mất → FAIL unity)
+                ──► (in_progress? poll test status tới hết --timeout) ──► Summary + test fail
                                                                                                           └──► "verify: OK" | "verify: FAIL build recompile tests"
 ```
 
 ## Lệnh
 
 ```bash
-bash "<horcrux>/Editor/CompileCheck/Tools~/verify.sh" --csproj <A.csproj,B.csproj> --tests <TestAsm1,TestAsm2> [--project <path>] [--no-unity] [--no-tests] [--timeout 300]
+bash "<horcrux>/Editor/CompileCheck/Tools~/verify.sh" --csproj <A.csproj,B.csproj> --tests <TestAsm1,TestAsm2> [--project <path>] [--no-unity] [--no-tests] [--timeout 600]
 ```
 
 | Cờ | Nghĩa |
@@ -53,7 +55,7 @@ bash "<horcrux>/Editor/CompileCheck/Tools~/verify.sh" --csproj <A.csproj,B.cspro
 | `--project` | gốc project Unity; mặc định thư mục hiện tại |
 | `--no-unity` | chỉ build csproj, cho máy không mở Editor |
 | `--no-tests` | dừng sau recompile |
-| `--timeout` | giây chờ mỗi lần `test run`, mặc định 300 |
+| `--timeout` | giây chờ mỗi assembly test, tính cả lượt hỏi `test status` sau đó; mặc định 600 |
 | `UNITY_CLI` | biến môi trường ép đường dẫn `unity.exe`; mặc định `unity` trên PATH |
 | `MSBUILD` | biến môi trường ép đường dẫn `MSBuild.exe`; không đặt thì dùng `dotnet` trên PATH, thiếu nữa thì MSBuild mới nhất của Rider hay Visual Studio trong `Program Files` ổ c–h |
 
@@ -70,6 +72,7 @@ Thời gian: build 25–30 s mỗi csproj, recompile 5–20 s, test EditMode và
 | `build X: ok` nhưng `recompile: LỖI` | assembly không có trong `--csproj` (asmdef mới, test) hoặc define khác | đọc `errors` in ra; csproj thiếu assembly mới thì thêm tên vào `--csproj` |
 | `recompile: không xong sau 180 s` | Editor treo ở dialog, hoặc đang import | nhìn Editor; Unity bận import asset nặng thì chạy lại |
 | `tests X: không đọc được kết quả` | assembly không có test, lệnh timeout, hoặc Editor đang Play | thân JSON in kèm 600 ký tự đầu |
+| `tests X: Editor ngắt giữa lượt test (…) và không còn ready` | Editor đóng hoặc crash lúc test chạy | mở lại Editor rồi chạy lại; `verify: FAIL unity`, không phải lỗi test |
 | `tests X: n/m pass, k fail` | tên test fail và dòng đầu message in ngay dưới | mở test đó |
 
 ## Đã sai một lần
@@ -79,6 +82,7 @@ Thời gian: build 25–30 s mỗi csproj, recompile 5–20 s, test EditMode và
 - Glob `/?/Program Files` trong Git Bash không khớp ổ đĩa nào (`/` không liệt kê ổ): tìm MSBuild phải duyệt từng chữ ổ.
 - Vá csproj bằng tay sau `git mv` rồi kết luận lỗi đường dẫn là lỗi thật: Editor đang mở sinh lại csproj, bản vá bị ghi đè hoặc thừa.
 - Chạy batchmode `-runTests` khi Editor đang mở project: khoá `Temp/UnityLockfile`, lệnh treo tới timeout không một dòng lỗi.
+- `test run` trả "socket hang up" bị báo `không đọc được kết quả` như test hỏng; lần chạy lại treo không một dòng vì lệnh gọi pipe qua `tail`. Bài học: lỗi kết nối hỏi lại trạng thái Editor; người gọi đọc output thẳng.
 - Chạy Unity với `-nographics` để test: test của package PrimeTween fail vì shader, không liên quan code dự án.
 
 ## Nghiệm thu

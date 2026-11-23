@@ -16,6 +16,10 @@ Skill công cụ. `<horcrux>` là gốc Horcrux trong dự án. Chi tiết: `doc
    recompile mới là sự thật.
 4. **PlayMode không qua tool này** (cần Play, chiếm Editor); developer chạy trong Window > General > Test Runner.
 5. **Thiếu mục thì mở rộng `verify.sh`**, không viết script kiểm mới bên cạnh.
+6. **Đọc output thẳng, không pipe qua `tail`, `head`:** tool đã in gọn từng bước; pipe giữ mọi dòng tới khi lệnh xong, lệnh
+   bị đẩy nền thì không biết đang kẹt bước nào. Hạn giờ của lệnh gọi phải dài hơn `--timeout` (600 s mỗi assembly).
+7. **Không đổi cây làm việc (pull, checkout, merge) khi tool đang chạy:** Editor nạp file mới giữa lượt, kết quả không thuộc
+   bản nào. Dừng tool, đổi cây, chạy lại.
 
 ## Lệnh
 

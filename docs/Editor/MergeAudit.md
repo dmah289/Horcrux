@@ -5,7 +5,7 @@ Code: `Editor/MergeAudit/Tools~/merge_audit.py`
 Bốn phép kiểm cho một lần merge. `plan`, chạy trước merge, chỉ ra chỗ git sẽ ghép sai: commit dời thư mục, cặp rename khác
 GUID, asset không đi theo `.meta`, file mới lạc vào thư mục bên kia đã dời. `lines`, chạy sau merge, chứng minh mỗi dòng
 một cha thêm vẫn còn trong merge. `assets` chứng minh merge không sinh GUID trùng, `.meta` lệch, tham chiếu gãy, thư mục
-sống lại hay entry Addressables mất. `replay` dựng lại merge tự động của một merge commit có sẵn và chỉ ra phần người merge
+sống lại, entry Addressables mất hay con trỏ submodule lùi. `replay` dựng lại merge tự động của một merge commit có sẵn và chỉ ra phần người merge
 sửa tay. Git chỉ báo conflict text; ghép nhầm file, đổ thay đổi sang file khác, rơi entry thì im lặng. Bốn phép này đo
 đúng những thứ git không báo.
 
@@ -57,6 +57,7 @@ lines merge
 assets merge
   merge, cha 1, cha 2, base: ls-tree, guid map, grep "guid: …" trên YAML, m_GUID trong AssetGroups
   lỗi(merge) − lỗi(cha 1) − lỗi(cha 2) → mới do merge
+  gitlink(merge) là tổ tiên thật của gitlink(cha k) trong submodule (merge-base --is-ancestor) → con trỏ lùi
 ```
 
 ## Lệnh
@@ -97,6 +98,7 @@ Merge commit tạo bằng `commit-tree` hay merge thường đều đọc đư�
 | `assets` tham chiếu gãy mới, ghi `từng là X ở cha k` | một cha xoá asset mà file của cha kia còn dùng | gắn asset thay thế, hoặc khôi phục asset |
 | `assets` thư mục sống lại | file thêm vào thư mục cũ sau khi bên kia dời | `git mv` sang thư mục mới |
 | `assets` entry Addressables mất | entry một cha thêm không còn | thêm lại entry |
+| `assets` con trỏ submodule lùi | cha kia đổi con trỏ về bản cũ (máy người đẩy chưa cập nhật submodule), cha này không đổi so với base nên git nhận bản cũ không báo | commit mới trả con trỏ về bản của cha k; báo người đẩy chạy `git submodule update` |
 | `assets` `gỡ chủ ý theo merge ba chiều` | một cha gỡ entry, cha kia giữ như base | soát ý định: thường là chủ ý (đổi sang asset khác cùng address) |
 | `replay` `SỬA NGOÀI CONFLICT` | merge commit có thay đổi ngoài conflict | đọc diff file đó: ghép tay có chủ ý, hay sửa lén trong merge |
 
@@ -114,6 +116,7 @@ Merge commit tạo bằng `commit-tree` hay merge thường đều đọc đư�
 Repo thật có commit dời 436 file ở một nhánh, nhánh kia sửa prefab và texture `.meta` trong thư mục bị dời. Kỳ vọng và đã
 đạt: `plan` in đúng commit dời và bậc, 4 cặp `GHÉP SAI GUID` và 1 `ASSET KHÔNG THEO META` trùng với 5 file merge một lần đã
 làm hỏng, 160 file mới lạc thư mục; `lines` trên merge commit liệt kê đúng các file bị bỏ chủ ý; `assets` báo đúng 6 tham
-chiếu gãy mới của một prefab tool và tách 3 entry Addressables gỡ chủ ý; `replay` trên hai merge thường ra 0 file khác, trên
+chiếu gãy mới của một prefab tool và tách 3 entry Addressables gỡ chủ ý; trên merge nhận con trỏ submodule cũ từ commit người khác báo đúng một dòng lùi 9
+commit, ba merge sạch báo 0; `replay` trên hai merge thường ra 0 file khác, trên
 merge theo bậc ra đúng phần ghép tay. Ca sai: rev không tồn tại, commit một cha, `replay` không đối số → mã 2 hoặc bỏ qua
 có ghi chú.

@@ -1,6 +1,6 @@
 ---
 name: merge-audit
-description: Dùng khi merge hai nhánh của project Unity — nhất là khi một nhánh có commit dời thư mục — hoặc khi nhận merge commit người khác đã đẩy lên. Merge theo bậc trong worktree riêng, kiểm trước và sau bằng công cụ dựng sẵn trong Horcrux, vì git không báo khi ghép nhầm file hay làm rơi dòng.
+description: Dùng khi merge hai nhánh của project Unity — nhất là khi một nhánh có commit dời thư mục — hoặc khi nhận merge commit người khác đã đẩy lên, kể cả `git pull` sinh merge commit. Merge theo bậc trong worktree riêng, kiểm trước và sau bằng công cụ dựng sẵn trong Horcrux, vì git không báo khi ghép nhầm file hay làm rơi dòng.
 ---
 
 # merge-audit — merge nhánh Unity, chứng minh không mất gì
@@ -11,6 +11,9 @@ Skill công cụ. `<horcrux>` là gốc Horcrux trong dự án. Chi tiết lện
 
 1. **Không kết luận merge sạch từ "không conflict".** Git dò rename theo độ giống; `.meta` cùng importer giống nhau ~90%,
    prefab dựng lại rớt ngưỡng — thay đổi đổ sang file khác không một dòng báo. Bằng chứng là `lines` và `assets` sau merge.
+   `git pull` ra merge commit cũng là merge. Con trỏ submodule lùi im lặng: phía kia đẩy con trỏ cũ (máy họ chưa cập nhật
+   submodule), phía này không đổi so với base, git lấy bản cũ — `assets` bắt; pull fast-forward thì dấu hiệu là `git status`
+   báo submodule `M` ngay sau pull. Trả con trỏ bằng commit mới, báo người đẩy.
 2. **Một nhánh có commit dời thư mục thì merge theo bậc**: tới cha commit dời → tới commit dời → tới đỉnh, mọi bậc
    `-X find-renames=100%`. Rename nguyên vẹn không kéo theo directory rename: file mới phía kia ở thư mục cũ phải `git mv`
    tay — `plan` liệt kê sẵn đường dẫn đích.

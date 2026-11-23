@@ -117,6 +117,37 @@ def tree_entries(repo, rev):
     return files, dirs
 
 
+def gitlinks(repo, rev):
+    """Đường dẫn submodule → commit rev trỏ tới."""
+    res = {}
+    for line in git(repo, "ls-tree", "-r", rev).splitlines():
+        meta, _, path = line.partition("\t")
+        mode, kind, sha = meta.split()
+        if kind == "commit":
+            res[path] = sha
+    return res
+
+
+def submodule_rollbacks(repo, merge, parents):
+    """Submodule mà merge trỏ về tổ tiên của commit một cha đang trỏ. Git nhận im lặng: cha kia đổi con trỏ so với base,
+    cha này không đổi, nên merge lấy bản của cha kia dù đó là bản cũ hơn — máy người đẩy chưa cập nhật submodule."""
+    rows = []
+    links = {k: gitlinks(repo, r) for k, r in parents.items()}
+    for path, sha in gitlinks(repo, merge).items():
+        sub = os.path.join(repo, path)
+        for k, links_k in links.items():
+            ahead = links_k.get(path)
+            if not ahead or ahead == sha:
+                continue
+            rc, _, _ = git_rc(sub, "merge-base", "--is-ancestor", sha, ahead)
+            if rc == 0:
+                lost = git(sub, "rev-list", "--count", f"{sha}..{ahead}").strip()
+                rows.append(f"{path}: merge trỏ {sha[:8]}, lùi {lost} commit so với {k} ({ahead[:8]})")
+            elif rc != 1:
+                print(f"[merge_audit]: submodule {path} thiếu commit {sha[:8]} hoặc {ahead[:8]}; không xét được lùi", file=sys.stderr)
+    return rows
+
+
 def guid_paths(repo, rev):
     """GUID → các đường dẫn asset (bỏ đuôi .meta) ở rev, kể cả submodule ở đúng commit rev trỏ tới."""
     out = git(repo, "grep", "-I", "-e", "^guid: ", rev, "--", "*.meta", ok=(0, 1))
@@ -126,11 +157,7 @@ def guid_paths(repo, rev):
             path, _, g = line[len(prefix):].rpartition(":guid: ")
             res[g.strip()].append(path[:-5])
     # Asset dự án trỏ script của submodule (framework) suốt; bỏ submodule thì mọi tham chiếu đó thành "gãy" giả.
-    for line in git(repo, "ls-tree", "-r", rev).splitlines():
-        meta, _, path = line.partition("\t")
-        mode, kind, sha = meta.split()
-        if kind != "commit":
-            continue
+    for path, sha in gitlinks(repo, rev).items():
         sub = os.path.join(repo, path)
         if git_rc(sub, "cat-file", "-e", f"{sha}^{{commit}}")[0] != 0:
             print(f"[merge_audit]: submodule {path} không có commit {sha[:8]}; tham chiếu sang nó bị báo gãy", file=sys.stderr)
@@ -424,6 +451,8 @@ def cmd_assets(a):
                 n = sum(1 for f in T["merge"][0] if f.startswith(d + "/"))
                 rows.append(f"{d} ({n} file) — {k} đã dời hoặc xoá")
     section("thư mục một cha đã bỏ mà sống lại trong merge", rows, [])
+
+    section("con trỏ submodule lùi", submodule_rollbacks(a.repo, merge, {"cha 1": p1, "cha 2": p2}), [])
 
     blobs = Blobs(a.repo)
     E = {k: aa_entries(a.repo, r, blobs, a.groups) for k, r in revs.items()}

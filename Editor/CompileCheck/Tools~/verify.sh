@@ -115,9 +115,17 @@ IFS=',' read -ra ASMS <<< "$TESTS"
 for asm in "${ASMS[@]}"; do
   [ -z "$asm" ] && continue
   # scene đang mở có thay đổi chưa lưu thì Test Runner mở hộp thoại hỏi lưu: lệnh đứng tới timeout, Editor không trả lời CLI
+  started=$SECONDS
   raw="$("$U" cmd --project-path "$W" --result-only test run --mode EditMode --filter_type assembly --filter "$asm" --timeout "$TIMEOUT" 2>&1)"
-  for i in $(seq 1 $((TIMEOUT / 5))); do
-    [ "$(echo "$raw" | jfield status)" = "in_progress" ] || break
+  # Kết nối rớt giữa lượt ("socket hang up"): test có thể vẫn chạy trong Editor nên hỏi test status; Editor mất hẳn thì nói thẳng.
+  if [ "$(echo "$raw" | jfield success)" = "False" ]; then
+    if ! "$U" status --project-path "$W" 2>&1 | grep -q "ready"; then
+      echo "tests $asm: Editor ngắt giữa lượt test ($(echo "$raw" | jfield errors | head -c 160)) và không còn ready. Mở lại Editor rồi chạy lại"
+      FAIL="$FAIL unity"; continue
+    fi
+    raw="$("$U" cmd --project-path "$W" --result-only test status 2>&1)"
+  fi
+  while [ "$(echo "$raw" | jfield status)" = "in_progress" ] && [ $((SECONDS - started)) -lt "$TIMEOUT" ]; do
     sleep 5; raw="$("$U" cmd --project-path "$W" --result-only test status 2>&1)"
   done
   if [ "$(echo "$raw" | jfield status)" = "in_progress" ]; then

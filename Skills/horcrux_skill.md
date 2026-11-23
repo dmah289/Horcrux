@@ -49,7 +49,7 @@ từ gốc Horcrux: skill `Skills/`, Plan `Plans/`, tài liệu hệ `docs/Runti
 | So màn với demo, ảnh máy thật; bố cục trên máy khác Editor; xem trên máy trước khi build; dựng anim, hiệu ứng theo video demo | `demo-compare` | `ui-reskin` khi sửa prefab UI, `editor-first` khi chỉnh scene, prefab · `feel-tune` khi chỉnh tween theo số đo từ video |
 | Build nặng, giảm size | `build-size` | |
 | Kết thúc task sửa code C#, trước khi báo xong hay commit | `compile-check` | |
-| Merge nhánh, giải conflict, soát merge commit người khác đẩy lên | `merge-audit`, `compile-check` | `editor-first` khi ghép prefab, scene |
+| Merge nhánh, `git pull` ra merge commit, giải conflict, soát merge commit người khác đẩy lên | `merge-audit`, `compile-check` | `editor-first` khi ghép prefab, scene |
 | Orchestrator bơm ngữ cảnh cho subagent | hàng của việc được giao (`workflow` › Subagent) | |
 
 ## Ba tầng ràng buộc
