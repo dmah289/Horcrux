@@ -1,6 +1,7 @@
 # Plan — `Tutorial`: một lớp tối, tay chỉ, hộp thoại, tiến độ cho mọi lượt dạy; gộp `CanvasSpotlight`
 
-Bản tạm: category-jam `Assets/_CategoryJam/Scripts/Tutorial/Core/` (namespace đã là Horcrux, nằm nhờ `CategoryJam.Gameplay`), tài liệu `Scripts/Tutorial/Tutorial.md`. Không phụ thuộc Plan nào; GĐ3 chờ dự án consumer `ICanvasSpotlight` — category-jam không gọi (grep ra 0), developer chỉ tên dự án.
+Bản tạm: category-jam `Assets/_CategoryJam/Scripts/Tutorial/Core/` (namespace đã là Horcrux, nằm nhờ `CategoryJam.Gameplay`), tài liệu `Scripts/Tutorial/Tutorial.md`.
+**Phụ thuộc:** không — gõ lúc nào cũng được; GĐ3 chờ dự án consumer `ICanvasSpotlight` — category-jam không gọi (grep ra 0), developer chỉ tên dự án.
 Kiểm (từ gốc dự án): `bash "Assets/Horcrux/Editor/CompileCheck/Tools~/verify.sh" --csproj com.horcrux.runtime.csproj,CategoryJam.Gameplay.csproj,Assembly-CSharp.csproj --tests Horcrux.EditModeTests,CategoryJam.EditModeTests`.
 
 ## Kịch bản

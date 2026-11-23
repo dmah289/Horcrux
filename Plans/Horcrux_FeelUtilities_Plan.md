@@ -1,7 +1,7 @@
 # Plan — `TadaCurve`, `AnimationRegistry`, `ProgressBar.Play` và hai sửa extension Horcrux theo kinh nghiệm dự án
 
-Bản tạm: category-jam A `Entities/Tile/TileFinaleCurve.cs`, `TileFeelTuning.cs` › `TileFinaleTuning` · B `Director/AnimatingSystem.cs`, `IAnimate.cs` · C `Hud/ComboPill.cs` (CTS quanh `PlayAsync`) · D `TileView` (`SetAlpha` mỗi frame bay); kết luận audit ở `Scripts/Feel.md`. Bốn cơ chế độc lập; không phụ thuộc Plan nào, trước hay sau `Horcrux_HopCurve_DipFlash_Plan.md` đều được.
-Chung file, thứ tự nào cũng được: `TransformExtensions.CharmTween.cs` với `Horcrux_CharmFlyArcFollow_Plan.md` · `docs/Runtime/CharmFlyArc/CharmFlyArc.md` với CharmFlyArcFollow (tạo `.html`), ArchedControlPoint, UniTextSetFraction · category-jam `Scripts/Feel.md` › Nghiệm thu với SwirlPath, HopCurve_DipFlash.
+Bản tạm: category-jam A `Entities/Tile/TileFinaleCurve.cs`, `TileFeelTuning.cs` › `TileFinaleTuning` · B `Director/AnimatingSystem.cs`, `IAnimate.cs` · C `Hud/ComboPill.cs` (CTS quanh `PlayAsync`) · D `TileView` (`SetAlpha` mỗi frame bay); kết luận audit ở `Scripts/Feel.md`.
+**Phụ thuộc:** không — gõ lúc nào cũng được; bốn cơ chế độc lập, trước hay sau [HopCurve_DipFlash](Horcrux_HopCurve_DipFlash_Plan.md) đều được. Chung file Horcrux, thứ tự nào cũng được: GĐ6 `TransformExtensions.CharmTween.cs` với [CharmFlyArcFollow](Horcrux_CharmFlyArcFollow_Plan.md) · GĐ6 `UniTextExtensionMethods.cs` với [UniTextSetFraction](Horcrux_UniTextSetFraction_Plan.md) (chỗ thêm khác nhau).
 Kiểm: `bash "<horcrux>/Editor/CompileCheck/Tools~/verify.sh" --csproj com.horcrux.runtime.csproj,Horcrux.EditModeTests.csproj,Horcrux.PlayModeTests.csproj --tests Horcrux.EditModeTests`; PlayMode chạy ở Window › General › Test Runner.
 
 ## Cơ chế A — `TadaCurve`: hình dạng nhịp tada
@@ -595,6 +595,7 @@ Cùng file › `CharmFlyArc` › thêm XML doc ngay trên chữ ký:
 
 | Chỗ | Đổi |
 |---|---|
+| thứ tự với Plan khác | thứ tự nào cũng được: `docs/Runtime/CharmFlyArc/CharmFlyArc.md` với [CharmFlyArcFollow](Horcrux_CharmFlyArcFollow_Plan.md) (tạo `.html`), [ArchedControlPoint](Horcrux_ArchedControlPoint_Plan.md), [UniTextSetFraction](Horcrux_UniTextSetFraction_Plan.md) · category-jam `Scripts/Feel.md` › Nghiệm thu với [SwirlPath](Horcrux_SwirlPath_Plan.md), [HopCurve_DipFlash](Horcrux_HopCurve_DipFlash_Plan.md) |
 | `docs/Runtime/Tada/Tada.md`, `.html` | tạo, `.md` mở `Code: Runtime/Utilities/Tweening/Tada`: Flow A · Thuật toán A (ba pha, mốc liền mạch) · bảng API (`Duration`, `Evaluate`, `EndLift`, `Shadow01`, `WiggleStart`, `BEAT_COUNT`) · Trước khi chạy: host tách gốc và thân (`async-presentation`: sprite 2.5D, bóng là con của gốc), `TadaSpec` phơi `[SerializeField]` trên prefab host · ví dụ nối sang bay (`EndLift`, `Shadow01(EndLift)`) · Design decisions từ comment và khối Không làm · ràng buộc núm host tự giữ (`WindupDip ≤ LiftHeight`; `LiftScale`, `WindupScale` so với cỡ host trước và sau tada) |
 | `docs/Runtime/AnimationRegistry/AnimationRegistry.md`, `.html` | tạo, `.md` mở `Code: Runtime/Utilities/Common`: luồng Register khi vào sân → `IsAnyAnimating` khi chờ → `Unregister` khi rời → `Clear` theo level · bảng API · ai `Register`, ai `Unregister`, chủ `Clear` · Design decisions · bẫy: `MonoBehaviour` huỷ mà chưa gỡ vẫn được hỏi; quét tuyến tính mỗi lần hỏi |
 | mỗi `.html` trên | chọn từ `.md`: kịch bản (tile cuối diễn rồi bay; host chờ hết diễn rồi mở tương tác) · cách dùng (Trước khi chạy nguyên vẹn, API consumer gọi) · flow · lưu ý (object huỷ, núm ràng buộc nhau) |

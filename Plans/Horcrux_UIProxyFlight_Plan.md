@@ -1,6 +1,7 @@
 # Plan — `UIProxyFlight`: bản sao UI bay tới vật world rồi nhường chỗ
 
-Bản tạm: category-jam `Scripts/Entities/Cache/BoosterFlight.cs` › `FlyAsync`; instance `extra_slot_flight`, `pack_flight` trong `Game.unity`; caller `CacheTileSlots.FlyTrayAsync`, `FlyPackAsync`. GĐ1 gõ được sớm; GĐ2 sau `Horcrux_HopCurve_DipFlash_Plan.md` GĐ1 (`HopCurve.ApexT`, `ArcY`). Chung `BoosterFlight.cs`, `Scripts/Feel.md` §10 với Plan HopCurve › Chuyển dự án: Plan này chuyển trước thì mục `BoosterFlight.cs` bên kia bỏ; hàng §10 viết một lần, theo tên hàm đang có (`HopCurve.ArcY` hay `TileFlightCurve.ArcY`).
+Bản tạm: category-jam `Scripts/Entities/Cache/BoosterFlight.cs` › `FlyAsync`; instance `extra_slot_flight`, `pack_flight` trong `Game.unity`; caller `CacheTileSlots.FlyTrayAsync`, `FlyPackAsync`.
+**Phụ thuộc:** GĐ1 gõ lúc nào cũng được; GĐ2 gõ sau [HopCurve_DipFlash](Horcrux_HopCurve_DipFlash_Plan.md) GĐ1 (`HopCurve.ApexT`, `ArcY`).
 Kiểm: `bash "<horcrux>/Editor/CompileCheck/Tools~/verify.sh" --csproj com.horcrux.runtime.csproj,Horcrux.PlayModeTests.csproj --tests Horcrux.EditModeTests`; PlayMode chạy ở Window › General › Test Runner.
 
 ## Kịch bản
@@ -322,6 +323,7 @@ using Horcrux.Runtime.Utilities.PhysXHelper;
 
 | Chỗ | Đổi |
 |---|---|
+| thứ tự với Plan khác | `BoosterFlight.cs`, `Scripts/Feel.md` §10 chung với Chuyển dự án của [HopCurve_DipFlash](Horcrux_HopCurve_DipFlash_Plan.md): Plan này chuyển trước thì mục `BoosterFlight.cs` bên kia bỏ; hàng §10 viết một lần, theo tên hàm đang có (`HopCurve.ArcY` hay `TileFlightCurve.ArcY`) |
 | `docs/Runtime/UIProxyFlight/UIProxyFlight.md`, `.html` | tạo: `Code: Runtime/Utilities/UI/UIProxyFlight.cs` · luồng · bảng API (`FlyAsync`, hai hook, `UIProxyFlightPath`, field) · Trước khi chạy (Editor setup GĐ1–2) · Design decisions (đích chốt lúc gọi, enum từ 1, huỷ ném OCE, cỡ bằng `sizeDelta`) · bẫy: canvas gốc không Overlay, cha của `visual` scale ≠ 1, thiếu Override Sorting, `path` = 0, huỷ ném OCE, lớp con quên dọn đuôi trong `OnFlightEnded`, đích trượt trong lúc bay |
 | `Scripts/Entities/Cache/BoosterFlight.cs` | viết lại, giữ file và `.meta` (GUID scene trỏ): `BoosterFlight : UIProxyFlight` (namespace `CategoryJam.Gameplay.Entities`, `using Coffee.UIExtensions;`, `using Horcrux.Runtime.Utilities.UI;`) · ô `[SerializeField] UIParticle trail` (Tooltip: đuôi ribbon trắng và bling, con của visual) · `OnFlightStarted` → `trail.Play()` · `OnFlightEnded` → `trail.Stop(); trail.Clear();` |
 | `CacheTileSlots.FlyTrayAsync` | bỏ `worldCamera`, `halfWidth`, `screenWidth`; giữ dòng `landing` (`_horizontalGrid` hay `_row` nếu `Horcrux_HorizontalRow_Plan.md` đã chuyển) → `return _extraSlotFlight.FlyAsync(launchScreenPoint, Director.WorldCamera, landing, slot.RestWorldWidth, ct);` |

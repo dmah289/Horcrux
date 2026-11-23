@@ -1,6 +1,7 @@
 # Plan — `ConveyorLoop`: hàng vật trượt quay vòng giữ nguyên khe
 
-Bản tạm: category-jam `Scripts/Entities/Shelf/ShelfMover.cs` › `LoopLength`, `WrapIntoLoop`, `RegisterBounds`; `Tests/EditMode/ShelfMoverTests.cs`. Không phụ thuộc Plan nào; chung `Runtime/AssemblyInfo.cs` với `Horcrux_SpriteFill_Plan.md` GĐ1 — Plan gõ trước tạo file, Plan sau thấy dòng đã có thì bỏ qua.
+Bản tạm: category-jam `Scripts/Entities/Shelf/ShelfMover.cs` › `LoopLength`, `WrapIntoLoop`, `RegisterBounds`; `Tests/EditMode/ShelfMoverTests.cs`.
+**Phụ thuộc:** không — gõ lúc nào cũng được. Chung `Runtime/AssemblyInfo.cs` với [SpriteFill](Horcrux_SpriteFill_Plan.md) GĐ1: Plan gõ trước tạo file, Plan sau thấy dòng đã có thì bỏ qua.
 Kiểm: `bash "<horcrux>/Editor/CompileCheck/Tools~/verify.sh" --csproj com.horcrux.runtime.csproj,Horcrux.EditModeTests.csproj --tests Horcrux.EditModeTests`.
 
 ## Kịch bản

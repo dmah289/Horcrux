@@ -1,6 +1,7 @@
 # Plan — AudioSystem `variants`, `startMusic`: một tiếng nhiều clip rút theo túi xáo, nhạc phát khi host dựng xong
 
-Bản tạm: category-jam `Assets/_Game/Scripts/Feature/CoinSystem/ButtonCoin.cs` (`CoinSpawnSfxs`, `ShuffledSpawnSfxs`), `Assets/_CategoryJam/Scripts/Feedback/GameAudioService.cs` (`Start`). Phụ thuộc `Horcrux_SlotShuffle_Plan.md` › GĐ1 — `FisherYates.Shuffle<T>(Span<T>, Func<int, int>)` ở `Runtime/Utilities/Permutation/FisherYates.cs`, gõ trước Plan này; `ShuffleBag` vào cùng thư mục.
+Bản tạm: category-jam `Assets/_Game/Scripts/Feature/CoinSystem/ButtonCoin.cs` (`CoinSpawnSfxs`, `ShuffledSpawnSfxs`), `Assets/_CategoryJam/Scripts/Feedback/GameAudioService.cs` (`Start`).
+**Phụ thuộc:** gõ sau [SlotShuffle](Horcrux_SlotShuffle_Plan.md) GĐ1 — `FisherYates.Shuffle<T>(Span<T>, Func<int, int>)` ở `Runtime/Utilities/Permutation/FisherYates.cs`; `ShuffleBag` vào cùng thư mục.
 Kiểm (từ gốc dự án): `bash "Assets/Horcrux/Editor/CompileCheck/Tools~/verify.sh" --csproj com.horcrux.runtime.csproj,CategoryJam.Gameplay.csproj,Assembly-CSharp.csproj --tests Horcrux.EditModeTests,CategoryJam.EditModeTests` (chỉ EditMode).
 PlayMode `AudioServiceTests`: Editor mở thì Window › General › Test Runner › PlayMode › Horcrux.PlayModeTests › AudioServiceTests › Run Selected; không Editor nào mở thì `Unity.exe -batchmode -projectPath . -runTests -testPlatform PlayMode -testFilter AudioServiceTests -testResults <xml> -logFile <log>`, đọc `test-run` total/passed/failed.
 

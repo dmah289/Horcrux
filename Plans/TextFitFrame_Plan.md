@@ -1,6 +1,7 @@
 # Plan — `TextFitFrame`: khung Sliced cao theo số dòng chữ, đáy khung đứng yên
 
-Bản tạm: category-jam `Scripts/Entities/Box/TextFitFrame.cs`, test `Tests/EditMode/TextFitFrameTests.cs`; host `CategoryNameTag` trên `name_tab` của `Addressables/Box/CategoryBox.prefab`. Không phụ thuộc Plan nào.
+Bản tạm: category-jam `Scripts/Entities/Box/TextFitFrame.cs`, test `Tests/EditMode/TextFitFrameTests.cs`; host `CategoryNameTag` trên `name_tab` của `Addressables/Box/CategoryBox.prefab`.
+**Phụ thuộc:** không — gõ lúc nào cũng được.
 Kiểm: `bash "<horcrux>/Editor/CompileCheck/Tools~/verify.sh" --csproj com.horcrux.runtime.csproj,Horcrux.EditModeTests.csproj --tests Horcrux.EditModeTests`; chuyển dự án `--csproj CategoryJam.Gameplay.csproj,CategoryJam.EditModeTests.csproj,com.horcrux.runtime.csproj --tests CategoryJam.EditModeTests,Horcrux.EditModeTests`.
 
 ## Kịch bản

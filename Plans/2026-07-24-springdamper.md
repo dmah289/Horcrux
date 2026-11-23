@@ -1,6 +1,7 @@
 # Plan — `SpringDamper`: lò xo–giảm chấn độc lập framerate lên Horcrux
 
-Plan gốc Horcrux, không bản tạm; dự án chưa có call site. Không phụ thuộc Plan nào.
+Plan gốc Horcrux, không bản tạm; dự án chưa có call site.
+**Phụ thuộc:** không — gõ lúc nào cũng được.
 Kiểm: `bash "<horcrux>/Editor/CompileCheck/Tools~/verify.sh" --csproj com.horcrux.runtime.csproj,Horcrux.EditModeTests.csproj --tests Horcrux.EditModeTests`.
 
 ## Kịch bản

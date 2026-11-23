@@ -1,6 +1,7 @@
 # Plan — `SetFraction`: ghi "x/y" lên UniText không tạo chuỗi
 
-Bản tạm: category-jam `Assets/_CategoryJam/Scripts/Utilities/UniTextFractionExtensions.cs` › `SetFraction`, test `Tests/EditMode/UniTextFractionTests.cs`. Không phụ thuộc Plan nào; category-jam `CategoryBox.cs` chung với Chuyển dự án của `Horcrux_SpriteFill_Plan.md` — gõ cả hai thì chuyển chung một lần.
+Bản tạm: category-jam `Assets/_CategoryJam/Scripts/Utilities/UniTextFractionExtensions.cs` › `SetFraction`, test `Tests/EditMode/UniTextFractionTests.cs`.
+**Phụ thuộc:** không — gõ lúc nào cũng được. Chung file Horcrux `UniTextExtensionMethods.cs` với [FeelUtilities](Horcrux_FeelUtilities_Plan.md) GĐ6 (chỗ thêm khác nhau, thứ tự nào cũng được).
 Kiểm: `bash "<horcrux>/Editor/CompileCheck/Tools~/verify.sh" --csproj com.horcrux.runtime.csproj,Horcrux.EditModeTests.csproj --tests Horcrux.EditModeTests`.
 
 ## Kịch bản
@@ -70,6 +71,7 @@ Thêm ngay dưới:
 
 | Chỗ | Đổi |
 |---|---|
+| thứ tự với Plan khác | category-jam `CategoryBox.cs` chung với Chuyển dự án của [SpriteFill](Horcrux_SpriteFill_Plan.md) — gõ cả hai thì chuyển chung một lần |
 | `docs/Runtime/CharmFlyArc/CharmFlyArc.md` › §3, bảng quyết định | thêm hàng `SetFraction(int, int)` ngay dưới `SetNumber(int)`: ghi "x/y" không cấp phát, cho nhãn tiến độ đổi mỗi tương tác |
 | `docs/Editor/TmpToUniText.md` › hàng `SetText("{0}", n)` | thêm `SetFraction(int, int)` cho khuôn `"{0}/{1}"` |
 | `Assets/_CategoryJam/Scripts/Utilities/UniTextFractionExtensions.cs` + `.meta` | xoá; giữ `using CategoryJam.Gameplay.Utilities` ở caller (namespace chung, còn type khác dùng) |

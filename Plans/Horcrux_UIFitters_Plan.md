@@ -1,6 +1,7 @@
 # Plan — `DesignWidthFitter` giữ bề rộng thiết kế của khối UI, `UICoverFitter` phủ ảnh nền kín khung
 
-Bản tạm: category-jam `Bridge/DesignWidthFitter.cs` (`Shop/ShopPanel.prefab` › `Viewport/Content`, root `Popups/Parts/PopupFrame.prefab`), `Bridge/Menu/HomeBackgroundFitter.cs` (`Scenes/Menu.unity` › `Page3UI/Content/Home/bg_room`). Không phụ thuộc Plan nào; hai component độc lập.
+Bản tạm: category-jam `Bridge/DesignWidthFitter.cs` (`Shop/ShopPanel.prefab` › `Viewport/Content`, root `Popups/Parts/PopupFrame.prefab`), `Bridge/Menu/HomeBackgroundFitter.cs` (`Scenes/Menu.unity` › `Page3UI/Content/Home/bg_room`).
+**Phụ thuộc:** không — gõ lúc nào cũng được; hai component độc lập.
 Kiểm: `bash "<horcrux>/Editor/CompileCheck/Tools~/verify.sh" --csproj com.horcrux.runtime.csproj,Horcrux.EditModeTests.csproj --tests Horcrux.EditModeTests`; chuyển dự án `--csproj Assembly-CSharp.csproj,CategoryJam.Gameplay.csproj,com.horcrux.runtime.csproj --tests CategoryJam.EditModeTests,Horcrux.EditModeTests`.
 
 ## Kịch bản

@@ -1,6 +1,7 @@
 # Plan — `ViewportCamera`, `ViewportAnchor`, `ViewportCover`: camera ortho giữ trọn khung thiết kế, vật world neo mép màn, nền phủ kín
 
-Bản tạm: category-jam `Scripts/Utilities/` (`GameplayViewport.cs`, `GameplayViewport.Editor.cs`, `ViewportAnchor.cs`, `ViewportAnchor.Editor.cs`, `ViewportCover.cs`, `SafeAreaHeadroom.cs`, `BannerSpace.cs`) gắn ở `GameplayRoot.prefab` › `camera_main` (1 camera, 9 anchor, 1 cover). Không phụ thuộc Plan nào; `Horcrux_Ads_Plan.md` dùng `BottomInset` của GĐ2; chung thư mục `Runtime/Utilities/Layout/` với `Horcrux_BandFit_Plan.md`.
+Bản tạm: category-jam `Scripts/Utilities/` (`GameplayViewport.cs`, `GameplayViewport.Editor.cs`, `ViewportAnchor.cs`, `ViewportAnchor.Editor.cs`, `ViewportCover.cs`, `SafeAreaHeadroom.cs`, `BannerSpace.cs`) gắn ở `GameplayRoot.prefab` › `camera_main` (1 camera, 9 anchor, 1 cover).
+**Phụ thuộc:** không — gõ lúc nào cũng được. Plan chờ: Chuyển dự án của [Ads](Horcrux_Ads_Plan.md) dùng `BottomInset` của GĐ2.
 Kiểm: `bash "<horcrux>/Editor/CompileCheck/Tools~/verify.sh" --csproj com.horcrux.runtime.csproj,Horcrux.EditModeTests.csproj --tests Horcrux.EditModeTests`; chuyển dự án `--csproj CategoryJam.Gameplay.csproj,CategoryJam.Editor.csproj,CategoryJam.EditModeTests.csproj,com.horcrux.runtime.csproj,com.horcrux.editor.csproj,Horcrux.EditModeTests.csproj --tests CategoryJam.EditModeTests,Horcrux.EditModeTests`.
 
 ## Kịch bản

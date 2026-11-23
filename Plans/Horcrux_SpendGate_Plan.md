@@ -1,6 +1,7 @@
 # Plan — `SpendGate`: một cửa trả giá, thiếu thì ví quyết
 
-Bản tạm: category-jam `Assets/_Kelsey/Core/Runtime/GameCommon/ICoinService.cs` › `CheckCoinEnoughAndConsume`, gọi ở 4 nút trả coin. Không phụ thuộc Plan nào; `PopupAddBox`, `PopupOfferRevive`, `LiveSystem_PopupRefillLiveOffer` chung với Chuyển dự án của `Horcrux_Ads_Plan.md` — chuyển Plan này trước.
+Bản tạm: category-jam `Assets/_Kelsey/Core/Runtime/GameCommon/ICoinService.cs` › `CheckCoinEnoughAndConsume`, gọi ở 4 nút trả coin.
+**Phụ thuộc:** không — gõ lúc nào cũng được.
 Kiểm: `bash "<horcrux>/Editor/CompileCheck/Tools~/verify.sh" --csproj com.horcrux.runtime.csproj,Assembly-CSharp.csproj --tests Horcrux.EditModeTests`.
 
 ## Kịch bản
@@ -107,6 +108,7 @@ namespace Horcrux.Runtime.Abstractions.Spend
 
 | Chỗ | Đổi |
 |---|---|
+| thứ tự với Plan khác | `PopupAddBox`, `PopupOfferRevive`, `LiveSystem_PopupRefillLiveOffer` chung với Chuyển dự án của [Ads](Horcrux_Ads_Plan.md) — chuyển Plan này trước |
 | `docs/Runtime/SpendGate/SpendGate.md`, `.html` | tạo, `Code: Runtime/Abstractions/Foundations/Spend/`: luồng · cách viết một ví (tên trung tính, ngữ cảnh là struct) · bảng kết quả → caller làm gì · quyết định trái trực giác · Mở rộng sau · lưu ý: cửa không kiểm chỗ nhận, giá theo kết cục không qua cửa này |
 | `Assets/_CategoryJam/Bridge/CoinWallet.cs` | tạo theo khung dưới (Assembly-CSharp, cùng assembly với 4 popup) |
 | `Assets/_CategoryJam/Bridge/PopupAddBox.cs` › `OnClickCoin` | `CoinWallet.Instance.TrySpend(Price, new CoinSpend(Placement, GROUP_PLACEMENT._level, Event_IAP_TRACK.PLACEMENT._popup_add_box))`, `false` thì `return`; bỏ `SetPlacement` ở caller |

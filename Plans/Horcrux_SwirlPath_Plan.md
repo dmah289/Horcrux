@@ -1,6 +1,7 @@
 # Plan — `SwirlPath`: một nhóm vật xoáy vào quanh tâm rồi bung về đúng chỗ cũ
 
-Bản tạm: category-jam `Scripts/Director/FanSwirl.cs` › `FanSwirlTuning`, `FanSwirl` (caller `ShuffleBooster`, test `Tests/EditMode/FanSwirlTests.cs`). Không phụ thuộc Plan nào. Chung file: category-jam `Scripts/Feel.md` › Nghiệm thu, dòng "Máy kiểm" với `Horcrux_FeelUtilities_Plan.md` › Chuyển dự án, `Horcrux_HopCurve_DipFlash_Plan.md` › Chuyển dự án — mỗi Plan chỉ đổi tên test của mình, thứ tự nào cũng được.
+Bản tạm: category-jam `Scripts/Director/FanSwirl.cs` › `FanSwirlTuning`, `FanSwirl` (caller `ShuffleBooster`, test `Tests/EditMode/FanSwirlTests.cs`).
+**Phụ thuộc:** không — gõ lúc nào cũng được.
 Kiểm: `bash "Assets/Horcrux/Editor/CompileCheck/Tools~/verify.sh" --csproj com.horcrux.runtime.csproj --tests Horcrux.EditModeTests`; chuyển dự án `--csproj CategoryJam.Gameplay.csproj,com.horcrux.runtime.csproj --tests CategoryJam.EditModeTests,Horcrux.EditModeTests`.
 
 ## Kịch bản
@@ -188,6 +189,7 @@ namespace Horcrux.Runtime.Utilities.PhysXHelper
 
 | Chỗ | Đổi |
 |---|---|
+| thứ tự với Plan khác | category-jam `Scripts/Feel.md` › Nghiệm thu, dòng "Máy kiểm" chung với Chuyển dự án của [FeelUtilities](Horcrux_FeelUtilities_Plan.md), [HopCurve_DipFlash](Horcrux_HopCurve_DipFlash_Plan.md) — mỗi Plan chỉ đổi tên test của mình, thứ tự nào cũng được |
 | `docs/Runtime/SwirlPath/SwirlPath.md`, `.html` | tạo: luồng một cú xoáy · bảng núm `SwirlSpec` · Thuật toán rút gọn · khuôn caller (một `Tween.Custom` cho cả nhóm, đổi hình khi qua `TurnPoint`, gán `localRotation = Quaternion.Euler(0, 0, pose.LeanDegrees)`, cỡ gốc × `pose.Scale`, `finally` trả bản sao) · bẫy: số vòng lẻ không về chỗ cũ, gán cỡ tuyệt đối thay vì nhân cỡ gốc; trung tính, không tên dự án |
 | `Scripts/Director/ShuffleBooster.cs` | thêm `using Horcrux.Runtime.Utilities.PhysXHelper;` · `FanSwirlTuning` → `SwirlSpec` · `FanSwirl.` → `SwirlPath.`; `_swirl` trên `GameplayRoot.prefab` giữ số (field `[Serializable]` lưu theo tên field) — YAML `_swirl` không đổi |
 | `Scripts/Director/FanSwirl.cs`, `Tests/EditMode/FanSwirlTests.cs` (+ `.meta`) | xoá; grep `FanSwirl` trong `Assets/_CategoryJam` = 0 |

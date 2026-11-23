@@ -1,7 +1,7 @@
 # Plan — Độ khó theo tiến độ: `ProgressCurve`, `LevelTypeTable`, `RandomPick`
 
 Bản tạm: category-jam `Assets/_CategoryJam/Scripts/Config/LevelDifficulty.cs` › `DifficultyCurve.PointAt`, `Utilities/Extensions/LegacyHelpers.cs` › `GetRandomFromListWithProrityPredicates`, `GetRandomFromListReseeded`, `Utilities/Extensions/ListExtensions.cs` › `GetRandomFromList`; khuôn mahjong-jam (`D:\game\iKame\mahjong-jam`) `Assets/_Assets/Scripts/Config/ABTests/ABTestManager.LevelDifficulty.cs` › `GetDifficultType`, `Config/Base/LevelDifficultConfigSO.cs` › `GetCurrentConfigBase`.
-Ba cơ chế độc lập. Không phụ thuộc Plan nào; `Plans/SystemPlan.md` §15 Level Library trỏ sang `LevelTypeTable` (`IDifficultyTagProvider` bọc `TypeOf`).
+**Phụ thuộc:** không — gõ lúc nào cũng được; ba cơ chế độc lập. Plan chờ: `SystemPlan.md` §15 Level Library trỏ sang `LevelTypeTable` (`IDifficultyTagProvider` bọc `TypeOf`).
 Kiểm: `bash "<horcrux>/Editor/CompileCheck/Tools~/verify.sh" --csproj com.horcrux.runtime.csproj,Horcrux.EditModeTests.csproj --tests Horcrux.EditModeTests`.
 
 ## Cơ chế A — `ProgressCurve`: giá trị theo % tiến độ

@@ -1,7 +1,7 @@
 # Plan — `HopCurve`, `DipSpec`, `FlashSpec`, `SinkSpec`, `PopSpec`, `LaunchSpec` và hai hàm `Interpolator` lên Horcrux
 
-Bản tạm: category-jam `Scripts/Entities/Tile/TileFlightCurve.cs` (caller `Tile.cs`, `Cache/BoosterFlight.cs`), `Box/BoxFeelTuning.cs`, `BoxAnimation.cs`, `BoxReceiveTuning.cs`, `CategoryBox.cs`, `Shelf/SingleShelfAmountBar.cs`, `ShelfPromoteTuning.cs`, `TileSlot/CacheTileSlot.cs`. Bốn họ độc lập A · B · C · D. Không phụ thuộc Plan nào; `Horcrux_FeelUtilities_Plan.md` cùng khuôn "struct núm + class toán", trước hay sau đều compile.
-Chung file: `Tile.cs`, `TileSuckCurve.cs`, `TileSuckCurveTests.cs` với `Horcrux_ArchedControlPoint_Plan.md` › Chuyển dự án · `BoosterFlight.cs`, `Scripts/Feel.md` với `Horcrux_UIProxyFlight_Plan.md` (GĐ2 dùng `ApexT`, `ArcY` của GĐ1 ở đây) · dòng "Máy kiểm" của `Feel.md` với `Horcrux_SwirlPath_Plan.md`, `Horcrux_FeelUtilities_Plan.md`.
+Bản tạm: category-jam `Scripts/Entities/Tile/TileFlightCurve.cs` (caller `Tile.cs`, `Cache/BoosterFlight.cs`), `Box/BoxFeelTuning.cs`, `BoxAnimation.cs`, `BoxReceiveTuning.cs`, `CategoryBox.cs`, `Shelf/SingleShelfAmountBar.cs`, `ShelfPromoteTuning.cs`, `TileSlot/CacheTileSlot.cs`.
+**Phụ thuộc:** không — gõ lúc nào cũng được; bốn họ độc lập A · B · C · D, [FeelUtilities](Horcrux_FeelUtilities_Plan.md) cùng khuôn "struct núm + class toán", trước hay sau đều compile. Plan chờ: [UIProxyFlight](Horcrux_UIProxyFlight_Plan.md) GĐ2 dùng `HopCurve.ApexT`, `ArcY` của GĐ1 ở đây.
 Kiểm: `bash "<horcrux>/Editor/CompileCheck/Tools~/verify.sh" --csproj com.horcrux.runtime.csproj,Horcrux.PlayModeTests.csproj --tests Horcrux.EditModeTests`; chuyển dự án `--csproj com.horcrux.runtime.csproj,CategoryJam.Gameplay.csproj --tests CategoryJam.EditModeTests,Horcrux.EditModeTests`; PlayMode chạy ở Window › General › Test Runner.
 
 ---
@@ -769,6 +769,7 @@ namespace Horcrux.Runtime.Utilities.Tweening
 
 | Chỗ | Đổi |
 |---|---|
+| thứ tự với Plan khác | `Tile.cs`, `TileSuckCurve.cs`, `TileSuckCurveTests.cs` chung với Chuyển dự án của [ArchedControlPoint](Horcrux_ArchedControlPoint_Plan.md) · `BoosterFlight.cs`, `Scripts/Feel.md` với [UIProxyFlight](Horcrux_UIProxyFlight_Plan.md) · dòng "Máy kiểm" của `Feel.md` với [SwirlPath](Horcrux_SwirlPath_Plan.md), [FeelUtilities](Horcrux_FeelUtilities_Plan.md) |
 | trace trước khi sửa | quay mốc bằng `docs/tools/feel_trace/trace.cs` trên code hiện tại, hai lần cùng chữ ký 0 chênh; kịch bản phủ khung, bộ đếm nảy, ô cache nhún khi nhận và khi dồn, tile cuối đón mạnh rồi nắp chạm, nén–giãn khi vọt và loé nắp, chuyến bay hai pha, tada, thanh đếm kệ Single, cú hút vào bình Pack rồi chìm, khay Extra Slot rơi vào ô |
 | `docs/Runtime/HopCurve/HopCurve.md` | tạo, mở đầu `Code: Runtime/Utilities/PhysXHelper`: Flow họ A · bảng kênh → hàm → hình dạng → mốc kiểm · Thuật toán họ A · "Design decisions" từ comment và dòng `bỏ` của GĐ1–GĐ3 · cách dựng vòng `Step` (một `Tween.Custom` Linear, mọi kênh đọc cùng t), tên trung tính |
 | `docs/Runtime/HopCurve/HopCurve.html` | tạo từ `.md`: kịch bản (vật bay tới ô, vật nhảy lên bậc), cách dùng (mốc nào truyền, đọc gì mỗi frame), đồ thị tĩnh cung hai pha, lưu ý `peakAt`, `riseEnd`, `fallStart` là số cảm giác của từng game |

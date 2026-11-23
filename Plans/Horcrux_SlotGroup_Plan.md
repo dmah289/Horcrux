@@ -1,6 +1,7 @@
 # Plan — `Slot<TOccupant>` và `SlotGroup<TSlot, TOccupant>`: ô đặt chỗ → đáp → rời, nhóm đếm và báo chủ
 
-Bản tạm: category-jam `Assets/_CategoryJam/Scripts/Entities/TileSlot/TileSlot.cs`, `Entities/TileSlotGroup.cs` (chủ `Box`, `CacheTileSlots`, `PackBooster`); từ vựng tile ở lại `TileSlot` của dự án. Không phụ thuộc Plan nào.
+Bản tạm: category-jam `Assets/_CategoryJam/Scripts/Entities/TileSlot/TileSlot.cs`, `Entities/TileSlotGroup.cs` (chủ `Box`, `CacheTileSlots`, `PackBooster`); từ vựng tile ở lại `TileSlot` của dự án.
+**Phụ thuộc:** không — gõ lúc nào cũng được.
 Kiểm: `bash "<horcrux>/Editor/CompileCheck/Tools~/verify.sh" --csproj com.horcrux.runtime.csproj,Horcrux.EditModeTests.csproj --tests Horcrux.EditModeTests`.
 
 ## Kịch bản

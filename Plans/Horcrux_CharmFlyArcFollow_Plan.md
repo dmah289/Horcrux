@@ -1,6 +1,7 @@
 # Plan — `CharmFlyArc` bám đích đang di chuyển
 
-Bản tạm: category-jam `Scripts/Entities/Booster/BoosterActor.cs` › `Launch`, `ApplyFlight`. Không phụ thuộc Plan nào. Chung file: `TransformExtensions.CharmTween.cs` với `Horcrux_FeelUtilities_Plan.md` GĐ6 (thứ tự nào cũng được); `docs/Runtime/CharmFlyArc/CharmFlyArc.md` với `Horcrux_ArchedControlPoint_Plan.md`, `Horcrux_FeelUtilities_Plan.md` (§2), `Horcrux_UniTextSetFraction_Plan.md` (§3) — Plan này tạo `.html`, gõ trước ArchedControlPoint.
+Bản tạm: category-jam `Scripts/Entities/Booster/BoosterActor.cs` › `Launch`, `ApplyFlight`.
+**Phụ thuộc:** không — gõ lúc nào cũng được. Chung file Horcrux `TransformExtensions.CharmTween.cs` với [FeelUtilities](Horcrux_FeelUtilities_Plan.md) GĐ6, thứ tự nào cũng được.
 Kiểm: `bash "<horcrux>/Editor/CompileCheck/Tools~/verify.sh" --csproj com.horcrux.runtime.csproj,Horcrux.PlayModeTests.csproj --tests Horcrux.EditModeTests`; chuyển dự án `--csproj com.horcrux.runtime.csproj,CategoryJam.Gameplay.csproj --tests CategoryJam.EditModeTests,Horcrux.EditModeTests`; PlayMode chạy ở Window › General › Test Runner.
 
 ## Kịch bản
@@ -101,6 +102,7 @@ Ngay sau:
 
 | Chỗ | Đổi |
 |---|---|
+| thứ tự với Plan khác | `docs/Runtime/CharmFlyArc/CharmFlyArc.md` chung với [ArchedControlPoint](Horcrux_ArchedControlPoint_Plan.md), [FeelUtilities](Horcrux_FeelUtilities_Plan.md) (§2), [UniTextSetFraction](Horcrux_UniTextSetFraction_Plan.md) (§3) — Plan này tạo `.html`, chuyển trước ArchedControlPoint |
 | `docs/Runtime/CharmFlyArc/CharmFlyArc.md` §1 | bảng hai overload (khi nào dùng cái nào) · đích, điểm điều khiển đọc mỗi frame · đích huỷ bay nốt · `useUnscaledTime` bắt buộc |
 | `CharmFlyArc.md` §4 Bẫy | hàng "overload `Transform` không đọc `speed`: spec có `speed` 0 vẫn chạy, đổi `speed` không đổi nhịp" |
 | `docs/Runtime/CharmFlyArc/CharmFlyArc.html` | tạo: trang cho developer theo `.md` hiện có cộng phần mới |

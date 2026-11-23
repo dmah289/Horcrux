@@ -1,7 +1,7 @@
 # Plan — `SpriteFill` (tên chốt khi gõ): ruột thanh tiến độ vẽ bằng `SpriteRenderer`
 
-Bản tạm: category-jam `Assets/_CategoryJam/Scripts/Utilities/` — A `SlicedFill.cs` (thanh tiến độ trên box; test `Tests/EditMode/SlicedFillTests.cs`) · B `SpriteHorizontalFill.cs`, `SpriteFillDividers.cs`, `sprite_horizontal_fill.shader` (thanh đếm lớp có vạch trên kệ). Hai cơ chế độc lập cho cùng việc, ứng `SetWidth` / `SetFill` của `ProgressBar` (UI); không phụ thuộc Plan nào.
-Chung file: `Runtime/AssemblyInfo.cs` với `Horcrux_ConveyorLoop_Plan.md` GĐ1 — Plan gõ trước tạo file, Plan sau thấy dòng đã có thì bỏ qua · category-jam `CategoryBox.cs` với Chuyển dự án của `Horcrux_UniTextSetFraction_Plan.md` — gõ cả hai thì chuyển chung một lần.
+Bản tạm: category-jam `Assets/_CategoryJam/Scripts/Utilities/` — A `SlicedFill.cs` (thanh tiến độ trên box; test `Tests/EditMode/SlicedFillTests.cs`) · B `SpriteHorizontalFill.cs`, `SpriteFillDividers.cs`, `sprite_horizontal_fill.shader` (thanh đếm lớp có vạch trên kệ). Hai cơ chế độc lập cho cùng việc, ứng `SetWidth` / `SetFill` của `ProgressBar` (UI)
+**Phụ thuộc:** không — gõ lúc nào cũng được. Chung `Runtime/AssemblyInfo.cs` với [ConveyorLoop](Horcrux_ConveyorLoop_Plan.md) GĐ1: Plan gõ trước tạo file, Plan sau thấy dòng đã có thì bỏ qua.
 Kiểm: `bash "<horcrux>/Editor/CompileCheck/Tools~/verify.sh" --csproj com.horcrux.runtime.csproj,Horcrux.EditModeTests.csproj,Horcrux.PlayModeTests.csproj --tests Horcrux.EditModeTests`; PlayMode chạy ở Window › General › Test Runner.
 
 ## Cơ chế A — `SlicedFill`: ruột Sliced đổi bề rộng, hai đầu bo luôn còn
@@ -500,6 +500,7 @@ Case thêm vào `SpriteHorizontalFillTests.cs` (agent), hàng chép vạch ở f
 
 | Chỗ | Đổi |
 |---|---|
+| thứ tự với Plan khác | category-jam `CategoryBox.cs` chung với Chuyển dự án của [UniTextSetFraction](Horcrux_UniTextSetFraction_Plan.md) — gõ cả hai thì chuyển chung một lần |
 | `docs/Runtime/SpriteFill/SpriteFill.md`, `.html` | tạo, một tài liệu cho hai cơ chế: `Code: Runtime/Utilities/Sprites/, Shader/sprite_horizontal_fill.shader` · bảng chọn A / B (ứng `ProgressBar.SetWidth` / `SetFill`, đầu bo / phẳng, art trong lòng giãn / giữ, vạch, giá batch, setup) · Flow A, B · API · quyết định theo comment và Không làm · "Trước khi chạy" = Editor setup GĐ1–3 · `.html`: Kịch bản (đầy, nửa, rất nhỏ, rỗng; thanh chia vạch), Cách dùng, Flow, Lưu ý (thiếu pivot trái, thiếu Sliced, atlas xoay, `flipX`, thiếu material, mất batch, sprite đổi lúc chạy); tên trung tính |
 | `Scripts/Utilities/SlicedFill.cs` + `.meta` | xoá (class static, không asset nào trỏ GUID) |
 | `Tests/EditMode/SlicedFillTests.cs` + `.meta` | xoá — 11 test đã ở bảng GĐ1 |

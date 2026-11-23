@@ -1,6 +1,7 @@
 # Plan — `ComboTracker` lên Horcrux
 
-Bản tạm: category-jam `Scripts/Director/ComboTracker.cs` (class thuần do `GameDirector` sở hữu); HUD `Scripts/Hud/ComboPill.cs` ở lại dự án. Không phụ thuộc Plan nào.
+Bản tạm: category-jam `Scripts/Director/ComboTracker.cs` (class thuần do `GameDirector` sở hữu); HUD `Scripts/Hud/ComboPill.cs` ở lại dự án.
+**Phụ thuộc:** không — gõ lúc nào cũng được.
 Kiểm: `bash "<horcrux>/Editor/CompileCheck/Tools~/verify.sh" --csproj com.horcrux.runtime.csproj,Horcrux.PlayModeTests.csproj --tests Horcrux.EditModeTests`; PlayMode chạy ở Window › General › Test Runner.
 
 ## Kịch bản

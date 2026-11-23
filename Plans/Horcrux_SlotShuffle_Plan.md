@@ -1,7 +1,7 @@
 # Plan — `SlotShuffle`: xếp lại n vật vào chính n chỗ của chúng, dồn theo nhóm, không vật nào đứng yên khi tránh được
 
 Bản tạm: category-jam `Assets/_CategoryJam/Scripts/Utilities/SlotShuffle.cs` (code GĐ1–3 nguyên văn, hàm xáo còn private), caller `Director/ShuffleBooster.cs` › `ScrambleAwayFromBoxes`, `RestoreScrambledBoard`.
-Không phụ thuộc Plan nào. Chung `Runtime/Utilities/Permutation/FisherYates.cs` với `Horcrux_AudioVariants_Plan.md` (`ShuffleBag` gọi `FisherYates.Shuffle`): Plan đó gõ sau GĐ1 Plan này.
+**Phụ thuộc:** không — gõ lúc nào cũng được. Plan chờ: [AudioVariants](Horcrux_AudioVariants_Plan.md) gõ sau GĐ1 Plan này (`ShuffleBag` gọi `FisherYates.Shuffle`, cùng thư mục `Runtime/Utilities/Permutation/`).
 Kiểm: `bash "<horcrux>/Editor/CompileCheck/Tools~/verify.sh" --csproj com.horcrux.runtime.csproj,CategoryJam.Gameplay.csproj --tests Horcrux.EditModeTests,CategoryJam.EditModeTests`.
 
 ## Kịch bản

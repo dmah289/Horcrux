@@ -1,6 +1,7 @@
 # Plan — `BandFit`: scale và vị trí để bounds bàn chơi lọt dải giữa hai HUD
 
-Bản tạm: category-jam `Scripts/Director/LevelBoundsFitter.cs` › `FitScale`, `ContainerPosition`, gọi từ `LevelLoader.AdjustContainerScale`, `PositionShelfContainer`. Không phụ thuộc Plan nào; chung thư mục `Runtime/Utilities/Layout/` với `Horcrux_ViewportAnchor_Plan.md` — Plan gõ trước tạo thư mục.
+Bản tạm: category-jam `Scripts/Director/LevelBoundsFitter.cs` › `FitScale`, `ContainerPosition`, gọi từ `LevelLoader.AdjustContainerScale`, `PositionShelfContainer`.
+**Phụ thuộc:** không — gõ lúc nào cũng được.
 Kiểm: `bash "<horcrux>/Editor/CompileCheck/Tools~/verify.sh" --csproj com.horcrux.runtime.csproj,Horcrux.EditModeTests.csproj --tests Horcrux.EditModeTests`; chuyển dự án `--csproj CategoryJam.Gameplay.csproj,com.horcrux.runtime.csproj --tests CategoryJam.EditModeTests,Horcrux.EditModeTests`.
 
 ## Kịch bản

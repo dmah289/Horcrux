@@ -1,6 +1,7 @@
 # Plan — `ScreenSizeExtensions`: bề ngang pixel của rect, scale để rect rộng W pixel
 
-Bản tạm: category-jam `Bridge/PopupBoosterUnlock.cs` › `OnClickShowMe`, `Bridge/BoosterUnlockTutorial.cs` › `FlyIconAsync` (chép tay). Không phụ thuộc Plan nào.
+Bản tạm: category-jam `Bridge/PopupBoosterUnlock.cs` › `OnClickShowMe`, `Bridge/BoosterUnlockTutorial.cs` › `FlyIconAsync` (chép tay).
+**Phụ thuộc:** không — gõ lúc nào cũng được.
 Kiểm: `bash "<horcrux>/Editor/CompileCheck/Tools~/verify.sh" --csproj com.horcrux.runtime.csproj,Horcrux.PlayModeTests.csproj --tests Horcrux.EditModeTests`; PlayMode chạy ở Window › General › Test Runner.
 
 ## Kịch bản

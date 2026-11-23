@@ -1,6 +1,7 @@
 # Plan — Bộ xem trước trình diễn trên prefab (`PreviewSnapshot`, `EditorPreviewSession`, `PreviewTicker`) lên Horcrux
 
-Bản tạm: category-jam `Assets/_CategoryJam/Scripts/Entities/` — `PreviewSnapshot.Editor.cs`, `EditorPreviewSession.Editor.cs`, `Box/BoxAnimation.Editor.cs` (`TickParticles`, `AdvanceParticles`), `Tile/Tile.Editor.cs` (`RepaintSceneView`). Không phụ thuộc Plan nào.
+Bản tạm: category-jam `Assets/_CategoryJam/Scripts/Entities/` — `PreviewSnapshot.Editor.cs`, `EditorPreviewSession.Editor.cs`, `Box/BoxAnimation.Editor.cs` (`TickParticles`, `AdvanceParticles`), `Tile/Tile.Editor.cs` (`RepaintSceneView`).
+**Phụ thuộc:** không — gõ lúc nào cũng được.
 Kiểm: `bash Assets/Horcrux/Editor/CompileCheck/Tools~/verify.sh --csproj CategoryJam.Gameplay.csproj,com.horcrux.runtime.csproj --tests CategoryJam.EditModeTests` · sau mỗi dòng case, lưu prefab (Ctrl+S trong Prefab Mode) rồi `git diff --stat -- Assets/_CategoryJam/Addressables/Box/CategoryBox.prefab Assets/_CategoryJam/Addressables/Tile/Tile.prefab` rỗng (agent chạy).
 
 ## Kịch bản

@@ -1,6 +1,7 @@
 # Plan — `DebugOptionsCategory`: category SRDebugger dựng bằng code, vào Horcrux `Vendors/SRDebugger`
 
-Bản tạm: category-jam `Assets/_Game/Scripts/Cheat/{Tracking,EconomyCheat,LevelCheat}DebugOptions.cs`, `Assets/_Game/Scripts/Segmentation/UserSegmentationDebugOptions.cs` (`Register`, `Unregister`, `SelectBooster`, `TryTakePending`). Không phụ thuộc Plan nào.
+Bản tạm: category-jam `Assets/_Game/Scripts/Cheat/{Tracking,EconomyCheat,LevelCheat}DebugOptions.cs`, `Assets/_Game/Scripts/Segmentation/UserSegmentationDebugOptions.cs` (`Register`, `Unregister`, `SelectBooster`, `TryTakePending`).
+**Phụ thuộc:** không — gõ lúc nào cũng được.
 Kiểm (từ gốc dự án): `bash "<horcrux>/Editor/CompileCheck/Tools~/verify.sh" --csproj com.horcrux.srdebugger.csproj,Assembly-CSharp.csproj --tests Horcrux.Vendors.SRDebugger.Tests`.
 
 ## Kịch bản

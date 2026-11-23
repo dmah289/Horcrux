@@ -1,6 +1,7 @@
 # Plan — Ads lên Horcrux: `AdService` (rewarded, interstitial, banner) và bộ chuyển Zego MAX
 
-Bản tạm: category-jam `Assets/_Core/Ads/IAdService.cs` (contract), `Assets/_Modules/Sdk/Ads/ZegoAdService.cs` (bản cài); luật kịch bản `Assets/_Game/Scripts/Ads/` ở lại dự án. Không phụ thuộc Plan nào: dải đáy qua `BottomInset` của `Horcrux_ViewportAnchor_Plan.md` GĐ2, chưa gõ thì giữ `BannerSpace` của dự án; 3 popup chung với Chuyển dự án của `Horcrux_SpendGate_Plan.md` — chuyển SpendGate trước. Gõ liền GĐ1–5 rồi mới Play: `AdService` nhận `IAdVendor` qua InitArgs, vendor tới GĐ5 mới có (giả định cần xác nhận: Play giữa chừng thì InitArgs báo thiếu dependency lúc boot, hoặc không tạo service).
+Bản tạm: category-jam `Assets/_Core/Ads/IAdService.cs` (contract), `Assets/_Modules/Sdk/Ads/ZegoAdService.cs` (bản cài); luật kịch bản `Assets/_Game/Scripts/Ads/` ở lại dự án.
+**Phụ thuộc:** không — gõ lúc nào cũng được. Trong Plan gõ liền GĐ1–5 rồi mới Play: `AdService` nhận `IAdVendor` qua InitArgs, vendor tới GĐ5 mới có (giả định cần xác nhận: Play giữa chừng thì InitArgs báo thiếu dependency lúc boot, hoặc không tạo service).
 Kiểm: `bash "<horcrux>/Editor/CompileCheck/Tools~/verify.sh" --csproj com.horcrux.runtime.csproj,Horcrux.PlayModeTests.csproj --tests Horcrux.EditModeTests`; GĐ1–4 bảng case `Tests/PlayMode/AdServiceTests.cs` (vendor giả) ở Window › General › Test Runner; GĐ5 thêm `com.horcrux.zego.csproj`, chỉ compile — sự kiện MAX là static event, chỉ máy thật bắn.
 
 ## Kịch bản
@@ -981,6 +982,7 @@ namespace Horcrux.Vendors.Zego
 
 | Chỗ | Đổi |
 |---|---|
+| thứ tự với Plan khác | dải đáy qua `BottomInset` của [ViewportAnchor](Horcrux_ViewportAnchor_Plan.md) GĐ2, chưa gõ thì giữ `BannerSpace` của dự án · 3 popup chung với Chuyển dự án của [SpendGate](Horcrux_SpendGate_Plan.md) — chuyển SpendGate trước |
 | `docs/Runtime/AdsSystem/AdsSystem.md`, `.html` | tạo theo `docs`: luồng rewarded, interstitial, banner · bảng kết quả → caller làm gì · token của ai (chủ bước sau lượt chiếu, không phải popup sắp đóng) · cách viết lớp luật kịch bản ở dự án (mốc, giãn cách, placement, màn nào muốn banner — tên trung tính) · quyết định trái trực giác · lỗi Zego ở chế độ compare · Mở rộng sau |
 | `AdsSystem.md` › Trước khi chạy | prefab `Zego.Advertisement.MaxDefault` ở gốc scene đầu — thiếu: Zego `LogError` lúc boot, mọi rewarded `NotAvailable`, interstitial không hiện |
 | | `Zego.IAdService.Global?.Init()` sớm nhất, trước fetch remote config — thiếu: MAX không tải quảng cáo nào |

@@ -1,6 +1,7 @@
 # Plan — `AdjustIapRevenue`: doanh thu IAP lên Adjust, vào Horcrux `Vendors/Adjust`
 
-Bản tạm: category-jam `Assets/_Modules/Sdk/AdjustIapTracking.cs` › `Track`, gọi ở `Assets/_Modules/Sdk/IAP/IAPControl.cs` trước bước confirm. Không phụ thuộc Plan nào.
+Bản tạm: category-jam `Assets/_Modules/Sdk/AdjustIapTracking.cs` › `Track`, gọi ở `Assets/_Modules/Sdk/IAP/IAPControl.cs` trước bước confirm.
+**Phụ thuộc:** không — gõ lúc nào cũng được.
 Kiểm: `bash "<horcrux>/Editor/CompileCheck/Tools~/verify.sh" --csproj com.horcrux.adjust.purchasing.csproj --tests Horcrux.Vendors.Adjust.Purchasing.Tests`, compile cả define `UNITY_ANDROID` lẫn `UNITY_IOS` (đổi build target sang iOS, hoặc csc với `UNITY_IOS`).
 
 ## Kịch bản

@@ -1,6 +1,7 @@
 # Plan — `HorizontalRow`: xếp các con đang bật thành hàng ngang cách đều
 
-Bản tạm: category-jam `Scripts/Utilities/HorizontalGrid.cs` › `SlotLocalX`, `LocalPositionOf`, `RepositionNow`, `RepositionSmooth`, `SetSpaceAndPlayStartLevelAnimation`; hai chủ trong `GameplayRoot.prefab`: `BoxesContainer` (`box_row`), `CacheTileSlots` (`cache_bar`). Không phụ thuộc Plan nào.
+Bản tạm: category-jam `Scripts/Utilities/HorizontalGrid.cs` › `SlotLocalX`, `LocalPositionOf`, `RepositionNow`, `RepositionSmooth`, `SetSpaceAndPlayStartLevelAnimation`; hai chủ trong `GameplayRoot.prefab`: `BoxesContainer` (`box_row`), `CacheTileSlots` (`cache_bar`).
+**Phụ thuộc:** không — gõ lúc nào cũng được.
 Kiểm: `bash "<horcrux>/Editor/CompileCheck/Tools~/verify.sh" --csproj com.horcrux.runtime.csproj,Horcrux.PlayModeTests.csproj`; PlayMode chạy ở Window › General › Test Runner.
 
 ## Kịch bản

@@ -1,6 +1,7 @@
 # Plan — `BezierCurveHelper.ComputeArchedControlPoint`: cung Bezier bậc hai luôn vồng về +Y
 
-Bản tạm: category-jam `Scripts/Entities/Tile/TileSuckCurve.cs` › `DashPoint` (caller `Tile.StepSuckDash`). Không phụ thuộc Plan nào. Chung file: `Tile.cs`, `TileSuckCurve.cs`, `TileSuckCurveTests.cs` với `Horcrux_HopCurve_DipFlash_Plan.md` › Chuyển dự án (thứ tự nào cũng compile, gợi ý Plan này trước); `docs/Runtime/CharmFlyArc/CharmFlyArc.md` với `Horcrux_CharmFlyArcFollow_Plan.md` — gõ sau Plan đó.
+Bản tạm: category-jam `Scripts/Entities/Tile/TileSuckCurve.cs` › `DashPoint` (caller `Tile.StepSuckDash`).
+**Phụ thuộc:** không — gõ lúc nào cũng được.
 Kiểm: `bash "Assets/Horcrux/Editor/CompileCheck/Tools~/verify.sh" --csproj com.horcrux.runtime.csproj --tests Horcrux.EditModeTests`; chuyển dự án `--csproj CategoryJam.Gameplay.csproj,com.horcrux.runtime.csproj --tests CategoryJam.EditModeTests,Horcrux.EditModeTests`.
 
 ## Kịch bản
@@ -87,6 +88,7 @@ Chèn giữa `}` và `public static float ApproximateQuadraticBezierLength`:
 
 | Chỗ | Đổi |
 |---|---|
+| thứ tự với Plan khác | `Tile.cs`, `TileSuckCurve.cs`, `TileSuckCurveTests.cs` chung với Chuyển dự án của [HopCurve_DipFlash](Horcrux_HopCurve_DipFlash_Plan.md) — thứ tự nào cũng compile, gợi ý Plan này trước · `docs/Runtime/CharmFlyArc/CharmFlyArc.md` chung với [CharmFlyArcFollow](Horcrux_CharmFlyArcFollow_Plan.md) — chuyển sau Plan đó |
 | `docs/Runtime/CharmFlyArc/CharmFlyArc.md` §1 | sau đoạn "Đường bay là bezier bậc hai" (và sau bảng hai overload nếu đã có): đoạn `ComputeArchedControlPoint` — nhấc `controlLift` theo +Y, đỉnh `controlLift / 2`, dùng khi bay cả hai chiều và đích đọc lại mỗi frame, ghép với `EvaluateQuadraticBezier`; trung tính, không tên dự án |
 | `CharmFlyArc.md` §4 Bẫy, hàng "Một `controlOffset` dùng cho cả bay sang trái lẫn sang phải" | thêm "cần vồng một phía thì `ComputeArchedControlPoint`" |
 | `CharmFlyArc.html` | đã có thì sửa cùng hai chỗ; chưa có thì không tạo ở Plan này |
