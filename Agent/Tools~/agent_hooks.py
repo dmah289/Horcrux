@@ -1,6 +1,14 @@
-"""Hook Claude Code canh luật của bộ Agent/ bằng máy, thay vì kỷ luật của agent. Một lệnh cho mọi sự kiện; đọc JSON
-của hook trên stdin, rẽ theo `hook_event_name`. Cài: `Agent/SETUP.md` › Hook.
+"""Hook Claude Code canh luật của bộ Agent/ bằng máy, thay vì kỷ luật của agent, và lệnh cài chúng vào dự án.
 
+    python -X utf8 -I agent_hooks.py install [--check]
+
+`install` đưa dự án về khớp Horcrux: file mồi `.claude/skills/<việc>/SKILL.md` cho mỗi `Agent/Skills/<việc>` (tạo,
+cập nhật description, xoá file mồi của skill đã bỏ) và hook dưới đây trong `.claude/settings.json` (giữ hook khác).
+`--check` chỉ in phần lệch, mã thoát 1 khi lệch. Gốc dự án: `CLAUDE_PROJECT_DIR`, không có thì tính từ chỗ đặt Agent/.
+
+Không tham số thì là hook: đọc JSON trên stdin, rẽ theo `hook_event_name`.
+
+    SessionStart                 lệch như `install --check` thì báo agent và developer chạy `install`.
     PreToolUse  Bash|PowerShell  chặn `git add -A|-u|.`, `git commit -a`, commit không pathspec (`-- <paths>`) ngoài lúc
                                  merge; commit vào `Agent/` mà `check_agent.py` báo lỗi ở chính file được commit.
     PreToolUse  Edit|Write       chặn sửa mục developer-only của `horcrux.md`.
@@ -226,8 +234,111 @@ def stop(data):
                           "(Editor đóng, thiếu builder) thì nói rõ là chưa kiểm."}, ensure_ascii=False))
 
 
+# ---------- cài vào dự án ----------
+
+HOOKS = [  # (sự kiện, matcher, timeout giây); mọi sự kiện gọi cùng một lệnh
+    ("SessionStart", "startup", 10),
+    ("PreToolUse", "Bash|PowerShell|Edit|Write", 30),
+    ("PostToolUse", "Edit|Write", 10),
+    ("Stop", None, 10),
+]
+STUB_MARK = "Bản gốc nằm trong Horcrux; file này chỉ để Claude Code tìm thấy"
+
+
+def agent_rel(project):
+    return pathlib.Path(os.path.relpath(AGENT, project)).as_posix()
+
+
+def stub_text(project, name, desc):
+    a = agent_rel(project)
+    return (f"---\nname: {name}\ndescription: {desc}\n---\n\n"
+            f"Đọc toàn bộ `{a}/Skills/{name}/SKILL.md`, `{a}/Memory/{name}.md` và\n"
+            f"`docs/agent-memory/{name}.md` (nếu có) rồi làm theo. {STUB_MARK}\nskill, không chép nội dung.\n")
+
+
+def merge_hooks(settings, command):
+    hooks = settings.setdefault("hooks", {})
+    for event, matcher, timeout in HOOKS:
+        groups = hooks.setdefault(event, [])
+        want = {"type": "command", "command": command, "timeout": timeout}
+        mine = [(g, h) for g in groups for h in g.get("hooks", []) if "agent_hooks.py" in h.get("command", "")]
+        if not mine:
+            groups.append({"matcher": matcher, "hooks": [want]} if matcher else {"hooks": [want]})
+            continue
+        group, hook = mine[0]
+        hook.clear()
+        hook.update(want)
+        if matcher:
+            group["matcher"] = matcher
+        else:
+            group.pop("matcher", None)
+    return settings
+
+
+def plan(project):
+    """[(việc, đường dẫn, nội dung hoặc None khi xoá)] để dự án khớp Horcrux."""
+    acts = []
+    names = set()
+    for skill in sorted((AGENT / "Skills").glob("*/SKILL.md")):
+        name = skill.parent.name
+        names.add(name)
+        desc = re.search(r"^description: (.*)$", skill.read_text(encoding="utf-8"), re.M).group(1)
+        want = stub_text(project, name, desc)
+        stub = project / ".claude" / "skills" / name / "SKILL.md"
+        if not stub.exists():
+            acts.append(("tạo", stub, want))
+        elif stub.read_text(encoding="utf-8").replace("\r\n", "\n") != want:
+            acts.append(("cập nhật", stub, want))
+    for stub in sorted((project / ".claude" / "skills").glob("*/SKILL.md")):
+        if stub.parent.name not in names and STUB_MARK in stub.read_text(encoding="utf-8"):
+            acts.append(("xoá", stub, None))
+
+    path = project / ".claude" / "settings.json"
+    raw = path.read_bytes().decode("utf-8") if path.exists() else ""  # read_text nuốt \r\n, mất kiểu xuống dòng gốc
+    old = json.loads(raw) if raw.strip() else {}
+    command = f'python -X utf8 -I "$CLAUDE_PROJECT_DIR/{agent_rel(project)}/Tools~/agent_hooks.py"'
+    new = merge_hooks(json.loads(json.dumps(old)), command)
+    if new != old:
+        text = json.dumps(new, indent=2, ensure_ascii=False) + "\n"
+        acts.append(("ghi hook", path, text.replace("\n", "\r\n") if "\r\n" in raw else text))
+    return acts
+
+
+def install(check):
+    project = project_dir({})
+    acts = plan(project)
+    for verb, path, _ in acts:
+        print(f"{verb:9} {path.relative_to(project).as_posix()}")
+    if check:
+        print("lệch:", len(acts))
+        return 1 if acts else 0
+    for verb, path, text in acts:
+        if text is None:
+            path.unlink()
+            if not any(path.parent.iterdir()):
+                path.parent.rmdir()
+        else:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(text.encode("utf-8"))
+    print("đã cài:", len(acts), "thay đổi" if acts else "(đã khớp)")
+    return 0
+
+
+def session_start(data):
+    project = project_dir(data)
+    acts = plan(project)
+    if acts:
+        what = ", ".join(f"{verb} {path.relative_to(project).as_posix()}" for verb, path, _ in acts[:4])
+        msg = (f"Bộ Agent của dự án lệch Horcrux ({len(acts)} mục: {what}{' …' if len(acts) > 4 else ''}). Chạy "
+               f"`python -X utf8 -I {agent_rel(project)}/Tools~/agent_hooks.py install` rồi commit phần đổi.")
+        print(json.dumps({"systemMessage": msg, "hookSpecificOutput": {
+            "hookEventName": "SessionStart", "additionalContext": msg}}, ensure_ascii=False))
+
+
 def main():
     sys.stdout.reconfigure(encoding="utf-8")
+    if sys.argv[1:2] == ["install"]:
+        sys.exit(install("--check" in sys.argv))
     try:
         data = json.loads(sys.stdin.buffer.read().decode("utf-8") or "{}")
         event, tool = data.get("hook_event_name"), data.get("tool_name")
@@ -239,6 +350,8 @@ def main():
             post_edit(data)
         elif event == "Stop":
             stop(data)
+        elif event == "SessionStart":
+            session_start(data)
     except Exception as e:  # hook hỏng không chặn việc
         print(f"agent_hooks: {type(e).__name__}: {e}", file=sys.stderr)
 

@@ -15,38 +15,25 @@ At the start of every session, read `Assets/Horcrux/Agent/horcrux.md` in full, t
 Tạo thư mục `docs/agent-memory/` ở gốc dự án, đi theo git. File đặt tên theo rule hoặc skill như `Agent/Memory/`
 (`workflow.md`, `feel-tune.md`, …), chỉ giữ từ vựng, con số, quyết định riêng dự án (`horcrux.md` › Memory).
 
-## 3. File mồi cho skill
+## 3. File mồi skill và hook
 
-Với mỗi thư mục trong `Assets/Horcrux/Agent/Skills/`, tạo `.claude/skills/<việc>/SKILL.md` ở gốc dự án:
-
-```markdown
----
-name: <việc>
-description: <chép nguyên description của Agent/Skills/<việc>/SKILL.md>
----
-
-Đọc toàn bộ `Assets/Horcrux/Agent/Skills/<việc>/SKILL.md`, `Assets/Horcrux/Agent/Memory/<việc>.md` và
-`docs/agent-memory/<việc>.md` (nếu có) rồi làm theo. Bản gốc nằm trong Horcrux; file này chỉ để Claude Code tìm thấy
-skill, không chép nội dung.
+```bash
+python -X utf8 -I Assets/Horcrux/Agent/Tools~/agent_hooks.py install
 ```
 
-Horcrux thêm skill mới thì thêm file mồi tương ứng.
+Lệnh đưa `.claude/` của dự án về khớp Horcrux, chạy lại bao nhiêu lần cũng được:
 
-## 4. Hook
+- `.claude/skills/<việc>/SKILL.md` cho mỗi `Agent/Skills/<việc>`: tạo, cập nhật khi description đổi, xoá khi skill đã bỏ.
+  File mồi chỉ trỏ về bản gốc để Claude Code tìm thấy skill, không chép nội dung.
+- Hook trong `.claude/settings.json`, giữ nguyên hook và cấu hình khác. Mọi sự kiện gọi cùng `agent_hooks.py`; Windows
+  cần Git Bash (lệnh đọc `$CLAUDE_PROJECT_DIR` theo cú pháp bash).
 
-Gộp vào `hooks` của `.claude/settings.json` ở gốc dự án (giữ hook đã có). Mọi sự kiện gọi cùng một lệnh;
-`Agent/Tools~/agent_hooks.py` rẽ theo sự kiện. Windows cần Git Bash (lệnh đọc `$CLAUDE_PROJECT_DIR` theo cú pháp bash).
-
-```json
-"PreToolUse":  [{ "matcher": "Bash|PowerShell|Edit|Write", "hooks": [{ "type": "command", "command": "<lệnh>", "timeout": 30 }] }],
-"PostToolUse": [{ "matcher": "Edit|Write", "hooks": [{ "type": "command", "command": "<lệnh>", "timeout": 10 }] }],
-"Stop":        [{ "hooks": [{ "type": "command", "command": "<lệnh>", "timeout": 10 }] }]
-```
-
-`<lệnh>` là `python -X utf8 -I "$CLAUDE_PROJECT_DIR/Assets/Horcrux/Agent/Tools~/agent_hooks.py"` (trong JSON viết `\"`).
+Horcrux đổi skill hay hook thì phiên mới báo lệch (hook lúc mở phiên); chạy lại lệnh rồi commit phần đổi. `--check` chỉ
+in phần lệch, không ghi.
 
 | Hook | Chặn gì | Luật |
 |---|---|---|
+| mở phiên | không chặn; báo khi file mồi hay hook lệch Horcrux | mục này |
 | trước lệnh shell | `git add -A`, `-u`, `.` · `git commit -a` · commit không `-- <paths>` (trừ lúc merge) · commit vào `Agent/` khi `check_agent.py` báo lỗi ở chính file đó | `workflow` › Việc lặp lại và git · `horcrux.md` › Cổng ghi |
 | trước sửa file | sửa mục developer-only của `horcrux.md` | `horcrux.md` › Yêu cầu của developer |
 | sau sửa file, khi dừng | báo xong khi còn `.cs` agent sửa sau lần `verify.sh` OK cuối; chặn một lần mỗi lượt dừng | `compile-check` › Luật |
@@ -57,10 +44,11 @@ File mồi skill và hook chỉ tới máy khác khi đi theo git: dự án igno
 `git check-ignore -v .claude/settings.json`; bị ignore thì đổi dòng `.claude/` thành `.claude/*`, `!.claude/settings.json`,
 `!.claude/skills/` (worktree, `settings.local.json` vẫn ở lại máy).
 
-## 5. Kiểm
+## 4. Kiểm
 
 ```bash
 python -X utf8 -I Assets/Horcrux/Agent/Tools~/check_agent.py all
+python -X utf8 -I Assets/Horcrux/Agent/Tools~/agent_hooks.py install --check
 ```
 
-Kết quả `lỗi: 0`.
+Kết quả `lỗi: 0` và `lệch: 0`.
