@@ -45,8 +45,14 @@ lại **cả trang**, không chỉ phần vừa đổi.
 
 ## Plan — để developer tự triển khai
 
-- **Gõ xong là hiểu hệ, không chỉ hệ chạy:** developer biết mỗi phần ai gọi, vì sao có, thiếu thì hỏng đâu. **Tự chứa**,
-  kể cả Editor setup — bước tay thiếu không compile error nào bắt.
+Developer gõ lại tập trung vào **kịch bản, thuật toán, logic, flow, code** — Plan chỉ mang những thứ đó; văn xuôi là
+phương án cuối.
+
+- **Bảy khối, thứ tự cố định:** dòng mở · Kịch bản · Flow · Thuật toán (khi có lõi) · giai đoạn developer gõ · Chuyển dự
+  án (agent) · Không làm · Mở rộng sau. Khảo sát nằm ở đề xuất trong chat, không ở Plan.
+- **Gõ xong là hiểu hệ, không chỉ hệ chạy:** ai gọi thấy ở sơ đồ, vì sao thấy ở comment trong code (trần `code-design` ›
+  Naming) và dòng Không làm — không đoạn văn quyết định. **Tự chứa**, kể cả Editor setup — bước tay thiếu không compile
+  error nào bắt.
 - **Dựng theo luồng, chia theo giai đoạn — không theo file:** mỗi giai đoạn nối thêm một chặng, kết ở trạng thái **chạy
   được, thấy được**; member thêm vào có caller thật trong cùng giai đoạn (NT2). Lá trước gốc là gõ class chưa biết ai dùng.
 - **Code trong Plan là code developer gõ nguyên và tin:** khớp file thật ở chỗ neo, thuật toán đã qua bản mẫu chạy được.

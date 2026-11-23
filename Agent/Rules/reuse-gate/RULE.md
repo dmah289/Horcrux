@@ -12,7 +12,7 @@ mẫu — code trong Plan là code developer gõ nguyên, thừa ở đó cũng 
 
 Khảo sát **toàn bộ**, theo thứ tự: **hệ đang chạm và module nó gọi** → **Horcrux** (`Foundations/`, `Utilities/`, `docs/`,
 `Plans/`) → **phần còn lại của dự án** → **package đã cài**. Cả hai cùng có thì **dùng Horcrux**, bản dự án là bản thứ hai
-cần đề xuất gộp. Nói rõ đã khảo sát đâu; trong Plan là bảng **"Đã khảo sát"**: *nguồn · lấy gì · không lấy, vì sao*.
+cần đề xuất gộp. Nói rõ đã khảo sát đâu; trong đề xuất là bảng **"Đã khảo sát"**: *nguồn · lấy gì · không lấy, vì sao*.
 
 - **Khảo sát gồm cả quyết định đã ghi** của dự án (bố cục, lớp vẽ, cấu trúc) và **đường di sản song song** cho cùng việc:
   thiết kế trái quyết định cũ không compile error nào bắt.

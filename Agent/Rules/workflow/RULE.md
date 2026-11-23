@@ -52,7 +52,7 @@ mục cuối.
 là hợp tám yêu cầu hệ thống nhất, không phải dễ làm nhất. Quyết định thuộc developer thì chỉ thu hẹp và nêu giá; tên gợi ý
 chưa áp vào code hay tài liệu trước khi developer chốt.
 
-**Ngữ cảnh đã chốt.** Plan đặt mục này trước `§0`, tài liệu nêu ở mở đầu: người dùng · mục tiêu · ranh giới · chỗ đặt ·
+**Ngữ cảnh đã chốt.** Tài liệu nêu ở mở đầu, đề xuất nêu trước khi viết Plan: người dùng · mục tiêu · ranh giới · chỗ đặt ·
 **thứ cố ý KHÔNG làm, kèm lý do** · **quyết định trái trực giác** · **"Mở rộng sau"** — hướng đã tính chưa làm, mỗi dòng
 một hướng, kèm bản tạm và Plan nếu có.
 

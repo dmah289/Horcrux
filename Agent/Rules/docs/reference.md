@@ -56,46 +56,42 @@ thị tĩnh. Trang: header → mục lục trỏ `id` → `<main>` → footer gh
 
 ## Plan
 
+| Khối | Chứa | Không chứa |
+|---|---|---|
+| **dòng mở**, ≤3 dòng | nguồn bản tạm kèm đường dẫn · phụ thuộc, chung file với Plan nào, gõ trước hay sau · lệnh kiểm | phân công, repo commit, đã compile gì |
+| **Kịch bản** | bảng *tình huống → hệ làm gì → caller hoặc người chơi thấy gì*, gồm biên; là kịch bản chơi thử khi chuyển dự án | người dùng, mục tiêu viết thành văn |
+| **Flow** | một sơ đồ ASCII bản cuối: ai gọi ai, dữ liệu đi đâu, mỗi nút kèm file | luồng tả bằng văn, bản đồ thứ hai |
+| **Thuật toán** — khi có lõi toán hay logic không hiển nhiên | công thức, bất biến, code lõi theo `math-physics` › Cho hiểu sâu · một dòng bản mẫu: số lượt, đối chứng làm đỏ | dẫn giải lặp lại code |
+| **GĐn — *xong thì làm thêm được gì*** | sơ đồ sau giai đoạn, phần mới đánh `+` · chỗ thêm theo neo · Editor setup bước đánh số · bảng case *input → kỳ vọng* | Mục tiêu, Vì sao bây giờ, Quyết định, consumes/produces, mốc commit |
+| **Chuyển dự án (agent)** | file dự án chuyển, bản tạm xoá, tài liệu hệ, mỗi hành vi đổi một dòng | đoạn cũ → mới, kịch bản chơi thử riêng |
+| **Không làm · Mở rộng sau** | mỗi dòng một phương án bỏ hoặc để sau — vì sao trong một câu | |
+
+Khối không có nội dung thì bỏ, không ghi "không". Tên dự án nguồn chỉ ở dòng mở và Chuyển dự án.
+
 - **Tự chứa:** code lại được từ đầu tới cuối không suy đoán, không mở tài liệu khác.
-- **Theo luồng:** mở đầu bằng **luồng mô tả** và **bản đồ hệ cuối**; mỗi giai đoạn xuyên qua mọi file chặng đó cần; trong
-  giai đoạn, call site trước, phần được gọi sau. Plan chỉ có danh sách case test theo giai đoạn. Developer gõ lệch Plan là
-  bình thường.
-- **Phần dẫn đủ hiểu, sức dồn vào code:** lý giải sâu đặt cạnh đoạn code nó giải thích, không dồn lên đầu.
-- **File đã có thì chỉ chỗ thêm, không chép lại:** neo theo file, region, tên member có thật — không số dòng. Đoạn code của
-  code đã tồn tại khớp nguyên văn chỗ neo trong file thật.
-- **Thuật toán trong Plan chứng minh bằng bản mẫu chạy được trước khi ghi** — code Plan chưa qua compiler mà developer gõ
-  nguyên và tin.
-- **Plan chạm cả Horcrux lẫn consumer thì phần Horcrux chỉ thêm** (member mới mang mặc định, API cũ giữ); mỗi giai đoạn một
-  mốc compile sạch và một commit. Sau mỗi giai đoạn developer gõ, agent compile, so code với Plan, phân loại chỗ lệch theo
-  `workflow` › Chưng cất.
-- Hệ có lõi toán thì `§0` dẫn giải theo `math-physics` › Cho hiểu sâu; `§0` ghi phép kiểm của bản mẫu, số lượt và đối
-  chứng. Bản mẫu cùng thuật toán, ngôn ngữ nào cũng được, vét cạn các bảo đảm.
-- Câu developer hỏi lặp lại thì ghi ngược vào Plan. Phần trước giai đoạn đầu (Ngữ cảnh đã chốt, Đã khảo sát, luồng, bản đồ)
-  chỉ đủ để định hướng; công viết đổ vào neo đúng, đoạn mới đủ gõ, chú thích chỗ dễ gõ sai.
-- Mỗi giai đoạn kèm sơ đồ tương tác sau giai đoạn, phần mới đánh dấu, và *vì sao chặng này đến lúc này*. Thứ tự theo luồng,
-  không theo cây phụ thuộc type.
-- Neo kèm vài dòng có sẵn quanh chỗ thêm. File mới thì khung đủ nhưng chỉ chứa thứ giai đoạn đó dùng. Hệ đang có code:
-  giai đoạn 0 là bản đồ hệ hiện tại, chỗ đổi viết đoạn cũ → đoạn mới. Code tạm để chặng đầu chạy chỉ khi vài dòng và giai
-  đoạn thay nó nói vì sao thay.
-- Xoá API cũ của Horcrux là việc riêng, không nằm trong Plan thêm.
-
-**Sổ tay** — đầu Plan: khối mở (ngày · nguồn bản tạm kèm đường dẫn · ai gõ giai đoạn nào · "chạy được, thấy được" mỗi giai
-đoạn · lệnh kiểm · commit ở repo nào · phụ thuộc và chung file với Plan nào · đã compile, chạy bản mẫu gì trước khi ghi) ·
-"Ngữ cảnh đã chốt" · bảng "Đã khảo sát" (*nguồn · lấy gì · không lấy, vì sao*) · luồng mô tả · bản đồ hệ cuối · `§0`. Tên dự
-án nguồn chỉ ở khối mở, hàng bản tạm của "Đã khảo sát" và giai đoạn chuyển dự án; phần còn lại trung tính.
-Mỗi giai đoạn: mục tiêu (chặng nào, xong thì hệ làm thêm được gì) · vì sao bây giờ · sơ đồ tương tác · chỗ thêm theo neo
-(`File` › region › neo → đoạn mới) · Interfaces nó consumes, produces · "toán → code" · *quyết định, phương án bỏ, vì sao* ·
-Editor setup của giai đoạn · kiểm (compile, thấy gì, bảng case input → kỳ vọng, biên theo `workflow` › tra cứu › Nghiệm
-thu) · danh sách cheat · mốc commit. Cuối Plan: bảng file → giai đoạn đã chạm.
-
-- Plan chỉ có Horcrux: "chạy được, thấy được" mỗi giai đoạn là compile sạch và bảng case xanh, "thấy trong game" là giai
-  đoạn cuối — dự án chuyển sang bản Horcrux, xoá bản tạm, xoá Plan, kèm kịch bản chơi thử; tài liệu hệ ở giai đoạn ngay trước.
+- **Theo luồng:** mỗi giai đoạn xuyên qua mọi file chặng đó cần, kết ở một mốc compile sạch và một commit; trong giai đoạn,
+  call site trước, phần được gọi sau. Thứ tự theo luồng, không theo cây phụ thuộc type. Developer gõ lệch Plan là bình
+  thường.
+- **Lý do ở hai chỗ:** comment *vì sao* trong đoạn code, chỗ code làm điều trái trực giác (trần `code-design` › Naming) —
+  developer gõ luôn vào code thật · phương án bỏ ở khối cuối. Câu developer hỏi lặp lại thì ghi ngược vào một trong hai chỗ.
+- **File đã có thì chỉ chỗ thêm, không chép lại:** neo `File` › region › member có thật, không số dòng, kèm vài dòng có sẵn
+  quanh chỗ thêm; đoạn code của code đã tồn tại khớp nguyên văn file thật. Hệ đang có code: chỗ đổi viết đoạn cũ → đoạn
+  mới. File mới thì khung đủ nhưng chỉ chứa thứ giai đoạn đó dùng. Code tạm để chặng đầu chạy chỉ khi vài dòng và giai đoạn
+  thay nó nói vì sao thay.
+- **Code trong Plan đã qua compiler, thuật toán đã qua bản mẫu** cùng thuật toán, ngôn ngữ nào cũng được, vét cạn các bảo
+  đảm — developer gõ nguyên và tin. Kết quả kiểm khác ghi trong báo cáo chat, không ghi vào Plan.
+- **Plan chạm cả Horcrux lẫn consumer thì phần Horcrux chỉ thêm** (member mới mang mặc định, API cũ giữ); xoá API cũ là việc
+  riêng. Sau mỗi giai đoạn developer gõ, agent compile, so code với Plan, phân loại chỗ lệch theo `workflow` › Chưng cất.
+- Plan chỉ có Horcrux: giai đoạn developer gõ "thấy được" là compile sạch và bảng case xanh; thấy trong game ở Chuyển dự
+  án — dự án sang bản Horcrux, xoá bản tạm, xoá Plan, chơi thử theo bảng Kịch bản.
 - Code Editor không có test thì caller là nút của dự án: nối dự án ngay trong giai đoạn, xoá bản tạm cùng tên cùng lúc.
-- Nhiều utility độc lập trong một Plan: mỗi cơ chế một luồng, bản đồ và chuỗi giai đoạn riêng, chung Ngữ cảnh đã chốt, Đã
-  khảo sát, tài liệu và chuyển dự án.
-- Đồng bộ đoạn code với file thật bằng chép rồi so máy: script dò mỗi đoạn tới file và neo nó ghi, so với vùng tương ứng,
-  thay nguyên đoạn, chạy tới 0 đoạn lệch.
+- Nhiều utility độc lập trong một Plan: mỗi cơ chế một Kịch bản, Flow và chuỗi giai đoạn riêng; chung dòng mở, Chuyển dự
+  án, Không làm.
 
-**Nghiệm thu Plan:** có "Ngữ cảnh đã chốt" · phần trước giai đoạn đầu đọc lướt được · đọc giai đoạn nào cũng trả lời được
-"code này ai gọi" · không member nào có trước giai đoạn có caller của nó · không đoạn nào chép lại cả file đã có · mọi neo
-trỏ member có thật · đúng công thức, đúng nhịp, self-document.
+**Sổ tay** — đồng bộ đoạn code với file thật bằng chép rồi so máy: script dò mỗi đoạn tới file và neo nó ghi, so với vùng
+tương ứng, thay nguyên đoạn, chạy tới 0 đoạn lệch. Đo văn xuôi: bỏ khối code, sơ đồ, dòng bảng, heading; phần còn lại chia
+tổng ký tự.
+
+**Nghiệm thu Plan:** đủ khối theo thứ tự · văn xuôi ≤ 20% · đọc giai đoạn nào cũng trả lời được "code này ai gọi" từ sơ đồ
+· không member nào có trước giai đoạn có caller của nó · không đoạn văn quyết định ngoài comment và khối cuối · không đoạn
+nào chép lại cả file đã có · mọi neo trỏ member có thật · đúng công thức, đúng nhịp, self-document.
