@@ -41,3 +41,13 @@ Bài học đã trả giá khi làm việc với `async-presentation`. Đọc tr
 `2026-11` · vấp 1 · chuyển sang, chưa kiểm lại
 **Thấy:** nhạc nền gắn vào lúc vào một màn, track đặt tên theo màn đó. **Vì:** phản hồi kéo dài (nhạc, tiếng loop) thuộc chủ có cùng đời; màn ngắn đời hơn nhạc suốt phiên.
 **Làm:** nhạc suốt phiên phát từ thứ sống suốt phiên, không bật lại ở mỗi màn; bắt đầu, dừng lúc nào thì hỏi (`async-presentation` › tra cứu › Trình diễn).
+
+### Port DOTween sang PrimeTween đúng số mà nhịp khác
+`2026-10` · vấp 1 · đã đo · đúng với dự án chuyển từ DOTween mà phải giữ cảm giác
+**Thấy:** chép thời lượng, ease theo call site DOTween mà chuyển động, độ trễ khác bản cũ; PrimeTween cảnh báo tween bắt đầu ở đích. **Vì:** cảm giác cũ nằm trong mặc định ẩn của DOTween, không ở call site: không có settings asset thì ease `OutQuad`, scaled time, autoKill · `DOVirtual.DelayedCall` bỏ qua `timeScale` · `SetRelative` tính đích lúc tween bắt đầu · DOTween im lặng khi giá trị đầu bằng đích.
+**Làm:** ghi ease tường minh · delay phải chạy khi `timeScale` = 0 thì `useUnscaledTime` · `SetRelative` → tính đích lúc tạo, khi không gì dời vật trước lúc tween chạy · Join/Append/Insert → `Sequence.Insert(atTime, …)` thời điểm tường minh; hai tween nối bằng `OnComplete` → `Chain` · `Kill` → `Stop` · `SetEase(OutBack, s)` → `Easing.Overshoot(s / 1.70158f)`; InBack có tham số → `Tween.Custom` với `t*t*((s+1)*t - s)` · punch, shake không có bản khớp đúng: theo adapter DOTween của package, `frequency = (int)(vibrato * 1.35f)`, `asymmetryFactor = 1 - elasticity` · truyền giá trị đầu tường minh, đã ở đích thì bỏ tween (`async-presentation` › tra cứu › Stack async).
+
+### Sequence lặp nháy nhiều gấp đôi hoặc nửa số định
+`2026-11` · vấp 1 · chuyển sang, chưa kiểm lại
+**Thấy:** đặt `cycles` theo số lần nháy muốn thấy mà ra gấp đôi hoặc nửa. **Vì:** `CycleMode.Restart` đếm mỗi vòng là một lần nháy; `Yoyo` đếm đi và về là hai vòng.
+**Làm:** đổi số lần mắt thấy ra `cycles` theo đúng chế độ lặp, kiểm bằng `stat` của trace (`feel-tune` › Chọn công cụ).

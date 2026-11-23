@@ -67,6 +67,11 @@ Bài học đã trả giá khi làm việc với `demo-compare`. Đọc trọn c
 **Thấy:** `max` lệch lớn ở mép, góc ảnh demo dù nền đã khớp. **Vì:** demo xuất kèm khung viền, mỗi cạnh dày khác nhau.
 **Làm:** `Runs` ở mép tìm viền, đưa vào `exclude` trước khi tin số.
 
+### Cỡ màn đọc trong Editor là cỡ cửa sổ, không phải cỡ máy
+`2026-10` · vấp 1 · đã đo
+**Thấy:** tính bố cục theo `Handles.GetMainGameViewSize()` ra số của cửa sổ Game view. **Vì:** ở Free Aspect hàm trả cỡ cửa sổ đang mở, không phải độ phân giải máy đang giả lập.
+**Làm:** đặt Game view về cỡ máy cần đo trước khi đọc, hoặc đo trong Simulator; đọc cỡ hiện tại trước khi tin số (`demo-compare` › Hai chế độ).
+
 ### Đổi cỡ Game view bật thêm cửa sổ Game nổi
 `2026-11` · vấp 1 · chuyển sang, chưa kiểm lại
 **Thấy:** Đổi cỡ Game view thì bật thêm một cửa sổ Game nổi. **Vì:** Simulator đang chiếm chỗ view Play.

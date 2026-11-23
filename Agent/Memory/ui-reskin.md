@@ -32,10 +32,15 @@ Bài học đã trả giá khi làm việc với `ui-reskin`. Đọc trọn cùn
 **Thấy:** Gọi service trong Play làm game kẹt ở màn chờ. **Vì:** gọi trước khi scene chứa service nạp.
 **Làm:** `PlayProbe.WaitForSceneAsync`.
 
-### Ảnh chụp qua `manage_camera` không ra ngoài project, xuất hiện muộn
+### Ảnh chụp qua lệnh MCP rơi vào `Assets/`, xuất hiện muộn
 `2026-11` · vấp 1 · chuyển sang, chưa kiểm lại
-**Thấy:** `manage_camera` không ghi ảnh ra ngoài project, ảnh xuất hiện muộn. **Vì:** lệnh ghi bất đồng bộ vào `Assets/`.
+**Thấy:** `manage_camera`, `game_view` với `save_path` không ghi ảnh ra ngoài project; ảnh xuất hiện muộn và Unity import nó thành asset. **Vì:** đường dẫn tính tương đối `Assets/`, lệnh ghi bất đồng bộ.
 **Làm:** `UICapture` ghi đường dẫn bất kỳ.
+
+### Eval cần type `internal` của dự án
+`2026-10` · vấp 1 · đã đo
+**Thấy:** eval không gọi được type `internal` để thêm component hay gán field. **Vì:** eval biên dịch ở assembly riêng.
+**Làm:** lấy type bằng `System.Type.GetType("Ns.Type, TênAssembly")` rồi `AddComponent(type)`; field `[SerializeField]` gán qua `SerializedObject.FindProperty(...)`; sửa prefab đi `PrefabUtility.LoadPrefabContents` → sửa → `SaveAsPrefabAsset` → `UnloadPrefabContents` (`ui-reskin` › Làm việc qua Editor tool).
 
 ### Eval thất bại không dữ liệu ngay sau khi vào Play
 `2026-11` · vấp 1 · chuyển sang, chưa kiểm lại

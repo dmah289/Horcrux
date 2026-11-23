@@ -11,3 +11,13 @@ Chờ lượt dọn xếp về đúng miền.
 `2026-10` · vấp 1 · đã đo · đúng với Bash tool là Git Bash trên Windows
 **Thấy:** script Python nhúng bằng heredoc `<<'EOF'` để thay khối C# khớp 0 chỗ mà không báo; `'\\'` thành `'\'`, `$"…"` mất `$`. **Vì:** heredoc trong Bash tool không giữ nguyên văn `\` và `$`.
 **Làm:** khối có `$`, `\`, backtick thì sửa bằng Edit, hoặc ghi script bằng Write rồi `python -X utf8 -I script.py`; mọi phép thay theo chuỗi `assert count == 1` trước khi ghi.
+
+### Script Python dừng giữa chừng sau khi đã ghi một phần file
+`2026-10` · vấp 1 · đã đo · đúng với console Windows
+**Thấy:** script in tiếng Việt ném lỗi encode giữa lượt, một nửa số file đã ghi. **Vì:** console Windows mặc định cp1252; `-I` bỏ qua `PYTHONIOENCODING`.
+**Làm:** chạy `python -X utf8 -I`, hoặc script tự `sys.stdout.reconfigure(encoding="utf-8")` ở đầu.
+
+### Script sửa file text làm diff lệch cả file
+`2026-10` · vấp 1 · đã đo · đúng với working copy Windows `core.autocrlf=true`
+**Thấy:** script chỉ thay vài token mà diff báo đổi mọi dòng; git cảnh báo "LF will be replaced by CRLF" ở mọi file chạm. **Vì:** working copy là CRLF, Unity ghi YAML bằng LF; đọc ghi ở chế độ text đổi kiểu xuống dòng.
+**Làm:** đọc ghi bytes, giữ kiểu xuống dòng của file gốc; cảnh báo CRLF là nhiễu, xác nhận diff chỉ còn token bằng `git diff --ignore-space-at-eol --stat`.
