@@ -34,13 +34,16 @@ def main_file(name):
     return AGENT / "Rules" / name / "RULE.md" if name in RULES else AGENT / "Skills" / name / "SKILL.md"
 
 
+def ref_file(name):
+    return main_file(name).with_name("reference.md")
+
+
 def all_files():
     out = [AGENT / "horcrux.md"]
-    for n in RULES:
+    for n in RULES + SKILLS:
         out.append(main_file(n))
-        if (AGENT / "Rules" / n / "reference.md").exists():
-            out.append(AGENT / "Rules" / n / "reference.md")
-    out += [main_file(n) for n in SKILLS]
+        if ref_file(n).exists():
+            out.append(ref_file(n))
     out += sorted((AGENT / "Memory").glob("*.md")) if (AGENT / "Memory").exists() else []
     return out
 
@@ -53,14 +56,14 @@ def check_pointers():
                 name, ref, sec = m.group(1), m.group(2), m.group(3).strip("`")
                 if name not in RULES + SKILLS:
                     continue
-                target = AGENT / "Rules" / name / "reference.md" if ref else main_file(name)
+                target = ref_file(name) if ref else main_file(name)
                 if not target.exists():
                     print("KHÔNG CÓ FILE", f.relative_to(AGENT), i, m.group(0)); bad += 1; continue
                 first = sec.split(" ")[0]
                 if not any(h.startswith(sec) or h.startswith(first) for h in headings(target)):
                     print("KHÔNG CÓ MỤC", f.relative_to(AGENT), i, m.group(0)); bad += 1
-    for n in RULES:
-        ref = AGENT / "Rules" / n / "reference.md"
+    for n in RULES + SKILLS:
+        ref = ref_file(n)
         text = read(main_file(n))
         if not ref.exists():
             continue
@@ -118,12 +121,18 @@ def git_show(ref, path):
 
 
 def dev_block(text):
+    if not text or DEV_START not in text or DEV_END not in text:
+        return None
     return text[text.index(DEV_START):text.index(DEV_END) + len(DEV_END)]
 
 
 def check_dev_block(ref):
-    old = git_show(ref, "Skills/horcrux_skill.md") or git_show(ref, "Agent/horcrux.md")
-    same = dev_block(old) == dev_block(read(AGENT / "horcrux.md"))
+    old = dev_block(git_show(ref, "Skills/horcrux_skill.md") or git_show(ref, "Agent/horcrux.md"))
+    new = dev_block(read(AGENT / "horcrux.md"))
+    if old is None or new is None:
+        print("mục developer-only: THIẾU DẤU", "ở mốc" if old is None else "ở horcrux.md")
+        return 1
+    same = old == new
     print("mục developer-only:", "nguyên" if same else "ĐÃ BỊ ĐỔI")
     return 0 if same else 1
 

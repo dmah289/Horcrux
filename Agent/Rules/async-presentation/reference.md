@@ -38,7 +38,7 @@ Nền tảng và Sổ tay của `async-presentation`. Đọc mục được bả
 
 - **Mốc "đã thấy":** trượt từ A tới B cần A người chơi đã thấy (`currAnimatedScore`); view tắt, dựng lại, nhiều instance
   thì A trong view sai. Component thụ động trượt khi host gọi `PlayAsync(ct)`.
-- **Giá trị nghỉ đọc ở `Awake`.**
+- **Giá trị nghỉ đọc ở `Awake`.** Kinh nghiệm: `Memory/async-presentation.md` › Nhún xong vật đổi cỡ so với lúc nghỉ.
 - **Chỗ nghỉ lần đầu:** bố cục tính được thì đặt cùng frame tạo vật; chờ frame chỉ khi đọc từ thứ engine dựng sau (layout
   UI, bounds), và ẩn vật tới lúc đặt xong. Đích là ô developer đặt.
 - **Một nhịp nhiều lớp:** đỉnh trùng nhau dù chỉnh số nào; căn bằng delay rời thì lệch ở lần chỉnh sau. Cú bùng (hạt, loé)
