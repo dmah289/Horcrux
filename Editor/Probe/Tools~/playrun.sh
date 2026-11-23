@@ -8,7 +8,9 @@
 # Dùng: bash playrun.sh <script .cs> <file ra> [marker] [token] [timeout giây]
 #   marker  chuỗi trong script được thay bằng đường dẫn file ra kiểu Windows, đúng một lần (mặc định __OUT__)
 #   token   chuỗi script trả về ở dòng cuối, để biết eval đã chạy tới cuối (mặc định playrun)
-# In đường dẫn và cỡ file, phần kết quả trước LOG (tối đa 4 KB, trace thì bỏ), rồi LOG đã bỏ stack trace và gộp dòng lặp.
+# KEEP_SAVE=1 giữ PlayerPrefs lượt chạy để lại; mặc định chụp trước Play và trả sau khi thoát Play (PrefsSnapshot).
+# In đường dẫn và cỡ file, phần kết quả trước LOG (tối đa 4 KB, trace thì bỏ), LOG đã bỏ stack trace và gộp dòng lặp, rồi
+# EXIT: lỗi console từ lúc script xong tới khi thoát Play hẳn (OnDestroy, dọn lúc thoát) — LOG không bắt được đoạn này.
 set -u
 [ $# -ge 2 ] || { echo "dùng: playrun.sh <script .cs> <file ra> [marker] [token] [timeout giây]"; exit 2; }
 # unity.exe: UNITY_CLI, rồi `unity` trên PATH (bản MSIX ở WindowsApps), rồi đường cài cũ.
@@ -110,6 +112,36 @@ if [ "${PLAY_FROM_BUILD_SCENE:-0}" = "1" ]; then
   echo 'return Horcrux.Editor.Probe.PlayFrom.Arm();' > "$WORK/arm.cs"
   echo "start scene: $("$U" cmd --project-path "$P" --result-only script eval_file --file "$(cygpath -w "$WORK/arm.cs")" 2>&1 | head -c 200)"
 fi
+# Lượt chạy đi trên save thật của developer: chụp PlayerPrefs trước Play, trả sau khi thoát Play (game flush lúc thoát).
+SNAP=""
+if [ "${KEEP_SAVE:-0}" != "1" ]; then
+  echo "return Horcrux.Editor.Probe.PrefsSnapshot.Take(@\"$(cygpath -w "$WORK/prefs.json")\");" > "$WORK/take.cs"
+  took="$("$U" cmd --project-path "$P" --result-only script eval_file --file "$(cygpath -w "$WORK/take.cs")" 2>&1)"
+  if echo "$took" | grep -q 'prefs: chụp'; then SNAP="$WORK/prefs.json"; echo "$(echo "$took" | grep -o 'prefs: [^"]*')"
+  else echo "không chụp được PlayerPrefs, lượt này giữ save nó để lại: $(echo "$took" | head -c 300)"; fi
+fi
+# Trả hỏng (Editor bận lệnh khác, mất kết nối) thì bản chụp chép cạnh file ra: thư mục tạm bị dọn ở đường thành công.
+restore_save() {
+  [ -n "$SNAP" ] || return 0
+  echo "return Horcrux.Editor.Probe.PrefsSnapshot.Restore(@\"$(cygpath -w "$SNAP")\");" > "$WORK/restore.cs"
+  local restored
+  restored="$("$U" cmd --project-path "$P" --result-only script eval_file --file "$(cygpath -w "$WORK/restore.cs")" 2>&1 | grep -o 'prefs: [^"]*')"
+  if [ -n "$restored" ]; then echo "$restored"
+  else
+    mkdir -p "$(dirname "$DEST")"; cp "$SNAP" "$DEST.prefs.json"
+    echo "KHÔNG trả được PlayerPrefs — save đang là bản lượt chạy để lại. Khi Editor rảnh, ngoài Play:"
+    echo "  unity cmd --project-path \"$P\" script eval --code 'return Horcrux.Editor.Probe.PrefsSnapshot.Restore(@\"$(cygpath -w "$DEST.prefs.json")\");'"
+  fi
+  SNAP=""
+}
+# Lỗi console sau khi script xong (OnDestroy, dọn lúc thoát Play): LOG của PlayProbe đã đóng, đọc qua console_digest.py.
+CURSOR=""
+print_exit_log() {
+  [ -n "$CURSOR" ] || return 0
+  local digest
+  digest="$(UNITY_CLI="$U" PROJECT_PATH="$P" python -X utf8 -I "$(dirname "$0")/console_digest.py" --since "$CURSOR" --level error --frames 1 --max 20 2>&1)"
+  echo "$digest" | head -1 | grep -q '^entries 0 ' || { echo "EXIT:"; echo "$digest"; }
+}
 cli editor.playmode start
 sleep 4; waitready || exit 1
 started=0
@@ -122,10 +154,13 @@ for i in $(seq 1 10); do
 done
 if [ $started -eq 1 ]; then
   for i in $(seq 1 $((TIMEOUT / 3))); do [ -f "$OUT.done" ] && break; sleep 3; done
+  CURSOR="$("$U" cmd --project-path "$P" --result-only console status 2>/dev/null | grep -o '"cursor": [0-9]*' | grep -o '[0-9]*$')"
 fi
 cli editor.playmode stop
+sleep 2; waitready
+restore_save
 [ $started -eq 1 ] || { echo "script không chạy, xem $WORK/run.cs"; exit 1; }
-[ -f "$OUT.done" ] || { echo "timeout sau $TIMEOUT giây, xem $WORK"; exit 1; }
+[ -f "$OUT.done" ] || { echo "timeout sau $TIMEOUT giây, xem $WORK"; print_exit_log; exit 1; }
 mkdir -p "$(dirname "$DEST")"
 mv "$OUT" "$DEST"
 rm -rf "$WORK"
@@ -135,3 +170,4 @@ grep -q '^TRACE$' "$DEST" || sed '/^LOG$/,$d' "$DEST" | head -c 4096
 # LOG bỏ dòng stack trace, gộp dòng lặp: lỗi của game không che kết quả.
 echo "LOG:"
 sed -n '/^LOG$/,/^TRACE$/p' "$DEST" | sed '1d;/^TRACE$/d;/^$/d' | grep -v -E '\(at |^[[:space:]]+at |:[^ ]+ \(.*\)$' | sort | uniq -c | sort -rn | head -20
+print_exit_log

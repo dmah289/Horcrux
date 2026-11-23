@@ -12,7 +12,7 @@ kiểm tĩnh trước: `PrefabDump` không cần vào Play.
 | Mục | Chốt |
 |---|---|
 | Người dùng | agent, khi chỉnh feeling, dò lỗi trình diễn, đo hiệu năng, dò một luồng runtime treo bằng trạng thái nội bộ; quy trình chọn công cụ ở `Skills/feel-tune/SKILL.md` |
-| Ranh giới | Horcrux giữ runner, ghi kết quả, tóm console của phiên đang mở, reflection, chờ scene, bấm nút, dump prefab, ghép ảnh, cỡ Game view, máy trên Device Simulator, chạy lần lượt nhiều cỡ hay nhiều máy, file máy thật (`Editor/Probe/Devices/`), đo khung object trên màn, vào Play từ scene đầu. Dự án giữ **đường tắt vào trạng thái cần đo** (bấm menu, chờ level, chọn entity), một class Editor của dự án |
+| Ranh giới | Horcrux giữ runner, ghi kết quả, sao lưu PlayerPrefs quanh lượt chạy, tóm console của phiên đang mở, reflection, chờ scene, bấm nút, dump prefab, ghép ảnh, cỡ Game view, máy trên Device Simulator, chạy lần lượt nhiều cỡ hay nhiều máy, file máy thật (`Editor/Probe/Devices/`), đo khung object trên màn, vào Play từ scene đầu. Dự án giữ **đường tắt vào trạng thái cần đo** (bấm menu, chờ level, chọn entity), một class Editor của dự án |
 | Chỗ đặt | C# ở `Editor/Probe/` (assembly `com.horcrux.editor`). Shell ở `Editor/Probe/Tools~/`: Unity không import, không vào build |
 | Quan hệ với FeelTrace | `feeltrace.sh` chạy qua `playrun.sh`; `FeelTraceRecorder` dùng chung cờ `.done` |
 
@@ -41,6 +41,8 @@ kiểm tĩnh trước: `PrefabDump` không cần vào Play.
 | Đo cả Game view lẫn Device Simulator | Game view có `Screen.safeArea` bằng cả màn: mọi thứ neo theo vùng an toàn (tai thỏ, thanh home) đứng đúng ở Game view mà lệch trên máy. Simulator giả cỡ màn, vùng an toàn, cutout của máy |
 | `SimulatorDevice` đổi view Play chính bằng `PlayModeView.SwapMainWindow` qua reflection | không có API công khai chọn máy; swap trong cùng ô dock, Simulator nhớ máy đã chọn qua domain reload. Tên type, method nội bộ kiểm trên Unity 6 |
 | `DEVICES` dừng lần chạy khi không chọn được máy | chạy tiếp là đo máy đang chọn từ trước mà file ra mang tên máy mới |
+| `playrun.sh` mặc định chụp PlayerPrefs trước Play và trả sau khi thoát Play | lượt đo đi trên save thật của developer: thắng level, cộng tiền, mở tính năng là đổi tiến độ của họ. Trả **sau** khi thoát Play vì game flush save lúc thoát |
+| `playrun.sh` in `EXIT` từ console, ngoài `LOG` | `LOG` đóng khi script xong; lỗi lúc thoát Play (`OnDestroy`, dọn lúc thoát) chỉ còn trong console Unity |
 
 ## Luồng dữ liệu
 
@@ -48,13 +50,14 @@ kiểm tĩnh trước: `PrefabDump` không cần vào Play.
 script .cs của agent (chứa __OUT__ đúng một lần, dòng cuối return "playrun";)
    │  playrun.sh: thay __OUT__ bằng đường dẫn file tạm kiểu Windows → run.cs
    ▼
-Unity CLI: set_run_in_background, set_auto_tick → playmode stop → start → script eval_file run.cs (thử lại tới 10 lần)
+Unity CLI: set_run_in_background, set_auto_tick → playmode stop → PrefsSnapshot.Take → start → script eval_file run.cs (thử lại tới 10 lần)
    │
    ▼  thân eval
 PlayProbe.Run(outPath, async (sb, ct) => { vào trạng thái; đo; sb.Append(kết quả) })
    │  finally: ghi "<kết quả>\nLOG\n<lỗi console, exception>" và cờ <file>.done
    ▼
-playrun.sh: thấy .done → playmode stop → chuyển file về <file ra> → in đường dẫn, kết quả (≤ 4 KB), LOG gọn
+playrun.sh: thấy .done → nhớ cursor console → playmode stop → PrefsSnapshot.Restore → chuyển file về <file ra>
+            → in đường dẫn, kết quả (≤ 4 KB), LOG gọn, EXIT (lỗi console sau cursor, qua console_digest.py)
 ```
 
 ## API
@@ -69,6 +72,7 @@ playrun.sh: thấy .done → playmode stop → chuyển file về <file ra> → 
 | `PlayProbe.WaitForSceneAsync(string sceneName, CancellationToken ct)` | trả `Scene` khi scene đúng tên đã nạp xong. Gọi service của game trước khi scene chứa nó nạp là chạy trước boot |
 | `PlayProbe.Step(string what)` | ghi bước script đang làm; body ném hay bị huỷ thì `LOG` có dòng `probe: dừng ở bước "<what>" sau <n> s` trước exception. Hai hàm `WaitFor…` tự ghi bước; vòng chờ tự viết (`UniTask.WaitUntil`, `while`) gọi `Step` trước vòng |
 | `PlayProbe.Click(GameObject target)` | pointerDown, pointerUp, pointerClick vào handler gần nhất từ `target` lên cha; cần EventSystem |
+| `PrefsSnapshot.Take(string path)` · `Restore(string path)` | ngoài Play. `Take` ghi mọi key PlayerPrefs (int, float, string) ra JSON, trả `prefs: chụp N key`. `Restore` ghi lại key đã đổi hay đã mất, xoá key sinh sau lúc chụp, đọc lại để so, trả `prefs: trả N key, xoá M key mới, còn lệch K` — `K` khác 0 là có thứ ghi đè sau lệnh. Đọc registry qua `WindowsPlayerPrefsProvider` (Player Prefs Editor), nên chỉ Windows. Không lấy lại file trong `persistentDataPath` hay dữ liệu đã đẩy lên server. `playrun.sh` tự gọi; eval MCP rời vào Play thì gọi tay trước và sau |
 | `GameViewSize.Set(int width, int height)` · `Restore()` · `Current()` | chọn cỡ cố định (chưa có thì thêm vào nhóm của platform đang chọn, lưu trong preference của máy), trả `index: nhãn`; `Restore` về cỡ trước lần `Set` đầu. Trong và ngoài Play; layout UI cập nhật vài frame sau |
 | `SimulatorDevice.Set(string name)` · `Restore()` · `Current()` · `List()` | đưa Device Simulator lên làm view Play chính và chọn máy theo tên (không phân biệt hoa thường, tên trần khớp máy mẫu Unity có đuôi `" (WxH)"`), trả `index: tên rộng×cao safe x,y,w,h`; không thấy tên thì ném `ArgumentException` kèm danh sách. `Restore` về view và máy trước lần `Set` đầu; `List` mọi máy Simulator thấy. `GameViewSize` tự đưa Game view về trước khi đổi cỡ |
 | `PlayFrom.FirstBuildScene()` · `Arm()` | đặt scene đầu Build Settings làm scene khởi động (`FirstBuildScene` vào Play luôn); về Edit mode thì trả scene khởi động cũ. Trong Play bật `Application.runInBackground` |
@@ -99,6 +103,10 @@ bash "Assets/Horcrux/Editor/Probe/Tools~/playrun.sh" <script .cs> <file ra> [mar
 Chạy từ gốc project hoặc đặt `PROJECT_PATH`; `UNITY_CLI` đổi đường dẫn `unity.exe`; `PLAY_FROM_BUILD_SCENE=1` vào Play từ scene đầu Build
 Settings qua `PlayFrom.Arm`. Mã thoát khác 0 khi script lỗi compile (in đủ
 lỗi, dừng ngay), không chạy, hay timeout.
+
+Mặc định runner chụp PlayerPrefs trước Play và trả sau khi thoát Play, in dòng `prefs: …` của `PrefsSnapshot`; `KEEP_SAVE=1` giữ
+save lượt chạy để lại (dựng trạng thái cho lượt sau). Cuối bản in là `EXIT:` khi console có lỗi từ lúc script xong tới khi thoát Play
+hẳn — chỗ lỗi dọn lúc thoát hiện ra; không có lỗi thì không in.
 
 `SIZES="1080x2340 1080x1920"` chạy cùng script một lần mỗi cỡ Game view, đặt cỡ trước khi vào Play. File ra thêm hậu tố cỡ trước đuôi
 (`out.txt` → `out_1080x2340.txt`), mọi `__SIZE__` trong script thành cỡ đó (đặt tên ảnh chụp), xong trả Game view về cỡ trước lần đặt
@@ -212,6 +220,8 @@ Run In Background và auto-tick runner tự bật, và trả lại khi thoát �
 - **Gọi `Service.Get`, `TryGet` trong script trước `WaitForSceneAsync`**: service `FindFromScene` + `LazyInit` chưa có scene thì InitArgs
   ghi nhận không thấy và không tìm lại cả phiên Play. Lỗi sau đó (thiếu phụ thuộc, `NullReferenceException` ở client khác) là của
   script đo, không của game. Kết quả lạ ngay sau một lần thăm dò thì chạy lại phiên Play sạch trước khi kết luận.
+- **Probe đổi dữ liệu lưu nằm ngoài PlayerPrefs (file, cloud) để dựng ca**: runner chỉ trả PlayerPrefs, lần chơi sau của developer
+  mang số của probe. Ghi giá trị đầu ngay sau `WaitForSceneAsync`, trả lại qua đúng API ghi của game trong `finally` của body.
 - **Đóng quảng cáo giả khi dự án dùng AppLovin MAX**: Editor dựng canvas `Interstitial(Clone)`, `Rewarded(Clone)`, `BannerBottom(Clone)`
   ở DontDestroyOnLoad; đóng bằng `Button.onClick` của `MaxInterstitialCloseButton`, rewarded bấm `MaxRewardButton` rồi
   `MaxRewardedCloseButton`. Có canvas `BannerBottom(Clone)` là banner đang hiện.
@@ -245,6 +255,9 @@ level, tap, chụp bốn ảnh ghép một sheet, đọc field private, in kết
 khung sprite và ô chữ world khớp số tự tính bằng `WorldToScreenPoint`, rect UI Overlay co theo cỡ màn, Game view về cỡ cũ, `git status`
 của dự án sạch. `SimulatorDevice` và `DEVICES` kiểm bằng một máy đo từ ảnh chụp: ảnh Simulator trùng ảnh máy theo từng dải màu ở
 mọi khối neo mép trên; tên máy sai thì runner dừng và in danh sách; tên trần chọn đúng máy mẫu; view Play về Game view sau lần chạy.
+`PrefsSnapshot` kiểm ngoài Play: chụp, đổi một key, thêm key int và float, trả — key đổi về giá trị cũ, key thêm bị xoá, còn lệch 0.
+Trong runner: một lượt vào Play từ scene đầu, ghi một key thử rồi thoát — `prefs: trả 10 key, xoá 1 key mới, còn lệch 0` (game boot đổi
+10 key), key thử không còn; hai `LogError` đặt ở `Application.quitting` và `exitCancellationToken` hiện ở `EXIT`, không ở `LOG`.
 
 ## Mở rộng sau
 
