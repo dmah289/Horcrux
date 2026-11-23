@@ -14,8 +14,8 @@ using Object = UnityEngine.Object;
 namespace Horcrux.Editor.UIReskin
 {
     /// <summary>
-    /// Chụp UI ra PNG để so với demo. Trong Play chụp Game view (gồm canvas Overlay); ngoài Play vẽ một canvas trong scene ở
-    /// đúng độ phân giải cho trước, không cần Game view, không vào Play.
+    /// Chụp UI và vật world ra PNG để so với demo. Trong Play chụp Game view (gồm canvas Overlay); ngoài Play vẽ một canvas trong
+    /// scene, hay một copy trong preview scene, ở đúng độ phân giải cho trước, không cần Game view, không vào Play.
     /// </summary>
     public static class UICapture
     {
@@ -101,7 +101,6 @@ namespace Horcrux.Editor.UIReskin
         {
             var scene = EditorSceneManager.NewPreviewScene();
             var texture = new RenderTexture(width, height, 24);
-            var shots = new List<Texture2D>(count);
             try
             {
                 var cameraObject = new GameObject("UICapture camera");
@@ -129,15 +128,84 @@ namespace Horcrux.Editor.UIReskin
                     rect.anchoredPosition = Vector2.zero;
                 }
 
-                for (var i = 0; i < count; i++)
+                ShootSheet(camera, count, i =>
                 {
                     pose?.Invoke(copy, i);
                     Relayout(canvas);
+                }, pngPath, columns);
+            }
+            finally
+            {
+                EditorSceneManager.ClosePreviewScene(scene);
+                Object.DestroyImmediate(texture);
+            }
+            return pngPath;
+        }
+
+        /// <summary>
+        /// Ngoài Play, không chạm scene đang mở: copy source (prefab asset hay object trong scene, vật world vẽ bằng renderer) vào
+        /// preview scene, camera trực giao đặt pixelsPerUnit px mỗi unit world, giữa khung là tâm bounds mọi renderer của copy lúc chưa
+        /// pose. Mỗi lượt pose(copy, i) rồi chụp; count ảnh ghép lưới một PNG, ảnh 0 trên trái. Awake, Start không chạy ngoài Play:
+        /// pose gọi thứ caller cần.
+        /// </summary>
+        public static string World(GameObject source, int width, int height, float pixelsPerUnit, Color background, int count,
+            Action<GameObject, int> pose, string pngPath, int columns = 1)
+        {
+            var scene = EditorSceneManager.NewPreviewScene();
+            var texture = new RenderTexture(width, height, 24);
+            try
+            {
+                var copy = Object.Instantiate(source);
+                SceneManager.MoveGameObjectToScene(copy, scene);
+                copy.SetActive(true);
+                copy.transform.position = Vector3.zero;
+
+                var center = Vector3.zero;
+                var renderers = copy.GetComponentsInChildren<Renderer>();
+                if (renderers.Length > 0)
+                {
+                    var bounds = renderers[0].bounds;
+                    for (var i = 1; i < renderers.Length; i++)
+                        bounds.Encapsulate(renderers[i].bounds);
+                    center = bounds.center;
+                }
+
+                var cameraObject = new GameObject("UICapture camera");
+                SceneManager.MoveGameObjectToScene(cameraObject, scene);
+                var camera = cameraObject.AddComponent<Camera>();
+                camera.scene = scene;
+                camera.orthographic = true;
+                camera.orthographicSize = height * 0.5f / pixelsPerUnit;
+                camera.clearFlags = CameraClearFlags.SolidColor;
+                camera.backgroundColor = background;
+                camera.targetTexture = texture;
+                camera.transform.position = new Vector3(center.x, center.y, center.z - 10f);
+
+                ShootSheet(camera, count, i => pose?.Invoke(copy, i), pngPath, columns);
+            }
+            finally
+            {
+                EditorSceneManager.ClosePreviewScene(scene);
+                Object.DestroyImmediate(texture);
+            }
+            return pngPath;
+        }
+
+        /// <summary>count lượt: before(i) rồi vẽ camera vào targetTexture của nó; ghép lưới ghi PNG.</summary>
+        private static void ShootSheet(Camera camera, int count, Action<int> before, string pngPath, int columns)
+        {
+            var texture = camera.targetTexture;
+            var shots = new List<Texture2D>(count);
+            try
+            {
+                for (var i = 0; i < count; i++)
+                {
+                    before(i);
                     camera.Render();
                     var previous = RenderTexture.active;
                     RenderTexture.active = texture;
-                    var shot = new Texture2D(width, height, TextureFormat.RGBA32, false);
-                    shot.ReadPixels(new Rect(0, 0, width, height), 0, 0);
+                    var shot = new Texture2D(texture.width, texture.height, TextureFormat.RGBA32, false);
+                    shot.ReadPixels(new Rect(0, 0, texture.width, texture.height), 0, 0);
                     shot.Apply();
                     RenderTexture.active = previous;
                     shots.Add(shot);
@@ -151,10 +219,7 @@ namespace Horcrux.Editor.UIReskin
             {
                 foreach (var shot in shots)
                     Object.DestroyImmediate(shot);
-                EditorSceneManager.ClosePreviewScene(scene);
-                Object.DestroyImmediate(texture);
             }
-            return pngPath;
         }
 
         private static void Relayout(Canvas canvas)

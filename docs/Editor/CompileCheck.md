@@ -68,6 +68,7 @@ Thời gian: build 25–30 s mỗi csproj, recompile 5–20 s, test EditMode và
 | `build X: không có file` | Unity chưa sinh csproj cho assembly đó | mở Editor, Edit > Preferences > External Tools > Regenerate project files |
 | `build: không có dotnet …` | máy không có builder nào tool tìm được | đặt `MSBUILD=<đường dẫn MSBuild.exe>` rồi chạy lại |
 | `build X: LỖI` kèm `CS2001` | csproj trỏ file đã dời | lỗi tạm sau `git mv`; chờ Editor sinh lại rồi chạy lại, bước recompile quyết |
+| `build X: LỖI` kèm `CS2001` cho cả một thư mục không còn trên đĩa, chạy lại vẫn vậy | csproj cũ: asmdef đã xoá hay đổi tên, Unity không xoá csproj của nó ở gốc | không có `.asmdef` nào tên X thì bỏ X khỏi `--csproj`; lấy tên từ `.asmdef`, không từ danh sách csproj ở gốc |
 | `build X: LỖI (mã thoát n, …)` | builder hỏng mà không in lỗi biên dịch | đọc 20 dòng output in kèm |
 | `build X: ok` nhưng `recompile: LỖI` | assembly không có trong `--csproj` (asmdef mới, test) hoặc define khác | đọc `errors` in ra; csproj thiếu assembly mới thì thêm tên vào `--csproj` |
 | `recompile: không xong sau 180 s` | Editor treo ở dialog, hoặc đang import | nhìn Editor; Unity bận import asset nặng thì chạy lại |

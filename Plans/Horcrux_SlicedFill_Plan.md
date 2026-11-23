@@ -131,7 +131,7 @@ lúc dựng là bề rộng đầy. Thiếu pivot trái: ruột co về tâm. Th
 
 ## Giai đoạn 3 — Tài liệu hệ `docs/Runtime/SlicedFill/SlicedFill.md` và `.html` (agent)
 
-`SlicedFill.md` mở đầu `Code: Runtime/Utilities/Sprites/`. Mục: luồng `Awake → MinWidth` rồi `FillWidth → Apply → VisibleWidth` ASCII (luồng mô tả ở trên) · bảng API (`FillWidth`, `MinWidth`, `VisibleWidth`, `Apply`) · "Design decisions" gom các điều đã chốt ở Ngữ cảnh đã chốt (đổi `size.x` không đổi scale, pivot trái, không tween, không trục dọc) · "Dùng trong dự án": chụp `full` và `min` một lần ở `Awake`, gọi `Apply` mỗi lần dữ liệu đổi hoặc mỗi frame của tween · Editor setup phía caller (Sliced, border trái/phải > 0, pivot trái). `SlicedFill.html` theo `docs` › `.html`: Kịch bản (đầy, nửa, rất nhỏ, rỗng) · Cách dùng · Flow · Lưu ý (thiếu pivot trái, thiếu Sliced, sprite đổi lúc chạy)
+`SlicedFill.md` mở đầu `Code: Runtime/Utilities/Sprites/`. Mục: luồng `Awake → MinWidth` rồi `FillWidth → Apply → VisibleWidth` ASCII (luồng mô tả ở trên) · bảng API (`FillWidth`, `MinWidth`, `VisibleWidth`, `Apply`) · "Design decisions" gom các điều đã chốt ở Ngữ cảnh đã chốt (đổi `size.x` không đổi scale, pivot trái, không tween, không trục dọc) · "Dùng trong dự án": chụp `full` và `min` một lần ở `Awake`, gọi `Apply` mỗi lần dữ liệu đổi hoặc mỗi frame của tween · Editor setup phía caller (Sliced, border trái/phải > 0, pivot trái). `SlicedFill.html` theo `docs` › `.html`: Kịch bản (đầy, nửa, rất nhỏ, rỗng) · Cách dùng · Flow · Lưu ý (thiếu pivot trái, thiếu Sliced, sprite đổi lúc chạy, thanh cần đầu phẳng hay có vạch chia thì dùng `SpriteHorizontalFill` — trỏ sang bảng chọn trong tài liệu đó, không chép)
 
 Xong thì **xoá Plan này** (`Horcrux_SlicedFill_Plan.md` cùng `.meta`): hệ đã dựng và đã có tài liệu.
 

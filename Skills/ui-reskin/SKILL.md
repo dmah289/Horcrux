@@ -1,6 +1,6 @@
 ---
 name: ui-reskin
-description: Dùng khi dựng hoặc reskin UI theo ảnh demo, hay thêm art UI: cách tổ chức prefab UI để đúng demo và dễ mở rộng, chữ art nhiều lớp (màu, viền, bóng đổ) đúng số theo demo, chia atlas và bundle cho art UI, cách làm việc với Editor qua công cụ (MCP, eval) khi dựng, soát, chụp, đo, và các bẫy của UGUI, prefab, sprite, TMP đã trả giá.
+description: Dùng khi dựng hoặc reskin UI hay art world (SpriteRenderer trên vật thể) theo ảnh demo, hay thêm art: cách tổ chức prefab UI để đúng demo và dễ mở rộng, chữ art nhiều lớp (màu, viền, bóng đổ) đúng số theo demo, chia atlas và bundle cho art UI, cách làm việc với Editor qua công cụ (MCP, eval) khi dựng, soát, chụp, đo, và các bẫy của UGUI, prefab, sprite, TMP đã trả giá.
 ---
 
 # ui-reskin — prefab UI theo demo
@@ -21,6 +21,13 @@ cũ. Tắt chỉ an toàn khi code không với tới object tắt: `GetComponen
 tắt, reference kéo thả thì không. **Cây giữ, art cũ thì gỡ** (mục Atlas): art khác style không quay lại.
 
 **Thứ lặp lại là một khối dùng chung; khác nhau ở dữ liệu là variant; khác hình dạng là khối riêng.** Tiêu chí: đổi kiểu (khung,
+**Đổi art của một khối thì soát mọi nơi còn vẽ art cũ** (tìm theo GUID): bản sao hình của khối trong tool thiết kế, preview, prefab
+song song không báo lỗi khi lệch skin, chỉ lộ khi người khác mở. Nêu từng nơi cho developer quyết, không tự đổi theo.
+
+**Thanh tiến độ có trang trí trong lòng (vạch chia, vân) thì cắt, không co.** Co kéo méo trang trí và trượt vạch; cắt giữ art đứng
+yên. Mốc dữ liệu đặt trùng mốc art (bước k/tổng nằm ở tâm vạch k) để mỗi lần dừng, đầu ruột chạm đúng một vạch. Cắt hay che một
+renderer thì làm trong chính nó (shader, tham số theo renderer); mask dùng chung kéo theo mọi renderer khác cùng dải.
+
 nút, font) ở một chỗ thì mọi chỗ theo, và thêm một mục mới là *thêm* một variant hay kéo một khối vào, không chép. Số tầng
 variant theo số **lý do thay đổi** thật (kiểu chung → loại → gói), không theo cho đủ bộ (NT1).
 
@@ -112,7 +119,7 @@ code phải đào lại từ lịch sử chat nhiều lần · viết lại bộ
 lừa, giá trị đọc qua engine thì không.
 
 **Edit mode cho dựng và soát; Play cho thứ cần dữ liệu thật.** Bố cục của khối xem được bằng chụp canvas ngoài Play
-(`UICapture.Canvas`); một look ở vài giá trị thông số thì chụp copy, mỗi ô một giá trị (`UICapture.Variants`). Màn cần service (chữ do script đặt, popup mở qua navigator) thì vào Play. Chuỗi Play lặp lại nhiều lần (chụp
+(`UICapture.Canvas`); một look ở vài giá trị thông số thì chụp copy, mỗi ô một giá trị (`UICapture.Variants`; vật world thì `UICapture.World`, đúng px mỗi unit của demo). Màn cần service (chữ do script đặt, popup mở qua navigator) thì vào Play. Chuỗi Play lặp lại nhiều lần (chụp
 cùng bộ màn ở nhiều độ phân giải) gom thành một script chạy một lần (`playrun.sh`, nhiều cỡ qua `SIZES`); đi từng bước qua MCP chỉ khi còn đang dò
 mình cần nhìn gì. Hình đúng ở Prefab Mode mà sai ở Play: liệt kê điều kiện vẽ khác nhau giữa hai nơi (chế độ render canvas,
 camera, mask, quality), lật từng cái trên bản chạy, không lưu, tới khi gọi tên được nguyên nhân rồi mới sửa asset.

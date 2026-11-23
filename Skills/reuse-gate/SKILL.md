@@ -24,6 +24,10 @@ squash-stretch.
 Thứ developer nhớ là của dự án nguồn có thể nằm trong package nó cài: tìm cả package, rồi soát dự án đích đã cài sẵn chưa.
 *Đã sai một lần:* bê khuôn serialize giá trị runtime vào asset sang bài toán lưu tiến độ — tiến độ vào version control.
 
+**Script dùng một lần cũng là code:** eval dựng, dump, chụp, script đo ảnh đi qua cùng câu hỏi "có sẵn chưa" trước dòng đầu.
+Viết tay thì mỗi lần một bản đo khác, và số của hai lần đo không so được với nhau. *Đã sai một lần:* đã đọc skill nêu sẵn hàm
+dump prefab và hàm dò dải màu, vẫn viết khung dump trong eval và đo demo bằng script ảnh riêng, sang task sau lại viết lần nữa.
+
 **Hệ nguồn trả kiểu thì nhận kiểu, không nhận chuỗi rồi tự parse** — parse hai nơi che lỗi khỏi log hệ nguồn, mất kiểm tra
 biên dịch tên field.
 

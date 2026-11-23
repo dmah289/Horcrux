@@ -2,8 +2,8 @@
 
 Code: `Editor/UIReskin/`
 
-Bộ hàm tĩnh cho agent khi dựng UI theo ảnh demo: sửa prefab và tạo variant, dựng node UGUI, soát override và reference,
-đặt 9-slice, tạo sprite asset TMP, chụp canvas, đo ảnh. Mỗi hàm gọi được bằng **một dòng** từ eval của Editor (MCP
+Bộ hàm tĩnh cho agent khi dựng UI hay art world theo ảnh demo: sửa prefab và tạo variant, dựng node UGUI, soát override và
+reference, đặt 9-slice, tạo sprite asset TMP, chụp canvas và vật world, đo ảnh. Mỗi hàm gọi được bằng **một dòng** từ eval của Editor (MCP
 `execute_code`, Unity CLI `script eval`): khung lặp lại (nạp, lưu, dỡ, trả trạng thái) viết một lần ở đây, đã compile thật,
 nên eval chỉ còn phần riêng của bài.
 
@@ -119,6 +119,7 @@ theo tay. Prefab gốc của variant còn giữ art; build nướng variant thà
 | `Game(string pngPath)` | như trên, không chờ: file có sau một frame (eval tiếp theo đọc được) |
 | `Canvas(Canvas canvas, int width, int height, string pngPath)` | ngoài Play: canvas tạm sang Screen Space–Camera với camera tạm vẽ vào RenderTexture width×height, CanvasScaler tính theo cỡ đó; trả canvas như cũ ở mọi đường ra. Vì vẽ ở chế độ Camera, lỗi chỉ có ở Overlay (material hạt không dùng shader UI) không lộ: kiểm bằng `Game` trong Play. `UIParticle` ngoài Play chỉ bake một lần mỗi frame: dựng object và chụp ở hai eval |
 | `Variants(GameObject source, int width, int height, Color background, int count, Action<GameObject, int> pose, string pngPath, int columns = 1)` | ngoài Play, không chạm scene đang mở: copy `source` (object trong prefab asset hay scene) lên canvas tạm, không CanvasScaler (1 đơn vị = 1 px), giữa khung; mỗi lượt `i` gọi `pose(copy, i)` rồi chụp; ghép lưới như `FrameSheet.Compose`, ảnh 0 trên trái. Dùng để so một look ở vài giá trị thông số (lớp vẽ, độ toả, offset dải sáng, scale) mà không vào Play. Copy tách khỏi nguồn: modifier trong Styles riêng của chữ UniText đổi trên copy không lọt về asset; thứ copy chỉ tham chiếu (preset, material, ScriptableObject) thì `pose` sửa là sửa asset dùng chung |
+| `World(GameObject source, int width, int height, float pixelsPerUnit, Color background, int count, Action<GameObject, int> pose, string pngPath, int columns = 1)` | ngoài Play, không chạm scene đang mở: copy `source` (prefab asset hay object trong scene, vật vẽ bằng renderer world) vào preview scene ở gốc toạ độ, camera trực giao `pixelsPerUnit` px mỗi unit world, giữa khung là tâm bounds mọi renderer của copy **trước** `pose` (mọi ảnh cùng khung). Mỗi lượt `pose(copy, i)` rồi chụp, ghép lưới như `Variants`. `Awake`, `Start` không chạy ngoài Play: `pose` gọi thứ cần (reflection tới `Awake`, gọi API đặt số). Đo theo demo: `pixelsPerUnit` = pixel demo trên một unit world của vật kề (ô, hộp) |
 
 ### `DemoCompare` — toạ độ gốc trên trái, `RectInt(x, y, width, height)` theo hệ đó
 
@@ -133,6 +134,8 @@ theo tay. Prefab gốc của variant còn giữ art; build nướng variant thà
 | `Diff(string demoPath, string capturePath, params RectInt[] exclude)` | ảnh chụp đưa về cỡ demo; mỗi pixel ngoài `exclude` lấy kênh RGB lệch nhất (0–255): `mean m p95 p max x at x,y (n px)`; không còn pixel là `none`. Số lệch còn lại để báo sau khi dựng |
 | `FitRadialGlow(string demoPath, params RectInt[] exclude)` | dò thông số shader `Horcrux/ui_radial_glow` (`Shader/ui_radial_glow.shader`) từ demo mà rect nền phủ kín: trả `RadialGlowFit`. Fit trong không gian màu project (Linear thì linear, đúng chỗ shader nội suy): lưới thô trên ~1500 mẫu, dò mẫu trên ~40 000; màu tâm, mép giải đóng bằng hồi quy theo trọng số. Demo 363×783 mất ~13 s. Ngoài `exclude` còn dưới 16 pixel thì ném |
 | `RadialGlowFit` | `Center` (uv gốc dưới trái), `Radius` (× chiều cao rect), `Falloff`, `CenterColor`, `EdgeColor` (màu Inspector), `FittedInLinear`, `ModelDiff` (bản render mô phỏng so với demo, định dạng `Diff`). `ApplyTo(Material)` ghi đúng các ô và lưu asset; material không dùng `ui_radial_glow` thì ném. `ToString()` in một dòng theo tên ô |
+| `FitOverlayAlpha(Color32 overlay, Color32[] backgrounds, Color32[] observed)` | alpha cho lớp phủ màu `overlay` để, trộn trong không gian màu project lên `backgrounds[i]`, ra `observed[i]` đo trên demo; bình phương tối thiểu trên ba kênh của mọi mẫu. Số mẫu khác nhau hay 0, hoặc overlay trùng mọi background thì ném. Trả `OverlayAlphaFit` |
+| `OverlayAlphaFit` | `Alpha` (cho project), `GammaAlpha` (trộn sRGB như tool thiết kế; khớp số hoạ sĩ đặt thì phép đo đúng), `FittedInLinear`, `MaxError` (kênh lệch nhất, 0–255: overlay khác sắc demo thì alpha không bù được, số này lớn) |
 
 `exclude` của `Diff`, `FitRadialGlow` gồm mọi thứ không phải nền: logo, chữ, cả **khung viền ảnh demo** — demo xuất từ tool thiết kế
 có thể kèm viền xám dày khác nhau mỗi cạnh; đo bằng `Runs` ở mép trước khi tin số `max`. `GlowShape.Weight` là bản C# của frag
@@ -157,13 +160,16 @@ return Horcrux.Editor.UIReskin.PrefabAudit.Report("Assets/MyGame/Popups");
 `Tests/EditMode/UIReskinTests.cs`: `BBox`, `Runs` theo gốc trên trái; `TemplateMatch` tìm đúng chỗ art đặt sẵn; `SideBySide` ghép
 đúng cỡ; `Diff` chỉ đếm pixel ngoài `exclude`; `FitRadialGlow` lấy lại tâm, bán kính, falloff, hai màu (±1 trên 255) của vầng sáng
 render bằng oracle riêng, có khối logo che giữa; `PruneNoise` gỡ vị trí do LayoutGroup ghi và giữ cỡ cố ý, chạy thử không đổi file; `SetBorder` trả giá trị cũ và ghi;
-sprite asset TMP mang face info, metric, version; `CopyLogic` nối reference sang object mới. Asset tạm ở
+sprite asset TMP mang face info, metric, version; `CopyLogic` nối reference sang object mới; `World` đặt sprite pivot lệch giữa khung ở
+đúng px/unit, `pose` chạy mỗi ảnh, object nguồn không đổi; `FitOverlayAlpha` lấy lại alpha trộn bằng `Color.linear` (oracle riêng),
+alpha sRGB thấp hơn alpha Linear. Asset tạm ở
 `Assets/HorcruxUIReskinTestTemp`, xoá sau mỗi test. `Tests/EditMode/HiddenArtTests.cs`: `List` gom theo object tắt ngoài cùng;
 `Clear` chạy thử không đổi, gỡ thật chỉ thành override của variant, từ chối gốc đang bật; art đã gỡ trên variant không còn trong
 `AtlasAudit.Usage`.
 
 Kiểm bằng chạy thật trên một dự án: `Report` 16 prefab popup; `ListOverrides` khớp override thấy trong Inspector; `Canvas` chụp
-1080×2340 và 1536×2048; `TemplateMatch` tìm art tim trong demo khớp khung bao màu đỏ đo bằng `BBox`. `FitRadialGlow` trên demo
+1080×2340 và 1536×2048; `FitOverlayAlpha` trên nền tối của một thanh world (art đen alpha 118, demo trên nền xanh): `GammaAlpha`
+0.452 khớp 0.463 hoạ sĩ đặt, project Linear cần 0.722, `MaxError` 4; `TemplateMatch` tìm art tim trong demo khớp khung bao màu đỏ đo bằng `BBox`. `FitRadialGlow` trên demo
 màn loading 363×783 (loại logo, chữ, khung viền): bản mô phỏng lệch mean 0.46, p95 1; material ghi số đó trên canvas Overlay, chụp
 trong Play ở 1080×2340, `Diff` với demo mean 0.51, p95 1 — max 14 ở bóng logo sát vùng loại trừ, có ở cả hai. `HiddenArt.Clear` gỡ 280
 reference art trên skin cũ của PopupShop, Pause, Setting, RefillLive: các popup thôi nạp hai atlas cũ (một trang 1024×2048 của
@@ -174,5 +180,4 @@ shop) và một texture lẻ; chụp trong Play không đổi hình, không lỗ
 - `FitRadialGlow` nhận vùng của rect nền trên demo, khi có nền không phủ kín demo (panel, popup). Bản hiện tại coi cả ảnh là rect.
 - Fit cho shader gradient khác (`vertical_screen_gradient`) theo cùng khuôn `GlowShape` + hồi quy màu, khi có màn dựng bằng nó.
 
-- Chụp prefab chưa đặt vào scene (canvas tạm trong preview scene), khi có bài cần xem bố cục khối mà không vào Play.
 - `PruneNoise` nhận thêm driver của dự án (fitter tự viết khai `DrivenRectTransformTracker`), khi override do chúng ghi xuất hiện.

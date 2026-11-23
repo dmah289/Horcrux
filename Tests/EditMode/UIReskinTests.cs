@@ -235,6 +235,78 @@ namespace Horcrux.Tests
             Assert.AreEqual(metaAfter, File.ReadAllText(path + ".meta"));
         }
 
+        [Test]
+        public void World_CentersRenderersAtPixelsPerUnitAndPosesEachShot()
+        {
+            var texture = new Texture2D(100, 100, TextureFormat.RGBA32, false);
+            var white = new Color32[100 * 100];
+            for (var i = 0; i < white.Length; i++)
+                white[i] = new Color32(255, 255, 255, 255);
+            texture.SetPixels32(white);
+            texture.Apply();
+            // Pivot dưới trái: bounds lệch khỏi gốc object, camera phải theo tâm bounds mới thấy sprite giữa khung.
+            var sprite = Sprite.Create(texture, new Rect(0, 0, 100, 100), Vector2.zero, 100f);
+            var source = new GameObject("world source");
+            source.transform.position = new Vector3(5f, 3f, 0f);
+            source.AddComponent<SpriteRenderer>().sprite = sprite;
+            var output = Path.Combine(_pngFolder, "world.png");
+            var posed = new System.Collections.Generic.List<int>();
+            try
+            {
+                UICapture.World(source, 200, 200, 100f, Color.black, 2, (copy, i) =>
+                {
+                    posed.Add(i);
+                    if (i == 1)
+                        copy.transform.localScale = new Vector3(0.5f, 0.5f, 1f);
+                }, output, 2);
+
+                var sheet = new Texture2D(2, 2);
+                sheet.LoadImage(File.ReadAllBytes(output));
+                // FrameSheet chừa khe 4 px quanh mỗi ảnh: ảnh 0 bắt đầu ở (4, 4), ảnh 1 ở (208, 4).
+                Assert.AreEqual(new Vector2Int(2 * 200 + 3 * 4, 200 + 2 * 4), new Vector2Int(sheet.width, sheet.height));
+                CollectionAssert.AreEqual(new[] { 0, 1 }, posed);
+                // Ảnh 0: sprite 1 unit = 100 px giữa khung 200 (x 50…149). Ảnh 1 thu nửa quanh pivot dưới trái (x 50…99, y 50…99).
+                Assert.Greater(sheet.GetPixel(4 + 55, 4 + 100).r, 0.9f);
+                Assert.Greater(sheet.GetPixel(4 + 145, 4 + 145).r, 0.9f);
+                Assert.Less(sheet.GetPixel(4 + 45, 4 + 100).r, 0.1f);
+                Assert.Greater(sheet.GetPixel(208 + 55, 4 + 55).r, 0.9f);
+                Assert.Less(sheet.GetPixel(208 + 145, 4 + 145).r, 0.1f);
+                Assert.AreEqual(new Vector3(5f, 3f, 0f), source.transform.position);
+                Object.DestroyImmediate(sheet);
+            }
+            finally
+            {
+                Object.DestroyImmediate(source);
+                Object.DestroyImmediate(sprite);
+                Object.DestroyImmediate(texture);
+            }
+        }
+
+        [Test]
+        public void FitOverlayAlpha_RecoversAlphaBlendedInProjectColorSpace()
+        {
+            var overlay = new Color32(10, 30, 70, 255);
+            var backgrounds = new[] { new Color32(41, 84, 154, 255), new Color32(200, 180, 160, 255) };
+            var observed = new Color32[2];
+            var linear = QualitySettings.activeColorSpace == ColorSpace.Linear;
+            for (var i = 0; i < 2; i++)
+            {
+                Color background = backgrounds[i];
+                Color over = overlay;
+                observed[i] = linear
+                    ? (Color32)Color.Lerp(background.linear, over.linear, 0.6f).gamma
+                    : (Color32)Color.Lerp(background, over, 0.6f);
+            }
+
+            var fit = DemoCompare.FitOverlayAlpha(overlay, backgrounds, observed);
+            Assert.AreEqual(0.6f, fit.Alpha, 0.01f);
+            Assert.LessOrEqual(fit.MaxError, 1);
+            Assert.AreEqual(linear, fit.FittedInLinear);
+            if (linear)
+                Assert.Less(fit.GammaAlpha, fit.Alpha - 0.05f, "trộn Linear sáng hơn sRGB: cùng màu đo được thì alpha sRGB thấp hơn");
+            Assert.Throws<System.ArgumentException>(() => DemoCompare.FitOverlayAlpha(overlay, backgrounds, new Color32[1]));
+        }
+
         private string WritePng(string name, int width, int height, System.Func<int, int, Color> pixel)
         {
             var texture = new Texture2D(width, height, TextureFormat.RGBA32, false);
