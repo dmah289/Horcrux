@@ -120,8 +120,8 @@ Chất liệu quyết *cái gì được biến dạng*; phần vui đến từ 
   mép rồi chìm dưới mép. Nắp và mép nằm ngoài vùng vật chiếm lúc đáp — đo bằng số trên prefab trước khi giao chơi thử.
   Nhiều vật liên tiếp qua cùng một cửa thì cửa mở một lần cho cả loạt; cửa giật theo từng vật đọc thành rối. Hết việc thì vật
   chứa rút lui tại chỗ, không bay ngược về nguồn tranh chú ý với thứ vừa nhận.
-- **Lực tác động một nhóm lan theo khoảng cách:** cả nhóm cùng báo trước (rung) để người chơi thấy ai bị nhắm, rồi bị kéo so le
-  từ gần ra xa — đọc được hướng của lực.
+- **Một nhóm cùng chịu một tác động:** cả nhóm cùng báo trước để người chơi thấy ai bị nhắm; chuyển động sau đó lệch nhau theo
+  vị trí (thời điểm, biên độ, số vòng) để đọc được nguồn lực và không thành một tấm cứng — demo cho cả nhóm đi cùng lúc thì theo demo.
 - **Sprite giữ tỉ lệ hoạ sĩ vẽ;** cỡ và vị trí đo pixel trên ảnh đích, quy về phần đặc của sprite.
 
 > **Nền tảng** — autosize TextMeshPro chỉ co khi tràn **chiều cao**; từ rộng hơn bề ngang bị ngắt giữa từ. "Tối đa n dòng"
