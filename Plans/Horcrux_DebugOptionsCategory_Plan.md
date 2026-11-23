@@ -1,128 +1,77 @@
 # Plan — `DebugOptionsCategory`: category SRDebugger dựng bằng code, vào Horcrux `Vendors/SRDebugger`
 
-Ngày 2026-11-23. Nguồn: category-jam `Assets/_Game/Scripts/Cheat/{Tracking,EconomyCheat,LevelCheat}DebugOptions.cs`,
-`Assets/_Game/Scripts/Segmentation/UserSegmentationDebugOptions.cs` (`Register`, `Unregister`, `SelectBooster`, `TryTakePending`), đang
-chạy ở dự án. Bốn class chép cùng một khối: kiểm `SRDebug.Instance`, dựng `DynamicOptionContainer`, tự đếm `order`, gỡ
-container lúc huỷ, giữ tay danh sách hàng phải báo lại sau lệnh. Lõi gói khối đó; từ vựng (category, hàng, lệnh) và lệnh thật ở dự án.
+Bản tạm: category-jam `Assets/_Game/Scripts/Cheat/{Tracking,EconomyCheat,LevelCheat}DebugOptions.cs`, `Assets/_Game/Scripts/Segmentation/UserSegmentationDebugOptions.cs` (`Register`, `Unregister`, `SelectBooster`, `TryTakePending`). Không phụ thuộc Plan nào.
+Kiểm (từ gốc dự án): `bash "<horcrux>/Editor/CompileCheck/Tools~/verify.sh" --csproj com.horcrux.srdebugger.csproj,Assembly-CSharp.csproj --tests Horcrux.Vendors.SRDebugger.Tests`.
 
-**Phân công:** GĐ1 developer gõ, agent viết test theo bảng case rồi compile · GĐ2 (tài liệu, sửa luật Cheat) và GĐ3 (dự án chuyển
-sang bản Horcrux, xoá Plan) agent làm.
-**Chạy được, thấy được:** GĐ1 compile sạch (kể cả `Assembly-CSharp`) + bảng case `SkipToAllowed` xanh trong
-`Tests/EditMode/Vendors/SRDebugger/`; thấy bốn category trong panel ở GĐ3.
-**Lệnh kiểm** (chạy từ gốc dự án): `bash "<horcrux>/Editor/CompileCheck/Tools~/verify.sh" --csproj
-com.horcrux.srdebugger.csproj,Assembly-CSharp.csproj --tests Horcrux.Vendors.SRDebugger.Tests`.
-**Commit:** GĐ1, GĐ2 trong `Assets/Horcrux`; GĐ3 ở dự án kèm con trỏ submodule.
-**Phụ thuộc:** không.
-**Đã kiểm trước khi ghi:** file GĐ1 compile bằng csc (C# 9, `-warn:4`, 0 lỗi 0 cảnh báo) trên `StompyRobot.SRDebugger.dll`,
-`StompyRobot.SRF.dll` của dự án và `UnityEngine.CoreModule` 6000.0.73f1, kèm một caller gọi đủ các `Add*` theo đúng lời gọi GĐ3 của
-Economy, Level, UserSegmentation. Namespace `Horcrux.Vendors.SRDebugger` compile; đối chứng: gõ `SRDebugger.DynamicOptionContainer`
-trong namespace đó báo CS0234. Assembly test chỉ reference `com.horcrux.srdebugger` compile được lời gọi `SkipToAllowed`.
-`SkipToAllowed` chạy vét cạn so với bản tham chiếu (giá trị được phép kế tiếp theo chiều bấm, tính vòng từ sau giá trị hiện tại):
-enum 1–6 giá trị × mọi tập allowed × mọi giá trị hiện tại × hai chiều = 1284 lượt, 0 lệch. Đối chứng: bỏ chiều (luôn tiến) cho 230
-lệch; lùi bằng `- 1` thay `+ count - 1` ném `IndexOutOfRangeException`. `§0`: không, không có toán.
+## Kịch bản
 
----
-
-## Ngữ cảnh đã chốt
-
-- **Người dùng:** class cheat của dự án (một `MonoBehaviour` mỗi hệ, đặt trong scene service) dựng một category trong tab Options của
-  SRDebugger: hàng chỉ đọc, ô nhập (int, enum, string), nút lệnh, nút mở panel debug của SDK, ô số kèm nút Set, ô chọn enum bỏ qua
-  giá trị canh.
-- **Mục tiêu:** dựng một category mà không chạm `SRDebug.Instance`, `DynamicOptionContainer`, `order`; mỗi lệnh chạy xong mọi hàng và
-  ô nhập đọc lại.
-- **Ranh giới:** Horcrux giữ cơ chế dựng category (thứ tự, báo lại hàng, gắn và gỡ container, ô số, ô chọn). Lệnh, cửa đọc `private`,
-  suy luận và từ vựng ở hệ và dự án; dự án dùng panel khác thì bỏ assembly này, hệ không đổi.
-- **Chỗ đặt, tên:** `Vendors/SRDebugger/`, assembly riêng `com.horcrux.srdebugger`, namespace `Horcrux.Vendors.SRDebugger`. Bật bằng
-  `versionDefines`: dự án không cài SRDebugger thì assembly không compile, không lỗi. Tài liệu `docs/Runtime/DebugOptionsCategory/`.
-- **Hành vi:**
-  - SRDebugger chỉ đọc lại getter khi bind, mở panel, đổi tab hoặc khi được báo; sót một hàng là hàng đứng số cũ tới lần mở panel sau.
-    Class báo **mọi** hàng và ô nhập sau mỗi lệnh.
-  - Thứ tự hàng là thứ tự gọi `Add*`. SRDebugger tắt trong Settings (`SRDebug.Instance == null`) thì `Attach` không làm gì.
-- **Cố ý không làm:**
-  - `Attach` trả `bool`: không caller nào rẽ nhánh theo nó.
-  - `Add*` trả `OptionDefinition`: caller giữ tham chiếu chỉ để báo lại hàng, giờ class tự báo.
-  - Cờ "không refresh" trên lệnh: báo vài hàng mỗi lần bấm rẻ hơn một ô phải nhớ.
-  - Gỡ từng hàng sau khi `Attach`: chưa caller nào cần.
-  - Hỗ trợ `SROptions` partial: cơ chế khác hẳn, không phải người dùng của class này.
-- **Quyết định trái trực giác:**
-  - `AddPanelOpener` tách khỏi `AddCommand`, không phải một cờ: panel của SDK xếp dưới panel SRDebugger thì hiện ra mà không nhận
-    chạm. Luật "ẩn SRDebugger trước" do class giữ, caller không cần biết.
-  - Ô nhập cũng được báo lại sau lệnh: ô số hiện số dư thật cho tới khi QA gõ, Set xong phải về số mới.
-  - `AddAmountSetter` từ chối số ngoài `0..max` kèm log, không kẹp: kẹp im lặng làm QA tưởng đã đặt đúng số vừa gõ. `max` là delegate
-    vì trần đổi trong phiên.
-  - `AddChoice` đổi lựa chọn thì bỏ số đã gõ ở **mọi** ô số, không chỉ ô phụ thuộc: số gõ cho lựa chọn cũ, giữ lại là đặt nhầm sang
-    lựa chọn mới. Category có hai ô chọn độc lập thì tách category.
-  - Ô số và nút Set là **một** lệnh `AddAmountSetter`, không phải `AddInput` + `AddCommand` caller tự nối: số đang gõ dở là trạng thái
-    của cặp ô đó; caller giữ thì mỗi cặp lại một field `int?` và một hàm kiểm miền.
-- **Mở rộng sau:** tham số `min` cho `AddAmountSetter` (mặc định 0) khi một ô số nhận được số âm.
-
-## Đã khảo sát
-
-| Nguồn | Lấy gì | Không lấy, vì sao |
+| Tình huống | Hệ làm gì | QA thấy |
 |---|---|---|
-| category-jam 4 class `*DebugOptions` (bản đang chạy) | khối `Register`/`Unregister`, comment hai ca `null`, cách đếm `order`; `TryTakePending`, `SelectBooster` + `Wrap` của Economy không mang tên booster hay coin, nên thành `AddAmountSetter`, `AddChoice` | phần lệnh: từ vựng dự án |
-| SRDebugger `OptionDefinition` | `Create<T>(name, getter, setter, category, sortPriority)`, `FromMethod(name, Action, category, sortPriority)` | constructor `MethodReference`: `FromMethod` đủ |
-| SRDebugger `DynamicOptionContainer` | `AddOption`; thêm sau `AddOptionContainer` vẫn hiện (bắn `OptionAdded`) | `RemoveOption`: chưa caller |
-| SRF `PropertyReference.NotifyValueChanged()` | cách báo hàng đọc lại | — |
-| `IDebugService.HideDebugPanel()` | ẩn panel trước khi mở panel khác | — |
-| Horcrux `Vendors/Adjust/com.horcrux.adjust.asmdef` | khuôn `versionDefines` + `defineConstraints` | — |
-| `Agent/Rules/workflow/reference.md` › Cheat (Sổ tay) | khuôn `DynamicOptionContainer` + `OptionDefinition`; báo hàng sau lệnh; từ chối không kẹp | plain class nhận hệ qua constructor: bốn class dự án đều là `MonoBehaviour` |
+| class cheat `Awake`: `new` → `Add*` → `Attach` | dựng `OptionDefinition` theo thứ tự gọi, gắn container | category trong tab Options, hàng đúng thứ tự `Add*` |
+| SRDebugger tắt trong Settings (`SRDebug.Instance == null`) | container vẫn dựng, `Attach` không làm gì | không category, không lỗi |
+| dự án không cài SRDebugger | assembly không compile (thiếu define) | không lỗi |
+| QA bấm lệnh | chạy lệnh của dự án, rồi báo lại mọi hàng và ô nhập | số mới ngay, không phải đóng mở panel |
+| setter một ô làm đổi hàng khác | caller gọi `RefreshRows` | hàng phụ thuộc đổi theo; ô đang gõ không nhảy số |
+| ô số chưa gõ | đọc số dư thật | số dư sống |
+| QA gõ ô số | giữ số đã gõ | ô hiện số vừa gõ |
+| Set khi chưa gõ | không làm gì | — |
+| Set số ngoài `0..max` | `LogError` `[{category}] {label} must be in 0..{max}, got {value}`, giữ số đã gõ, không ghi | Console báo, số giữ nguyên |
+| Set số hợp lệ | xoá số đã gõ, ghi, báo lại | ô về số mới |
+| bấm mũi tên ô chọn enum | bỏ qua giá trị không được phép theo chiều bấm, ghi, bỏ số đã gõ ở **mọi** ô số, báo lại | không dừng ở giá trị canh (`None`, `Count`) hay giá trị không có; các ô số về số dư thật |
+| `allowed` rỗng hay chỉ có giá trị hiện tại | giữ giá trị hiện tại | ô chọn đứng yên |
+| nút mở panel SDK | ẩn panel SRDebugger rồi mở panel SDK | panel SDK nhận chạm |
+| `OnDestroy` → `Detach` | chưa attach: dừng · `Instance` null (thoát app): dừng · còn: gỡ container | không lỗi khi dừng Play |
 
-## Luồng
-
-```
-Awake của class cheat: new DebugOptionsCategory("<category>")
-        ▼
-AddRow / AddInput / AddAmountSetter / AddChoice / AddCommand / AddPanelOpener ──► OptionDefinition vào container, order tăng dần
-        ▼
-Attach ──► SRDebug.Instance null? ──có──► dừng (SRDebugger tắt)
-        │ không
-        ▼ AddOptionContainer: category hiện trong tab Options
-QA bấm lệnh ──► run() của dự án ──► RefreshRows: mọi hàng, ô nhập NotifyValueChanged ──► panel vẽ số mới
-QA gõ ô số ──► giữ số đã gõ, ô hiện số đó ──► bấm Set: chưa gõ? dừng · ngoài 0..max? log lỗi, giữ số · còn: write() ──► RefreshRows
-QA bấm mũi tên ô chọn ──► SkipToAllowed theo chiều bấm ──► write() ──► bỏ mọi số đã gõ ──► RefreshRows
-QA bấm nút mở panel SDK ──► HideDebugPanel ──► openPanel() của dự án
-        ▼
-OnDestroy: Detach ──► chưa attach? dừng · Instance null (thoát app)? dừng · còn: RemoveOptionContainer
-```
-
-## Bản đồ hệ cuối
+## Flow
 
 ```
-  class cheat dự án (MonoBehaviour)                                SRDebugger
-  ├─ Awake:     new · Add* · Attach ─────────► DebugOptionsCategory ──► DynamicOptionContainer ──► IDebugService
-  ├─ setter:    RefreshRows (ô này đổi hàng khác)        │ _valueRows ── NotifyValueChanged ──► PropertyReference
-  ├─ lệnh:      gọi hệ                                   │ AddPanelOpener ── HideDebugPanel
-  └─ OnDestroy: Detach ──────────────────────►           ▼
+  class cheat dự án (MonoBehaviour)                                 Vendors/SRDebugger/DebugOptionsCategory.cs          SRDebugger
+  ├─ Awake: new DebugOptionsCategory("<category>")
+  │         AddRow / AddInput / AddAmountSetter / AddChoice / AddCommand / AddPanelOpener ──► OptionDefinition, order tăng dần ──► DynamicOptionContainer
+  │         Attach ──► SRDebug.Instance null? ──có──► dừng · không ──► AddOptionContainer ──────────────────────────────────► IDebugService
+  ├─ setter ô: RefreshRows (ô này đổi hàng khác)
+  └─ OnDestroy: Detach ──► chưa attach / Instance null? dừng · còn: RemoveOptionContainer
+
+  QA bấm lệnh ──► run() ──► RefreshRows: _valueRows[i].Property.NotifyValueChanged ──► PropertyReference (SRF) ──► panel vẽ số mới
+  QA gõ ô số ──► TypedAmount.Value ──► Set: null? dừng · ngoài 0..max? LogError · còn: Value = null, write() ──► RefreshRows
+  QA bấm mũi tên ô chọn ──► SkipToAllowed(order, allowed, current, requested) ──► write() ──► mọi TypedAmount = null ──► RefreshRows
+  QA bấm nút mở panel ──► SRDebug.Instance.HideDebugPanel ──► openPanel()
   test: Horcrux.Vendors.SRDebugger.Tests ──► SkipToAllowed (internal, InternalsVisibleTo)
 ```
 
+## Thuật toán
+
+`SkipToAllowed`: SRDebugger trao giá trị enum kề giá trị hiện tại; `n` = số giá trị enum.
+
+| Bước | Công thức |
+|---|---|
+| chiều | `step = +1` khi `requested == order[(idx(current) + 1) % n]` (tiến), không thì `n − 1` (lùi; `%` của số âm trong C# ra âm) |
+| tìm | từ `idx(requested)`, tối đa `n` bước `index = (index + step) % n`, trả `order[index]` đầu tiên thuộc `allowed` |
+| không có | trả `current` |
+
+Bản mẫu: vét cạn enum 1–6 giá trị × mọi tập `allowed` × mọi `current` × hai chiều = 1284 lượt, 0 lệch; bỏ chiều (luôn tiến) 230 lệch, lùi bằng `- 1` ném `IndexOutOfRangeException`.
+
 ---
 
-## GĐ1 — Assembly, `DebugOptionsCategory`, test `SkipToAllowed`
-
-**Mục tiêu:** dự án dựng được một category đủ sáu loại hàng; thuật toán ô chọn có bảng case xanh. Xong thì bốn class cheat chuyển
-được trọn ở GĐ3.
-
-**Vì sao bây giờ:** class một màn hình, mỗi member đã có caller thật trong bốn class dự án (bảng dưới); chia nhỏ hơn thì GĐ đầu không
-có category nào chuyển được trọn.
-
-**Sơ đồ sau GĐ** (mới: cả ba khối):
+## GĐ1 — xong thì class cheat nào cũng dựng được category đủ sáu loại hàng mà không chạm `SRDebug.Instance`, `DynamicOptionContainer`, `order`
 
 ```
-[mới] com.horcrux.srdebugger: DebugOptionsCategory ──► DynamicOptionContainer, IDebugService, PropertyReference
-[mới] Horcrux.Vendors.SRDebugger.Tests ──► SkipToAllowed
++ com.horcrux.srdebugger: DebugOptionsCategory ──► DynamicOptionContainer, IDebugService, PropertyReference
++ Horcrux.Vendors.SRDebugger.Tests ──► SkipToAllowed
 ```
 
-**Consumes:** `OptionDefinition`, `DynamicOptionContainer`, `SRDebug.Instance` (SRDebugger), `PropertyReference` (SRF).
-**Produces:** `DebugOptionsCategory` với `AddRow`, `AddInput`, `AddAmountSetter`, `AddChoice`, `AddCommand`, `AddPanelOpener`,
-`RefreshRows`, `Attach`, `Detach`.
+| Member | Caller (sau Chuyển dự án) |
+|---|---|
+| `AddRow` | Tracking, Level, UserSegmentation |
+| `AddInput` | Level (int), UserSegmentation (string) |
+| `AddAmountSetter` | Economy (Booster, Coin, Live) |
+| `AddChoice` | Economy (Booster Type) |
+| `AddCommand` | cả bốn |
+| `AddPanelOpener` | Tracking |
+| `RefreshRows` | setter ô Level |
+| `SkipToAllowed` | `AddChoice`, test |
 
-Ai gọi từng member (sau GĐ3): `AddRow` Tracking, Level, UserSegmentation · `AddInput` Level (int), UserSegmentation (string) ·
-`AddAmountSetter` Economy (Booster, Coin, Live) · `AddChoice` Economy (Booster Type) · `AddCommand` cả bốn · `AddPanelOpener` Tracking ·
-`RefreshRows` setter ô Level · `SkipToAllowed` `AddChoice` và test.
-
-### `Vendors/SRDebugger/com.horcrux.srdebugger.asmdef` — file mới
+`Vendors/SRDebugger/com.horcrux.srdebugger.asmdef` — file mới:
 
 ```json
 {
@@ -152,23 +101,24 @@ Ai gọi từng member (sau GĐ3): `AddRow` Tracking, Level, UserSegmentation ·
 }
 ```
 
-- `StompyRobot.SRF` cần cho `Property.NotifyValueChanged()` (`PropertyReference` nằm ở SRF).
-- `versionDefines` chỉ đặt define **trong chính assembly khai nó**, nên cặp `versionDefines` + `defineConstraints` nằm cùng file. Gói
-  SRDebugger đang dùng mang tên `com.zego.srdebugger`, `version` `0.0.0`, nên biểu thức `0.0.0` (nghĩa là ≥ 0.0.0). Dự án cài
-  SRDebugger dưới tên package khác thì thêm một entry cùng `define`; nhập từ Asset Store (không phải package) thì thêm
-  `HORCRUX_SRDEBUGGER` vào Scripting Define Symbols.
-- `autoReferenced: true`: `Assembly-CSharp` thấy class mà không phải sửa asmdef nào của dự án.
+**Editor setup** — chọn một theo cách dự án cài SRDebugger:
 
-### `Vendors/SRDebugger/DebugOptionsCategory.cs` — file mới
+1. Package `com.zego.srdebugger` (bản đang dùng, `version` `0.0.0`; biểu thức `0.0.0` nghĩa là ≥ 0.0.0): không làm gì, assembly tự bật.
+2. Package tên khác: thêm một entry `versionDefines` cùng `define` `HORCRUX_SRDEBUGGER`.
+3. Nhập từ Asset Store (không phải package): Player Settings › Scripting Define Symbols thêm `HORCRUX_SRDEBUGGER`.
+
+`Vendors/SRDebugger/DebugOptionsCategory.cs` — file mới:
 
 ```csharp
 using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
+// Resolved from global; inside the class an "SRDebugger." prefix hits this namespace (CS0234). SRDebug itself is global.
 using SRDebugger;
 using SRDebugger.Services;
 using UnityEngine;
 
+// Tests are SkipToAllowed's second caller; projects never need it.
 [assembly: InternalsVisibleTo("Horcrux.Vendors.SRDebugger.Tests")]
 
 namespace Horcrux.Vendors.SRDebugger
@@ -191,6 +141,7 @@ namespace Horcrux.Vendors.SRDebugger
         private readonly List<TypedAmount> _typedAmounts = new();
 
         private int _nextOrder;
+        // Only Detach reads it: the owner calls Attach once in Awake.
         private bool _isAttached;
 
         #endregion
@@ -211,6 +162,7 @@ namespace Horcrux.Vendors.SRDebugger
         /// Field "{label} Amount" showing the live value until QA types, and button "Set {label}" writing the typed value. Set
         /// before typing does nothing; a value outside 0..max is refused with an error log, not clamped, so QA sees the typo.
         /// </summary>
+        // max is a delegate: the cap changes during a session.
         public void AddAmountSetter(string label, Func<int> read, Action<int> write, Func<int> max = null)
         {
             var typed = new TypedAmount();
@@ -248,6 +200,7 @@ namespace Horcrux.Vendors.SRDebugger
             {
                 write(SkipToAllowed(order, allowed, read(), value));
 
+                // Every field, not just dependents: an amount typed for the old choice must not land on the new one.
                 for (int i = 0; i < _typedAmounts.Count; i++)
                     _typedAmounts[i].Value = null;
 
@@ -324,6 +277,7 @@ namespace Horcrux.Vendors.SRDebugger
         {
             EqualityComparer<T> equal = EqualityComparer<T>.Default;
             int count = order.Length;
+            // Back is + count - 1, not - 1: C# % of a negative number stays negative.
             int step = equal.Equals(order[(Array.IndexOf(order, current) + 1) % count], requested) ? 1 : count - 1;
             int index = Array.IndexOf(order, requested);
 
@@ -341,6 +295,7 @@ namespace Horcrux.Vendors.SRDebugger
 
         #endregion
 
+        // Class, not struct: the field's and the button's lambdas must share one typed value.
         private sealed class TypedAmount
         {
             public int? Value;
@@ -349,99 +304,39 @@ namespace Horcrux.Vendors.SRDebugger
 }
 ```
 
-Chỗ dễ gõ sai:
-- `SRDebug` là class **global** (không namespace), không nằm trong `using SRDebugger`.
-- Trong namespace `Horcrux.Vendors.SRDebugger`, tên có tiền tố `SRDebugger.` trỏ vào chính namespace này: không gõ
-  `SRDebugger.DynamicOptionContainer` trong thân class (CS0234). Các `using SRDebugger;` ở đầu file phân giải từ global nên vẫn đúng.
-- Hai lambda trong `AddCommand`, `AddPanelOpener` cấp phát một lần lúc dựng category, không ở hot path.
-- `_isAttached` chỉ phục vụ `Detach`: owner gọi `Attach` đúng một lần ở `Awake`.
-- `typed.Value is not int value` là pattern C# 9: `value` có giá trị sau nhánh `return`.
-- `SkipToAllowed` lùi bằng `+ count - 1` chứ không `- 1`: `%` của số âm trong C# ra số âm (đối chứng ở đầu Plan ném
-  `IndexOutOfRangeException`).
-- `TypedAmount` là class, không phải struct: lambda của ô và của nút phải trỏ cùng một chỗ giữ số đã gõ.
+`Tests/EditMode/Vendors/SRDebugger/` (agent; asmdef `Horcrux.Vendors.SRDebugger.Tests`: references `com.horcrux.srdebugger`, `UnityEngine.TestRunner`, `UnityEditor.TestRunner`, `nunit.framework.dll`, `includePlatforms: Editor`, `defineConstraints` `UNITY_INCLUDE_TESTS`, `HORCRUX_SRDEBUGGER` kèm `versionDefines` như trên):
 
-**Quyết định, phương án bỏ:**
-- Dựng container ngay cả khi SRDebugger tắt (bản dự án thoát sớm trước khi dựng): vài `OptionDefinition` lúc boot rẻ hơn hai đường
-  code trong mọi class cheat.
-- Plain class do owner sở hữu, không phải `MonoBehaviour` base: owner đã là `MonoBehaviour<…>` của InitArgs, base generic đã tiêu khe
-  `Init`; kế thừa thêm một base sẽ đụng khe đó.
-- `SkipToAllowed` để `internal` + `InternalsVisibleTo`: test là caller thứ hai; dự án không cần hàm này.
-
-**Editor setup:** không. Assembly tự bật khi package SRDebugger có mặt.
-
-### Assembly test — agent viết
-
-Thư mục `Tests/EditMode/Vendors/SRDebugger/`, asmdef `Horcrux.Vendors.SRDebugger.Tests`:
-- references: `com.horcrux.srdebugger`, `UnityEngine.TestRunner`, `UnityEditor.TestRunner` (không cần StompyRobot: chữ ký
-  `SkipToAllowed` chỉ có kiểu BCL);
-- `nunit.framework.dll`, `includePlatforms: Editor`;
-- `defineConstraints`: `UNITY_INCLUDE_TESTS`, `HORCRUX_SRDEBUGGER`, kèm `versionDefines` như trên.
-
-Enum test `{ None, A, B, C, D, E }` (giá trị canh ở đầu), allowed `A, B, D`. "Tiến" là `requested` = giá trị kế sau `current` theo thứ
-tự enum.
-
-| Case | current → requested | Kỳ vọng |
+| Case | current → requested (enum `{ None, A, B, C, D, E }`, allowed `A, B, D`, trừ khi ghi khác; tiến = kế sau current) | Kỳ vọng |
 |---|---|---|
 | tiến qua giá trị không được phép | B → C | D |
 | tiến vòng qua cuối và giá trị canh | D → E | A |
-| lùi vòng qua giá trị canh | A → None | D |
-| lùi qua giá trị không được phép | D → C | B |
+| lùi vòng qua giá trị canh | A → None | D. Đối chứng: lùi bằng `- 1` ném |
+| lùi qua giá trị không được phép | D → C | B. Đối chứng: bỏ chiều (luôn tiến) ra D |
 | allowed chỉ có current | allowed `{ B }`, B → C | B |
 | allowed rỗng | B → C | B |
 | enum hai giá trị `{ None, A }`, allowed `{ A }` | A → None | A |
 
-Case đỏ được: bỏ chiều (luôn tiến) thì case "lùi qua giá trị không được phép" ra D; lùi bằng `- 1` thì case "lùi vòng" ném.
-
-**Kiểm:** compile sạch, kể cả `Assembly-CSharp` (chưa ai gọi, nhưng phải thấy namespace mới); bảng case xanh. Mốc commit:
-`feat(srdebugger): DebugOptionsCategory dựng category SRDebugger bằng code`.
-
 ---
 
-## GĐ2 — Tài liệu và luật Cheat (agent)
+## Chuyển dự án (agent)
 
-**Mục tiêu:** dự án sau dựng category mà không mở code; luật Cheat trỏ cơ chế này.
+| Chỗ | Đổi |
+|---|---|
+| `docs/Runtime/DebugOptionsCategory/DebugOptionsCategory.md`, `.html` | tạo, `Code: Vendors/SRDebugger/`: Flow, bảng sáu loại hàng (gọi gì, QA thấy gì), "Trước khi chạy" (package SRDebugger có mặt hay define `HORCRUX_SRDEBUGGER`; class cheat trong scene service, `Attach` ở `Awake`, `Detach` ở `OnDestroy`), dòng `bỏ` dưới; chữ ký khớp GĐ1 |
+| `Agent/Rules/workflow/reference.md` › Cheat | vế cuối dòng "**Lệnh, cửa đọc `private` và suy luận thuộc hệ**, … lớp nối với panel thuộc dự án." → cơ chế dựng category ở Horcrux (`DebugOptionsCategory`), lệnh và từ vựng ở dự án · Sổ tay: vế "`DynamicOptionContainer` + `OptionDefinition.Create`/`FromMethod`, báo bằng `Property.NotifyValueChanged()`" → trỏ `DebugOptionsCategory` khi dự án dùng SRDebugger · `Agent/Tools~/check_agent.py all` sạch |
+| bốn class cheat | field `_container`, `OptionDefinition _…Row`, `_stateRows` → một `DebugOptionsCategory _options` · `OnAwake`/`Awake`: `new` → `Add*` đúng thứ tự cũ → `Attach()` · `OnDestroy`: `_options?.Detach()` · bỏ mọi `…Row.Property.NotifyValueChanged()` sau lệnh |
+| `LevelCheatDebugOptions.SetLevelInput` | gọi `_options.RefreshRows()` |
+| `EconomyCheatDebugOptions` | bỏ `_pending…Amount`, `TryTakePending`, `SelectBooster`, `Wrap`, `EnumOrder`, `LogPrefix`; `Awake` như đoạn dưới · `SetBooster(int target)` cộng phần chênh như cũ · `SetLive(int target)` giữ bước bắt đồng hồ hồi khi rời mức đầy · `_coins.GetCoin` là method group: bắt `_coins` lúc `Awake`, sau `Init` của InitArgs |
+| `TrackingDebugOptions` | `OpenSdkDebugger` → `AddPanelOpener("Open SDK Debugger", Zego.SdkDebugger.Show)` |
+| `UserSegmentationDebugOptions` | guard `host == null` giữ trước khi dựng category |
+| hành vi đổi | đổi Booster Type bỏ cả số đã gõ ở ô Coin, Live (bản tạm chỉ bỏ ô Booster) · log `[EconomyCheatDebugOptions]: amount must be in 0..{max}, got {target}` → `[Cheat Economy] Live must be in 0..{max}, got {value}` |
+| grep | dự án không còn `DynamicOptionContainer`, `AddOptionContainer`; `verify.sh` xanh với `Assembly-CSharp.csproj` |
+| Plan này | xoá cùng `.meta` |
+| chơi thử | Play, SRDebugger › Options: Tracking, Cheat Economy, Cheat Level, User Segmentation đủ hàng, thứ tự cũ · Economy: Set Booster, Coin, Live cập nhật ngay; mũi tên Booster Type không dừng ở `None`; gõ số rồi đổi loại thì ô về số dư thật; Set Live 99 báo `[Cheat Economy] Live must be in 0..<trần>, got 99` · Level: gõ ô Level thì "Level → file" đổi theo, ô không nhảy số · Open SDK Debugger: panel SDK bấm được · dừng Play không lỗi `Detach`; hỏng: thiếu category (chưa `Attach`, assembly chưa bật) |
 
-**Vì sao bây giờ:** API đã chốt ở GĐ1; GĐ3 xoá Plan.
+`EconomyCheatDebugOptions` › `Awake`:
 
-**Sơ đồ sau GĐ:** không đổi code.
-
-- `docs/Runtime/DebugOptionsCategory/DebugOptionsCategory.md` và `.html`, dòng `Code: Vendors/SRDebugger/`. Gồm: luồng, bảng sáu loại
-  hàng (gọi gì, QA thấy gì), mục "Trước khi chạy" (package SRDebugger có mặt hay define `HORCRUX_SRDEBUGGER`; class cheat đặt trong
-  scene service, `Attach` ở `Awake`, `Detach` ở `OnDestroy`), các quyết định trái trực giác.
-- `Agent/Rules/workflow/reference.md` › Cheat:
-  - dòng "**Lệnh, cửa đọc `private` và suy luận thuộc hệ**, … lớp nối với panel thuộc dự án." → vế cuối thành: cơ chế dựng category ở
-    Horcrux (`DebugOptionsCategory`), lệnh và từ vựng ở dự án;
-  - Sổ tay: vế "hàng là delegate đọc hệ thì `DynamicOptionContainer` + `OptionDefinition.Create`/`FromMethod`, báo bằng
-    `Property.NotifyValueChanged()`" → trỏ sang `DebugOptionsCategory` của Horcrux khi dự án dùng SRDebugger.
-
-**Editor setup:** không.
-
-**Kiểm:** chữ ký trong `.md` khớp GĐ1; `Agent/Tools~/check_agent.py all` sạch. Mốc commit:
-`docs(srdebugger): tài liệu DebugOptionsCategory, luật Cheat trỏ cơ chế Horcrux`.
-
----
-
-## GĐ3 — Dự án dùng bản Horcrux (agent)
-
-**Mục tiêu:** bốn class cheat bỏ khối `Register`/`Unregister` riêng, dựng category qua `DebugOptionsCategory`; xoá Plan này. Cùng tên
-category, cùng tên và thứ tự hàng, cùng lệnh. Khác trước hai chỗ: đổi Booster Type bỏ cả số đã gõ ở ô Coin, Live (bản cũ chỉ bỏ ô
-Booster); câu log khi số ngoài miền.
-
-**Sơ đồ sau GĐ:**
-
-```
-4 class cheat ──► [mới] DebugOptionsCategory (Horcrux) ──► SRDebugger
-[xoá] _container, …Row, _stateRows, TryTakePending, SelectBooster, Wrap, EnumOrder ở dự án
-```
-
-Mỗi class:
-- field `_container`, `OptionDefinition _…Row`, `_stateRows` → một field `DebugOptionsCategory _options`;
-- `OnAwake`/`Awake`: `new` → `Add*` theo đúng thứ tự cũ → `Attach()`; `OnDestroy`: `_options?.Detach()`;
-- bỏ mọi `…Row.Property.NotifyValueChanged()` sau lệnh; trong setter làm đổi hàng khác (`LevelCheatDebugOptions.SetLevelInput`) gọi
-  `_options.RefreshRows()`;
-- `EconomyCheatDebugOptions`: bỏ `_pending…Amount`, `TryTakePending`, `SelectBooster`, `Wrap`, `EnumOrder`, `LogPrefix`; lệnh Set nhận
-  số đích, phần kiểm miền và giữ số đã gõ do class làm:
-  ```csharp
+```csharp
   _options = new DebugOptionsCategory(Category);
   _options.AddChoice("Booster Type", CategoryBoosterConfig.AllBoosterType, () => _selectedBooster, value => _selectedBooster = value);
   _options.AddAmountSetter("Booster", () => _boosters.GetBoosterAmount(_selectedBooster), SetBooster);
@@ -449,42 +344,25 @@ Mỗi class:
   _options.AddAmountSetter("Coin", _coins.GetCoin, _coins.SetCoin);
   _options.AddAmountSetter("Live", () => _lives.LiveLeft, SetLive, max: () => _maxLive.GetMaxLive);
   _options.Attach();
-  ```
-  `SetBooster(int target)` cộng phần chênh như cũ, `SetLive(int target)` giữ bước bắt đồng hồ hồi khi rời mức đầy. Log lỗi đổi từ
-  `[EconomyCheatDebugOptions]: amount must be in 0..{max}, got {target}` sang `[Cheat Economy] Live must be in 0..{max}, got {value}`.
-  `_coins.GetCoin` là method group: bắt `_coins` lúc `Awake`, sau `Init` của InitArgs;
-- `TrackingDebugOptions`: `OpenSdkDebugger` → `AddPanelOpener("Open SDK Debugger", Zego.SdkDebugger.Show)`;
-- `UserSegmentationDebugOptions`: guard `host == null` giữ trước khi dựng category.
+```
 
-Sau đó xoá `Plans/Horcrux_DebugOptionsCategory_Plan.md` và `.meta`.
+## Không làm · Mở rộng sau
 
-**Editor setup:** không.
-
-**Kiểm:** grep dự án không còn `DynamicOptionContainer`, `AddOptionContainer`; `verify.sh` xanh với `Assembly-CSharp.csproj`.
-
-**Kịch bản chơi thử** (developer, Editor):
-1. Bật Play, mở SRDebugger, vào tab Options: bốn category Tracking, Cheat Economy, Cheat Level, User Segmentation có đủ hàng, đúng
-   thứ tự cũ. Hỏng: thiếu category (chưa `Attach`, hay assembly chưa bật).
-2. Economy: chọn booster, Set Booster, Set Coin, Set Live. Số dư cập nhật ngay, không phải đóng mở panel. Bấm mũi tên Booster Type
-   qua lại: không dừng ở `None` hay loại không có trong game. Gõ số Booster (và số Coin) rồi đổi loại: hai ô về số dư thật. Set Live
-   99: Console báo `[Cheat Economy] Live must be in 0..<trần>, got 99`, số mạng giữ nguyên.
-3. Level: gõ số vào ô Level thì hàng "Level → file" đổi theo; ô Level không nhảy số trong lúc gõ (ô được báo lại cùng các hàng khác).
-4. Tracking › Open SDK Debugger: panel SRDebugger ẩn, panel SDK bấm được.
-5. Dừng Play: Console không có lỗi từ `Detach`.
-
-Mốc commit dự án: `refactor(cheat): category SRDebugger dựng qua DebugOptionsCategory của Horcrux`, kèm con trỏ submodule.
-
----
-
-## File → GĐ
-
-| File | GĐ |
-|---|---|
-| `Vendors/SRDebugger/com.horcrux.srdebugger.asmdef` | 1 |
-| `Vendors/SRDebugger/DebugOptionsCategory.cs` | 1 |
-| `Tests/EditMode/Vendors/SRDebugger/` (asmdef, test) | 1 (agent) |
-| `docs/Runtime/DebugOptionsCategory/DebugOptionsCategory.{md,html}` | 2 |
-| `Agent/Rules/workflow/reference.md` (mục Cheat) | 2 |
-| dự án `Assets/_Game/Scripts/Cheat/{Tracking,EconomyCheat,LevelCheat}DebugOptions.cs` | 3 |
-| dự án `Assets/_Game/Scripts/Segmentation/UserSegmentationDebugOptions.cs` | 3 |
-| xoá `Plans/Horcrux_DebugOptionsCategory_Plan.md` | 3 |
+| | Phương án | Vì sao |
+|---|---|---|
+| bỏ | asmdef chỉ reference `StompyRobot.SRDebugger` | `PropertyReference` (cho `NotifyValueChanged`) nằm ở `StompyRobot.SRF` |
+| bỏ | `versionDefines` và `defineConstraints` ở hai asmdef khác nhau | `versionDefines` chỉ đặt define trong chính assembly khai nó |
+| bỏ | `autoReferenced: false` | `Assembly-CSharp` phải thấy class mà không sửa asmdef nào của dự án |
+| bỏ | thoát sớm trước khi dựng khi SRDebugger tắt (bản tạm) | vài `OptionDefinition` lúc boot rẻ hơn hai đường code trong mọi class cheat |
+| bỏ | `MonoBehaviour` base thay plain class do owner sở hữu | owner đã là `MonoBehaviour<…>` của InitArgs, base generic đã tiêu khe `Init` |
+| bỏ | cờ "mở panel" trên `AddCommand` thay `AddPanelOpener` | luật "ẩn SRDebugger trước" do class giữ, caller không cần biết |
+| bỏ | chỉ báo lại hàng chỉ đọc sau lệnh | ô số hiện số dư thật tới khi QA gõ; Set xong phải về số mới |
+| bỏ | kẹp số ngoài `0..max` | kẹp im lặng làm QA tưởng đã đặt đúng số vừa gõ |
+| bỏ | đổi lựa chọn chỉ bỏ số ở ô số phụ thuộc | số gõ cho lựa chọn cũ giữ lại là đặt nhầm sang lựa chọn mới; category có hai ô chọn độc lập thì tách category |
+| bỏ | ô số `AddInput` + nút `AddCommand` caller tự nối | số đang gõ dở là trạng thái của cặp ô; caller giữ thì mỗi cặp thêm một `int?` và một hàm kiểm miền |
+| bỏ | `Attach` trả `bool` | không caller nào rẽ nhánh theo nó |
+| bỏ | `Add*` trả `OptionDefinition` | caller giữ tham chiếu chỉ để báo lại hàng, giờ class tự báo |
+| bỏ | cờ "không refresh" trên lệnh | báo vài hàng mỗi lần bấm rẻ hơn một ô phải nhớ |
+| bỏ | gỡ từng hàng sau `Attach` (`RemoveOption`) | chưa caller nào cần |
+| bỏ | hỗ trợ `SROptions` partial | cơ chế khác hẳn, không phải người dùng của class này |
+| sau | tham số `min` cho `AddAmountSetter` (mặc định 0) | khi một ô số nhận được số âm |
