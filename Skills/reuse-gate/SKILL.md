@@ -21,6 +21,7 @@ squash-stretch.
 
 **Bê khuôn có sẵn thì soi chỗ khuôn cũ *cố ý* làm** — lý do gốc còn đúng không; hết thì đảo và ghi lý do. Hệ **port** từ dự
 án khác thì diff với **bản nguồn hiện tại** (kể cả giá trị mặc định trong scene), hỏi nhánh nào là lõi trước khi tối giản.
+Thứ developer nhớ là của dự án nguồn có thể nằm trong package nó cài: tìm cả package, rồi soát dự án đích đã cài sẵn chưa.
 *Đã sai một lần:* bê khuôn serialize giá trị runtime vào asset sang bài toán lưu tiến độ — tiến độ vào version control.
 
 **Hệ nguồn trả kiểu thì nhận kiểu, không nhận chuỗi rồi tự parse** — parse hai nơi che lỗi khỏi log hệ nguồn, mất kiểm tra

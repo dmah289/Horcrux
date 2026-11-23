@@ -56,7 +56,9 @@ developer phải bác rồi brainstorm lại.
 Code cho biết cái gì chạy, không cho biết vì sao; developer không nhất thiết nắm từng ngóc ngách. Với **mỗi phát hiện ảnh
 hưởng quyết định đang bàn**: **thấy gì** (đường dẫn, dòng) · **hiểu ý định là gì** — phát biểu lại, hỏi khớp thiết kế không
 · **developer biết chưa** — chủ ý hay đã trôi. Không kể lại code. Mỗi lượt review đọc lại file hiện tại: báo lại lỗi đã sửa
-làm mất tin vào phát hiện còn đúng. Số đọc từ hai file YAML chỉ so được khi quy về một kiểu, hoặc đọc qua API engine.
+làm mất tin vào phát hiện còn đúng. Số đọc từ hai file YAML chỉ so được khi quy về một kiểu, hoặc đọc qua API engine. Code
+có nhánh `#if` thì nhánh đang chạy đọc trên assembly đã compile, không suy từ source: define toàn cục và define theo phiên
+bản package chồng nhau chọn nhánh khác điều source gợi ý.
 
 ## Văn phong
 
@@ -136,17 +138,22 @@ trong thời gian hợp lý**: thời gian (hết tuần) · khối lượng (đ
 dòng phải giữ đúng mãi. Hàng đọc chỉ cho thứ màn hình không hiện, qua API sẵn có, không bọc thứ đã public; lệnh riêng chỉ khi
 phải chạm `private`, gọi đúng lệnh thật của hệ. Lệnh thật có cổng (khoá, cửa sổ thời gian) mà đường thật đóng cổng trước khi
 QA kịp bấm thì cheat là lệnh riêng vượt cổng, đặt trong hệ: gọi lệnh thật chỉ chạm vào cổng. *Đã sai một lần:* cheat báo
-campaign qua cửa thật; SDK trả organic ngay phiên đầu nên cửa đã khoá, nút không đổi gì kể cả sau khi mở lại app. Lệnh rời trạng thái giữa chừng đi đường người chơi rời nó; popup còn mở
+campaign qua cửa thật; SDK trả organic ngay phiên đầu nên cửa đã khoá, nút không đổi gì kể cả sau khi mở lại app.
+Cheat đổi môi trường để QA kiểm một kịch bản thì lần theo kịch bản tới chỗ nó chạm hệ được đổi trước khi làm nút — kịch bản
+không đi qua hệ đó thì nút đúng mà vô nghĩa; cổng chặn im lặng dọc đường (anti-cheat, consent, cờ tắt) ghi vào kịch bản QA.
+Lệnh thật nằm sau ranh `internal` của SDK bên thứ ba thì mở công cụ debug của chính SDK: reflection hay ghi lại khoá lưu của
+SDK câm im lặng ở bản SDK sau. Lệnh rời trạng thái giữa chừng đi đường người chơi rời nó; popup còn mở
 lúc chuyển màn bị đóng theo nhánh huỷ của chính nó — đếm hệ quả nhánh đó tự làm trước khi gọi thêm. Panel có trong **build chính thức, không `#if`** — QA kiểm bản người chơi cầm.
 Lệnh, cửa đọc `private` và suy luận thuộc **hệ**, không phụ thuộc công cụ debug — hệ framework mang được sang dự án dùng
 panel khác; lớp nối với panel thuộc dự án. **Đưa về trạng thái đầu** đi qua chủ giữ state: thay bản trong RAM lẫn bản lưu,
 flush, rồi **thoát app** — xoá kho lưu giữa phiên bị flush lúc pause/quit ghi đè, việc chỉ chạy lúc boot (grant, cache dẫn
-xuất) không chạy lại. Cờ của khởi tạo lười giữ ở "đã kiểm" tới hết tiến trình: mở lại thì thứ đọc trước lúc thoát khởi tạo lại
+xuất) không chạy lại. Lệnh đổi cấu hình chỉ đọc lúc boot cũng ghi rồi thoát; ở Editor thoát là dừng Play, `Application.Quit`
+không tác dụng. Cờ của khởi tạo lười giữ ở "đã kiểm" tới hết tiến trình: mở lại thì thứ đọc trước lúc thoát khởi tạo lại
 từ state cũ và bật lại cờ vừa xoá. "Như cài mới" xoá đúng danh sách key, không xoá cả kho (consent, prefs của SDK).
 
 > **Nền tảng** — khi dự án dùng SRDebugger: tab Options, một category mỗi hệ, trigger `Off`; cách mở panel do dự án quyết.
 > Option chỉ đọc lại getter khi bind, `OnEnable` (mở panel, đổi tab) hoặc khi được báo, không theo frame: lệnh xong phải
-> báo các hàng đọc.
+> báo các hàng đọc. Panel khác mở từ một hàng mà xếp dưới panel SRDebugger thì không nhận chạm: ẩn panel SRDebugger trước.
 > **Sổ tay** — partial `<Hệ>.Debug.cs` giữ lệnh, plain class `<Hệ>DebugOptions` giữ hàng UI (nhận hệ qua constructor,
 > `Init/Dispose` ở `Awake/OnDestroy`, `internal sealed` vì SRDebugger quét mọi public member) · hàng đọc là `string`
 > read-only · lệnh có tham số = property số hoặc chuỗi + method không tham số · `INotifyPropertyChanged` bắn `null` sau mỗi
