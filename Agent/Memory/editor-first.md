@@ -48,6 +48,6 @@ Bài học đã trả giá khi làm việc với `editor-first`. Đọc trọn c
 **Làm:** trước khi kết luận, đọc `EditorApplication.delayCall.GetInvocationList()`; muốn kiểm hình vẽ thì gọi thẳng API vẽ của tool, không invoke cả hàng vì trong đó có callback của hệ khác.
 
 ### Cần ảnh Inspector mà cửa sổ Unity bị che
-`2026-10` · vấp 1 · đã đo · đúng với dự án dùng Odin
+`2026-10` · vấp 1 · suy luận · đúng với dự án dùng Odin
 **Thấy:** soát lỗi bố cục Inspector trong khi cửa sổ Unity bị che hoặc không focus, chụp màn hình không ra Inspector. **Vì:** chụp màn hình lấy thứ đang hiện trên màn; `GUIView.GrabPixels` (internal, gọi qua reflection) đọc pixel của chính view.
 **Làm:** script tạm mở InspectorWindow nổi, mở foldout Odin qua state của property tree, chụp bằng `GrabPixels`; so với component không có khối Init (`editor-first` › tra cứu › IMGUI).
