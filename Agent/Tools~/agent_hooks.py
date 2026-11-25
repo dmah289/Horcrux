@@ -300,7 +300,8 @@ def post_eol(data):
         return
     seen_file.parent.mkdir(parents=True, exist_ok=True)
     seen_file.write_text(json.dumps(seen, ensure_ascii=False), encoding="utf-8")
-    listed = ", ".join(f"{p.name} ({n} dòng)" for p, n in list(fresh.items())[:5]) + (" …" if len(fresh) > 5 else "")
+    # Diff đếm mỗi dòng hai lần (bớt bản cũ, thêm bản mới).
+    listed = ", ".join(f"{p.name} ({n // 2} dòng)" for p, n in list(fresh.items())[:5]) + (" …" if len(fresh) > 5 else "")
     log_event(data, "eol-churn", " ".join(str(p) for p in fresh))
     print(json.dumps({"decision": "block", "reason":
                       f"Git ghi nhận dòng đổi chỉ vì CR cuối dòng: {listed}. Lệnh vừa chạy đã đổi kiểu xuống dòng "
