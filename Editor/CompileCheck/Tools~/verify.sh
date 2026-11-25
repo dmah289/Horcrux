@@ -8,7 +8,8 @@
 #   --timeout  giây chờ mỗi assembly test (mặc định 600).
 #   --ready-wait  giây chờ Editor đang bận (import sau pull, merge) về ready trước bước Unity (mặc định 600). Không Editor nào mở project thì không chờ.
 #   Test fail ghi vào Library/HorcruxVerify/<assembly>.fail; lượt sau đánh dấu fail mới, in fail đã hết so với lượt đó.
-#   OK thì ghi Library/HorcruxVerify/last-ok (giờ epoch, kèm hậu tố khi bỏ bước Unity) — mốc cho hook Stop của Agent.
+#   OK, hoặc chỉ còn fail có sẵn (0 fail mới), thì ghi Library/HorcruxVerify/last-ok (giờ epoch, kèm hậu tố khi bỏ bước
+#   Unity) — mốc cho hook Stop của Agent. Chỉ còn fail có sẵn vẫn thoát mã 1 và in tên assembly còn fail.
 #   UNITY_CLI ép đường dẫn unity.exe (mặc định tìm `unity` trên PATH). Chạy từ gốc project hoặc đặt --project.
 set -u
 PROJECT="$PWD"; CSPROJ=""; TESTS=""; UNITY=1; RUN_TESTS=1; TIMEOUT=600; READY_WAIT=600
@@ -29,7 +30,7 @@ if [ -n "${UNITY_CLI:-}" ]; then U="$UNITY_CLI"
 elif command -v unity >/dev/null 2>&1; then U="$(command -v unity)"
 else U="/c/Users/$USERNAME/AppData/Local/Unity/bin/unity.exe"; fi
 W="$(cygpath -w "$PROJECT")"
-FAIL=""
+FAIL=""; KNOWN_FAIL=""
 
 # Một trường của object JSON đầu tiên trên stdin. CLI in thêm một dòng hint sau JSON nên không json.load thẳng.
 jfield() { python -X utf8 -I -c '
@@ -46,10 +47,12 @@ for key in sys.argv[1].split("."):
 print("" if cur is None else (json.dumps(cur, ensure_ascii=False) if isinstance(cur, (dict, list)) else cur))
 ' "$1"; }
 
-# OK thì ghi mốc last-ok: hook Stop (Agent/Tools~/agent_hooks.py) so mtime file .cs agent đã sửa với mốc này.
+# Ghi mốc last-ok khi task không làm hỏng gì: hook Stop (Agent/Tools~/agent_hooks.py) so mtime file .cs agent đã sửa với
+# mốc này. Fail có sẵn không chặn mốc, không thì assembly còn fail từ trước làm hook chặn mọi lượt.
 finish() {
   [ -n "$FAIL" ] && { echo "verify: FAIL$FAIL"; exit 1; }
   mkdir -p "$PROJECT/Library/HorcruxVerify" && echo "$(date +%s)${1:-}" > "$PROJECT/Library/HorcruxVerify/last-ok"
+  [ -n "$KNOWN_FAIL" ] && { echo "verify: FAIL tests chỉ là fail có sẵn ($KNOWN_FAIL), 0 fail mới — đã ghi mốc last-ok"; exit 1; }
   echo "verify: OK${1:-}"; exit 0
 }
 
@@ -190,24 +193,33 @@ import json, os, subprocess, sys, time
 path, project = sys.argv[1], sys.argv[2]
 raw = sys.stdin.read(); obj, _ = json.JSONDecoder().raw_decode(raw[raw.index("{"):])
 fails = [r for r in obj.get("Results", []) if r.get("Status") not in ("Passed", "Skipped")]
-prev, stamp = None, ""
+# Dòng "+tên" là fail mới chưa pass lại: giữ nhãn mới qua các lượt, không thì chạy lại lần hai là fail mới thành "có sẵn".
+prev, prev_new, stamp = None, set(), ""
 if os.path.exists(path):
     lines = open(path, encoding="utf8").read().splitlines()
-    stamp, prev = (lines[0], set(lines[1:])) if lines else ("", set())
+    stamp, names = (lines[0], lines[1:]) if lines else ("", [])
+    prev = {n.lstrip("+") for n in names}
+    prev_new = {n[1:] for n in names if n.startswith("+")}
+now = {r["FullName"] for r in fails}
+new = set() if prev is None else (now - prev) | (now & prev_new)
 for r in fails:
     msg = (r.get("Message") or "").strip().replace("\n", " | ")
-    mark = "" if prev is None or r["FullName"] in prev else " (mới)"
+    mark = " (mới)" if r["FullName"] in new else ""
     print("  %s: %s%s %s" % (r["FullName"], r["Status"], mark, msg[:300]))
 if prev is not None:
-    now = {r["FullName"] for r in fails}
     for name in sorted(prev - now):
         print("  hết fail: %s" % name)
-    print("  so với lượt %s: %d fail mới, %d hết fail" % (stamp, len(now - prev), len(prev - now)))
+    print("  so với lượt %s: %d fail mới, %d hết fail" % (stamp, len(new), len(prev - now)))
 head = subprocess.run(["git", "-C", project, "rev-parse", "--short", "HEAD"], capture_output=True, text=True).stdout.strip()
 with open(path, "w", encoding="utf8") as f:
     f.write("%s @%s\n" % (time.strftime("%Y-%m-%d %H:%M"), head or "?"))
-    f.writelines(r["FullName"] + "\n" for r in fails)' "$PROJECT/Library/HorcruxVerify/$asm.fail" "$PROJECT"
-  [ "$failed" != "0" ] && FAIL="$FAIL tests"
+    f.writelines(("+" if r["FullName"] in new else "") + r["FullName"] + "\n" for r in fails)
+# Mã 1: có fail mới, hoặc chưa có lượt trước để biết fail nào có sẵn.
+sys.exit(1 if new or (prev is None and fails) else 0)' "$PROJECT/Library/HorcruxVerify/$asm.fail" "$PROJECT"
+  has_new=$?
+  if [ "$failed" != "0" ]; then
+    if [ $has_new -eq 0 ]; then KNOWN_FAIL="${KNOWN_FAIL:+$KNOWN_FAIL, }$asm"; else FAIL="$FAIL tests"; fi
+  fi
 done
 
 finish

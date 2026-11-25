@@ -14,7 +14,7 @@ Không tham số thì là hook: đọc JSON trên stdin, rẽ theo `hook_event_n
                                  merge; commit vào `Agent/` mà `check_agent.py` báo lỗi ở chính file được commit.
     PreToolUse  Edit|Write       chặn sửa mục developer-only của `horcrux.md`.
     PostToolUse Edit|Write       ghi file `.cs` agent vừa sửa vào `Library/HorcruxVerify/agent-edits/<session>.txt`.
-    Stop                         không cho dừng khi có `.cs` agent sửa sau lần `verify.sh` OK cuối
+    Stop                         không cho dừng khi có `.cs` agent sửa sau lần `verify.sh` xanh cuối (OK, hoặc chỉ còn fail có sẵn)
                                  (`Library/HorcruxVerify/last-ok`); lần chặn thứ hai trong cùng lượt dừng thì để qua.
 
 Mỗi lần chặn hay nhắc ghi một dòng vào `Library/HorcruxVerify/hook-log.jsonl` (luật: git-add-all, git-commit-all,
@@ -254,7 +254,7 @@ def stop(data):
         log_event(data, "verify-stale", " ".join(stale))
         names = ", ".join(pathlib.Path(p).name for p in stale[:5]) + (" …" if len(stale) > 5 else "")
         print(json.dumps({"decision": "block", "reason":
-                          f"Có {len(stale)} file .cs sửa sau lần verify.sh OK cuối ({names}). Chạy compile-check "
+                          f"Có {len(stale)} file .cs sửa sau lần verify.sh xanh cuối ({names}). Chạy compile-check "
                           "(`verify.sh` theo lệnh của dự án) và dán dòng kết quả vào báo cáo; không chạy được "
                           "(Editor đóng, thiếu builder) thì nói rõ là chưa kiểm."}, ensure_ascii=False))
 

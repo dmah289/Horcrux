@@ -37,7 +37,7 @@ in phần lệch, không ghi.
 | sau compact | không chặn; nhắc agent đọc lại trọn luật nền, vì luật đọc bằng Read chỉ còn bản tóm tắt | `horcrux.md` › Luật đọc |
 | trước lệnh shell | `git add -A`, `-u`, `.` · `git commit -a` · commit không `-- <paths>` (trừ lúc merge) · commit vào `Agent/` khi `check_agent.py` báo lỗi ở chính file đó | `workflow` › Việc lặp lại và git · `horcrux.md` › Cổng ghi |
 | trước sửa file | sửa mục developer-only của `horcrux.md` | `horcrux.md` › Yêu cầu của developer |
-| sau sửa file, khi dừng | báo xong khi còn `.cs` agent sửa sau lần `verify.sh` OK cuối; chặn một lần mỗi lượt dừng | `compile-check` › Luật |
+| sau sửa file, khi dừng | báo xong khi còn `.cs` agent sửa sau lần `verify.sh` xanh cuối (OK, hoặc chỉ còn fail có sẵn); chặn một lần mỗi lượt dừng | `compile-check` › Luật |
 
 Không thấy: `.cs` sửa bằng lệnh shell, vì hook chỉ ghi file sửa qua Edit, Write.
 

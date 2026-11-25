@@ -17,11 +17,6 @@ Bài học đã trả giá khi làm việc với `compile-check`. Đọc trọn 
 **Thấy:** grep tên type để tìm code chết báo sai hai chiều. **Vì:** extension method không gọi tên class ở call site · type trùng tên ở namespace khác làm grep dương tính giả.
 **Làm:** chép csproj ra bản dự phòng, bỏ dòng `<Compile Include>` của ứng viên, build mọi csproj tham chiếu assembly đó: sạch mới là không caller trong code; lời gọi từ asset (`m_MethodName` của UnityEvent) và reflection vẫn phải grep riêng (`workflow` › Nghiệm thu).
 
-### Hook dừng lượt nhắc compile-check ở mọi lượt dù task không có fail mới
-`2026-11` · vấp 1 · đã đo · đúng với assembly test còn fail có sẵn
-**Thấy:** sau mỗi task hook Stop báo "file .cs sửa sau lần verify.sh OK cuối", chạy lại vẫn báo, suốt một plan nhiều task. **Vì:** hook chỉ tin mốc `last-ok` mà `verify.sh` ghi khi dòng cuối là `verify: OK`; assembly test còn fail có sẵn thì dòng cuối luôn `FAIL tests` dù `0 fail mới`.
-**Làm:** không chạy lại cho hook khi đang có subagent dùng Editor; dán dòng build, tests và `so với lượt …: 0 fail mới` làm bằng chứng. Nâng cấp ① đề xuất: `verify.sh` ghi `last-ok` khi build, recompile xanh và không có fail mới (`compile-check` › Luật 8).
-
 ### Test đỏ hàng loạt mà code đang test không đổi
 `2026-11` · vấp 1 · đã đo · đúng với test đọc asset nội dung của dự án
 **Thấy:** hàng chục test của tool đỏ cùng lúc dù code tool không đổi gì; bisect code không ra commit nào. **Vì:** test chạy trên asset nội dung người khác đang sửa (level, collection) hoặc ghi cứng id do tool dựng lại, và golden băm cả dữ liệu ngoài phần code sinh ra (field thêm hay bớt của class dữ liệu).
