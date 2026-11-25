@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Reflection;
 using System.Text;
+using Horcrux.Runtime.Utilities.Common;
 using UnityEngine;
 
 namespace Horcrux.Runtime.Implementations.RemoteConfigSystem
@@ -31,15 +32,8 @@ namespace Horcrux.Runtime.Implementations.RemoteConfigSystem
             if (!TryDescribe(type, out Type rowType, out bool isList, out FieldInfo[] columns, out report))
                 return false;
 
-            var dataLines = new List<(int line, string text)>();
-            string[] rawLines = csv.Split('\n');
-            for (int i = 0; i < rawLines.Length; i++)
-            {
-                string line = rawLines[i].Trim();
-                if (line.Length == 0 || line.StartsWith(CommentPrefix) || line.StartsWith(AltCommentPrefix))
-                    continue;
-                dataLines.Add((i + 1, line));
-            }
+            var dataLines = DelimitedText.ReadLines(csv);
+            dataLines.RemoveAll(line => line.Text.StartsWith(CommentPrefix) || line.Text.StartsWith(AltCommentPrefix));
 
             if (dataLines.Count == 0)
             {
@@ -47,7 +41,7 @@ namespace Horcrux.Runtime.Implementations.RemoteConfigSystem
                 return false;
             }
 
-            if (columns != null && TryReadHeader(dataLines[0].text, columns, out FieldInfo[] ordered))
+            if (columns != null && TryReadHeader(dataLines[0].Cells, columns, out FieldInfo[] ordered))
             {
                 columns = ordered;
                 dataLines.RemoveAt(0);
@@ -67,16 +61,16 @@ namespace Horcrux.Runtime.Implementations.RemoteConfigSystem
 
             var rows = new List<object>();
             var skippedLines = new List<int>();
-            foreach ((int line, string text) in dataLines)
+            foreach (DelimitedLine line in dataLines)
             {
-                if (!TryParseRow(text, rowType, columns, out object row, out bool notApplicable, out string rowError))
+                if (!TryParseRow(line.Cells, rowType, columns, out object row, out bool notApplicable, out string rowError))
                 {
-                    report = $"line {line}: {rowError}";
+                    report = $"line {line.Number}: {rowError}";
                     return false;
                 }
 
                 if (notApplicable)
-                    skippedLines.Add(line);
+                    skippedLines.Add(line.Number);
                 else
                     rows.Add(row);
             }
@@ -184,18 +178,17 @@ namespace Horcrux.Runtime.Implementations.RemoteConfigSystem
         }
 
         /// <summary>Reorders columns to match a header line, or reports that the line carries data instead.</summary>
-        private static bool TryReadHeader(string line, FieldInfo[] columns, out FieldInfo[] ordered)
+        private static bool TryReadHeader(IReadOnlyList<string> cells, FieldInfo[] columns, out FieldInfo[] ordered)
         {
             ordered = null;
-            string[] cells = line.Split(',');
-            if (cells.Length != columns.Length)
+            if (cells.Count != columns.Length)
                 return false;
 
-            var byHeader = new FieldInfo[cells.Length];
+            var byHeader = new FieldInfo[cells.Count];
             var taken = new bool[columns.Length];
-            for (int i = 0; i < cells.Length; i++)
+            for (int i = 0; i < cells.Count; i++)
             {
-                string cell = cells[i].Trim();
+                string cell = cells[i];
                 for (int c = 0; c < columns.Length; c++)
                 {
                     if (taken[c] || !string.Equals(columns[c].Name, cell, StringComparison.OrdinalIgnoreCase))
@@ -212,27 +205,26 @@ namespace Horcrux.Runtime.Implementations.RemoteConfigSystem
             return true;
         }
 
-        private static bool TryParseRow(string line, Type rowType, FieldInfo[] columns, out object row,
+        private static bool TryParseRow(IReadOnlyList<string> cells, Type rowType, FieldInfo[] columns, out object row,
             out bool notApplicable, out string error)
         {
             row = null;
             notApplicable = false;
             error = null;
-            string[] cells = line.Split(',');
 
             if (columns == null)
             {
-                if (cells.Length != 1)
+                if (cells.Count != 1)
                 {
-                    error = $"expected a single {rowType.Name} value, got {cells.Length} cells";
+                    error = $"expected a single {rowType.Name} value, got {cells.Count} cells";
                     return false;
                 }
                 return TryReadCell(cells[0], rowType, out row, out notApplicable, out error);
             }
 
-            if (cells.Length != columns.Length)
+            if (cells.Count != columns.Length)
             {
-                error = $"expected {columns.Length} columns ({string.Join(",", Names(columns))}), got {cells.Length}";
+                error = $"expected {columns.Length} columns ({string.Join(",", Names(columns))}), got {cells.Count}";
                 return false;
             }
 

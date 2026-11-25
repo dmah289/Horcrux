@@ -61,7 +61,8 @@ thuộc từ prefab, scene đích trước, so phần còn lại với file dự
 > đã lưu tới lần lưu kế. Excel ở locale dùng dấu phẩy thập phân (vi-VN, de-DE…) lưu CSV phân cách bằng `;`.
 
 **Sổ tay** — ghi nhiều asset: một Undo group; so bản serialize trước–sau, chỉ `RecordObject` và lưu asset đổi; Manual nói
-phải lưu lại sau Ctrl+Z. Đọc CSV người dùng gửi: nhận phẩy và tab, lỗi tách cột thì nêu dấu phân cách đang thấy.
+phải lưu lại sau Ctrl+Z. Đọc CSV người dùng gửi: tách dòng, ô bằng `DelimitedText` (`Runtime/Utilities/Common`, nhận tab và phẩy), lỗi tách cột thì
+nêu dấu phân cách đang thấy.
 
 ## IMGUI
 

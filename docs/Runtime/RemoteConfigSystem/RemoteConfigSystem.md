@@ -237,7 +237,7 @@ dạng đường truyền.
 | Class dòng | cần constructor không tham số |
 | Header | dòng dữ liệu đầu được nhận là header khi số cell bằng số cột và mọi cell khớp tên cột (không phân biệt hoa thường); header cho đổi thứ tự cột |
 | Bỏ qua | dòng trống, dòng mở đầu `#` hay `//` |
-| Tách cell | `Split(',')`, **không hỗ trợ dấu nháy**: chuỗi chứa dấu phẩy làm lệch số cột → huỷ cả lần import |
+| Tách cell | `DelimitedText` (`Runtime/Utilities/Common`): dòng có tab thì tách theo tab (dán từ Sheets, Excel), không thì phẩy · **không hỗ trợ dấu nháy**: ô chứa dấu phân cách làm lệch số cột → huỷ cả lần import |
 | Số | `InvariantCulture`; xuất `float`/`double` bằng định dạng `"R"` |
 | `enum` | không phân biệt hoa thường; chỉ nhận giá trị đã khai (trừ `[Flags]`) — chặt hơn parse runtime §4 |
 | Cell `""`, `-`, `None` ở cột không phải `string` | dòng "không áp dụng": `List<>` bỏ dòng đó và báo số dòng; giá trị một dòng thì huỷ import |

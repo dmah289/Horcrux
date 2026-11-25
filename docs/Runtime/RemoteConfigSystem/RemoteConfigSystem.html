@@ -324,7 +324,7 @@ protected override void OnRemoteConfigsApplied()
       <tr><td>Object có field không phải cell</td><td>không có dạng CSV; báo tên field, bảo dùng JSON</td></tr>
       <tr><td>Header</td><td>dòng dữ liệu đầu được nhận là header khi mọi cell khớp tên cột (không phân biệt hoa thường); header cho đổi thứ tự cột</td></tr>
       <tr><td>Bỏ qua</td><td>dòng trống, dòng mở đầu <code>#</code> hay <code>//</code></td></tr>
-      <tr><td>Tách cell</td><td><strong>không hỗ trợ dấu nháy</strong>: chuỗi chứa dấu phẩy làm lệch số cột → huỷ cả lần import</td></tr>
+      <tr><td>Tách cell</td><td><code>DelimitedText</code> (<code>Runtime/Utilities/Common</code>): dòng có tab thì tách theo tab (dán từ Sheets, Excel), không thì phẩy · <strong>không hỗ trợ dấu nháy</strong>: ô chứa dấu phân cách làm lệch số cột → huỷ cả lần import</td></tr>
       <tr><td><code>enum</code></td><td>không phân biệt hoa thường; chỉ nhận giá trị đã khai (trừ <code>[Flags]</code>)</td></tr>
       <tr><td>Cell <code>""</code>, <code>-</code>, <code>None</code> ở cột không phải <code>string</code></td><td>dòng "không áp dụng": <code>List&lt;&gt;</code> bỏ dòng đó và báo số dòng; giá trị một dòng thì huỷ import</td></tr>
       <tr><td>Lỗi</td><td>báo số dòng và tên cột; không ghi gì</td></tr>
