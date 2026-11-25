@@ -21,3 +21,8 @@ Chờ lượt dọn xếp về đúng miền.
 `2026-10` · vấp 1 · đã đo · đúng với working copy Windows `core.autocrlf=true`
 **Thấy:** script chỉ thay vài token mà diff báo đổi mọi dòng; git cảnh báo "LF will be replaced by CRLF" ở mọi file chạm. **Vì:** working copy là CRLF, Unity ghi YAML bằng LF; đọc ghi ở chế độ text đổi kiểu xuống dòng.
 **Làm:** đọc ghi bytes, giữ kiểu xuống dòng của file gốc; cảnh báo CRLF là nhiễu, xác nhận diff chỉ còn token bằng `git diff --ignore-space-at-eol --stat`.
+
+### Nhóm thử của AB test lẫn người chơi đang chạy bản mặc định
+`2026-11` · vấp 1 · suy luận · đúng với giá trị remote chọn nội dung đóng sẵn trong build, Firebase Remote Config và A/B Testing
+**Thấy:** remote chọn một nội dung trong build (bộ level, bảng cấu hình), chạy đúng trong Editor, nhưng số liệu nhóm thử sẽ lẫn người chơi bản mặc định. **Vì:** build cũ thiếu nội dung mới nên rơi về mặc định mà vẫn được tính vào nhóm · fetch phiên đầu quá hạn chờ thì phiên đó chạy mặc định, giá trị chỉ áp từ phiên sau · `FetchAsync()` không tham số giữ cache 12 giờ, đổi trên console không thấy ngay khi kiểm.
+**Làm:** nêu ở mục việc ngoài repo của báo cáo: experiment lọc theo phiên bản app có nội dung · cân nhắc nhóm lẫn ở phiên đầu khi khác biệt nằm ở đầu game · kiểm nhanh bằng cheat hoặc xoá dữ liệu app (`workflow` › Đối chiếu).

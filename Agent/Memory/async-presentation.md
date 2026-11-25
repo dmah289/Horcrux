@@ -12,10 +12,10 @@ Bài học đã trả giá khi làm việc với `async-presentation`. Đọc tr
 **Thấy:** đường dọn màn đặt lại cỡ nghỉ cho vật đã co biến mất mà không tắt nó, vật rỗng hiện lại lúc nạp màn. **Vì:** đường dọn từ ngoài không về đúng trạng thái cuối của đường ra tự nhiên.
 **Làm:** đường dọn từ ngoài về đúng trạng thái cuối của đường ra tự nhiên — vật đã biến mất thì cũng tắt (`async-presentation` › Async và vòng đời).
 
-### Vật diễn xong rồi đứng kẹt vì chỗ đã bị lấy
-`2026-11` · vấp 1 · chuyển sang, chưa kiểm lại
-**Thấy:** kiểm chỗ trống trước nhịp lấy đà; trong nhịp đó luồng khác lấy mất chỗ, vật vẫn diễn rồi đứng kẹt. **Vì:** điều kiện kiểm trước một lượt chờ là bản chết sau lượt chờ.
-**Làm:** chỗ đã nhắm kiểm lại ngay trước bước người chơi thấy; mất rồi thì bỏ bước, không diễn nửa chừng (`async-presentation` › Async và vòng đời).
+### Kết quả của lượt chờ ghi lên trạng thái đã đổi trong lúc chờ
+`2026-11` · vấp 2 · suy luận
+**Thấy:** kiểm chỗ trống trước nhịp lấy đà, luồng khác lấy mất chỗ, vật vẫn diễn rồi đứng kẹt · chọn A rồi B liền tay, lượt nạp A hỏng, nhánh về mặc định của nó tự lấy mã lượt mới nên về sau B mà vẫn đè B. **Vì:** điều kiện kiểm trước một lượt chờ là bản chết sau lượt chờ; mã chống lượt cũ chỉ đúng khi cả lượt mang đúng một mã.
+**Làm:** chỗ đã nhắm kiểm lại ngay trước bước người chơi thấy, mất thì bỏ bước · mã lượt lấy một lần ở đầu lượt, truyền xuống mọi bước con (thử lại, về mặc định); sau mỗi `await` so mã trước khi ghi, lượt đã bị thay thì nhả thứ vừa nạp và dừng các bước con còn lại (`async-presentation` › Async và vòng đời).
 
 ### Trạng thái tạm kẹt lại sau khi lượt diễn bị huỷ
 `2026-11` · vấp 1 · chuyển sang, chưa kiểm lại
@@ -51,3 +51,8 @@ Bài học đã trả giá khi làm việc với `async-presentation`. Đọc tr
 `2026-11` · vấp 1 · chuyển sang, chưa kiểm lại
 **Thấy:** đặt `cycles` theo số lần nháy muốn thấy mà ra gấp đôi hoặc nửa. **Vì:** `CycleMode.Restart` đếm mỗi vòng là một lần nháy; `Yoyo` đếm đi và về là hai vòng.
 **Làm:** đổi số lần mắt thấy ra `cycles` theo đúng chế độ lặp, kiểm bằng `stat` của trace (`feel-tune` › Chọn công cụ).
+
+### Key Addressables là chuỗi đến từ remote hay save
+`2026-11` · vấp 1 · đã đo
+**Thấy:** tên asset cần nạp đến từ server nên không kéo được `AssetReference`; nạp bằng chuỗi thì tên sai ném `InvalidKeyException`, đổi tên asset làm giá trị trên console trỏ vào khoảng không. **Vì:** address không đổi theo tên asset, chuỗi chỉ hỏng lúc chạy.
+**Làm:** tên hợp lệ lấy theo label, tên lạ `LogError` rồi về bản mặc định là `AssetReference` kéo thả · nạp bản mới xong mới `Release` bản cũ, mọi bản chung một group Pack Together (bật GUID in Catalog cho bản mặc định) để phụ thuộc chung không nhân bản, không bị nhả lúc đổi · phép kiểm authoring canh address = tên, label, group, schema (`async-presentation` › tra cứu › Stack async).
