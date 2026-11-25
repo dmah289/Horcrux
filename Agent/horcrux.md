@@ -109,7 +109,8 @@ memory máy. Quyết định của developer ở tầng dự án ghi `### <chủ
 - **Xoá** khi điều kiện "đúng với" đã hết hoặc hệ liên quan đã viết lại.
 - **Dọn** khi một file vượt 8 KB hoặc developer yêu cầu: gộp khối trùng · kiểm lại khối *suy luận* và *chuyển sang, chưa
   kiểm lại* · khối trên sáu tháng mà vấp 1 thì xác minh hoặc xoá · xếp `inbox.md` về đúng miền. Báo bằng bảng
-  *giữ / gộp / nâng / xoá*.
+  *giữ / gộp / nâng / xoá*. Xoá, dời khối bằng `Agent/Tools~/check_agent.py memory drop|move`: tự từ chối khi còn con
+  trỏ, trùng tiêu đề hay vượt trần.
 
 ## Cổng ghi
 

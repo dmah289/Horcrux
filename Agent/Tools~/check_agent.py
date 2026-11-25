@@ -1,8 +1,17 @@
 """Kiểm bộ Agent/ của Horcrux: con trỏ, định nghĩa, trần kích thước, mục developer-only, nội dung so với mốc.
+`all` còn in cảnh báo `CÓ THỂ ĐÃ NÂNG` (không tính lỗi) cho khối memory mà câu Làm phần lớn đã có ở luật, tra cứu hay tài
+liệu công cụ cùng miền — khối nâng rồi mà chưa xoá; đối chiếu tay rồi `memory drop`.
 
     python -X utf8 -I check_agent.py all [--base <git-ref>]
     python -X utf8 -I check_agent.py preserve <git-ref>
     python -X utf8 -I check_agent.py meta
+    python -X utf8 -I check_agent.py memory drop <file> "<đầu tiêu đề>" ... [--dry-run]
+    python -X utf8 -I check_agent.py memory move <từ> <tới> "<đầu tiêu đề>" ... [--dry-run]
+
+`memory` dọn file memory theo khối `### `: <file> là tên trong `Agent/Memory/` (`workflow`, `inbox.md`) hoặc đường dẫn
+(memory dự án `docs/agent-memory/x.md`); mỗi đầu tiêu đề phải khớp đúng một khối. Giữ kiểu xuống dòng của từng file. Từ
+chối, không ghi gì, khi: `drop` mà tiêu đề còn được nhắc ở file khác · `move` mà dòng nhắc tiêu đề còn gọi tên file nguồn ·
+file đích đã có khối cùng tiêu đề hay sẽ vượt trần memory.
 """
 import pathlib
 import re
@@ -85,7 +94,8 @@ def check_definitions():
         text = read(f)
         if rel.parts[0] in ("Rules", "Skills") and ("*Bẫy:*" in text or re.search(r"^## Bẫy", text, re.M)):
             print("CÒN BẪY NGOÀI MEMORY", rel); bad += 1
-        if rel.parts[0] == "Memory" and rel.name != "inbox.md":
+        # inbox.md cũng kiểm: khối chờ xếp miền vẫn phải đúng hình dạng, không thì lỗi chỉ lộ lúc dời về miền.
+        if rel.parts[0] == "Memory":
             lines = text.splitlines()
             for i, line in enumerate(lines):
                 if not line.startswith("### "):
@@ -97,6 +107,56 @@ def check_definitions():
                 if not all(k in body for k in ("**Thấy:**", "**Vì:**", "**Làm:**")):
                     print("THIẾU THẤY/VÌ/LÀM", rel, i + 1, line[:60]); bad += 1
     return bad
+
+
+# Phần cụm ba từ của câu Làm đã có ở luật, tra cứu hay tài liệu công cụ. Đo trên đợt dọn 2026-11 (73 khối): ngưỡng 0.3
+# bắt 31/39 khối đã nâng, báo 2/34 khối giữ (cả hai có câu Làm nằm trong luật); so nguyên văn từng vế chỉ bắt 15/39.
+PROMOTED_SHARE = 0.3
+GRAM = 3
+
+
+def flat(text):
+    """Chữ thường, bỏ con trỏ `(… › …)`, dấu câu và định dạng — để so vế câu không lệch vì backtick, xuống dòng."""
+    text = re.sub(r"\([^()]*›[^()]*\)", " ", text)
+    text = re.sub(r"[^\w\s]", " ", text.replace("`", "").replace("*", "").lower())
+    return re.sub(r"\s+", " ", text).strip()
+
+
+def grams(text):
+    words = text.split()
+    return {" ".join(words[i:i + GRAM]) for i in range(len(words) - GRAM + 1)}
+
+
+def promoted_corpus(name):
+    """Cụm từ của luật, tra cứu và tài liệu công cụ mà luật hay skill `name` gọi tên — nơi bài học đã nâng sẽ nằm."""
+    files = [main_file(name), ref_file(name)]
+    main = read(main_file(name)) if main_file(name).exists() else ""
+    files += [HORCRUX / p for p in re.findall(r"`(docs/[^`\s]+\.md)`", main)]
+    return grams(" ".join(flat(read(f)) for f in files if f.exists()))
+
+
+def promoted_share(lam, corpus):
+    """Cụm từ, không vế nguyên văn: luật thường viết lại bài học bằng lời khác."""
+    own = grams(flat(lam.replace("**Làm:**", "")))
+    return len(own & corpus) / len(own) if own else 0.0
+
+
+def check_promoted():
+    """Cảnh báo, không tính lỗi: khối memory mà phần lớn câu Làm đã có nguyên văn ở luật, tra cứu hay tài liệu công cụ —
+    thường là khối nâng rồi mà chưa xoá. Đối chiếu tay rồi `memory drop`."""
+    for name in RULES + SKILLS:
+        mem = AGENT / "Memory" / f"{name}.md"
+        if not mem.exists():
+            continue
+        corpus = promoted_corpus(name)
+        lines = read(mem).splitlines()
+        for i, line in enumerate(lines):
+            if not line.startswith("### "):
+                continue
+            lam = next((l for l in lines[i + 1:i + 8] if l.startswith("**Làm:**")), "")
+            share = promoted_share(lam, corpus)
+            if share >= PROMOTED_SHARE:
+                print(f"CÓ THỂ ĐÃ NÂNG Memory\\{mem.name} {i + 1} ({share:.0%} câu Làm đã có ở luật, tra cứu): {line[4:64]}")
 
 
 def check_sizes():
@@ -173,15 +233,117 @@ def write_meta():
             print("đã sinh", meta.relative_to(AGENT))
 
 
+# ---------- dọn memory ----------
+
+PROJECT = HORCRUX.parent.parent if HORCRUX.parent.name == "Assets" else None
+
+
+class MemoryFile:
+    """File memory tách thành phần đầu và các khối `### `; ghi lại giữ kiểu xuống dòng gốc."""
+
+    def __init__(self, arg):
+        named = AGENT / "Memory" / (arg if arg.endswith(".md") else arg + ".md")
+        self.path = named if "/" not in arg and "\\" not in arg else pathlib.Path(arg).resolve()
+        raw = self.path.read_bytes()
+        self.eol = "\r\n" if b"\r\n" in raw else "\n"
+        self.head, *self.blocks = re.split(r"(?m)^(?=### )", raw.decode("utf-8").replace("\r\n", "\n"))
+
+    @staticmethod
+    def title(block):
+        return block.split("\n", 1)[0][4:].strip()
+
+    def pick(self, prefixes):
+        """Khối khớp mỗi đầu tiêu đề; lỗi khi một đầu khớp không hoặc nhiều khối."""
+        chosen, errors = [], []
+        for prefix in prefixes:
+            hits = [b for b in self.blocks if self.title(b).startswith(prefix)]
+            if len(hits) != 1:
+                errors.append(f"{self.path.name}: \"{prefix}\" khớp {len(hits)} khối, cần đúng 1")
+            elif hits[0] not in chosen:
+                chosen.append(hits[0])
+        return chosen, errors
+
+    def text(self, blocks):
+        body = self.head + "".join(b.rstrip("\n") + "\n\n" for b in blocks)
+        return (body.rstrip("\n") + "\n").replace("\n", self.eol).encode("utf-8")
+
+
+def mentions(title, skip):
+    """(file, dòng, nội dung) nhắc tiêu đề, ngoài file `skip`: Agent/, tài liệu Horcrux, tài liệu và memory dự án.
+    So theo vế trước dấu phẩy đầu tiên: con trỏ hay trích phần đầu tiêu đề. Dòng `### ` là khối, không phải con trỏ."""
+    key = title.split(",")[0].strip()
+    key = key if len(key) >= 12 else title
+    roots = [HORCRUX] + ([PROJECT / "docs", PROJECT / "Assets", PROJECT / "CLAUDE.md"] if PROJECT else [])
+    seen, out = set(), []
+    for root in roots:
+        files = [root] if root.is_file() else root.rglob("*.md") if root.exists() else []
+        for f in files:
+            if f in seen or f.resolve() == skip.resolve():
+                continue
+            seen.add(f)
+            for i, line in enumerate(f.read_text(encoding="utf-8", errors="replace").splitlines(), 1):
+                if key in line and not line.startswith("### "):
+                    out.append((f, i, line.strip()))
+    return out
+
+
+def memory(args):
+    dry = "--dry-run" in args
+    args = [a for a in args if a != "--dry-run"]
+    if len(args) < 3 or args[0] not in ("drop", "move") or (args[0] == "move" and len(args) < 4):
+        print(__doc__)
+        return 2
+    action, source = args[0], MemoryFile(args[1])
+    target = MemoryFile(args[2]) if action == "move" else None
+    if target and target.path.resolve() == source.path.resolve():
+        print("memory move: file nguồn và đích trùng nhau")
+        return 2
+    chosen, errors = source.pick(args[3:] if target else args[2:])
+    for block in chosen:
+        title = MemoryFile.title(block)
+        for f, i, line in mentions(title, source.path):
+            if target and source.path.name not in line:
+                continue
+            where = f"{f.relative_to(PROJECT or HORCRUX).as_posix()}:{i}"
+            errors.append(f"còn con trỏ tới \"{title}\" ở {where} — sửa con trỏ trước" if target else
+                          f"\"{title}\" còn được nhắc ở {where} — sửa hay bỏ con trỏ trước khi xoá")
+        if target and any(MemoryFile.title(b) == title for b in target.blocks):
+            errors.append(f"{target.path.name} đã có khối \"{title}\"")
+    kept = [b for b in source.blocks if b not in chosen]
+    new_source = source.text(kept)
+    new_target = target.text(target.blocks + chosen) if target else None
+    if target and len(new_target) > CEIL["memory"]:
+        errors.append(f"{target.path.name} sẽ {len(new_target)} byte, vượt trần {CEIL['memory']} — dọn file đích trước")
+    if errors:
+        print("\n".join(errors))
+        print("memory: không ghi gì")
+        return 1
+    for block in chosen:
+        verb = f"dời {source.path.name} → {target.path.name}" if target else f"xoá {source.path.name}"
+        print(f"{verb}: {MemoryFile.title(block)}")
+    print(f"{source.path.name}: {len(source.path.read_bytes())} → {len(new_source)} byte" +
+          (f" · {target.path.name}: {len(target.path.read_bytes())} → {len(new_target)} byte" if target else ""))
+    if dry:
+        print("memory: --dry-run, không ghi gì")
+        return 0
+    source.path.write_bytes(new_source)
+    if target:
+        target.path.write_bytes(new_target)
+    return 0
+
+
 if __name__ == "__main__":
     sys.stdout.reconfigure(encoding="utf-8")  # console Windows mặc định cp1252, không in được tiếng Việt
     cmd = sys.argv[1] if len(sys.argv) > 1 else "all"
+    if cmd == "memory":
+        sys.exit(memory(sys.argv[2:]))
     if cmd == "preserve":
         preserve(sys.argv[2])
     elif cmd == "meta":
         write_meta()
     else:
         bad = check_pointers() + check_definitions() + check_sizes()
+        check_promoted()
         if "--base" in sys.argv:
             bad += check_dev_block(sys.argv[sys.argv.index("--base") + 1])
         print("lỗi:", bad)
