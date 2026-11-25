@@ -51,3 +51,18 @@ Bài học đã trả giá khi làm việc với `editor-first`. Đọc trọn c
 `2026-10` · vấp 1 · suy luận · đúng với dự án dùng Odin
 **Thấy:** soát lỗi bố cục Inspector trong khi cửa sổ Unity bị che hoặc không focus, chụp màn hình không ra Inspector. **Vì:** chụp màn hình lấy thứ đang hiện trên màn; `GUIView.GrabPixels` (internal, gọi qua reflection) đọc pixel của chính view.
 **Làm:** script tạm mở InspectorWindow nổi, mở foldout Odin qua state của property tree, chụp bằng `GrabPixels`; so với component không có khối Init (`editor-first` › tra cứu › IMGUI).
+
+### Tool nhập ghi theo bản xem trước dựng từ lúc nạp file
+`2026-11` · vấp 1 · suy luận · đúng với tool xem trước rồi mới ghi
+**Thấy:** bản xem trước (id, số lượng, hộp thoại xác nhận) dựng lúc nạp file; cửa sổ để dock, ai đó sửa asset đích hay Ctrl+Z rồi bấm Nhập — tool ghi theo bản cũ, phép kiểm khớp số bị bỏ qua. **Vì:** asset đích đổi được trong lúc cửa sổ mở; bản xem trước chỉ đúng ở lúc dựng.
+**Làm:** dựng lại và kiểm lại ngay trước khi ghi, lỗi thì dừng; hộp thoại lấy số từ bản vừa dựng (`editor-first` › Import/export).
+
+### Dòng dữ liệu đầu file biến mất không báo
+`2026-11` · vấp 1 · suy luận
+**Thấy:** parser coi dòng đầu "không đọc được số" là tiêu đề; dòng dữ liệu đầu gõ sai (`5a`, ô trống) bị bỏ im lặng, tổng ít đi một. **Vì:** đoán tiêu đề theo "không hợp lệ" biến lỗi dữ liệu thành tiêu đề.
+**Làm:** nhận tiêu đề chỉ khi ô đầu khớp đúng nhãn (bỏ hoa thường, khoảng trắng ngoài); còn lại là dữ liệu, sai thì báo lỗi kèm số dòng (`editor-first` › Import/export).
+
+### Tool kiểm dữ liệu báo nhẹ hơn hậu quả thật trong game
+`2026-11` · vấp 1 · suy luận
+**Thấy:** tool đếm ảnh theo một field, cảnh báo "game lặp ảnh"; game quyết bằng hàm khác (lấy max hai field) và từ chối hẳn khi 0. **Vì:** tool tự viết lại luật của game: hai nguồn cho một luật, lệch không gì báo.
+**Làm:** tool gọi đúng hàm game dùng để quyết, tách thành hàm thuần dùng chung nếu game giữ riêng; mức báo (lỗi, cảnh báo) theo hậu quả trong game (`horcrux.md` NT6; `code-design` › Bất biến).

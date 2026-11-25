@@ -57,6 +57,12 @@ thuộc từ prefab, scene đích trước, so phần còn lại với file dự
 - **Không giấu thứ có thật:** điều kiện vẽ là *"có dữ liệu"*, tra thiếu tài nguyên thì vẽ dạng lỗi kèm id; field chỉ-đọc vẫn
   hiện, khác kiểu field sửa được. Kiểm hợp lệ không chạy nền mỗi thay đổi.
 
+> **Nền tảng** — ghi nhiều asset rồi `AssetDatabase.SaveAssetIfDirty`: Ctrl+Z trả bản trong bộ nhớ, file trên đĩa giữ bản
+> đã lưu tới lần lưu kế. Excel ở locale dùng dấu phẩy thập phân (vi-VN, de-DE…) lưu CSV phân cách bằng `;`.
+
+**Sổ tay** — ghi nhiều asset: một Undo group; so bản serialize trước–sau, chỉ `RecordObject` và lưu asset đổi; Manual nói
+phải lưu lại sau Ctrl+Z. Đọc CSV người dùng gửi: nhận phẩy và tab, lỗi tách cột thì nêu dấu phân cách đang thấy.
+
 ## IMGUI
 
 > **Nền tảng** — IMGUI: một tương tác gây nhiều lần `OnGUI` cho **cùng một state**. `GUIStyle`, `GUIContent` có icon chỉ tồn
@@ -66,6 +72,14 @@ thuộc từ prefab, scene đích trước, so phần còn lại với file dự
 
 > **Nền tảng** — tool đọc dữ liệu qua đối tượng runtime nhận phụ thuộc bằng `Init` của InitArgs: ngoài Play chưa ai tiêm,
 > getter ném `NullReferenceException`. Việc chỉ được làm khi không Play (xoá save) là nút riêng, nguồn lấy từ ô asset.
+
+> **Nền tảng** — GUILayout ghi danh sách control ở `EventType.Layout` rồi dùng lại cho event kế của cùng lượt. Đổi state giữa
+> một event (bấm nút, gõ vào ô làm đổi thứ sẽ vẽ) làm số control lệch: `ArgumentException: Getting control N's position in
+> a group with only M controls`. Mở modal (`OpenFilePanel`, `DisplayDialog`, `SaveFilePanel`) trong layout group cho
+> `EndLayoutGroup: BeginLayoutGroup must be called first`.
+
+**Sổ tay** — `GUIUtility.ExitGUI()` ngay sau handler đổi state hay mở modal; thay đổi từ ô gõ thì bật cờ, dựng lại ở đầu
+`OnGUI` khi `Event.current.type == EventType.Layout`.
 
 **Sổ tay** — cache IMGUI: `static readonly` cho bất biến (`Color`, `GUILayoutOption[]`, `GUIContent` chỉ text) · static
 lazy trong `EnsureStyles()` cho thứ cần `GUI.skin` · dirty flag cho layout khi resize · tính nặng (filter, sort, format) ở

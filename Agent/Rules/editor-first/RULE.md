@@ -52,4 +52,4 @@ nguồn · **không giấu thứ có thật** · kiểm hợp lệ chạy **khi 
 | sửa, lưu prefab, scene, YAML, shader qua công cụ; `.meta`, GUID | Sửa asset qua công cụ |
 | nhập `.unitypackage`, gói art, plugin | Gói asset từ ngoài |
 | tool import, export dữ liệu; bố cục, điều kiện vẽ của tool có người dùng | Import/export và UX của tool |
-| viết `OnGUI`, `PropertyDrawer`, cache style, tool đọc đối tượng runtime | IMGUI |
+| viết `OnGUI`, nút đổi state hay mở hộp thoại, `PropertyDrawer`, cache style, tool đọc đối tượng runtime | IMGUI |

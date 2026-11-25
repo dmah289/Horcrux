@@ -24,5 +24,5 @@ Bài học đã trả giá khi làm việc với `compile-check`. Đọc trọn 
 
 ### Test đỏ hàng loạt mà code đang test không đổi
 `2026-11` · vấp 1 · đã đo · đúng với test đọc asset nội dung của dự án
-**Thấy:** hàng chục test của tool đỏ cùng lúc dù code tool không đổi gì; bisect code không ra commit nào. **Vì:** test chạy trên asset nội dung người khác đang sửa (level, collection) hoặc ghi cứng id do tool dựng lại, và golden băm cả dữ liệu ngoài phần code sinh ra (field mới của class dữ liệu).
-**Làm:** chạy lại test trên đúng bản asset ngày viết test (lấy từ git) để tách lỗi dữ liệu khỏi lỗi code; sửa bằng fixture đóng băng trong thư mục test và id lấy từ asset lúc chạy; golden đổi vì field mới thì ghi lại kèm cách dựng JSON cũ khớp hash cũ (`workflow` › Nghiệm thu).
+**Thấy:** hàng chục test của tool đỏ cùng lúc dù code tool không đổi gì; bisect code không ra commit nào. **Vì:** test chạy trên asset nội dung người khác đang sửa (level, collection) hoặc ghi cứng id do tool dựng lại, và golden băm cả dữ liệu ngoài phần code sinh ra (field thêm hay bớt của class dữ liệu).
+**Làm:** chạy lại test trên đúng bản asset ngày viết test (lấy từ git) để tách lỗi dữ liệu khỏi lỗi code; sửa bằng fixture đóng băng trong thư mục test và id lấy từ asset lúc chạy; soát `FindAssets("t:<Type>")` không giới hạn thư mục có nhặt bản đóng băng không; golden đổi vì field thì ghi lại kèm cách dựng JSON cũ khớp hash cũ. Test cố ý chạy trên dữ liệu sống chỉ khẳng định tính chất đúng với mọi dữ liệu hợp lệ, không khẳng định dữ liệu đang sạch (`workflow` › Nghiệm thu).
