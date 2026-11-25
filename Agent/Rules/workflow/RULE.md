@@ -62,8 +62,8 @@ Quyết định cho một bài toán cụ thể mang tư tưởng của develope
 quét cuối chat là bắt buộc, không đợi nhắc:** duyệt cả chat, tìm rule, tư tưởng và bài học dùng chung cho game Unity từ thứ
 developer yêu cầu, sửa, hoặc đồng ý. Mỗi dòng định ghi đi qua: **① khái quát** — tách tư tưởng khỏi quyết định riêng, kèm
 vì sao; phép kiểm *đúng cho ít nhất hai loại game khác nhau không?* · **② cổng ghi** ở `horcrux.md` — loại nào, file nào,
-quyền gì · **③ đối chiếu toàn bộ `Agent/`** — đã có thì thôi · trường hợp riêng thì trỏ về · gộp được vào luật đang có
-thì gộp · mâu thuẫn thì nêu để developer phân xử.
+quyền gì · **③ đối chiếu với nội dung cũ** ở `horcrux.md` › Cổng ghi — bổ trợ nhau hay bản cải tiến thì tổng hợp thành
+một tri thức, không thêm khối song song.
 
 **Code thật lệch Plan:** *lỗi* → báo kèm bằng chứng · *trôi* (tên, thứ tự, chi tiết không mang lý do) → sync Plan theo
 code · *tư tưởng* (đổi hình dạng, ranh giới, kiểu, cách tiêm) → qua cổng ghi.

@@ -126,8 +126,11 @@ Một điều mới đi từ trên xuống, dừng ở câu đầu tiên trả l
 | 6 | Là **lựa chọn** của ta — có phương án hợp lệ khác mà ta không chọn? | `Rules/<miền>/RULE.md` | đề xuất |
 | 7 | Là **sự thật** hay **bài học** về engine, thư viện, công cụ, cách làm việc? | `Memory/<miền>.md`; chưa rõ miền thì `Memory/inbox.md` | ghi thẳng |
 
-Qua cổng rồi đối chiếu: đã có thì thôi · là trường hợp riêng của luật đang có thì trỏ về · mâu thuẫn thì nêu để developer
-phân xử. **Trần:** file này 26 KB · mỗi `RULE.md` 13 KB · mỗi file memory 8 KB; vượt thì không ghi thêm cho tới khi dọn
+**Qua cổng rồi đối chiếu với nội dung cũ** — mọi rule, skill, memory cùng chủ đề ở cả ba tầng, không chỉ file đích: đã có
+thì thôi · là trường hợp riêng của luật đang có thì trỏ về · **bổ trợ nhau hoặc là bản cải tiến thì tổng hợp thành một tri
+thức duy nhất** — viết lại khối cũ bao trọn cả hai, bản cải tiến thay hẳn bản cũ, xoá bản thừa, sửa con trỏ về nó, khối
+memory gộp thì cộng số vấp; không để hai khối song song · mâu thuẫn thì nêu để developer phân xử. Tổng hợp theo quyền của
+file đích, không chạm mục developer-only. **Trần:** file này 26 KB · mỗi `RULE.md` 13 KB · mỗi file memory 8 KB; vượt thì không ghi thêm cho tới khi dọn
 hoặc dời bớt. Kiểm bằng `Agent/Tools~/check_agent.py all`.
 
 **Báo cáo cuối phiên** kết bằng khối:
