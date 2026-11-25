@@ -11,8 +11,9 @@
 #   OK, hoặc chỉ còn fail có sẵn (0 fail mới), thì ghi Library/HorcruxVerify/last-ok (giờ epoch, kèm hậu tố khi bỏ bước
 #   Unity) — mốc cho hook Stop của Agent. Chỉ còn fail có sẵn vẫn thoát mã 1 và in tên assembly còn fail.
 #   UNITY_CLI ép đường dẫn unity.exe (mặc định tìm `unity` trên PATH). Chạy từ gốc project hoặc đặt --project.
+#   --print-builder  in builder sẽ dùng (`dotnet` hoặc đường dẫn Windows của MSBuild.exe) rồi thoát; không có builder thì mã 1.
 set -u
-PROJECT="$PWD"; CSPROJ=""; TESTS=""; UNITY=1; RUN_TESTS=1; TIMEOUT=600; READY_WAIT=600
+PROJECT="$PWD"; CSPROJ=""; TESTS=""; UNITY=1; RUN_TESTS=1; TIMEOUT=600; READY_WAIT=600; PRINT_BUILDER=0
 while [ $# -gt 0 ]; do
   case "$1" in
     --project) PROJECT="$2"; shift 2 ;;
@@ -22,6 +23,7 @@ while [ $# -gt 0 ]; do
     --no-tests) RUN_TESTS=0; shift ;;
     --timeout) TIMEOUT="$2"; shift 2 ;;
     --ready-wait) READY_WAIT="$2"; shift 2 ;;
+    --print-builder) PRINT_BUILDER=1; shift ;;
     --help|-h) sed -n '2,/^set -u/p' "$0" | sed '$d;s/^# \{0,1\}//'; exit 0 ;;
     *) echo "verify.sh: tham số lạ $1"; exit 2 ;;
   esac
@@ -56,6 +58,34 @@ finish() {
   echo "verify: OK${1:-}"; exit 0
 }
 
+# Builder: MSBUILD › dotnet › MSBuild mới nhất của Rider hay Visual Studio. Đặt MSB (rỗng là dotnet); không có thì in lý do, trả 1.
+# Không tìm thấy là FAIL: chạy lệnh không tồn tại không in dòng "error CS" nào, bước build từng báo ok giả.
+# Git Bash không liệt kê ổ đĩa dưới `/`, glob `/?/` không khớp: duyệt từng chữ ổ.
+find_msbuild() {
+  local d c
+  for d in c d e f g h; do
+    for c in "/$d/Program Files/JetBrains/"*/tools/MSBuild/Current/Bin/MSBuild.exe \
+             "/$d/Program Files/Microsoft Visual Studio/"*/*/MSBuild/Current/Bin/MSBuild.exe; do
+      [ -f "$c" ] && echo "$c"
+    done
+  done | sort | tail -1
+}
+pick_builder() {
+  MSB="${MSBUILD:-}"
+  if [ -z "$MSB" ] && ! command -v dotnet >/dev/null 2>&1; then MSB="$(find_msbuild)"; fi
+  if [ -n "$MSB" ] && [ ! -f "$MSB" ]; then echo "build: MSBuild không có ở $MSB"; return 1; fi
+  if [ -z "$MSB" ] && ! command -v dotnet >/dev/null 2>&1; then
+    echo "build: không có dotnet trên PATH, không tìm thấy MSBuild của Rider hay Visual Studio. Đặt MSBUILD=<đường dẫn MSBuild.exe>"
+    return 1
+  fi
+}
+# plan_check.py hỏi builder ở đây để luật chọn builder chỉ có một bản.
+if [ $PRINT_BUILDER -eq 1 ]; then
+  pick_builder || exit 1
+  if [ -n "$MSB" ]; then cygpath -w "$MSB"; else echo dotnet; fi
+  exit 0
+fi
+
 # Trạng thái Editor đang mở project (cột state của `unity status`: ready hay trạng thái bận); rỗng khi không Editor nào mở.
 editor_state() {
   local out line
@@ -88,30 +118,14 @@ if [ $UNITY -eq 1 ] && wait_ready; then
   "$U" cmd --project-path "$W" --result-only --timeout 300 script eval --code "UnityEditor.AssetDatabase.Refresh(); return 0;" >/dev/null 2>&1
 fi
 
-# 1. Build csproj: chỉ dòng lỗi, bỏ dòng trùng (MSBuild in mỗi lỗi hai lần).
-# Chọn builder một lần. Không tìm thấy là FAIL: chạy lệnh không tồn tại không in dòng "error CS" nào, bước này từng báo ok giả.
-# Git Bash không liệt kê ổ đĩa dưới `/`, glob `/?/` không khớp: duyệt từng chữ ổ.
-find_msbuild() {
-  local d c
-  for d in c d e f g h; do
-    for c in "/$d/Program Files/JetBrains/"*/tools/MSBuild/Current/Bin/MSBuild.exe \
-             "/$d/Program Files/Microsoft Visual Studio/"*/*/MSBuild/Current/Bin/MSBuild.exe; do
-      [ -f "$c" ] && echo "$c"
-    done
-  done | sort | tail -1
-}
+# 1. Build csproj: chỉ dòng lỗi, bỏ dòng trùng (MSBuild in mỗi lỗi hai lần). Chọn builder một lần.
 build_csproj() {
   if [ -n "$MSB" ]; then MSYS_NO_PATHCONV=1 "$MSB" "$(cygpath -w "$1")" -t:Build -p:Configuration=Debug -v:q -nologo -clp:ErrorsOnly 2>&1
   else dotnet build "$1" -nologo -v q -clp:ErrorsOnly 2>&1; fi
 }
 IFS=',' read -ra PROJS <<< "$CSPROJ"
 if [ -n "$CSPROJ" ]; then
-  MSB="${MSBUILD:-}"
-  if [ -z "$MSB" ] && ! command -v dotnet >/dev/null 2>&1; then MSB="$(find_msbuild)"; fi
-  if [ -n "$MSB" ] && [ ! -f "$MSB" ]; then echo "build: MSBuild không có ở $MSB"; FAIL="$FAIL build"; PROJS=()
-  elif [ -z "$MSB" ] && ! command -v dotnet >/dev/null 2>&1; then
-    echo "build: không có dotnet trên PATH, không tìm thấy MSBuild của Rider hay Visual Studio. Đặt MSBUILD=<đường dẫn MSBuild.exe>"
-    FAIL="$FAIL build"; PROJS=()
+  if ! pick_builder; then FAIL="$FAIL build"; PROJS=()
   elif [ -n "$MSB" ]; then echo "build: dùng $MSB"; fi
 fi
 for proj in "${PROJS[@]}"; do

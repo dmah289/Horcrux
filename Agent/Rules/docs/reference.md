@@ -79,7 +79,9 @@ Khối không có nội dung thì bỏ, không ghi "không". Tên dự án ngu�
   mới. File mới thì khung đủ nhưng chỉ chứa thứ giai đoạn đó dùng. Code tạm để chặng đầu chạy chỉ khi vài dòng và giai đoạn
   thay nó nói vì sao thay.
 - **Code trong Plan đã qua compiler, thuật toán đã qua bản mẫu** cùng thuật toán, ngôn ngữ nào cũng được, vét cạn các bảo
-  đảm — developer gõ nguyên và tin. Kết quả kiểm khác ghi trong báo cáo chat, không ghi vào Plan.
+  đảm — developer gõ nguyên và tin. Kết quả kiểm khác ghi trong báo cáo chat, không ghi vào Plan. Code runtime Horcrux là
+  phần developer gõ nên không ghi tạm vào `Assets/`: viết file mẫu ở scratchpad, mỗi giai đoạn một lần
+  `Editor/CompileCheck/Tools~/plan_check.py` (cách dùng ở `docs/Editor/CompileCheck.md`).
 - **Plan chạm cả Horcrux lẫn consumer thì phần Horcrux chỉ thêm** (member mới mang mặc định, API cũ giữ); xoá API cũ là việc
   riêng. Sau mỗi giai đoạn developer gõ, agent compile, so code với Plan, phân loại chỗ lệch theo `workflow` › Chưng cất.
 - Plan chỉ có Horcrux: giai đoạn developer gõ "thấy được" là compile sạch và bảng case xanh; thấy trong game ở Chuyển dự
@@ -88,8 +90,8 @@ Khối không có nội dung thì bỏ, không ghi "không". Tên dự án ngu�
 - Nhiều utility độc lập trong một Plan: mỗi cơ chế một Kịch bản, Flow và chuỗi giai đoạn riêng; chung dòng mở, Chuyển dự
   án, Không làm.
 
-**Sổ tay** — đồng bộ đoạn code với file thật bằng chép rồi so máy: script dò mỗi đoạn tới file và neo nó ghi, so với vùng
-tương ứng, thay nguyên đoạn, chạy tới 0 đoạn lệch. Đo văn xuôi: bỏ khối code, sơ đồ, dòng bảng, heading; phần còn lại chia
+**Sổ tay** — đồng bộ đoạn code với file thật bằng chép rồi so máy: `plan_check.py` chỉ ra khối lệch và dòng lệch đầu tiên,
+thay nguyên khối từ file mẫu, chạy lại tới 0 khối lệch. Đo văn xuôi: bỏ khối code, sơ đồ, dòng bảng, heading; phần còn lại chia
 tổng ký tự.
 
 **Nghiệm thu Plan:** đủ khối theo thứ tự · văn xuôi ≤ 20% · đọc giai đoạn nào cũng trả lời được "code này ai gọi" từ sơ đồ

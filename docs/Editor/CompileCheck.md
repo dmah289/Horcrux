@@ -12,6 +12,7 @@ làm điều kiện commit.
 | Đầu vào | csproj ở gốc project do Unity sinh (gitignore) · Editor đang mở project (`unity status` ra `ready`) · tên assembly test EditMode |
 | Ranh giới | tool chỉ **chạy và tóm tắt**; sửa lỗi là việc đọc code sau đó. Không chạy PlayMode: PlayMode cần Play và chiếm Editor, developer chạy trong Test Runner |
 | Chỗ đặt | `Editor/CompileCheck/Tools~/verify.sh`: thư mục đuôi `~` Unity không import. Không có C# |
+| Công cụ anh em | `plan_check.py` — kiểm code của Plan trước khi giao (mục cuối file này); hỏi builder qua `verify.sh --print-builder` |
 
 **Cố ý KHÔNG làm**
 
@@ -61,6 +62,7 @@ bash "<horcrux>/Editor/CompileCheck/Tools~/verify.sh" --csproj <A.csproj,B.cspro
 | `--no-tests` | dừng sau recompile |
 | `--timeout` | giây chờ mỗi assembly test, tính cả lượt hỏi `test status` sau đó; mặc định 600 |
 | `--ready-wait` | giây chờ Editor đang bận về `ready` trước bước Unity; mặc định 600 |
+| `--print-builder` | in builder sẽ dùng (`dotnet` hoặc đường dẫn Windows của `MSBuild.exe`) rồi thoát, không kiểm gì; không có builder thì mã 1. `plan_check.py` gọi cờ này |
 | `UNITY_CLI` | biến môi trường ép đường dẫn `unity.exe`; mặc định `unity` trên PATH |
 | `MSBUILD` | biến môi trường ép đường dẫn `MSBuild.exe`; không đặt thì dùng `dotnet` trên PATH, thiếu nữa thì MSBuild mới nhất của Rider hay Visual Studio trong `Program Files` ổ c–h |
 
@@ -99,3 +101,52 @@ Thời gian: build 25–30 s mỗi csproj, recompile 5–20 s, test EditMode và
 Chạy trên project có lỗi cố ý ở một file: `build` in đúng một dòng lỗi, `recompile: LỖI` in cùng lỗi, mã thoát 1. Sửa lỗi, chạy lại:
 mọi bước ok, `verify: OK`, mã thoát 0. Chạy `--no-unity` khi Editor đóng: chỉ có dòng build, mã thoát theo build. Máy không builder (hoặc `MSBUILD` trỏ sai): `verify: FAIL build`,
 mã thoát 1. `MSBUILD` trỏ lệnh thoát 1 không in gì (`/usr/bin/false`): `build X: LỖI (mã thoát 1, …)`.
+`--print-builder` in đường dẫn MSBuild, mã 0; `MSBUILD=/nope`: `build: MSBuild không có ở /nope`, mã 1.
+
+---
+
+## `plan_check.py` — kiểm code của Plan trước khi giao
+
+Code trong Plan là code developer gõ nguyên, nên phải qua compiler; code runtime Horcrux lại là phần developer gõ, agent không
+ghi tạm vào `Assets/`. Tool kiểm hai điều trên file mẫu agent viết ở scratchpad: **mỗi khối ` ```csharp ` của Plan nằm nguyên
+văn trong một file mẫu**, và **file mẫu build được trong assembly sẽ gọi nó**. Mã thoát 1 khi một điều hỏng.
+
+```bash
+python -X utf8 -I "<horcrux>/Editor/CompileCheck/Tools~/plan_check.py" --plan <Plan.md> --csproj <A.csproj> \
+  [--sample <mẫu.cs> ...] [--replace <file trong csproj>=<mẫu.cs> ...] [--match <file thật> ...] [--project <gốc>]
+```
+
+| Cờ | Nghĩa |
+|---|---|
+| `--plan` | Plan cần kiểm; mọi khối ` ```csharp ` / ` ```cs ` phải nằm nguyên văn (bỏ qua kiểu xuống dòng) trong một file mẫu hoặc file `--match` |
+| `--sample` | file mẫu mới: so khối và thêm vào csproj khi build |
+| `--replace` | thay một `<Compile Include>` đang có (đường dẫn như trong csproj, `/` hay `\`) bằng file mẫu — bản tạm của dự án đổi sang bản Plan cùng tên type |
+| `--match` | chỉ so khối, không build — file thật chứa "đoạn cũ" của chỗ Plan viết cũ → mới |
+| `--csproj` | csproj ở gốc project của assembly gọi code Plan; bỏ trống thì chỉ so khối |
+
+Plan nhiều giai đoạn: mỗi giai đoạn một bộ file mẫu, một lần chạy.
+
+**Quyết định trái trực giác**
+
+| Chỗ | Vì |
+|---|---|
+| Bản chép csproj đặt **cạnh bản gốc** (`PlanCheck.<tên>.csproj`, xoá sau khi build), không ở scratchpad | đường dẫn tương đối trong csproj giữ đúng; viết lại đường dẫn bằng regex từng hỏng vì `\U`, `\b` của đường dẫn Windows. Csproj ở gốc bị gitignore |
+| Output và obj về `Temp/PlanCheck/` | không ghi đè dll của assembly thật trong `Temp/Bin/Debug/` mà Editor và `verify.sh` dùng |
+| `-p:BuildProjectReferences=false` | chỉ build assembly đang kiểm; dll project tham chiếu lấy từ lần `verify.sh` trước — thiếu thì `CS0006`, tool nhắc chạy `verify.sh` |
+| Builder hỏi `verify.sh --print-builder` | luật chọn builder chỉ một bản |
+| So khối là **chuỗi con** của file mẫu, không so cả file | một khối có thể là cả file mới, hay một đoạn chèn vào file đã có |
+| Code Horcrux mẫu build trong assembly consumer (`Assembly-CSharp`…) hoặc trong bản chép `com.horcrux.runtime.csproj` | consumer chứng minh call site gọi được; `com.horcrux.runtime` chứng minh file Horcrux không lén dùng type dự án |
+
+| Thấy gì | Nghĩa là |
+|---|---|
+| `khối dòng N: khớp <thư mục>/<file>` | khối ở dòng N của Plan nằm nguyên văn trong file đó |
+| `khối dòng N: LỆCH — <file> khớp k dòng đầu, lệch ở dòng m` + hai dòng `Plan:` / `mẫu :` | Plan và mẫu trôi nhau; chép nguyên khối từ mẫu sang Plan |
+| `LỆCH — dòng đầu không có trong file mẫu nào` | thiếu `--sample`/`--match`, hoặc dòng đầu của khối đã đổi |
+| `build …: --replace: csproj không có <Compile Include="…" />` | đường dẫn bên trái `--replace` không khớp dòng nào trong csproj |
+| `build … + file mẫu: LỖI` + dòng `error CS` | file mẫu không compile trong assembly đó |
+
+**Nghiệm thu** (chạy trên một Plan có một khối file mới, consumer `Assembly-CSharp`): khớp nguyên → `plan_check: OK` · sửa một
+ký tự trong khối của Plan → `LỆCH` đúng dòng, mã 1 · mẫu gọi API không có → `error CS0117`, mã 1 · `--replace` sai đường dẫn
+→ báo không có `<Compile Include>`, mã 1 · mẫu khai type trùng bản tạm thêm bằng `--sample` → `CS0101`; cùng mẫu qua
+`--replace` → build ok — chứng minh bản tạm đã rút khỏi build · Plan không có khối C# → `FAIL khối` · sau mọi lượt không
+còn `PlanCheck.*.csproj` ở gốc.
