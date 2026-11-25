@@ -106,7 +106,7 @@ namespace Horcrux.Runtime.Implementations.FrameRate
 | category-jam `Assets/_Game/Scripts/Common/FrameRateBootStep.cs` + `.meta` | xoá trước, rồi mới import file Horcrux |
 | `Runtime/Implementations/Foundations/FrameRate/FrameRateBootStep.cs.meta` | GUID `bedabaa801b620848b16169dca3f5b6c` của bản tạm, Refresh — `frame_rate_bootstep` trong `Launcher.unity` giữ reference và ô `order`, `targetFrameRate` |
 | `docs/Runtime/FrameRate/FrameRate.md`, `.html` | tạo: Trước khi chạy (ba bước Editor setup) · vì sao trả `-1` một frame · biên khi chuỗi boot chưa xong · Optimized Frame Pacing là lựa chọn của từng dự án |
-| `Agent/Memory/inbox.md` › "FPS tụt hẳn sau khi app Android quay lại từ nền" | trỏ về hệ FrameRate |
+| `Agent/Memory/async-presentation.md` › "FPS tụt hẳn sau khi app Android quay lại từ nền" | trỏ về hệ FrameRate |
 | Plan này | xoá cùng `.meta` |
 | grep | không còn `ScrewCraze3D.FrameRateBootStep`; compile sạch |
 | chơi thử | máy Android 90/120Hz, bộ đếm FPS: vào một level → chuyển app khác hơn 5 giây → quay lại → FPS về mục tiêu sau một khựng; hỏng: kẹt 30–45 tới khi tắt app |

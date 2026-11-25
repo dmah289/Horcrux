@@ -10,8 +10,10 @@ Nền tảng và Sổ tay của `workflow`. Đọc mục được bảng Tra c�
 - **File trùng với sửa dở của developer** thì tách theo hunk qua một index tạm; soát `git show --stat` sau mỗi commit.
   Commit theo pathspec lấy nội dung working tree, bỏ qua phần đã tách vào index. Công cụ: `docs/Editor/PartialCommit.md`.
   Merge khi index có file đã stage: `merge-audit`.
-- **Developer thao tác git song song** (app GUI pull, push, trả stash): trước bước ghi ra ngoài đọc lại `status`, `reflog`,
-  nhánh remote — trạng thái đọc trước lượt chờ là bản chết.
+- **Developer thao tác git song song** (app GUI pull, push, trả stash, commit hay stage giữa lượt): trước bước ghi ra ngoài
+  đọc lại `status`, `reflog`, nhánh remote — trạng thái đọc trước lượt chờ là bản chết. Commit, stage chụp cả file agent
+  đang sửa dở: trước báo cáo cuối đọc `git log` từ đầu lượt và cột index của `git status --short` ở dự án và submodule, nêu
+  phần nào đã vào commit, phần nào đã stage, phần nào còn ngoài.
 - Vào Play làm đổi file không thuộc task (config, scene khởi động, xuống dòng): stage theo danh sách file của task.
 
 ## Đối chiếu

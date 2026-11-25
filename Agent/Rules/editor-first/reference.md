@@ -33,7 +33,9 @@ Nền tảng và Sổ tay của `editor-first`. Đọc mục được bảng Tra
 - **Lệnh dựng lỗi giữa chừng mà asset chưa lưu** thì mở lại để bỏ phần dở rồi dựng từ đầu, không vá tiếp trên trạng thái
   không ai biết.
 - **Sửa text YAML khi developer cũng đang làm:** kiểm asset có đang mở, đang bẩn trong Editor (Editor lưu sau sẽ đè); neo
-  theo nội dung, không theo số dòng.
+  theo nội dung, không theo số dòng. Prefab mở trong Prefab Mode bật Auto Save ghi bản trong bộ nhớ đè file ở lần
+  recompile, import hay lưu kế, kể cả khi prefab sạch trong git: kiểm `PrefabStageUtility.GetCurrentPrefabStage()` bằng
+  eval trước khi sửa, đang mở thì hỏi developer đóng; developer commit xong thì soát phần mình bằng `git show <commit>:<path>`.
 
 > **Nền tảng** — hai asset trùng GUID (thư mục chép kèm `.meta` ngoài Editor) thì Unity giữ GUID cho bản nhập trước, cấp
 > GUID mới cho bản sau và ghi lại `.meta` của nó. `.meta` đổi trong `git status` là Unity tự vá; khôi phục là tạo trùng lần

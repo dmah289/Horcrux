@@ -206,7 +206,9 @@ Một lần quay khoảng 30 giây; `runs/` của dự án để ngoài git.
 - **Chữ ký phải ghi đủ thứ quyết bố cục**, gồm cả **thứ tự** — cùng tập box nhưng đảo thứ tự ô là bố cục khác (đã đo: 753 chênh).
 - **Thứ tự ghi entity `?` phải ổn định**: duyệt theo thứ tự có bảo đảm (`FindObjectsSortMode.InstanceID`, danh sách cố định).
 - **Dữ liệu ngẫu nhiên sinh giữa kịch bản** (entity mới vào sau một sự kiện) làm hai lần cùng chữ ký lệch nhau từ đó trở đi; đọc
-  frame đầu lệch để phân biệt với chênh thật, hoặc ghi lựa chọn đó vào chữ ký.
+  frame đầu lệch để phân biệt với chênh thật, hoặc ghi lựa chọn đó vào chữ ký. Kịch bản xếp mọi bước tất định trước điểm
+  sinh ngẫu nhiên đầu tiên, bước chạm ngẫu nhiên để cuối; báo dải frame 0 chênh, không hứa cả trace. Chữ ký khó trùng (đã
+  đo: 7 lần mới một cặp, 30 lần chỉ một lần 0 chênh cả trace) thì quay theo lô khoảng mười lần ở nền rồi `pairs`.
 - **Save, Game view, scene khởi động** không đổi giữa các lần quay (mục "Trước khi chạy").
 
 ## An toàn và lỗi

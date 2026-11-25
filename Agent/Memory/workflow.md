@@ -2,55 +2,15 @@
 
 Bài học đã trả giá khi làm việc với `workflow`. Đọc trọn cùng lúc với rule hoặc skill đó. Hình dạng và vòng đời ở `horcrux.md` › Memory.
 
-### Đã sửa số trong repo mà hành vi không đổi
-`2026-11` · vấp 1 · chuyển sang, chưa kiểm lại
-**Thấy:** hạ một hệ số trong asset rồi coi là đã sửa, trong khi console ngoài vẫn giữ số cũ. **Vì:** giá trị sống ngoài repo thì bản đang chạy là bản ngoài; bản trong repo chỉ là lưới đỡ.
-**Làm:** phát hiện nêu cả hai bản; nghiệm thu giao developer đối chiếu bằng công cụ so (`workflow` › Đối chiếu; `workflow` › tra cứu › Đối chiếu).
-
-### Developer bắt trả lại nhãn đã đổi theo logic
-`2026-11` · vấp 1 · chuyển sang, chưa kiểm lại
-**Thấy:** đổi logic một nút rồi đổi luôn nhãn cho "đúng nghĩa" — developer bắt trả lại. **Vì:** chữ người chơi thấy là hành vi quan sát được.
-**Làm:** đổi logic không kéo theo đổi nhãn, kể cả khi nhãn cũ nghe lệch nghĩa — nêu một dòng (`workflow` › tra cứu › Đối chiếu).
-
-### Đề xuất giữ cơ chế cũ dưới tên mới bị gạt
-`2026-11` · vấp 1 · chuyển sang, chưa kiểm lại
-**Thấy:** developer muốn bỏ một cơ chế vì vai của input đã đổi; đề xuất giữ cơ chế dưới tên mới, phải brainstorm lại. **Vì:** yêu cầu đổi vai của một khái niệm là đổi mô hình; đổi tên mà giữ cơ chế cũ là chưa đổi.
-**Làm:** soát mọi thứ sinh ra từ vai cũ (cờ, khoá, tên field, nhánh riêng) rồi đề xuất trên mô hình mới (`workflow` › Phỏng vấn).
-
-### Màu lấy mẫu trên ảnh là của vật khác
-`2026-11` · vấp 1 · chuyển sang, chưa kiểm lại
-**Thấy:** lấy mẫu vật nền thay vì vật đang bay qua nó, báo sai màu. **Vì:** ở chỗ nhiều vật chồng nhau trên ảnh, một điểm ảnh thuộc nhiều vật; số đo phải nằm trên đúng vật được hỏi.
-**Làm:** định vị vật bằng toạ độ runtime của nó ở frame đó rồi mới lấy mẫu (`workflow` › tra cứu › Nghiệm thu).
-
-### Số đo, phép kiểm đúng ở điều kiện khác điều kiện game chạy
-`2026-11` · vấp 1 · chuyển sang, chưa kiểm lại
-**Thấy:** chép bề dày từ tài liệu đo ở đơn vị khác · kiểm hiệu ứng hạt bằng ảnh chụp ở chế độ canvas khác chế độ game chạy · code mẫu gắn prefab của canvas vào vật ngoài canvas, không vẽ gì. **Vì:** số trong tài liệu mang theo đơn vị và điều kiện nó được đo; công cụ kiểm đổi điều kiện (chụp ở chế độ render khác) không chứng minh gì cho điều kiện kia.
-**Làm:** đo và kiểm ở đúng điều kiện nơi dùng thật — chế độ render, đơn vị, quality (`workflow` › tra cứu › Nghiệm thu).
-
-### Tiến độ, tài nguyên trên save của developer đổi sau khi dò
-`2026-11` · vấp 1 · chuyển sang, chưa kiểm lại
-**Thấy:** dò luồng bằng eval rời làm đổi tiến độ và tài nguyên trên save của developer. **Vì:** Play qua công cụ chạy trên save thật của developer.
-**Làm:** sao lưu đúng các key sẽ chạm trước khi vào, trả lại và so khớp trước khi báo (`playrun.sh` tự làm; eval rời thì `PrefsSnapshot`); dừng ở phần tĩnh khi thứ cần kiểm developer cảm được (`workflow` › tra cứu › Nghiệm thu).
-
-### Cùng một khung eval chép lại hàng trăm lần
-`2026-11` · vấp 1 · chuyển sang, chưa kiểm lại
-**Thấy:** hàng trăm lần eval chép cùng một khung mà không đề xuất gom thành công cụ. **Vì:** lần thứ hai làm cùng chuỗi thao tác đã là việc lặp lại.
-**Làm:** đề xuất công cụ ngay lượt đó: việc gì · lặp mấy lần · công cụ trông thế nào · chỗ đặt · công viết · tiết kiệm mỗi lần (`workflow` › Việc lặp lại).
-
-### Nút cheat gọi lệnh thật mà bấm không đổi gì
-`2026-11` · vấp 1 · chuyển sang, chưa kiểm lại
-**Thấy:** nút gọi lệnh thật chỉ chạm vào cổng đã khoá từ phiên đầu, bấm không đổi gì. **Vì:** lệnh thật có cổng (khoá, cửa sổ thời gian) mà đường thật đóng cổng trước khi QA kịp bấm.
-**Làm:** cheat là lệnh riêng vượt cổng, đặt trong hệ (`workflow` › tra cứu › Cheat).
-
 ### Hai mốc cách xa không so được vì diff thô ngập đổi tên
 `2026-10` · vấp 1 · đã đo
 **Thấy:** cần chứng minh refactor không đổi thuật toán giữa hai commit cách xa; diff thô hàng chục nghìn dòng vì nhiều đợt đổi tên và dời thư mục. **Vì:** đổi tên và dời file che mọi thay đổi thật.
 **Làm:** ghép cặp file bằng `git diff -M20%` rồi ghép tay phần còn lại · áp bảng đổi tên (lấy lại từ git history nếu Plan đổi tên đã xoá) lên bản cũ · diff bỏ `using` và khoảng trắng · **so riêng tập chuỗi ký tự** để đổi tên không che chuỗi · đọc tay mọi cặp còn lệch · hàm trùng tên ở hai namespace thì soát `using` từng file xem resolve về bản nào · prefab lọc guid, fileID nhưng **không** lọc `m_IsActive`, `m_Enabled`, `m_LocalPosition` (`workflow` › tra cứu › Nghiệm thu).
 
-### Commit gom file developer đã stage, hoặc lệnh pathspec hỏng cả cụm
+### Commit theo pathspec hỏng cả cụm, hoặc thiếu file mới
 `2026-11` · vấp 1 · đã đo
-**Thấy:** commit lẫn prefab, scene developer tự stage, chạy nền nên không kịp dừng · `git add` file vừa `git rm` báo "did not match" làm hỏng cả lệnh · file mới không vào commit. **Vì:** `git commit` không pathspec lấy cả index; pathspec của commit không nhận file chưa track; file đã xoá khỏi index không còn để `git add`.
-**Làm:** soát cột index của `git status --short`; `git add -- <file mới>` trước; file đã `git rm` chỉ để trong pathspec của `git commit -- <paths>`; không chạy commit nền (`workflow` › tra cứu › Git).
+**Thấy:** `git add` file vừa `git rm` báo "did not match" làm hỏng cả lệnh · file mới không vào commit. **Vì:** file đã xoá khỏi index không còn để `git add`; pathspec của commit không nhận file chưa track.
+**Làm:** `git add -- <file mới>` trước; file đã `git rm` chỉ để trong pathspec của `git commit -- <paths>`; không chạy commit nền. Commit không pathspec, `git commit -a`, `git add -A` đã có hook chặn (`workflow` › tra cứu › Git).
 
 ### `.meta` texture đổi sau khi import mà không ai sửa
 `2026-11` · vấp 1 · đã đo
@@ -66,3 +26,28 @@ Bài học đã trả giá khi làm việc với `workflow`. Đọc trọn cùng
 `2026-11` · vấp 1 · đã đo
 **Thấy:** đang viết lại nhiều Plan bằng subagent thì một file code chưa track mang đúng class của một Plan xuất hiện trong Horcrux — developer đã bắt đầu gõ theo bản Plan sắp đổi. **Vì:** Plan là đầu vào developer gõ song song; grep "chưa ai gõ" lúc đầu phiên chỉ đúng tại thời điểm đó.
 **Làm:** trước khi viết lại Plan, báo developer danh sách Plan sẽ đổi; trước mỗi commit soát `git status` của thư mục code Horcrux; thấy file trùng thì dừng và hỏi giữ hay đổi Plan, không chạm file đó (`workflow` › Subagent).
+
+### Máy canh dựng theo bài học cũ canh một cái hại không còn xảy ra
+`2026-11` · vấp 1 · đã đo · đúng với bài học sắp nâng ① sửa gốc hay ② máy canh
+**Thấy:** sắp viết hook cho một bài học vấp 2; tái hiện trước thì cái hại nó tả (diff cả file) không xảy ra ở cấu hình hiện tại, chỉ còn cảnh báo vô hại. **Vì:** phần "Vì" đúng ở điều kiện lúc vấp (cấu hình git, dữ liệu trong repo); điều kiện đổi mà dòng "đúng với" không ghi điều kiện đó.
+**Làm:** trước khi nâng, dựng ca tái hiện cái hại ở mọi cấu hình có thể gặp; máy canh đo chính cái hại (thứ lọt vào commit, thứ người chơi thấy), không đo dấu hiệu bề mặt — đo dấu hiệu thì kêu ở chỗ vô hại (`horcrux.md` › Memory).
+
+### Phép kiểm heuristic chọn cách đo theo cảm tính bắt chưa nửa số ca
+`2026-11` · vấp 1 · đã đo
+**Thấy:** cảnh báo "khối memory đã nâng" so nguyên văn từng vế chỉ bắt 15/39 khối; đo theo cụm ba từ bắt 31/39, nhầm 2/34. **Vì:** đích viết lại cùng ý bằng lời khác; cách đo nghĩ ra trước khi có dữ liệu chưa được thử với ca nào.
+**Làm:** lấy các quyết định đã có (lượt dọn, review trước) làm đáp án, so vài cách đo và ngưỡng, chọn theo số bắt và số nhầm, ghi số vào comment cạnh hằng ngưỡng (`workflow` › Nghiệm thu).
+
+### Lệnh xoá bị từ chối, kéo cả cụm lệnh đi theo
+`2026-11` · vấp 1 · suy luận · đúng với agent chạy auto mode của Claude Code
+**Thấy:** `rm -rf` thư mục trong `Assets`, `AssetDatabase.DeleteAsset` trong eval, `git checkout -- <file>` đều bị từ chối, kể cả khi gộp với lệnh khác — cả cụm bị chặn theo. **Vì:** classifier phía harness coi các lệnh đó nguy hiểm, không giải thích; thử lại cùng ý định không qua.
+**Làm:** tách lệnh xoá khỏi lệnh sửa để phần sửa vẫn chạy; bước xoá (trong Project window, để `.meta` đi cùng) và bước trả file giao developer ở mục thao tác Editor cuối báo cáo.
+
+### Script Python nhúng heredoc khớp 0 chỗ hoặc báo SyntaxError
+`2026-11` · vấp 2 · đã đo · đúng với Bash tool là Git Bash trên Windows
+**Thấy:** script Python nhúng bằng heredoc `<<'EOF'` thay khối C# khớp 0 chỗ mà không báo, hoặc dừng ở `SyntaxError: unterminated string literal` khi chuỗi chứa đường dẫn `\`; `'\\'` thành `'\'`, `$"…"` mất `$`. **Vì:** heredoc trong Bash tool không giữ nguyên văn `\` và `$`.
+**Làm:** khối có `$`, `\`, backtick thì sửa bằng Edit, hoặc ghi script bằng Write rồi `python -X utf8 -I script.py`; mọi phép thay theo chuỗi `assert count == 1` trước khi ghi.
+
+### Script Python dừng giữa chừng sau khi đã ghi một phần file
+`2026-10` · vấp 1 · đã đo · đúng với console Windows
+**Thấy:** script in tiếng Việt ném lỗi encode giữa lượt, một nửa số file đã ghi. **Vì:** console Windows mặc định cp1252; `-I` bỏ qua `PYTHONIOENCODING`.
+**Làm:** chạy `python -X utf8 -I`, hoặc script tự `sys.stdout.reconfigure(encoding="utf-8")` ở đầu.
