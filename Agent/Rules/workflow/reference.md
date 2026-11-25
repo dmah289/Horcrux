@@ -44,6 +44,12 @@ Nền tảng và Sổ tay của `workflow`. Đọc mục được bảng Tra c�
 - **Vét cạn — liệt kê biên trước khi chạy:** rỗng, một phần tử, chạm giới hạn, trùng, ngoài dải, thứ tự đảo, hai sự kiện
   cùng lúc, frame đầu, object huỷ giữa chừng; rò rỉ sau hàng nghìn vòng. Test dựng dữ liệu riêng không thấy config đã trôi;
   luật thuần chạy qua eval không vào Play, Play chỉ còn cho wiring và đường host.
+- **Test trên asset nội dung** (thứ người khác đang sửa): phạm vi định bằng quy ước game và tool cùng dùng (thư mục, label),
+  không theo kiểu — `FindAssets("t:<Type>")` không giới hạn thư mục nhặt cả nháp, bản đóng băng, asset của người khác; tool
+  cho chọn asset ngoài quy ước thì cảnh báo ở ô chọn. Khẳng định cố định dùng fixture đóng băng trong thư mục test, id lấy
+  từ asset lúc chạy; test cố ý chạy trên dữ liệu sống chỉ khẳng định tính chất đúng với mọi dữ liệu hợp lệ, không khẳng định
+  dữ liệu đang sạch. Đỏ mà code không đổi thì chạy lại trên bản asset ngày viết test (lấy từ git) để tách lỗi dữ liệu khỏi
+  lỗi code; golden đổi vì field thêm, bớt thì ghi lại kèm cách dựng JSON cũ khớp hash cũ.
 
 ## Cheat
 

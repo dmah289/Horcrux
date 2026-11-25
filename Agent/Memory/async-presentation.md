@@ -12,11 +12,6 @@ Bài học đã trả giá khi làm việc với `async-presentation`. Đọc tr
 **Thấy:** đường dọn màn đặt lại cỡ nghỉ cho vật đã co biến mất mà không tắt nó, vật rỗng hiện lại lúc nạp màn. **Vì:** đường dọn từ ngoài không về đúng trạng thái cuối của đường ra tự nhiên.
 **Làm:** đường dọn từ ngoài về đúng trạng thái cuối của đường ra tự nhiên — vật đã biến mất thì cũng tắt (`async-presentation` › Async và vòng đời).
 
-### Kết quả của lượt chờ ghi lên trạng thái đã đổi trong lúc chờ
-`2026-11` · vấp 2 · suy luận
-**Thấy:** kiểm chỗ trống trước nhịp lấy đà, luồng khác lấy mất chỗ, vật vẫn diễn rồi đứng kẹt · chọn A rồi B liền tay, lượt nạp A hỏng, nhánh về mặc định của nó tự lấy mã lượt mới nên về sau B mà vẫn đè B. **Vì:** điều kiện kiểm trước một lượt chờ là bản chết sau lượt chờ; mã chống lượt cũ chỉ đúng khi cả lượt mang đúng một mã.
-**Làm:** chỗ đã nhắm kiểm lại ngay trước bước người chơi thấy, mất thì bỏ bước · mã lượt lấy một lần ở đầu lượt, truyền xuống mọi bước con (thử lại, về mặc định); sau mỗi `await` so mã trước khi ghi, lượt đã bị thay thì nhả thứ vừa nạp và dừng các bước con còn lại (`async-presentation` › Async và vòng đời).
-
 ### Trạng thái tạm kẹt lại sau khi lượt diễn bị huỷ
 `2026-11` · vấp 1 · chuyển sang, chưa kiểm lại
 **Thấy:** lượt diễn huỷ trước bước bật cờ ngoài, `finally` đọc cờ đó thành "đã bàn giao", trạng thái tạm kẹt lại. **Vì:** nghĩa vụ trả trạng thái tạm đi theo bên đang cầm; cờ ngoài không nói bên này đã qua mốc bàn giao chưa.

@@ -20,7 +20,8 @@ quanh từng callback trong vòng dispatch).
   thân — trạng thái cuối và callback đúng một lần. Caller chỉ `await`, ghép `WhenAll`. Đường dọn từ ngoài về đúng trạng thái cuối của đường
   ra tự nhiên.
 - **Điều kiện kiểm trước một lượt chờ là bản chết sau lượt chờ:** chỗ đã nhắm (ô trống, đích, lượt) kiểm lại ngay trước
-  bước người chơi thấy; mất rồi thì bỏ bước, không diễn nửa chừng.
+  bước người chơi thấy; mất rồi thì bỏ bước, không diễn nửa chừng. Mã chống lượt cũ lấy **một lần cho cả lượt**, mọi
+  bước con (thử lại, đường lui) dùng chung; lượt đã bị thay thì nhả thứ vừa nạp và dừng các bước còn lại.
 - **Trạng thái tạm có một nghĩa vụ trả, nghĩa vụ đi theo bên đang cầm.** Bên dựng trả nó trên mọi đường ra cho tới mốc bàn
   giao; `finally` quyết theo biến cục bộ ghi ngay sau mốc đó. **Trả theo thứ tự ngược lúc dựng.**
 - **`CancellationTokenSource` có một chủ dọn: chỗ tạo**; nơi khác chỉ `?.Cancel()`.
