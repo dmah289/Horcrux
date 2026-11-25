@@ -18,9 +18,14 @@ Chờ lượt dọn xếp về đúng miền.
 **Làm:** chạy `python -X utf8 -I`, hoặc script tự `sys.stdout.reconfigure(encoding="utf-8")` ở đầu.
 
 ### Script sửa file text làm diff lệch cả file
-`2026-10` · vấp 1 · đã đo · đúng với working copy Windows `core.autocrlf=true`
-**Thấy:** script chỉ thay vài token mà diff báo đổi mọi dòng; git cảnh báo "LF will be replaced by CRLF" ở mọi file chạm. **Vì:** working copy là CRLF, Unity ghi YAML bằng LF; đọc ghi ở chế độ text đổi kiểu xuống dòng.
-**Làm:** đọc ghi bytes, giữ kiểu xuống dòng của file gốc; cảnh báo CRLF là nhiễu, xác nhận diff chỉ còn token bằng `git diff --ignore-space-at-eol --stat`.
+`2026-11` · vấp 2 · đã đo · đúng với working copy Windows `core.autocrlf=true`
+**Thấy:** script chỉ thay vài token mà diff báo đổi mọi dòng; git cảnh báo "LF will be replaced by CRLF" ở mọi file chạm · `sed -i` của Git Bash xoá một dòng mà cả file .cs thành LF. **Vì:** working copy là CRLF, Unity ghi YAML bằng LF; đọc ghi ở chế độ text đổi kiểu xuống dòng — `sed` của MSYS mặc định cũng vậy.
+**Làm:** đọc ghi bytes (`sed -i -b`), giữ kiểu xuống dòng của file gốc, kiểm bằng `file <path>` sau khi sửa; cảnh báo CRLF là nhiễu, xác nhận diff chỉ còn token bằng `git diff --ignore-space-at-eol --stat`.
+
+### FPS tụt hẳn sau khi app Android quay lại từ nền, không tự hồi
+`2026-11` · vấp 1 · đọc tài liệu, chưa kiểm trên máy · đúng với Android màn 90/120Hz, Unity 6, Optimized Frame Pacing bật
+**Thấy:** `targetFrameRate` vẫn 60, nằm nền vài giây rồi quay lại thì bộ đếm báo 30–45 FPS tới khi tắt app. **Vì:** nhịp FPS trên Android là ước số của tần số quét (120Hz → 60/40/30, 90Hz → 45); sau resume Unity và Swappy có thể chốt chu kỳ vsync khác — lỗi Unity còn mở "targetFrameRate changes after locking/unlocking the screen". Gán lại đúng số cũ có thể bị bỏ qua.
+**Làm:** một chủ giữ frame rate, khi về foreground trả `-1` một frame rồi xin lại số mục tiêu; vẫn tụt thì thử tắt Optimized Frame Pacing. Nghiệm thu trên máy 90/120Hz bằng bộ đếm FPS.
 
 ### Nhóm thử của AB test lẫn người chơi đang chạy bản mặc định
 `2026-11` · vấp 1 · suy luận · đúng với giá trị remote chọn nội dung đóng sẵn trong build, Firebase Remote Config và A/B Testing

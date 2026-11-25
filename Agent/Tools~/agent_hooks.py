@@ -14,11 +14,14 @@ Không tham số thì là hook: đọc JSON trên stdin, rẽ theo `hook_event_n
                                  merge; commit vào `Agent/` mà `check_agent.py` báo lỗi ở chính file được commit.
     PreToolUse  Edit|Write       chặn sửa mục developer-only của `horcrux.md`.
     PostToolUse Edit|Write       ghi file `.cs` agent vừa sửa vào `Library/HorcruxVerify/agent-edits/<session>.txt`.
+    PostToolUse Bash|PowerShell|Edit|Write  báo agent khi git ghi nhận ≥ 10 dòng của một file đổi chỉ vì CR cuối dòng
+                                 (dự án và submodule; mỗi file một lần cho mỗi lần sửa).
     Stop                         không cho dừng khi có `.cs` agent sửa sau lần `verify.sh` xanh cuối (OK, hoặc chỉ còn fail có sẵn)
                                  (`Library/HorcruxVerify/last-ok`); lần chặn thứ hai trong cùng lượt dừng thì để qua.
 
 Mỗi lần chặn hay nhắc ghi một dòng vào `Library/HorcruxVerify/hook-log.jsonl` (luật: git-add-all, git-commit-all,
-commit-no-pathspec, agent-check, dev-only, verify-stale, install-drift, compact-reread); `context_audit.py hooks` đếm.
+commit-no-pathspec, agent-check, dev-only, verify-stale, eol-churn, install-drift, compact-reread); `context_audit.py
+hooks` đếm.
 
 Hook hỏng (ngoại lệ) thì im lặng để qua: một hook lỗi không được chặn việc của developer.
 """
@@ -233,6 +236,79 @@ def post_edit(data):
             f.write(path + "\n")
 
 
+# ---------- kiểu xuống dòng ----------
+
+# Dưới ngưỡng này là vài dòng sửa thật lẫn CR, không phải đổi kiểu cả file.
+EOL_CHURN_MIN_LINES = 10
+
+
+def numstat(repo, paths, *extra):
+    """{đường dẫn trong repo: dòng thêm + bớt} của file tracked đang sửa; file nhị phân bỏ qua."""
+    # quotepath=false: tên có dấu không bị git đổi thành chuỗi bát phân trong nháy.
+    out = git(repo, "-c", "core.quotepath=false", "diff", "--numstat", *extra,
+              *(["--", *paths] if paths else [])) or ""
+    counts = {}
+    for line in out.splitlines():
+        added, deleted, path = line.split("\t", 2)
+        if added != "-":
+            counts[path] = int(added) + int(deleted)
+    return counts
+
+
+def eol_churn(repo, paths=None):
+    """{đường dẫn: số dòng git ghi đổi chỉ vì CR cuối dòng}. Đo trên diff, không trên byte: `core.autocrlf=true`
+    chuẩn hoá CR nên đổi kiểu xuống dòng không thành diff; `autocrlf=false` hay file `-text` thì thành diff cả file."""
+    raw = numstat(repo, paths)
+    if not any(n >= EOL_CHURN_MIN_LINES for n in raw.values()):
+        return {}
+    real = numstat(repo, paths, "--ignore-cr-at-eol")
+    return {p: n - real.get(p, 0) for p, n in raw.items() if n - real.get(p, 0) >= EOL_CHURN_MIN_LINES}
+
+
+def project_repos(project):
+    """Repo dự án và các submodule khai trong `.gitmodules`."""
+    repos = [project]
+    out = git(project, "config", "--file", ".gitmodules", "--get-regexp", r"submodule\..*\.path") or ""
+    repos += [project / line.split(" ", 1)[1] for line in out.splitlines() if " " in line]
+    return [r for r in repos if (r / ".git").exists()]
+
+
+def post_eol(data):
+    tool = data.get("tool_name")
+    if tool in ("Edit", "Write", "MultiEdit"):
+        path = pathlib.Path(data.get("tool_input", {}).get("file_path", ""))
+        top = git(path.parent, "rev-parse", "--show-toplevel") if path.parent.is_dir() else None
+        if not top:
+            return
+        churn = {pathlib.Path(top) / p: n for p, n in eol_churn(top, [str(path)]).items()}
+    else:
+        churn = {}
+        for repo in project_repos(project_dir(data)):
+            churn.update({repo / p: n for p, n in eol_churn(repo).items()})
+    if not churn:
+        return
+    # Mỗi file báo một lần cho mỗi lần sửa (mtime), không lặp lại sau mọi lệnh shell kế tiếp.
+    seen_file = state_dir(data) / "eol-reported" / f"{data.get('session_id', 'unknown')}.json"
+    seen = json.loads(seen_file.read_text(encoding="utf-8")) if seen_file.exists() else {}
+    fresh = {}
+    for path, lines in churn.items():
+        stamp = str(path.stat().st_mtime) if path.exists() else ""
+        if seen.get(str(path)) != stamp:
+            fresh[path] = lines
+            seen[str(path)] = stamp
+    if not fresh:
+        return
+    seen_file.parent.mkdir(parents=True, exist_ok=True)
+    seen_file.write_text(json.dumps(seen, ensure_ascii=False), encoding="utf-8")
+    listed = ", ".join(f"{p.name} ({n} dòng)" for p, n in list(fresh.items())[:5]) + (" …" if len(fresh) > 5 else "")
+    log_event(data, "eol-churn", " ".join(str(p) for p in fresh))
+    print(json.dumps({"decision": "block", "reason":
+                      f"Git ghi nhận dòng đổi chỉ vì CR cuối dòng: {listed}. Lệnh vừa chạy đã đổi kiểu xuống dòng "
+                      "của file. Trả lại kiểu gốc bằng cách đọc ghi bytes (`sed -i -b`, Python `read_bytes`/"
+                      "`write_bytes`), rồi kiểm `git diff --numstat` khớp với `git diff --numstat --ignore-cr-at-eol`."},
+                     ensure_ascii=False))
+
+
 # ---------- dừng lượt ----------
 
 def compiled(path):
@@ -264,7 +340,7 @@ def stop(data):
 HOOKS = [  # (sự kiện, matcher, timeout giây); mọi sự kiện gọi cùng một lệnh
     ("SessionStart", "startup|compact", 10),
     ("PreToolUse", "Bash|PowerShell|Edit|Write", 30),
-    ("PostToolUse", "Edit|Write", 10),
+    ("PostToolUse", "Bash|PowerShell|Edit|Write", 10),
     ("Stop", None, 10),
 ]
 STUB_MARK = "Bản gốc nằm trong Horcrux; file này chỉ để Claude Code tìm thấy"
@@ -391,6 +467,9 @@ def main():
             pre_edit(data)
         elif event == "PostToolUse" and tool in ("Edit", "Write", "MultiEdit"):
             post_edit(data)
+            post_eol(data)
+        elif event == "PostToolUse" and tool in ("Bash", "PowerShell"):
+            post_eol(data)
         elif event == "Stop":
             stop(data)
         elif event == "SessionStart":
