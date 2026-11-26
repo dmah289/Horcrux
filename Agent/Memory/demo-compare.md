@@ -12,6 +12,11 @@ Bài học đã trả giá khi làm việc với `demo-compare`. Đọc trọn c
 **Thấy:** Lớp tối alpha cao mà màn chơi phía sau vẫn rõ hơn demo nhiều; lớp phủ đặt đúng màu và % hoạ sĩ ghi mà nhạt hơn demo. **Vì:** project Linear trộn alpha trước khi đổi về sRGB: alpha 0.88 còn khoảng 38% độ sáng nhìn thấy, không phải 12%; màu + % của hoạ sĩ là phép trộn sRGB.
 **Làm:** so độ sáng nền sau lớp tối đo trên cả hai ảnh, không so alpha; lớp phủ thì fit lại trong Linear trên mọi pixel đặc của art bị phủ — chỉ có màu + % hoạ sĩ thì fit cả màu lẫn alpha (`DemoCompare.FitOverlay`), màu phủ đã chốt thì fit alpha (`DemoCompare.FitOverlayAlpha`: alpha sRGB nó trả khớp số hoạ sĩ thì phép đo đúng), kiểm bằng chụp trong Play.
 
+### Hai video demo mang tên của nhau
+`2026-11` · vấp 1 · đã đo · đúng với gói demo hoạ sĩ đặt tên tay
+**Thấy:** video tên theo vật A quay vật B và ngược lại; đo theo tên là dựng nhịp của hiệu ứng này cho hiệu ứng kia. **Vì:** hoạ sĩ xuất nhiều bản preview rồi đặt tên tay.
+**Làm:** `video_demo.py sheet` từng video trước khi đo, gọi video theo nội dung thấy trong lưới; tên lệch thì nói trong báo cáo để developer báo lại hoạ sĩ (`demo-compare` › Demo là video).
+
 ### Cỡ màn đọc trong Editor là cỡ cửa sổ, không phải cỡ máy
 `2026-10` · vấp 1 · đã đo
 **Thấy:** tính bố cục theo `Handles.GetMainGameViewSize()` ra số của cửa sổ Game view. **Vì:** ở Free Aspect hàm trả cỡ cửa sổ đang mở, không phải độ phân giải máy đang giả lập.

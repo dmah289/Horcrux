@@ -4,6 +4,7 @@
     python -X utf8 -I context_audit.py sessions [--last N] [--transcripts <dir>]
     python -X utf8 -I context_audit.py files    [--last N] [--transcripts <dir>]
     python -X utf8 -I context_audit.py hooks    [--days N]
+    python -X utf8 -I context_audit.py digest   [--session <id | file.jsonl>] [--width 160]
 
 plan      mỗi hàng bảng chỉ dẫn: nền (mọi phiên đọc) + Bắt buộc, và khi chạm hết cột Thêm khi chạm. Hàng trỏ một mục
           (`tên` › Mục) tính trọn file: cận trên.
@@ -13,6 +14,9 @@ sessions  mỗi phiên: KB và token luật đã đọc so với đỉnh context
 files     mỗi file luật, skill, memory: số phiên đọc, tổng KB. Nặng mà ít phiên cần → ứng viên tách sang tra cứu; không
           phiên nào đọc → bảng chỉ dẫn trỏ hụt, hoặc file thừa.
 hooks     số lần hook chặn theo luật, từ `Library/HorcruxVerify/hook-log.jsonl` (`agent_hooks.py` ghi).
+digest    một phiên (mặc định phiên ghi gần nhất, kể cả phần trước compact) cho bước quét cuối chat (`workflow` › Chưng
+          cất): lời developer · lỗi công cụ gộp theo dấu hiệu, lặp trước (ứng viên memory) · script viết ngoài dự án và
+          `eval_file` (ứng viên công cụ).
 
 Token = byte ÷ tỉ lệ byte/token đo trên chính transcript: lượt chỉ đọc một file .md ≥ 8 KB, lấy phần context tăng ở lượt
 sau so với byte kết quả. Dưới 3 mẫu thì dùng 2.3 (tài liệu tiếng Việt của Horcrux, 2026-11). Ước lượng, lệch cỡ ±10%.
@@ -324,6 +328,115 @@ def cmd_hooks(args):
     return 0
 
 
+# ---------- digest: nguyên liệu cho bước quét cuối chat ----------
+
+EXIT_CODE = re.compile(r"^Exit code (\d+)")
+PY_RAISED = re.compile(r"^(?:[\w.]+\.)?\w*(?:Error|Exception|Interrupt)\b:?")
+ERROR_WORD = re.compile(r"error|exception|fail|not found|no such|cannot|denied|traceback", re.I)
+NOT_SPEECH = ("<system-reminder>", "<local-command", "<command-", "Caveat:", "Base directory for this skill",
+              "Tool loaded.", "This session is being continued")
+NOISE = [(re.compile(r"[A-Za-z]:[\\/][^\s'\"]*|/[\w.~-]+(?:/[\w.~%-]+)+"), "<path>"),
+         (re.compile(r"\b[0-9a-f]{8,}\b"), "<hex>"),
+         (re.compile(r"\d+(?:\.\d+)?"), "#")]
+
+
+def error_of(text):
+    """Dòng lỗi của một kết quả công cụ, hoặc None khi kết quả không phải lỗi. Ba dạng: `Exit code N` (N khác 0) của shell,
+    JSON `"success": false` của MCP, traceback Python in ra giữa output thành công."""
+    s = text.lstrip()
+    m = EXIT_CODE.match(s)
+    if m:
+        if m.group(1) == "0":
+            return None
+        rest = [ln.strip() for ln in s.splitlines()[1:] if ln.strip() and not ln.startswith("Shell cwd was reset")]
+        flagged = [ln for ln in rest if ERROR_WORD.search(ln)]
+        return f"exit {m.group(1)}: " + (flagged[-1] if flagged else rest[-1] if rest else "")
+    if s.startswith("{"):
+        try:
+            o = json.loads(s)
+        except ValueError:
+            o = None
+        if isinstance(o, dict) and o.get("success") is False:
+            diag = [d.get("message", "") for d in o.get("diagnostics") or [] if d.get("severity") == "error"]
+            return (diag[0] if diag else str(o.get("errorDetails") or o.get("error") or "")).splitlines()[0]
+    if "Traceback (most recent call last)" in s:
+        raised = [ln.strip() for ln in s.splitlines() if PY_RAISED.match(ln)]
+        return raised[-1] if raised else None
+    return None
+
+
+def signature(line):
+    for pattern, repl in NOISE:
+        line = pattern.sub(repl, line)
+    return line[:160]
+
+
+def cmd_digest(args):
+    """Một phiên → lời developer, lỗi công cụ gộp theo dấu hiệu, script tạm đã viết hay chạy. Đọc để chưng cất
+    (`workflow` › Chưng cất): lỗi lặp là ứng viên memory, script tạm là ứng viên công cụ, lời developer là thứ đã chốt hay sửa."""
+    project = project_dir()
+    if args.session and os.path.isfile(args.session):
+        path = pathlib.Path(args.session)
+    else:
+        files = transcript_files(args.transcripts, project, 200)
+        path = next((f for f in files if not args.session or f.stem.startswith(args.session)), None)
+        if path is None:
+            print("không thấy transcript")
+            return 1
+    names, users, errors, scripts, compacts, idx = {}, [], {}, [], 0, 0
+    for line in open(path, encoding="utf-8"):
+        try:
+            o = json.loads(line)
+        except ValueError:
+            continue
+        if o.get("type") == "system" and o.get("subtype") == "compact_boundary":
+            compacts += 1
+        msg = o.get("message") or {}
+        content = msg.get("content")
+        if isinstance(content, str):
+            content = [{"type": "text", "text": content}]
+        for c in content if isinstance(content, list) else []:
+            if not isinstance(c, dict):
+                continue
+            idx += 1
+            kind = c.get("type")
+            if kind == "text" and msg.get("role") == "user" and not o.get("isMeta"):
+                text = c["text"].strip()
+                text = " ".join(text.split())
+                if text and not text.startswith(NOT_SPEECH) and text not in (u for _, u in users):
+                    users.append((idx, text))
+            elif kind == "tool_use":
+                names[c.get("id")] = c.get("name", "?")
+                inp = c.get("input") or {}
+                target = inp.get("file_path") or inp.get("file") or ""
+                if c.get("name") == "Write" and target and not str(pathlib.Path(target)).startswith(str(project)):
+                    first = (inp.get("content") or "").lstrip().splitlines()[:1]
+                    scripts.append((idx, "Write", target, first[0] if first else ""))
+                elif "eval_file" in c.get("name", ""):
+                    scripts.append((idx, "eval_file", target, ""))
+            elif kind == "tool_result":
+                err = error_of(result_text(c))
+                if err is not None:
+                    key = (names.get(c.get("tool_use_id"), "?"), signature(err))
+                    hit = errors.setdefault(key, [0, idx, err])
+                    hit[0] += 1
+    print(f"phiên {path.stem} · {compacts} lần compact")
+    print(f"\nlời developer ({len(users)}):")
+    for i, text in users:
+        print(f"  #{i} {text[:args.width]}")
+    print(f"\nlỗi công cụ ({sum(v[0] for v in errors.values())}, {len(errors)} dấu hiệu; lặp ≥ 2 trước):")
+    for (tool, _), (n, first, sample) in sorted(errors.items(), key=lambda kv: (-kv[1][0], kv[1][1])):
+        print(f"  ×{n} {tool} #{first}: {sample[:args.width]}")
+    seen = set()
+    print("\nscript tạm (viết ngoài dự án, eval_file):")
+    for i, how, target, first in scripts:
+        if (how, target) in seen:
+            continue
+        seen.add((how, target))
+        print(f"  #{i} {how} {target}" + (f" — {first[:args.width // 2]}" if first else ""))
+    return 0
+
+
 def main():
     sys.stdout.reconfigure(encoding="utf-8")
     ap = argparse.ArgumentParser()
@@ -333,8 +446,13 @@ def main():
         p.add_argument("--last", type=int, default=10)
         p.add_argument("--transcripts")
     sub.add_parser("hooks").add_argument("--days", type=int, default=30)
+    p = sub.add_parser("digest")
+    p.add_argument("--session", help="id phiên (đầu tên file) hay đường dẫn .jsonl; mặc định phiên ghi gần nhất")
+    p.add_argument("--transcripts")
+    p.add_argument("--width", type=int, default=160)
     args = ap.parse_args()
-    return {"plan": cmd_plan, "sessions": cmd_sessions, "files": cmd_files, "hooks": cmd_hooks}[args.cmd](args)
+    return {"plan": cmd_plan, "sessions": cmd_sessions, "files": cmd_files, "hooks": cmd_hooks,
+            "digest": cmd_digest}[args.cmd](args)
 
 
 if __name__ == "__main__":

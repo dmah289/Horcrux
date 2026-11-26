@@ -51,10 +51,19 @@ và chỉ tick phần hiệu ứng cần.
 
 ## Skeleton trong world (ngoài canvas)
 
-- Object mang `SkeletonAnimation` và `MeshRenderer`; lớp vẽ đặt ở `MeshRenderer` (Sorting Layer, Order in Layer).
+- **4.3 tách vẽ khỏi anim cả ở world:** một object mang `SkeletonRenderer`, `SkeletonAnimation`, `MeshRenderer`. Dựng bằng code
+  Editor: `SkeletonRenderer.AddSpineComponents<SkeletonRenderer, SkeletonAnimation>(gameObject, skeletonDataAsset, false)`.
+  Lớp vẽ đặt ở `MeshRenderer` (Sorting Layer, Order in Layer).
 - **Skeleton đi cùng hạt của nó thì gom dưới một cha có `SortingGroup`**: cả cụm xếp với phần còn lại của màn bằng một bậc, thứ tự
   skeleton với hạt chỉnh bằng order bên trong nhóm, không giãn bậc của lớp khác.
+- **Hạt hoạ sĩ đóng kèm để Loop và Play On Awake** cho bản preview. Game phát theo lượt thì tắt cả hai, phát hạt cùng lúc với anim;
+  start delay hoạ sĩ đặt là mốc trong anim, giữ nguyên.
 - Cỡ skeleton world quy theo vật world đứng cạnh nó trên demo (`Agent/Skills/demo-compare/SKILL.md`), không theo bề ngang màn.
+- **Skeleton thay một sprite tĩnh cùng art** (vật lật, vỡ từ hình đang nằm yên): gốc skeleton thường lệch pivot sprite vài phần
+  trăm cỡ vật, đủ thấy giật lúc đổi. Chụp sprite và frame 0 skeleton cùng khung (`UICapture.World` hai ô, `docs/Editor/UIReskin.md`),
+  so khung bằng `DemoCompare.BBox`, đặt phần lệch vào object con mang skeleton; root giữ đúng vị trí code đặt.
+- **Vẽ ngoài Play** (chụp, so, dựng prefab): không vòng frame nào chạy, nên gọi tay `SkeletonRenderer.Initialize(true)`,
+  `SkeletonAnimation.Initialize(true)`, `SetAnimation`, đặt `TrackTime`, `Update(0f)`, rồi `SkeletonRenderer.LateUpdate()` để dựng mesh.
 
 ## Gọi anim từ code
 
@@ -78,8 +87,30 @@ skeletonAnimation.Update(0f);   // đặt pose frame 0 ngay; thiếu thì frame 
   `Time.deltaTime`, nên chờ đúng số giây đó là khớp nhịp anim, không cần nghe sự kiện complete.
 - Track đang chạy: `AnimationState.GetTrack(0)` (4.3 không có `GetCurrent`); thời điểm trong anim là
   `TrackEntry.AnimationTime`.
+- **Phát từ giữa anim** (chỉ đoạn sau một mốc): `entry.TrackTime = t` sau `SetAnimation`, rồi `Update(0f)`. Hạt đi cùng tua tới cùng
+  mốc: `Simulate(t, true, true)` rồi `Play(true)`; thiếu thì hạt có start delay bắn trễ đúng `t`.
+- **Lượt không lặp đã hết:** `TrackEntry.IsComplete`, đọc ở `LateUpdate` (sau khi Spine tiến frame). Hiệu ứng một lượt lấy từ pool
+  dùng nó để tự trả về.
 - Ô tên anim trong Inspector: `[SpineAnimation(dataField: nameof(<ô SkeletonAnimation>))]` cho dropdown tên có thật.
 - Đo nhịp anim theo video demo: `docs/Editor/VideoDemo.md`; quay bản Unity bằng `FrameRecorder` (`docs/Editor/Probe.md`).
+
+## Xương lái vật ngoài skeleton
+
+Anim chỉ có xương (hoạ sĩ dựng chuyển động, vật thật do game vẽ): mỗi frame đặt vật theo xương. Xem tên xương và khoá của nó bằng
+`docs/Editor/SpineJson.md`.
+
+- **Đọc xương trong `SkeletonAnimation.UpdateComplete`:** chạy ngay sau khi Spine tính world transform của frame, nên vật và phần
+  skeleton vẽ ra cùng frame; đọc ở `Update` của vật thì trễ một frame. Handler là event của component, không bị xoá như handler
+  của `TrackEntry`: đăng ký một lần.
+- **Vị trí** `bone.GetWorldPosition(skeletonTransform)`; **góc** `bone.AppliedPose.WorldRotationX` (4.3 để pose đã áp ở
+  `AppliedPose`).
+- **Vật nhận phần xương đã đi, không nhận vị trí xương:** vị trí vật = vị trí vật lúc bắt đầu + (xương bây giờ − xương lúc bắt
+  đầu), góc cùng cách. Vật giữ chỗ đứng game đặt; skeleton không cần trùng khít chỗ vật.
+- **Anim dựng cho một khoảng cách giữa hai vật:** scale skeleton = khoảng cách thật của hai vật ÷ khoảng cách hai xương ở frame
+  đầu, đo ở scale 1 sau `Update(0f)`. Chuyển động co theo, đúng ở mọi khoảng cách.
+- **`FindBone` lại mỗi lượt:** skeleton dựng lại (nạp lại dữ liệu) thay object `Bone`, tham chiếu cũ không còn được cập nhật.
+- **Vật chỉ nhận tư thế khi nó đang ở trạng thái chờ theo xương** (cờ do chính vật giữ): hết chờ, bị huỷ, về pool thì code của vật
+  chiếm lại transform mà hiệu ứng không cần biết vòng đời vật.
 
 ## Event trong anim — neo hiệu ứng vào khoảnh khắc của anim
 

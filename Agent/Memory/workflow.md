@@ -43,11 +43,11 @@ Bài học đã trả giá khi làm việc với `workflow`. Đọc trọn cùng
 **Làm:** tách lệnh xoá khỏi lệnh sửa để phần sửa vẫn chạy; bước xoá (trong Project window, để `.meta` đi cùng) và bước trả file giao developer ở mục thao tác Editor cuối báo cáo.
 
 ### Script Python nhúng heredoc khớp 0 chỗ hoặc báo SyntaxError
-`2026-11` · vấp 3 · đã đo · đúng với Bash tool là Git Bash trên Windows
-**Thấy:** script Python nhúng bằng heredoc `<<'EOF'` thay khối C# khớp 0 chỗ mà không báo, hoặc dừng ở `SyntaxError: unterminated string literal` khi chuỗi chứa đường dẫn `\`; `'\\'` thành `'\'`, `$"…"` mất `$`; chuỗi regex `\\.` thành `\.` chỉ báo `SyntaxWarning`, phép thay vẫn chạy nhờ may. **Vì:** heredoc trong Bash tool không giữ nguyên văn `\` và `$`.
+`2026-11` · vấp 4 · đã đo · đúng với Bash tool là Git Bash trên Windows
+**Thấy:** script Python nhúng bằng heredoc `<<'EOF'` thay khối C# khớp 0 chỗ mà không báo, hoặc dừng ở `SyntaxError: unterminated string literal` khi chuỗi chứa đường dẫn `\`; `'\\'` thành `'\'`, `$"…"` mất `$`; chuỗi regex `\\.` thành `\.` chỉ báo `SyntaxWarning`, phép thay vẫn chạy nhờ may; `\\b` trong regex ghi ra file thành ký tự backspace, `assert` vẫn qua, file hỏng im lặng. **Vì:** heredoc trong Bash tool không giữ nguyên văn `\` và `$`.
 **Làm:** khối có `$`, `\`, backtick thì sửa bằng Edit, hoặc ghi script bằng Write rồi `python -X utf8 -I script.py`; mọi phép thay theo chuỗi `assert count == 1` trước khi ghi.
 
-### Script Python dừng giữa chừng sau khi đã ghi một phần file
-`2026-10` · vấp 1 · đã đo · đúng với console Windows
-**Thấy:** script in tiếng Việt ném lỗi encode giữa lượt, một nửa số file đã ghi. **Vì:** console Windows mặc định cp1252; `-I` bỏ qua `PYTHONIOENCODING`.
-**Làm:** chạy `python -X utf8 -I`, hoặc script tự `sys.stdout.reconfigure(encoding="utf-8")` ở đầu.
+### Script Python dừng giữa chừng, hoặc báo `ModuleNotFoundError` cho gói đã cài
+`2026-11` · vấp 2 · đã đo · đúng với console Windows, gói cài bằng `pip install --user`
+**Thấy:** script in tiếng Việt ném lỗi encode giữa lượt, một nửa số file đã ghi · `python -I -c "import cv2"` báo `No module named 'cv2'` trong khi tool đo dùng OpenCV vẫn chạy. **Vì:** console Windows mặc định cp1252, `-I` bỏ qua `PYTHONIOENCODING` · `-I` gồm `-s`, bỏ site-packages của user, nơi `pip install --user` đặt OpenCV, numpy.
+**Làm:** script chỉ dùng thư viện chuẩn chạy `python -X utf8 -I`; script cần gói bên thứ ba chạy `python -X utf8 -P` (vẫn chặn thư mục script khỏi `sys.path`), đúng cờ tài liệu tool ghi; script tự viết thì `sys.stdout.reconfigure(encoding="utf-8")` ở đầu.
