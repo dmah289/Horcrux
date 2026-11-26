@@ -11,6 +11,8 @@ Skill dưới `Agent/horcrux.md` (NT, tầng, ký hiệu định nghĩa ở đó
 ## Luật
 
 1. **Mỗi task code kết bằng một lần `verify.sh` xanh.** Báo cáo dán dòng tool in ra, không viết "đã compile sạch".
+   **Kiểm đúng phạm vi task:** tool chỉ chạy test bị chạm bởi file đổi từ lượt test trước, không thêm lượt chạy tay bên
+   cạnh. Đụng thứ dò tên không thấy (reflection, chuỗi tên type), trước merge hay release thì `--all-tests`.
 2. **Không chép ba lệnh vào plan, task, constraint.** Plan ghi một dòng `bash <verify.sh> --csproj … --tests …` với tên
    của dự án.
 3. **Lỗi build sau khi thêm, dời hay pull file là lỗi tạm** (type mới báo không tồn tại): csproj chưa có file. Editor mở thì
@@ -49,4 +51,5 @@ Tên csproj và assembly test của dự án ghi trong file hướng dẫn agent
 ## Ngân sách token
 
 - Tool in tối đa 40 dòng lỗi mỗi bước và 300 ký tự mỗi test fail; không đổ Editor.log hay JSON thô vào ngữ cảnh.
-- Lệnh chạy 30–90 giây: chạy tiền cảnh, không song song hai lần (recompile và test chiếm Editor).
+- Lệnh chạy 10–40 giây khi chỉ chạy test bị chạm (số giây in ở mỗi bước): chạy tiền cảnh, không song song hai lần
+  (recompile và test chiếm Editor).

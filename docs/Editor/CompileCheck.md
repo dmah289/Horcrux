@@ -1,8 +1,9 @@
 # CompileCheck — một lệnh kiểm sau mỗi task
 
-`verify.sh` chạy ba phép kiểm mà mọi task code đều cần, theo thứ tự rẻ tới đắt, và in một dòng kết quả cho mỗi bước: build
-các csproj Unity sinh bằng `dotnet` hoặc MSBuild → Unity recompile trong Editor đang mở → test EditMode theo assembly. Mã thoát 1 khi một bước hỏng, nên dùng được
-làm điều kiện commit.
+`verify.sh` chạy ba phép kiểm mà mọi task code đều cần, theo thứ tự rẻ tới đắt, và in một dòng kết quả kèm số giây cho mỗi
+bước: build các csproj Unity sinh bằng `dotnet` hoặc MSBuild → Unity recompile trong Editor đang mở → test EditMode **bị chạm
+bởi file đổi từ lượt test trước** (`affected_tests.py`; `--all-tests` thì cả assembly). Mã thoát 1 khi một bước hỏng, nên
+dùng được làm điều kiện commit.
 
 ## Ngữ cảnh đã chốt
 
@@ -12,7 +13,7 @@ làm điều kiện commit.
 | Đầu vào | csproj ở gốc project do Unity sinh (gitignore) · Editor đang mở project (`unity status` ra `ready`) · tên assembly test EditMode |
 | Ranh giới | tool chỉ **chạy và tóm tắt**; sửa lỗi là việc đọc code sau đó. Không chạy PlayMode: PlayMode cần Play và chiếm Editor, developer chạy trong Test Runner |
 | Chỗ đặt | `Editor/CompileCheck/Tools~/verify.sh`: thư mục đuôi `~` Unity không import. Không có C# |
-| Công cụ anh em | `plan_check.py` — kiểm code của Plan trước khi giao (mục cuối file này); hỏi builder qua `verify.sh --print-builder` |
+| Công cụ anh em | `affected_tests.py` — chọn test bị chạm, verify.sh gọi (mục Chọn test) · `plan_check.py` — kiểm code của Plan trước khi giao (mục cuối file này); hỏi builder qua `verify.sh --print-builder` |
 
 **Cố ý KHÔNG làm**
 
@@ -21,6 +22,8 @@ làm điều kiện commit.
 | Chạy Unity batchmode khi Editor đóng | Editor đang mở giữ khoá project; batchmode mất 1–2 phút khởi động cho mỗi lần kiểm, recompile trong Editor mất vài giây |
 | Tự tìm csproj và assembly test | mỗi dự án một bộ tên; đoán sai thì kiểm thiếu mà vẫn báo OK |
 | Vá đường dẫn csproj sau khi `git mv` | Editor đang mở tự sinh lại csproj; lỗi "file not found" của builder sau khi dời file là lỗi tạm, bước recompile mới là sự thật |
+| Chọn test bằng graph dựng sẵn (graphify) | graph cũ đi sau mỗi lần sửa, cập nhật mất ~23 s; graph gắn partial class về một file nên đổi file partial kia ra 0 test (đo: đổi một partial của lớp config, test đọc chính lớp đó không được chọn) |
+| Chạy nhiều lớp trong một lượt `test run` | bộ lọc `testName` của Unity CLI nhận một chuỗi con; mỗi lớp một lượt |
 
 **Quyết định trái trực giác**
 
@@ -42,21 +45,53 @@ làm điều kiện commit.
 --project   ──► unity status: ready | bận → chờ tới --ready-wait | không Editor ──► (ready) AssetDatabase.Refresh — Editor sinh lại csproj
 --csproj a,b ──► chọn builder (MSBUILD › dotnet › MSBuild Rider/VS) ──► build -v q -clp:ErrorsOnly ──► "build a: ok" | dòng lỗi CS/MSB | mã thoát ≠ 0
 (ready?)    ──► script recompile ──► poll recompile_status tới completed|up_to_date ──► errors[]          (không ready → FAIL unity)
---tests X,Y ──► test run --mode EditMode --filter_type assembly --filter X ──► (success false? Editor ready → test status | mất → FAIL unity)
-                ──► (in_progress? poll test status tới hết --timeout) ──► Summary + test fail ──► so tên với Library/HorcruxVerify/X.fail, ghi lượt này
-                                                                                                          └──► "verify: OK" | "verify: FAIL build recompile tests"
+--tests X,Y ──► affected_tests.py: file đổi từ tested-at → lớp test bị chạm theo assembly (0 lớp → bỏ bước test)
+                ──► mỗi lớp (≤ 2) một test run --filter_type testName | quá 2 lớp, --all-tests → --filter_type assembly
+                ──► (success false? Editor ready → test status | mất → FAIL unity) ──► (in_progress? poll tới hết --timeout)
+                ──► gộp Results ──► so tên với Library/HorcruxVerify/X.fail trong phạm vi lớp vừa chạy, ghi lượt này
+                ──► không fail mới → ghi tested-at ──► "verify: OK (n s)" | "verify: FAIL build recompile tests"
 ```
+
+## Chọn test — `affected_tests.py`
+
+```
+tested-at (HEAD project + submodule ở lượt test trước) ──► git diff <mốc> + file chưa track, mọi repo
+  .asmdef .asmref csc.rsp manifest ProjectSettings ──► cả assembly
+  .cs        ──► tên type ngoài cùng + extension method (bản hiện tại và bản ở mốc) + lớp cha, interface của project
+  asset YAML ──► .cs của object có dòng đổi (m_Script guid) ; test nhắc tên file asset
+  ──► file nhắc tên đó, thấy được assembly và namespace ──► lặp tới khi hết ──► lớp test trong tập + lớp mang fail mới "+"
+```
+
+**Quyết định trái trực giác**
+
+| Chỗ | Vì |
+|---|---|
+| Dò theo tên trên code hiện tại, không parse C# | 0,8 s cho ~1700 file, không cần graph hay Roslyn; thừa test thì chỉ tốn giây, thiếu test mới là hỏng — thứ dò tên bắt thừa |
+| Chỉ lan theo **type ngoài cùng** của file | type lồng gọi qua tên type ngoài; lan theo type lồng thì lớp `Init` lồng trong mọi Initializer kéo cả project (đo: một file lá chạm 212 file thay vì 32) |
+| Extension method chỉ lan sang file nhắc **type nhận** (`this R`) khi R là type của project | tên extension hay chung chung; giá trị kiểu R có được là nhờ một type đã trong tập |
+| Lớp cha, interface chỉ lan từ **file đổi**, không lan tiếp | nơi gọi qua interface (DI, kéo thả) không nhắc lớp con; lan ở mọi tầng thì base chung của project kéo cả project (327 file thay vì 32) |
+| Cùng assembly hoặc reference trực tiếp, rồi namespace (cùng, lồng, `using`, ghi đầy đủ) | tên trùng ở assembly không tham chiếu được (Horcrux không thấy dự án) hay namespace không mở được thì không phải phụ thuộc |
+| Lớp mang fail mới (`+` trong `.fail`) luôn chạy lại | code trả về đúng bản mốc thì diff rỗng mà nhãn fail mới treo mãi |
+| Quá 2 lớp trong một assembly thì chạy cả assembly | mỗi lượt `test run` tốn ~6 s dựng danh sách test; assembly 496 test chạy cả 23 s = ba lượt một lớp |
+| Assembly test EditMode bị chạm mà `--tests` thiếu thì tự thêm | danh sách tay hay thiếu assembly tool, test thiết kế; bỏ sót là bỏ test đang đỏ |
+| Mốc `tested-at` chỉ dời khi lượt test không có fail mới | fail mới chưa sửa thì lượt sau vẫn xét lại đủ file từ mốc cũ |
+| Chưa có mốc thì chạy cả assembly | lượt đầu trên máy, hoặc commit mốc đã mất sau rebase |
+
+**Chỗ dò tên không thấy** — chạy `--all-tests` khi đụng: gọi qua reflection, chuỗi tên type, `SerializeReference` theo chuỗi ·
+test duyệt mọi asset của một loại mà không nhắc tên file · đổi hành vi của type được dùng qua interface ở tầng thứ hai trở đi.
+Trước merge, release thì luôn `--all-tests`.
 
 ## Lệnh
 
 ```bash
-bash "<horcrux>/Editor/CompileCheck/Tools~/verify.sh" --csproj <A.csproj,B.csproj> --tests <TestAsm1,TestAsm2> [--project <path>] [--no-unity] [--no-tests] [--timeout 600] [--ready-wait 600]
+bash "<horcrux>/Editor/CompileCheck/Tools~/verify.sh" --csproj <A.csproj,B.csproj> --tests <TestAsm1,TestAsm2> [--all-tests] [--project <path>] [--no-unity] [--no-tests] [--timeout 600] [--ready-wait 600]
 ```
 
 | Cờ | Nghĩa |
 |---|---|
 | `--csproj` | danh sách csproj cách nhau dấu phẩy, đường dẫn tính từ `--project`; bỏ trống thì bỏ bước build |
-| `--tests` | assembly test EditMode (tên trong `.asmdef`), mỗi assembly một lần chạy; bỏ trống thì bỏ bước test |
+| `--tests` | assembly test EditMode (tên trong `.asmdef`); chạy lớp bị chạm, cộng assembly test bị chạm mà danh sách thiếu; bỏ trống thì bỏ bước test |
+| `--all-tests` | chạy cả các assembly trong `--tests`, không chọn: trước merge, release, hoặc khi đụng chỗ dò tên không thấy |
 | `--project` | gốc project Unity; mặc định thư mục hiện tại |
 | `--no-unity` | chỉ build csproj, cho máy không mở Editor |
 | `--no-tests` | dừng sau recompile |
@@ -66,7 +101,8 @@ bash "<horcrux>/Editor/CompileCheck/Tools~/verify.sh" --csproj <A.csproj,B.cspro
 | `UNITY_CLI` | biến môi trường ép đường dẫn `unity.exe`; mặc định `unity` trên PATH |
 | `MSBUILD` | biến môi trường ép đường dẫn `MSBuild.exe`; không đặt thì dùng `dotnet` trên PATH, thiếu nữa thì MSBuild mới nhất của Rider hay Visual Studio trong `Program Files` ổ c–h |
 
-Thời gian: build 25–30 s mỗi csproj, recompile 5–20 s, test EditMode vài giây tới một phút.
+Thời gian (đo 2026-11): build 3 s mỗi csproj khi đã build trước đó, 25–30 s lần đầu · Refresh 3 s · recompile 1–20 s ·
+chọn test 1–3 s · mỗi lượt `test run` ~6 s cộng thời gian test · task không chạm test nào: cả lệnh 12–19 s.
 
 ## Đọc kết quả
 
@@ -83,6 +119,10 @@ Thời gian: build 25–30 s mỗi csproj, recompile 5–20 s, test EditMode và
 | `tests X: Editor ngắt giữa lượt test (…) và không về ready` | Editor đóng, crash, hoặc kẹt quá `--ready-wait` lúc test chạy | mở lại Editor rồi chạy lại; `verify: FAIL unity`, không phải lỗi test |
 | `tests X: lượt test bị cắt giữa chừng, chạy lại` | domain reload (file đổi giữa lượt, session khác sửa code) cắt lượt test; tool đã gửi lại một lần | kết quả in sau dòng này là của lượt gửi lại |
 | `tests X: n/m pass, k fail` | tên test fail và dòng đầu message in ngay dưới; `(mới)` là fail lượt trước chưa có, `hết fail` là fail lượt trước đã qua | mở test `(mới)` trước; dòng `so với lượt <giờ> @<commit>` cho biết mốc — mốc không ở bản trước task thì chạy một lần trên bản đó |
+| `… — n lớp bị chạm (s)` sau dòng pass | chỉ chạy các lớp đó; so fail chỉ trong các lớp đó | dòng `tests: n file đổi từ mốc, m file code bị chạm` ngay trên cho biết phạm vi |
+| `tests: không test nào bị chạm, bỏ bước test` | file đổi không chạm lớp test nào (chữ, prefab không có script được test, tài liệu) | nghi sót thì chạy lại với `--all-tests` |
+| `tests: tự thêm assembly test bị chạm: X` | X có lớp bị chạm mà `--tests` thiếu | thêm X vào lệnh của dự án |
+| `tests: chưa có mốc lượt test trước → chạy cả assembly` | lượt đầu trên máy, hoặc `Library/HorcruxVerify/tested-at` đã xoá, hoặc commit mốc mất sau rebase | bình thường; lượt sau chỉ chạy lớp bị chạm |
 | `unity: Editor đang <state>, chờ ready` rồi `vẫn <state> sau n s` | Editor kẹt ở hộp thoại, hoặc import lâu hơn `--ready-wait` | nhìn Editor; import nặng thì tăng `--ready-wait` |
 | `unity: Editor chưa mở project` | không Editor nào mở project này | mở Editor, hoặc `--no-unity` (không Refresh được nên csproj có thể cũ) |
 
@@ -95,6 +135,10 @@ Thời gian: build 25–30 s mỗi csproj, recompile 5–20 s, test EditMode và
 - Chạy batchmode `-runTests` khi Editor đang mở project: khoá `Temp/UnityLockfile`, lệnh treo tới timeout không một dòng lỗi.
 - `test run` trả "socket hang up" bị báo `không đọc được kết quả` như test hỏng; lần chạy lại treo không một dòng vì lệnh gọi pipe qua `tail`. Bài học: lỗi kết nối hỏi lại trạng thái Editor; người gọi đọc output thẳng.
 - Chạy Unity với `-nographics` để test: test của package PrimeTween fail vì shader, không liên quan code dự án.
+- Chạy cả assembly mỗi task dù task chỉ đổi chữ: lượt test là phần chậm nhất và hay bị domain reload cắt phải chạy lại.
+  Bài học: chọn test theo file đổi, task không chạm test nào thì bỏ bước test.
+- Trả code về đúng bản mốc sau một fail mới: diff rỗng, lớp đó không được chạy lại, nhãn `(mới)` treo mà verify báo OK.
+  Bài học: lớp mang fail mới luôn nằm trong lựa chọn.
 
 ## Nghiệm thu
 
@@ -102,6 +146,11 @@ Chạy trên project có lỗi cố ý ở một file: `build` in đúng một d
 mọi bước ok, `verify: OK`, mã thoát 0. Chạy `--no-unity` khi Editor đóng: chỉ có dòng build, mã thoát theo build. Máy không builder (hoặc `MSBUILD` trỏ sai): `verify: FAIL build`,
 mã thoát 1. `MSBUILD` trỏ lệnh thoát 1 không in gì (`/usr/bin/false`): `build X: LỖI (mã thoát 1, …)`.
 `--print-builder` in đường dẫn MSBuild, mã 0; `MSBUILD=/nope`: `build: MSBuild không có ở /nope`, mã 1.
+
+Chọn test (đo 2026-11, project ~1700 file .cs, assembly test 496 test): đổi một chuỗi trong MonoBehaviour không có test →
+`không test nào bị chạm`, cả lệnh 12 s · đổi dấu trong một hàm thuần có lớp test → chỉ lớp đó chạy, fail `(mới)` (9 s) ·
+trả code về → lớp đó chạy lại, `hết fail` · đổi asset config mà một test so với spec → chọn đúng test đỏ, cộng assembly
+test thiết kế `--tests` thiếu · `--all-tests` ra cùng kết quả với cách cũ (492/496, 23 s).
 
 ---
 

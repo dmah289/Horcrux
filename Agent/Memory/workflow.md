@@ -43,7 +43,7 @@ Bài học đã trả giá khi làm việc với `workflow`. Đọc trọn cùng
 **Làm:** tách lệnh xoá khỏi lệnh sửa để phần sửa vẫn chạy; bước xoá (trong Project window, để `.meta` đi cùng) và bước trả file giao developer ở mục thao tác Editor cuối báo cáo.
 
 ### Script Python nhúng heredoc khớp 0 chỗ hoặc báo SyntaxError
-`2026-11` · vấp 4 · đã đo · đúng với Bash tool là Git Bash trên Windows
+`2026-11` · vấp 5 · đã đo · đúng với Bash tool là Git Bash trên Windows
 **Thấy:** script Python nhúng bằng heredoc `<<'EOF'` thay khối C# khớp 0 chỗ mà không báo, hoặc dừng ở `SyntaxError: unterminated string literal` khi chuỗi chứa đường dẫn `\`; `'\\'` thành `'\'`, `$"…"` mất `$`; chuỗi regex `\\.` thành `\.` chỉ báo `SyntaxWarning`, phép thay vẫn chạy nhờ may; `\\b` trong regex ghi ra file thành ký tự backspace, `assert` vẫn qua, file hỏng im lặng. **Vì:** heredoc trong Bash tool không giữ nguyên văn `\` và `$`.
 **Làm:** khối có `$`, `\`, backtick thì sửa bằng Edit, hoặc ghi script bằng Write rồi `python -X utf8 -I script.py`; mọi phép thay theo chuỗi `assert count == 1` trước khi ghi.
 
