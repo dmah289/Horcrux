@@ -7,11 +7,6 @@ Bài học đã trả giá khi làm việc với `workflow`. Đọc trọn cùng
 **Thấy:** cần chứng minh refactor không đổi thuật toán giữa hai commit cách xa; diff thô hàng chục nghìn dòng vì nhiều đợt đổi tên và dời thư mục. **Vì:** đổi tên và dời file che mọi thay đổi thật.
 **Làm:** ghép cặp file bằng `git diff -M20%` rồi ghép tay phần còn lại · áp bảng đổi tên (lấy lại từ git history nếu Plan đổi tên đã xoá) lên bản cũ · diff bỏ `using` và khoảng trắng · **so riêng tập chuỗi ký tự** để đổi tên không che chuỗi · đọc tay mọi cặp còn lệch · hàm trùng tên ở hai namespace thì soát `using` từng file xem resolve về bản nào · prefab lọc guid, fileID nhưng **không** lọc `m_IsActive`, `m_Enabled`, `m_LocalPosition` (`workflow` › tra cứu › Nghiệm thu).
 
-### Commit theo pathspec hỏng cả cụm, hoặc thiếu file mới
-`2026-11` · vấp 1 · đã đo
-**Thấy:** `git add` file vừa `git rm` báo "did not match" làm hỏng cả lệnh · file mới không vào commit. **Vì:** file đã xoá khỏi index không còn để `git add`; pathspec của commit không nhận file chưa track.
-**Làm:** `git add -- <file mới>` trước; file đã `git rm` chỉ để trong pathspec của `git commit -- <paths>`; không chạy commit nền. Commit không pathspec, `git commit -a`, `git add -A` đã có hook chặn (`workflow` › tra cứu › Git).
-
 ### File thường là nhiễu hiện trong `git status`
 `2026-11` · vấp 2 · đã đo
 **Thấy:** `.meta` texture vừa import có thêm mục platform Android, iOS không override · file group Addressables đổi sau mỗi lần mở Editor nên vào danh sách "không commit"; một tool sinh nội dung ghi entry thật vào đúng file đó, commit bỏ nó, nội dung không load được mà không lỗi nào báo trước lúc chơi. **Vì:** Unity tự thêm mục platform mặc định khi import; danh sách nhiễu xét theo tên file, không theo nội dung diff.

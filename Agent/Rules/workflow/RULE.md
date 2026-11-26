@@ -38,13 +38,13 @@ nghiệm thu bằng gì. Developer xác nhận mới làm; **chưa có câu tr�
 
 Code cho biết cái gì chạy, không cho biết vì sao. Với **mỗi phát hiện ảnh hưởng quyết định đang bàn**: **thấy gì** (đường
 dẫn, dòng) · **hiểu ý định là gì** — phát biểu lại, hỏi khớp thiết kế không · **developer biết chưa** — chủ ý hay đã trôi.
-Không kể lại code. Mỗi lượt review đọc lại file hiện tại (NT10). **Sắp thay hay dựa vào một thứ có sẵn thì soát nó có chạy
-thật không** — code gọi mà asset không vẽ thì không lỗi nào báo. **Hành vi đọc giá trị sống ngoài repo** (remote config,
-server) thì bản đang chạy là bản ngoài: phát hiện nêu cả hai bản, sửa số trong repo chưa phải sửa hành vi.
+Không kể lại code. **Sắp thay hay dựa vào một thứ có sẵn thì soát nó có chạy thật không** — code gọi mà asset không vẽ thì
+không lỗi nào báo. **Hành vi đọc giá trị sống ngoài repo** (remote config, server) thì bản đang chạy là bản ngoài: phát
+hiện nêu cả hai bản, sửa số trong repo chưa phải sửa hành vi.
 
 ## Báo cáo và trình bày
 
-NT12 áp nguyên. Thêm: một câu một ý · thuật ngữ buộc dùng thì giải nghĩa lần đầu · gọi khái niệm **đúng tên trong code** ·
+Thêm vào NT12: một câu một ý · thuật ngữ buộc dùng thì giải nghĩa lần đầu · gọi khái niệm **đúng tên trong code** ·
 câu hỏi trả lời được không cần mở code · ví dụ kiểm trên code trước khi đưa · việc developer làm tay trong Editor gom một
 mục cuối.
 
@@ -69,8 +69,7 @@ một tri thức, không thêm khối song song.
 code · *tư tưởng* (đổi hình dạng, ranh giới, kiểu, cách tiêm) → qua cổng ghi.
 
 Chỉ khái quát lựa chọn có "vì sao" lặp lại được; hằng số, tên, phạm vi một task thì không. Dòng ghi vào `Agent/` **không
-mang domain dự án** (NT8), theo `docs` › Agent, không bao giờ vào mục developer. Báo cáo kết bằng khối *Đã ghi / Đề xuất /
-Về bạn / Không ghi* của `horcrux.md`.
+mang domain dự án** (NT8), theo `docs` › Agent.
 
 ## Subagent
 
@@ -104,8 +103,7 @@ Neo khi phân vân: **công sức đắt nhất là của developer.**
 - **Số đo nằm trên đúng vật được hỏi**, ở đúng điều kiện nơi dùng thật; mắt developer trái số đo thì nghi chỗ đo trước.
 - **Cảm giác — dừng và giao, không dựng proxy.** Báo *"cần chơi thử"* kèm kịch bản: *vào đâu* · *làm gì* (chuỗi ngắn nhất) ·
   *nhìn gì* · *khác trước ra sao* · *dấu hiệu hỏng*. Thứ developer chơi là cảm được thì agent không vào Play qua công cụ;
-  Play qua công cụ chỉ cho thứ developer **không cảm được** (trace, số đo, trạng thái nội bộ — `feel-tune`), và trả nguyên
-  save của developer sau khi chạy.
+  Play qua công cụ chỉ cho thứ developer **không cảm được** (trace, số đo, trạng thái nội bộ — `feel-tune`).
 - **Hướng dẫn developer tự làm là output phải nghiệm thu:** mỗi giá trị, thứ tự, tên ô đã dựng thử trên engine.
 - **Vét cạn** khi có đáp án xác định được và ít nhất một dấu hiệu — agent làm kể cả chưa được yêu cầu, vì đây là bằng
   chứng: *sức* (không gian đầu vào lớn) · *thiên kiến* (ca biên khó nghĩ hết) · *tầm nhìn* (chứng minh **vắng mặt**) ·
