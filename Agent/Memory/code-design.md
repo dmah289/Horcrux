@@ -26,3 +26,8 @@ Bài học đã trả giá khi làm việc với `code-design`. Đọc trọn c�
 `2026-10` · vấp 1 · chuyển sang, chưa kiểm lại · đúng với nội dung sinh từ `UnityEngine.Random` toàn cục
 **Thấy:** thay LINQ bằng vòng lặp tay, hay thêm một lần lấy ngẫu nhiên cho trình diễn (cao độ tiếng), làm level, thứ tự phần tử khác bản cũ. **Vì:** mọi nơi dùng chung một luồng `Random`: thêm, bớt, đổi thứ tự một lần gọi ở bất kỳ đâu là dời cả chuỗi sau đó · `OrderBy` ổn định, `List.Sort` không.
 **Làm:** trong đường sinh nội dung giữ nguyên thứ tự và số lần gọi `Random`; ngẫu nhiên cho trình diễn lấy từ hàm của dữ liệu (chỉ số ô) hoặc nguồn riêng; thay `OrderBy` bằng `Sort` thì thêm tie-break theo chỉ số gốc (`code-design` › tra cứu › Bất biến).
+
+### Lớp UI phủ toàn màn bật lên thì FPS máy yếu tụt dù CPU nhàn
+`2026-11` · vấp 1 · suy luận · đúng với shader tự viết vẽ phủ cả màn trên GPU mobile tầm thấp
+**Thấy:** lớp tối hướng dẫn hay popup hiện là FPS rơi 60 → 43–50, tắt là về 60; luồng main chỉ ~30% một nhân. **Vì:** fragment shader chạy cho mọi pixel màn (~2,6 triệu ở 1080×2400) và lặp hết mảng cố định (8 lỗ khoét, mỗi lỗ một SDF float) kể cả ô trống — cỡ chục ms GPU, đủ lỡ vsync.
+**Làm:** shader toàn màn chỉ lặp phần tử đang sống (C# dồn lên đầu mảng, truyền số lượng); ước giá bằng phép tính mỗi pixel × số pixel trước khi thêm vòng lặp; nghiệm thu bằng FPS trên máy yếu thật (`feel-tune.md` › FPS trên máy thật bị gán cho một thao tác).
