@@ -51,3 +51,8 @@ Bài học đã trả giá khi làm việc với `editor-first`. Đọc trọn c
 `2026-11` · vấp 1 · suy luận
 **Thấy:** tool đếm ảnh theo một field, cảnh báo "game lặp ảnh"; game quyết bằng hàm khác (lấy max hai field) và từ chối hẳn khi 0. **Vì:** tool tự viết lại luật của game: hai nguồn cho một luật, lệch không gì báo.
 **Làm:** tool gọi đúng hàm game dùng để quyết, tách thành hàm thuần dùng chung nếu game giữ riêng; mức báo (lỗi, cảnh báo) theo hậu quả trong game (`horcrux.md` NT6; `code-design` › Bất biến).
+
+### Đổi hoa thường tên thư mục nguồn: git không thấy, tool sinh asset xoá nhầm
+`2026-11` · vấp 1 · đã đo · đúng với Windows, macOS (ổ không phân biệt hoa thường)
+**Thấy:** đổi `yellow things` → `Yellow Things` thì `git status` sạch; chạy tool sinh asset theo tên thư mục thì asset sinh ra (atlas) bị xoá như mồ côi, entry vẫn trỏ guid đã mất. **Vì:** `core.ignorecase=true` nên git bỏ qua đổi hoa thường; tool thấy `File.Exists` đúng nên giữ file cũ, rồi so tập đường dẫn ordinal nên coi file đó không thuộc tập giữ.
+**Làm:** git: `git rm -r --cached <tên cũ>` rồi `git add <tên mới>`. Tool so đường dẫn hay tên asset với tập giữ thì dùng `StringComparer.OrdinalIgnoreCase`, cùng cách ổ đĩa so (`editor-first` › Import/export).
