@@ -1,6 +1,6 @@
 ---
 name: feel-tune
-description: Dùng khi chỉnh, refactor hay dò lỗi feeling của game Unity — tween, trình diễn, hiệu ứng, nhịp, juice — hoặc đo GC, batches trong lúc trình diễn, hoặc dò một luồng runtime trong Play (treo, không chuyển màn, quảng cáo, popup kẹt) bằng trạng thái nội bộ. Chọn công cụ đo dựng sẵn trong Horcrux theo câu hỏi, thay vì viết script chạy ngầm mới mỗi lần.
+description: Dùng khi chỉnh, refactor hay dò lỗi feeling của game Unity — tween, trình diễn, hiệu ứng, nhịp, juice — hoặc đo GC, batches trong lúc trình diễn, hoặc dò một luồng runtime trong Play (treo, không chuyển màn, quảng cáo, popup kẹt) bằng trạng thái nội bộ, hoặc đo FPS, giật, CPU và chơi qua kịch bản trên máy Android thật đang cắm cáp. Chọn công cụ đo dựng sẵn trong Horcrux theo câu hỏi, thay vì viết script chạy ngầm mới mỗi lần.
 ---
 
 # feel-tune — chỉnh feeling với công cụ dựng sẵn
@@ -36,6 +36,8 @@ Khi nào được vào Play và khi nào giao developer chơi thử: `workflow` 
 | mất hình, lệch lớp, nháy ở một frame | `FrameSheet` trong probe hay `Act` của kịch bản, một PNG | có |
 | một look ở vài giá trị thông số (lớp vẽ có bị che, độ toả, offset, scale đỉnh) | `UICapture.Variants` qua `script eval` (`docs/Editor/UIReskin.md`) | không |
 | tiếng "không phát", to nhỏ lệch giữa các tiếng | nguồn đang phát chưa (`PlayProbe.Field`), rồi nút `Audit Loudness` của catalog audio (`docs/Runtime/AudioSystem/AudioSystem.md`): file nhỏ hơn mặt bằng hàng chục dB nghe như không phát — sửa file, không sửa code | không (audit) |
+| FPS, giật, nóng máy chỉ thấy trên máy thật; build đang cài có bản sửa chưa | DeviceProbe (`docs/Editor/DeviceProbe.md`): `play --fps-out` kịch bản có mốc, `summary` theo trạng thái màn, tách CPU/GPU bằng `threads`, `res-ab` | trên máy |
+| chơi lại đúng chuỗi thao tác developer báo lỗi trên máy | `record` lúc developer chơi, `play` để tái hiện và đo | trên máy |
 | cảm giác, nhịp, "đã tay" | developer chơi thử | — |
 
 ## Lệnh
@@ -55,6 +57,11 @@ bash "<horcrux>/Editor/FeelTrace/Tools~/feeltrace.sh" [--gc] <kịch bản.cs> <
 python -X utf8 -I "<horcrux>/Editor/FeelTrace/Tools~/feeltrace.py" pairs "<runs>/*.txt"   # quay tới khi có hai file cùng chữ ký
 python -X utf8 -I "<horcrux>/Editor/FeelTrace/Tools~/feeltrace.py" diff <a> <b>
 python -X utf8 -I "<horcrux>/Editor/FeelTrace/Tools~/feeltrace.py" stat <file> <entity> --cols 1.y,3 --from 0 --to 120
+
+# Máy Android thật: đọc máy, chụp nhỏ, chạy cả kịch bản một lệnh kèm FPS theo mốc
+python -X utf8 -I "<horcrux>/Editor/DeviceProbe/Tools~/device.py" info
+python -X utf8 -I "<horcrux>/Editor/DeviceProbe/Tools~/device.py" shot a.jpg --scale 0.35
+python -X utf8 -I "<horcrux>/Editor/DeviceProbe/Tools~/device.py" play <kịch bản.txt> --fps-out fps.log
 ```
 
 Probe tối thiểu (thân hàm, không `using`, type viết đủ namespace):
@@ -87,3 +94,5 @@ của dự án dùng chung nó, dự án chỉ viết kịch bản.
 - `stat --cols` chỉ lấy cột đang hỏi; `--series` chỉ khi cần từng frame.
 - Ảnh: `shrink` từ 2 trở lên, `crop` đúng vùng, nhiều khoảnh khắc ghép một sheet.
 - Lần chạy lâu hơn một phút thì chạy nền; không đọc output khi chưa xong.
+- Trên máy thật: cả đoạn chơi viết thành một file kịch bản chạy bằng `play`, không đi từng bước chạm–chụp–đọc; ảnh
+  `--scale 0.35` chỉ ở điểm kiểm.
