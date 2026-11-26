@@ -12,10 +12,10 @@ Bài học đã trả giá khi làm việc với `workflow`. Đọc trọn cùng
 **Thấy:** `git add` file vừa `git rm` báo "did not match" làm hỏng cả lệnh · file mới không vào commit. **Vì:** file đã xoá khỏi index không còn để `git add`; pathspec của commit không nhận file chưa track.
 **Làm:** `git add -- <file mới>` trước; file đã `git rm` chỉ để trong pathspec của `git commit -- <paths>`; không chạy commit nền. Commit không pathspec, `git commit -a`, `git add -A` đã có hook chặn (`workflow` › tra cứu › Git).
 
-### `.meta` texture đổi sau khi import mà không ai sửa
-`2026-11` · vấp 1 · đã đo
-**Thấy:** `.meta` của texture vừa import hiện trong `git status` với mục platform Android, iOS không override. **Vì:** Unity tự thêm mục platform mặc định khi import.
-**Làm:** coi là nhiễu, để ngoài commit trừ khi developer muốn giữ.
+### File thường là nhiễu hiện trong `git status`
+`2026-11` · vấp 2 · đã đo
+**Thấy:** `.meta` texture vừa import có thêm mục platform Android, iOS không override · file group Addressables đổi sau mỗi lần mở Editor nên vào danh sách "không commit"; một tool sinh nội dung ghi entry thật vào đúng file đó, commit bỏ nó, nội dung không load được mà không lỗi nào báo trước lúc chơi. **Vì:** Unity tự thêm mục platform mặc định khi import; danh sách nhiễu xét theo tên file, không theo nội dung diff.
+**Làm:** `.meta` chỉ thêm mục platform mặc định thì để ngoài commit trừ khi developer muốn giữ. File trong danh sách nhiễu thì đọc diff trước khi bỏ: hash, thời điểm là nhiễu; entry (guid, address) task vừa sinh là phần của task, commit cùng.
 
 ### Session ở worktree, việc cần Editor không làm được
 `2026-11` · vấp 1 · đã đo · đúng với session mở trong git worktree
