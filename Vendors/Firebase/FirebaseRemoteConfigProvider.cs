@@ -72,7 +72,7 @@ namespace Horcrux.Vendors.Firebase
             _rc = FirebaseRemoteConfig.DefaultInstance;
             try
             {
-                await _rc.FetchAsync().AsUniTask().AttachExternalCancellation(ct);
+                await _rc.FetchAsync(TimeSpan.Zero).AsUniTask().AttachExternalCancellation(ct);
             }
             catch (Exception e) when (e is not OperationCanceledException)
             {
