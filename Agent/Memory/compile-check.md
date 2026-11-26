@@ -21,3 +21,8 @@ Bài học đã trả giá khi làm việc với `compile-check`. Đọc trọn 
 `2026-11` · vấp 1 · suy luận · đúng với nhiều phiên cùng sửa một checkout
 **Thấy:** verify xanh, review phát hiện asmdef ở HEAD thiếu reference mà code mới cần (CS0012: đọc member của type có lớp cha ở assembly khác); dòng reference chỉ có trong working tree, do phiên khác thêm, chưa commit. **Vì:** verify build working tree, commit theo pathspec chỉ mang file của task; phần chưa commit của người khác che lỗi của bản commit.
 **Làm:** trước khi báo xong, `git status` các file build (asmdef, csproj, `Packages/manifest.json`) có thay đổi chưa commit thì soát code mới có dựa vào nó không; có thì commit riêng đúng dòng đó và báo developer (`workflow` › tra cứu › Git).
+
+### Test EditMode đọc asset cấu hình đổi kết quả sau một lượt Play, code không đổi
+`2026-11` · vấp 1 · đã đo · đúng với ScriptableObject nạp qua `Resources.Load` mà game ghi giá trị lúc chạy (remote config)
+**Thấy:** chạy `verify.sh` hai lần quanh một lượt Play qua công cụ: test so giá trị asset với spec đổi fail ↔ pass, `git status` của asset sạch, nhãn `(mới)` nhảy qua lại. **Vì:** lúc Play game ghi giá trị remote vào bản trong bộ nhớ của asset; thoát Play bản đó vẫn sống, test EditMode đọc bản bộ nhớ chứ không đọc đĩa.
+**Làm:** sau lượt Play qua công cụ, `Resources.UnloadAsset` rồi `AssetDatabase.ImportAsset(path, ForceUpdate)` asset đó trước khi chạy test; fail còn lại sau khi nạp lại mới là dữ liệu trên đĩa (`compile-check` › Luật 8).

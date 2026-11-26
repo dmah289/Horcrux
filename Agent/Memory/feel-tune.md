@@ -41,3 +41,8 @@ Bài học đã trả giá khi làm việc với `feel-tune`. Đọc trọn cùn
 `2026-11` · vấp 1 · đã đo · đúng với đo FPS trên máy thật
 **Thấy:** chốt "shader lớp phủ tốn ~15 ms GPU" bằng phép nhân phép tính × số pixel ÷ GFLOPS của chip, cộng tương quan FPS giữa hai màn đo ở hai lúc khác nhau; sửa xong màn đó chỉ lên 4–8 FPS, vẫn tụt. **Vì:** ước từ thông số lệch nhiều lần (băng thông, trần xung do hệ máy siết); hai lần đo cách nhau phút lẫn biến khác (trần xung trôi, quảng cáo, vừa vào màn).
 **Làm:** trước khi sửa, tách biến bằng phép thử trên đúng màn, hai bên đo liền nhau ≥ 20 s: bật–tắt thứ nghi ngờ, hoặc đổi độ phân giải (`docs/Editor/DeviceProbe.md` › `res-ab`); báo nguyên nhân kèm phép thử đó, không kèm phép ước.
+
+### Script eval báo CS0104 `Object` mơ hồ, cả lệnh không chạy
+`2026-11` · vấp 1 · đã đo · đúng với `script eval` của Unity CLI/MCP
+**Thấy:** eval gọi `Object.FindFirstObjectByType`, `Object.DestroyImmediate`, `LoadAssetAtPath<Object>` dừng ở `CS0104 'Object' is an ambiguous reference between 'UnityEngine.Object' and 'object'`. **Vì:** môi trường eval `using System` lẫn `UnityEngine`, alias `object` của C# và `UnityEngine.Object` cùng tên.
+**Làm:** trong eval luôn viết `UnityEngine.Object`; script eval dài thì viết file `.cs` và chạy `script eval_file` để sửa một chỗ rồi chạy lại.
