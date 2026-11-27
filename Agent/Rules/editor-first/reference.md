@@ -49,6 +49,12 @@ Nhập cả gói là đè bản đang chạy bằng bản lệch. Gói của ho�
 thuộc từ prefab, scene đích trước, so phần còn lại với file dự án đang có, rồi mới tick. Tool:
 `docs/Editor/UnityPackageAudit.md`.
 
+**Prefab hoạ sĩ xuất lại có thể đổi hết fileID nội bộ dù giữ guid** (đã đo: gói hiệu ứng giao lần hai, 0/12 fileID trùng bản
+đang dùng). Prefab dự án lồng nó giữ override (Loop, Play On Awake) và ô `[SerializeField]` trỏ object con theo fileID nguồn:
+import đè thì override rơi, ô thành null, không lỗi nào báo; `UnityPackageAudit` báo `GÃY` kèm file bị gãy. Bản mới chỉ đổi
+giá trị thì chép vào prefab đang có, giữ fileID (`docs/Editor/PrefabYaml.md` › `copy`); đổi cấu trúc thì import rồi gán lại
+override, ô tham chiếu và soát bằng mở prefab lồng nó.
+
 ## Import/export và UX của tool
 
 - **Không sửa giá trị import:** ngoài tầm hợp lệ thì từ chối cả file hoặc bỏ entry kèm cảnh báo; clamp là xuất bản lệch

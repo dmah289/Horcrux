@@ -4,6 +4,8 @@ CLI:
   prefab_yaml.py check  <prefab>...
   prefab_yaml.py graft  <dst> <src> <src_object> <dst_parent> [--index N]   ghi đè dst tại chỗ rồi check
   prefab_yaml.py remove <prefab> <object>                                   ghi đè tại chỗ rồi check
+  prefab_yaml.py copy   <dst> <src> --class <!u!> [--class …]               chép component theo tên GameObject, giữ fileID dst
+  prefab_yaml.py selftest
 
 <object> là tên GameObject (duy nhất trong prefab) hoặc tên PrefabInstance lồng (m_Name override).
 Ghép kèm sửa field thì import module này trong một script ngắn: Prefab, check (chi tiết ở docs/Editor/PrefabYaml.md).
@@ -165,6 +167,39 @@ class Prefab:
         assert fid in self.by and fid in src.by
         self.by[fid].body = src.by[fid].body
 
+    def components_by_name(self, classes):
+        """{(tên GameObject, lớp, thứ tự trong lớp): doc} cho component lớp `classes`, cùng {tên: GameObject}. Tên trùng thì ném."""
+        gos, comps = {}, {}
+        for go in (d for d in self.docs if d.cls == '1'):
+            name = re.search(r'^  m_Name: (.*)$', go.body, re.M).group(1)
+            assert name not in gos, f"tên GameObject '{name}' trùng: ghép theo tên không chắc"
+            gos[name] = go
+            seen = {}
+            for c in re.findall(r'component: \{fileID: (-?\d+)\}', go.body):
+                d = self.by[c]
+                if d.cls in classes:
+                    comps[(name, d.cls, seen.get(d.cls, 0))] = d
+                    seen[d.cls] = seen.get(d.cls, 0) + 1
+        return gos, comps
+
+    def copy_components(self, src, classes):
+        """Chép body component lớp `classes` từ src sang prefab này, ghép theo tên GameObject, giữ fileID của prefab này.
+        Dùng khi hoạ sĩ xuất lại prefab đổi hết fileID: import đè làm rơi override và ô tham chiếu của prefab lồng nó.
+        fileID nội bộ trong body (m_GameObject, component khác của cùng cây) đổi sang fileID tương ứng; ref không ghép được thì ném."""
+        dst_gos, dst_comps = self.components_by_name(classes)
+        src_gos, src_comps = src.components_by_name(classes)
+        fid_map = {src_gos[n].fid: dst_gos[n].fid for n in src_gos if n in dst_gos}
+        fid_map.update({src_comps[k].fid: dst_comps[k].fid for k in src_comps if k in dst_comps})
+        copied = []
+        for key in sorted(k for k in src_comps if k in dst_comps):
+            def remap(m):
+                fid = m.group(1)
+                assert fid == '0' or fid in fid_map, f"{key[0]}: body trỏ fileID {fid} không ghép được theo tên"
+                return f'{{fileID: {fid_map.get(fid, fid)}}}'
+            dst_comps[key].body = re.sub(r'\{fileID: (-?\d+)\}', remap, src_comps[key].body)
+            copied.append(key)
+        return copied, sorted(set(src_comps) - set(dst_comps)), sorted(set(dst_comps) - set(src_comps))
+
     def set_line(self, doc, key, value):
         """Đổi dòng 'key: ...' đầu tiên (key có thể có thụt lề) trong doc."""
         doc.body, n = re.subn(r'^(\s*)' + re.escape(key) + r': .*$', lambda m: f'{m.group(1)}{key}: {value}', doc.body,
@@ -221,6 +256,41 @@ def check(p, label):
     return not errors
 
 
+def selftest():
+    """copy: ghép theo tên, đổi fileID nội bộ sang bản đích, giữ fileID đích, báo phần lệch, ném khi ref không ghép được."""
+    dst_text = ('%YAML 1.1\n--- !u!1 &10\nGameObject:\n  m_Component:\n  - component: {fileID: 11}\n  - component: {fileID: 12}\n'
+                '  m_Name: Fx\n--- !u!4 &11\nTransform:\n  m_GameObject: {fileID: 10}\n  m_Children: []\n  m_Father: {fileID: 0}\n'
+                '--- !u!198 &12\nParticleSystem:\n  m_GameObject: {fileID: 10}\n  startDelay: 0.5\n')
+    src_text = ('%YAML 1.1\n--- !u!1 &20\nGameObject:\n  m_Component:\n  - component: {fileID: 21}\n  - component: {fileID: 22}\n'
+                '  m_Name: Fx\n--- !u!4 &21\nTransform:\n  m_GameObject: {fileID: 20}\n  m_Children:\n  - {fileID: 24}\n  m_Father: {fileID: 0}\n'
+                '--- !u!198 &22\nParticleSystem:\n  m_GameObject: {fileID: 20}\n  startDelay: 0.1\n  material: {fileID: 2100000, guid: ab, type: 2}\n'
+                '--- !u!1 &23\nGameObject:\n  m_Component:\n  - component: {fileID: 24}\n  - component: {fileID: 25}\n  m_Name: Extra\n'
+                '--- !u!4 &24\nTransform:\n  m_GameObject: {fileID: 23}\n  m_Children: []\n  m_Father: {fileID: 21}\n'
+                '--- !u!198 &25\nParticleSystem:\n  m_GameObject: {fileID: 23}\n  startDelay: 0\n')
+    fails = []
+
+    def expect(cond, msg):
+        print(('  ok   ' if cond else '  SAI  ') + msg)
+        if not cond:
+            fails.append(msg)
+
+    dst, src = Prefab(dst_text), Prefab(src_text)
+    copied, only_src, only_dst = dst.copy_components(src, {'198'})
+    body = dst.by['12'].body
+    expect(copied == [('Fx', '198', 0)], f'ghép theo tên GameObject ({copied})')
+    expect('startDelay: 0.1' in body and 'guid: ab' in body, 'body lấy từ src, giữ ref có guid')
+    expect('m_GameObject: {fileID: 10}' in body and '12' in dst.by and '22' not in dst.by, 'fileID nội bộ đổi sang bản đích, fileID đích giữ')
+    expect(only_src == [('Extra', '198', 0)] and not only_dst, f'object chỉ có ở src được báo, không chép ({only_src})')
+    bad = Prefab(src_text.replace('startDelay: 0.1', 'subEmitter: {fileID: 25}'))
+    try:
+        Prefab(dst_text).copy_components(bad, {'198'})
+        expect(False, 'ref nội bộ không ghép được thì ném')
+    except AssertionError:
+        expect(True, 'ref nội bộ không ghép được thì ném')
+    print('selftest: ' + ('mọi phép kiểm khớp' if not fails else f'{len(fails)} phép kiểm sai'))
+    return 1 if fails else 0
+
+
 def main(argv):
     ap = argparse.ArgumentParser(description=__doc__.split('\n')[0])
     sub = ap.add_subparsers(dest='cmd', required=True)
@@ -235,11 +305,29 @@ def main(argv):
     r = sub.add_parser('remove')
     r.add_argument('prefab')
     r.add_argument('object')
+    cp = sub.add_parser('copy')
+    cp.add_argument('dst')
+    cp.add_argument('src')
+    cp.add_argument('--class', dest='classes', action='append', required=True, help="lớp !u! của component, vd 198; lặp cờ")
+    sub.add_parser('selftest')
     a = ap.parse_args(argv)
 
     try:
+        if a.cmd == 'selftest':
+            return selftest()
         if a.cmd == 'check':
             return 0 if all([check(Prefab.load(f), f) for f in a.prefabs]) else 1
+        if a.cmd == 'copy':
+            dst, src = Prefab.load(a.dst), Prefab.load(a.src)
+            copied, only_src, only_dst = dst.copy_components(src, set(a.classes))
+            dst.save(a.dst)
+            for key in copied:
+                print(f'copy {key[0]} !u!{key[1]}#{key[2]}')
+            for key in only_src:
+                print(f'  chỉ có ở src, bỏ qua: {key[0]} !u!{key[1]}#{key[2]}')
+            for key in only_dst:
+                print(f'  chỉ có ở dst, giữ nguyên: {key[0]} !u!{key[1]}#{key[2]}')
+            return 0 if check(Prefab.load(a.dst), a.dst) else 1
         if a.cmd == 'graft':
             dst, src = Prefab.load(a.dst), Prefab.load(a.src)
             ids = dst.graft(src, src.transform_named(a.src_object), dst.transform_named(a.dst_parent), a.index)

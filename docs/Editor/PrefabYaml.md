@@ -3,8 +3,9 @@
 Code: `Editor/PrefabYaml/Tools~/prefab_yaml.py`
 
 Chép một cây object (kèm component, con, PrefabInstance lồng) từ prefab này sang prefab khác giữ nguyên fileID, xoá một cây,
-sửa field theo dòng, rồi kiểm cây Transform còn khớp — không mở Unity. Dùng khi chuyển phần của một prefab từ nhánh khác sang
-(VFX, khối UI), hay khi giải conflict prefab theo `merge-audit` (lấy bản một phía rồi ghép khối object phía kia thêm).
+sửa field theo dòng, chép cài đặt component từ bản khác theo tên object, rồi kiểm cây Transform còn khớp — không mở Unity.
+Dùng khi chuyển phần của một prefab từ nhánh khác sang (VFX, khối UI), khi giải conflict prefab theo `merge-audit` (lấy bản
+một phía rồi ghép khối object phía kia thêm), hay khi hoạ sĩ giao lại prefab đổi hết fileID mà `UnityPackageAudit` báo `GÃY`.
 
 ## Ngữ cảnh đã chốt
 
@@ -31,6 +32,8 @@ sửa field theo dòng, rồi kiểm cây Transform còn khớp — không mở 
 | Doc chép chèn ngay sau Transform cha, không cuối file | Unity không đòi thứ tự, nhưng diff đọc được: khối mới nằm cạnh chỗ gắn |
 | Ghi lại bằng LF | Unity ghi YAML bằng LF trên mọi nền tảng; giữ CRLF của working copy Windows làm diff toàn file |
 | `check` báo `{fileID: X}` treo, không báo `guid` treo | fileID nội bộ kiểm được trong một file; GUID cần cả dự án — mở prefab trong Editor là phép kiểm đó |
+| `copy` ghép theo tên GameObject, không theo fileID | bản hoạ sĩ xuất lại có thể đổi hết fileID; tên là thứ duy nhất còn khớp. Tên trùng trong một prefab thì ném, vì ghép theo tên không chắc |
+| `copy` thay cả body component, không chỉ dòng khác | hoạ sĩ đổi nhiều module hạt một lúc (đường cong, gradient); diff sau đó chỉ còn đúng các dòng đã đổi vì phần giống nhau giữ nguyên |
 
 ## Lệnh
 
@@ -38,9 +41,16 @@ sửa field theo dòng, rồi kiểm cây Transform còn khớp — không mở 
 python -X utf8 -I "<horcrux>/Editor/PrefabYaml/Tools~/prefab_yaml.py" check  <prefab>...
 python -X utf8 -I "<horcrux>/Editor/PrefabYaml/Tools~/prefab_yaml.py" graft  <dst> <src> <src_object> <dst_parent> [--index N]
 python -X utf8 -I "<horcrux>/Editor/PrefabYaml/Tools~/prefab_yaml.py" remove <prefab> <object>
+python -X utf8 -I "<horcrux>/Editor/PrefabYaml/Tools~/prefab_yaml.py" copy   <dst> <src> --class <!u!> [--class …]
+python -X utf8 -I "<horcrux>/Editor/PrefabYaml/Tools~/prefab_yaml.py" selftest
 ```
 
-`graft` và `remove` ghi đè file tại chỗ rồi chạy `check`. `--index` là vị trí trong `m_Children` của cha (mặc định cuối).
+`copy` chép body của component lớp `--class` (vd `198` ParticleSystem) từ `src` sang `dst`, ghép theo tên GameObject và thứ
+tự trong lớp; fileID nội bộ trong body (`m_GameObject`, component khác cùng cây) đổi sang bản `dst`, ref không ghép được thì
+ném. fileID của `dst` giữ nguyên nên override và ô tham chiếu của prefab lồng nó không đổi. In object chỉ có ở một bên:
+có thì hoạ sĩ đã đổi cấu trúc, phần đó phải ghép tay. `src` lấy từ gói: giải nén `<guid>/asset` của gói ra thư mục riêng.
+
+`graft`, `remove` và `copy` ghi đè file tại chỗ rồi chạy `check`. `--index` là vị trí trong `m_Children` của cha (mặc định cuối).
 Mã thoát: 0 sạch · 1 `check` báo lỗi · 2 dùng sai, tên không tìm thấy hay trùng, fileID trùng.
 
 `check` kiểm ba thứ: fileID không trùng · `m_Children` của cha ↔ `m_Father` của con (với PrefabInstance lồng là
@@ -50,7 +60,8 @@ Mã thoát: 0 sạch · 1 `check` báo lỗi · 2 dùng sai, tên không tìm th
 ## Ghép kèm sửa field — script ngắn
 
 ```python
-import sys; sys.path.insert(0, r"<horcrux>/Editor/PrefabYaml/Tools~")
+import sys; sys.dont_write_bytecode = True   # import module sinh __pycache__ trong Tools~, thành file lạ trong git status
+sys.path.insert(0, r"<horcrux>/Editor/PrefabYaml/Tools~")
 from prefab_yaml import Prefab, check
 
 dst, src = Prefab.load(dst_path), Prefab.load(src_path)
@@ -82,3 +93,8 @@ Lớp `!u!` hay gặp: `1` GameObject · `4` Transform · `224` RectTransform ·
 - Prefab đang mở trong Prefab Mode sẽ được Unity lưu đè lên bản YAML vừa ghép: đóng Prefab Mode trước khi chạy.
 - `check` sạch chưa đủ: mở prefab trong Editor xem — GUID treo, script mất, override của nested instance chỉ lộ ở đó.
 - Field đổi tên ghi bằng key YAML mới cùng lần, không `FormerlySerializedAs`.
+
+## Nghiệm thu
+
+`selftest` dựng hai prefab giả cho `copy`: ghép theo tên, body lấy từ `src` kèm ref có guid, fileID nội bộ đổi sang bản đích,
+object chỉ có ở `src` được báo, ref nội bộ không ghép được thì ném. Đối chứng: bỏ bước đổi fileID thì hai phép kiểm báo `SAI`.

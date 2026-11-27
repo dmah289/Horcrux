@@ -17,6 +17,9 @@ GUID_REF = re.compile(rb'guid: ([0-9a-f]{32})')
 META_GUID = re.compile(r'^guid: ([0-9a-f]{32})', re.M)
 BUILTIN_PREFIX = '0000000000000000'   # guid của tài nguyên dựng sẵn trong Unity (default resources, builtin extra)
 ROOT_EXTS = ('.prefab', '.unity')     # mặc định gốc là mọi prefab, scene trong gói: thứ người import thường cần đặt vào màn
+YAML_EXTS = ROOT_EXTS + ('.asset', '.mat', '.controller', '.anim', '.overridecontroller')
+DOC_FILE_ID = re.compile(rb'^--- !u!\d+ &(-?\d+)', re.M)
+EXTERNAL_REF = re.compile(rb'\{fileID: (-?\d+), guid: ([0-9a-f]{32})')
 
 
 class Entry:
@@ -102,6 +105,59 @@ def index_project(root):
     return by_guid, paths
 
 
+def doc_file_ids(data):
+    return {m.decode() for m in DOC_FILE_ID.findall(data)}
+
+
+def broken_refs(project, entries, status, by_guid):
+    """Mục khác bản dạng YAML: {guid: (số fileID trùng, số fileID bản dự án, [(file dự án, fileID)])}.
+    Gãy là chỗ file dự án trỏ `{fileID: X, guid: G}` mà X có trong bản đang dùng, không có trong bản gói: override của
+    prefab lồng, ô tham chiếu object con. Hoạ sĩ xuất lại prefab có thể đổi hết fileID dù giữ guid; import đè thì những
+    chỗ đó rơi im lặng. fileID không phải doc (100100000 của m_SourcePrefab) không bao giờ tính là gãy."""
+    changed = {}
+    for g, e in entries.items():
+        if status[g][0] != 'khác bản' or e.is_dir or e.asset[:5] != b'%YAML':
+            continue
+        try:
+            with open(os.path.join(project, by_guid[g]), 'rb') as fh:
+                ours = doc_file_ids(fh.read())
+        except OSError:
+            continue
+        changed[g] = (ours, doc_file_ids(e.asset))
+    if not changed:
+        return {}
+    hits = defaultdict(list)
+    wanted = [g.encode() for g in changed]
+    for dirpath, dirnames, filenames in os.walk(os.path.join(project, 'Assets')):
+        dirnames[:] = [d for d in dirnames if not d.endswith('~') and not d.startswith('.')]
+        for f in filenames:
+            if not f.lower().endswith(YAML_EXTS):
+                continue
+            full = os.path.join(dirpath, f)
+            try:
+                with open(full, 'rb') as fh:
+                    data = fh.read()
+            except OSError:
+                continue
+            if not any(w in data for w in wanted):
+                continue
+            rel = os.path.relpath(full, project).replace(os.sep, '/')
+            for fid, g in set(EXTERNAL_REF.findall(data)):
+                g, fid = g.decode(), fid.decode()
+                if g in changed and rel != by_guid[g]:
+                    ours, theirs = changed[g]
+                    if fid in ours - theirs:
+                        hits[g].append((rel, fid))
+    return {g: (len(ours & theirs), len(ours), sorted(hits[g])) for g, (ours, theirs) in changed.items()}
+
+
+def same_name_elsewhere(e, state, names):
+    """Prefab, scene mới (guid chưa có) mà dự án có file cùng tên: import thành bản thứ hai, chỗ đang dùng vẫn trỏ bản cũ."""
+    if state[0] != 'mới' or e.is_dir or not e.path.lower().endswith(ROOT_EXTS):
+        return []
+    return [p for p in names.get(e.path.rsplit('/', 1)[-1].lower(), []) if p != e.path]
+
+
 def same_bytes(a, b):
     return a.replace(b'\r\n', b'\n') == b.replace(b'\r\n', b'\n')
 
@@ -183,6 +239,11 @@ def audit(package, project, root_filters, list_all, out=print):
     out('gốc (%d): %s' % (len(roots), ', '.join(entries[g].path for g in roots) if roots else 'không có prefab, scene; đặt --root'))
 
     status = {g: classify(e, project, by_guid, paths) for g, e in entries.items()}
+    broken = broken_refs(project, entries, status, by_guid) if project else {}
+    names = defaultdict(list)
+    for p in paths:
+        if p.lower().endswith(ROOT_EXTS):
+            names[p.rsplit('/', 1)[-1].lower()].append(p)
     need, outside = closure(entries, roots)
     need_files = [entries[g] for g in entries if g in need and not entries[g].is_dir]
     out('')
@@ -191,7 +252,22 @@ def audit(package, project, root_filters, list_all, out=print):
         st, where = status[e.guid]
         tail = (' → dự án đặt ở %s' % where) if where else ''
         flag = '  nhị phân, không đọc được tham chiếu' if e.binary else ''
+        if e.guid in broken:
+            shared, total, hits = broken[e.guid]
+            flag += '  fileID trùng %d/%d' % (shared, total) + ('  GÃY %d tham chiếu' % len(hits) if hits else '')
+        twins = same_name_elsewhere(e, status[e.guid], names)
+        if twins:
+            flag += '  dự án có cùng tên ở %s: import thành bản thứ hai' % ', '.join(twins[:2])
         out('  %-26s %9s  %s%s%s' % (st, human(e.size), e.path, tail, flag))
+    gone = [g for g in entries if g in broken and broken[g][2]]
+    if gone:
+        out('import đè làm gãy tham chiếu của dự án (bản gói không còn fileID mà file dự án đang trỏ):')
+        for g in gone:
+            users = defaultdict(int)
+            for rel, _ in broken[g][2]:
+                users[rel] += 1
+            out('  %s ← %s' % (by_guid[g], ', '.join('%s (%d chỗ)' % kv for kv in sorted(users.items()))))
+        out('  → bỏ tick; chép phần đổi vào bản đang có (docs/Editor/PrefabYaml.md › copy), hoặc import rồi gán lại từng chỗ')
 
     builtin = {g for g in outside if g.startswith(BUILTIN_PREFIX)}
     in_project = {g for g in outside - builtin if g in by_guid}
@@ -228,7 +304,8 @@ def audit(package, project, root_filters, list_all, out=print):
         out('mọi file không cần cho gốc:')
         for e in rest:
             out('  %-26s %9s  %s' % (status[e.guid][0], human(e.size), e.path))
-    return dict(entries=entries, status=status, need=need, missing=missing, in_project=in_project, builtin=builtin)
+    return dict(entries=entries, status=status, need=need, missing=missing, in_project=in_project, builtin=builtin,
+                broken=broken)
 
 
 # ---------------------------------------------------------------- selftest
@@ -256,6 +333,7 @@ def selftest():
         return body
 
     g_prefab, g_mat, g_tex, g_script, g_same, g_diff, g_new, g_dir, g_lib = (guid(i) for i in range(1, 10))
+    g_old, g_use, g_twin_ours, g_twin_pkg = (guid(i) for i in range(10, 14))
     builtin = '0000000000000000f000000000000000'
     # dự án: script của thư viện có sẵn, một file thư viện giống, một file khác bản, một file trùng đường dẫn khác guid
     write_project('Assets/Lib/Runtime/Comp.cs', b'class Comp {}\r\n', g_script)
@@ -263,6 +341,11 @@ def selftest():
     write_project('Assets/Lib/Runtime/Diff.cs', b'class Diff { int v = 2; }\n', g_diff)
     write_project('Assets/Lib/Readme.txt', b'cu', guid(99))
     write_project('Assets/MyFX/glow.png', b'\x89PNG....', g_tex)
+    # prefab đang dùng mà hoạ sĩ xuất lại đổi hết fileID; prefab dự án lồng nó giữ override trỏ fileID 11 và m_SourcePrefab
+    write_project('Assets/MyFX/Old.prefab', b'%YAML 1.1\n--- !u!1 &10\n  m_Name: Old\n--- !u!198 &11\n  looping: 1\n', g_old)
+    write_project('Assets/Game/Use.prefab', ('%%YAML 1.1\n--- !u!1001 &1\n    - target: {fileID: 11, guid: %s, type: 3}\n'
+                                             '  m_SourcePrefab: {fileID: 100100000, guid: %s, type: 3}\n' % (g_old, g_old)).encode(), g_use)
+    write_project('Assets/MyFX/Twin.prefab', b'%YAML 1.1\n--- !u!1 &1\n', g_twin_ours)
 
     pkg = [
         (g_dir, 'Assets/FX', None),
@@ -274,6 +357,8 @@ def selftest():
         (g_diff, 'Assets/Lib/Runtime/Diff.cs', b'class Diff { int v = 1; }\n'),
         (g_new, 'Assets/Lib/Examples/Demo.cs', b'class Demo {}\n'),
         (g_lib, 'Assets/Lib/Readme.txt', b'moi'),
+        (g_old, 'Assets/FX/Old.prefab', b'%YAML 1.1\n--- !u!1 &20\n  m_Name: Old\n--- !u!198 &21\n  looping: 0\n'),
+        (g_twin_pkg, 'Assets/FX/Twin.prefab', b'%YAML 1.1\n--- !u!1 &1\n  m_Name: Twin\n'),
     ]
     package = os.path.join(tmp, 'fx.unitypackage')
     with tarfile.open(package, 'w:gz') as tar:
@@ -298,7 +383,8 @@ def selftest():
         if not cond:
             fails.append(msg)
 
-    check(need == {'Assets/FX', 'Assets/FX/Win.prefab', 'Assets/FX/Glow.mat', 'Assets/FX/glow.png', 'Assets/Lib/Runtime/Comp.cs'},
+    check(need == {'Assets/FX', 'Assets/FX/Win.prefab', 'Assets/FX/Glow.mat', 'Assets/FX/glow.png', 'Assets/Lib/Runtime/Comp.cs',
+                   'Assets/FX/Old.prefab', 'Assets/FX/Twin.prefab'},
           'gốc kéo theo prefab, material, texture, script và thư mục cha (%s)' % ', '.join(sorted(need)))
     check(st['Assets/Lib/Runtime/Comp.cs'] == 'giống', 'script khác mỗi CRLF là giống (%s)' % st['Assets/Lib/Runtime/Comp.cs'])
     check(st['Assets/Lib/Runtime/Diff.cs'] == 'khác bản', 'file thư viện khác nội dung là khác bản (%s)' % st['Assets/Lib/Runtime/Diff.cs'])
@@ -308,6 +394,13 @@ def selftest():
     tex = r['status'][g_tex]
     check(tex == ('giống', 'Assets/MyFX/glow.png'), 'file đã dời chỗ trong dự án vẫn so nội dung, báo chỗ mới (%s)' % (tex,))
     check(any('khác bản' in l and 'Diff.cs' in l for l in lines), 'cảnh báo file khác bản ngoài gốc')
+    check(r['broken'].get(g_old) == (0, 2, [('Assets/Game/Use.prefab', '11')]),
+          'prefab khác bản đổi hết fileID: 0/2 trùng, gãy override fileID 11, m_SourcePrefab không tính (%s)' % (r['broken'].get(g_old),))
+    check(any('GÃY 1 tham chiếu' in l and 'Old.prefab' in l for l in lines) and any('Use.prefab (1 chỗ)' in l for l in lines),
+          'dòng prefab gãy và file dự án bị gãy được in')
+    check(any('Twin.prefab' in l and 'cùng tên ở Assets/MyFX/Twin.prefab' in l for l in lines),
+          'prefab mới trùng tên prefab dự án khác guid được báo')
+    check(not any('cùng tên' in l for l in lines if '/Win.prefab' in l), 'prefab mới không trùng tên thì không báo')
     r2 = audit(package, proj, ['Glow.mat'], False, out=lambda *_: None)
     need2 = {r2['entries'][g].path for g in r2['need']}
     check(need2 == {'Assets/FX', 'Assets/FX/Glow.mat', 'Assets/FX/glow.png'}, '--root chọn gốc theo chuỗi (%s)' % ', '.join(sorted(need2)))

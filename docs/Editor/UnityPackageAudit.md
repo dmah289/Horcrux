@@ -34,6 +34,8 @@ Mục đích là import đúng phần cần, và không để runtime, plugin đ
 | So nội dung bỏ khác biệt `\r\n` | cùng file qua hai máy khác kiểu xuống dòng; khác mỗi xuống dòng mà báo khác bản là báo động giả |
 | Mục trùng guid so nội dung với file dự án dù dự án đã dời nó đi chỗ khác | Unity import theo guid: asset đã có guid đó nhận nội dung gói tại chỗ của nó trong dự án, không theo đường dẫn trong gói |
 | Gốc mặc định là mọi prefab, scene trong gói | gói hiệu ứng, UI thường dùng qua prefab; gói chỉ có material, script thì đặt `--root` |
+| Asset YAML `khác bản` được soát thêm fileID: quét file dự án trỏ `{fileID: X, guid: G}` | hoạ sĩ xuất lại prefab có thể đổi hết fileID nội bộ dù giữ guid; override của prefab lồng và ô trỏ object con trỏ theo fileID, import đè thì rơi im lặng. Đo chính chỗ gãy, không đo tỉ lệ fileID trùng: prefab không ai lồng thì đổi fileID vô hại |
+| Prefab, scene `mới` mà dự án có file cùng tên được báo | gói xuất từ máy hoạ sĩ có thể cấp guid mới cho prefab dự án đang dùng; import thành bản thứ hai, chỗ dùng vẫn trỏ bản cũ |
 
 ## Luồng dữ liệu
 
@@ -45,7 +47,9 @@ dự án/Assets, Packages ──► mọi .meta → guid → đường dẫn
 gốc (--root hoặc mọi .prefab, .unity) ──► đi theo tham chiếu trong gói → tập cần cho gốc (+ thư mục cha)
                            │             tham chiếu ra ngoài gói → dự án đã có · dựng sẵn của Unity · THIẾU
 mỗi mục ──► so guid, đường dẫn, nội dung với dự án → mới · giống · khác bản · trùng đường dẫn khác guid
-in: cần cho gốc (từng file) · ngoài gói · không cần cho gốc (gom theo hai cấp thư mục) · file dự án bị chạm nếu import cả gói
+           khác bản + YAML ──► fileID của bản dự án không còn trong bản gói ∩ fileID mà file YAML dự án trỏ → GÃY
+           mới + .prefab, .unity ──► dự án có file cùng tên → bản thứ hai
+in: cần cho gốc (từng file) · chỗ gãy · ngoài gói · không cần cho gốc (gom theo hai cấp thư mục) · file dự án bị chạm nếu import cả gói
 ```
 
 ## Lệnh
@@ -76,12 +80,15 @@ Vài giây cho gói vài trăm mục và dự án khoảng 8 000 asset.
 | `nhị phân, không đọc được tham chiếu` | asset của gốc lưu dạng nhị phân | danh sách cần có thể thiếu; mở prefab sau khi import để soát ô trống |
 | `THIẾU guid …, trỏ từ …` | gốc trỏ asset không có trong gói lẫn dự án | xin gói đủ, hoặc gán lại ô đó sau khi import |
 | `import cả gói sẽ chạm n file dự án đang có` | file `khác bản` hoặc trùng đường dẫn nằm ngoài phần cần | đây là lý do không import cả gói |
+| `fileID trùng k/n` | asset YAML khác bản: k trong n fileID của bản dự án còn trong bản gói | chỉ là thông tin; quyết theo `GÃY` |
+| `GÃY n tham chiếu` · khối `import đè làm gãy tham chiếu` | file dự án (prefab lồng, scene) trỏ fileID mà bản gói không còn | bỏ tick; bản mới chỉ đổi giá trị thì chép vào bản đang có bằng `prefab_yaml.py copy` (`docs/Editor/PrefabYaml.md`); đổi cấu trúc thì import rồi gán lại override, ô tham chiếu trong các file được liệt kê |
+| `dự án có cùng tên ở …: import thành bản thứ hai` | prefab, scene mới trùng tên một file dự án khác guid | thường là bản mới của file đó: không import, chép phần đổi vào file dự án như trên |
 
 ## Quy trình import
 
 1. Chạy tool với `--project`. Đọc dòng `gốc` để chắc đúng prefab, scene cần; sai thì đặt `--root`.
 2. Trong hộp thoại Import Unity Package: bấm **None**, rồi tick đúng các file ở mục `cần cho gốc` (và thư mục chứa chúng).
-3. `THIẾU` khác 0 thì dừng, hỏi người gửi gói trước khi import.
+3. `THIẾU` khác 0 thì dừng, hỏi người gửi gói trước khi import. `GÃY` hay `cùng tên` thì bỏ tick dòng đó, xử lý theo bảng trên.
 4. Sau khi import: dời phần vừa nhập về thư mục của dự án nếu cần. Guid giữ nguyên nên lần import gói sau tool vẫn nhận ra.
 
 ## Nghiệm thu
@@ -96,4 +103,9 @@ khác. Phải đọc ra:
 - cùng đường dẫn khác guid được báo đúng nhãn;
 - guid dựng sẵn không tính là thiếu;
 - texture đã dời là `giống` kèm chỗ trong dự án;
+- prefab khác bản đổi hết fileID báo `0/2`, gãy đúng override trỏ fileID cũ từ prefab dự án lồng nó; `m_SourcePrefab`
+  (fileID 100100000, không là doc) không tính;
+- prefab mới trùng tên prefab dự án khác guid được báo, prefab mới không trùng tên thì không;
 - `--root` theo chuỗi chỉ lấy material và texture.
+
+Đối chứng: thay `broken_refs`, `same_name_elsewhere` bằng hàm trả rỗng thì ba phép kiểm mới báo `SAI`.

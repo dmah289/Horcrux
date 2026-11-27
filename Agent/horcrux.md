@@ -54,6 +54,7 @@ chép lại.
 | Developer giao kiểm kịch bản hành vi trong Play qua công cụ | `feel-tune` › Chọn công cụ | `workflow` › Nghiệm thu |
 | Cheat, lệnh debug cho QA | `workflow` › tra cứu › Cheat | `code-design` |
 | Tool Editor, import/export, cấu hình nội dung, setup scene và prefab | `editor-first` | `code-design` |
+| Nhận gói hoạ sĩ (Spine JSON, `.unitypackage`), thay anim, hiệu ứng | `editor-first` › tra cứu › Gói asset từ ngoài; `docs/Editor/` SpineJson, UnityPackageAudit, PrefabYaml | `feel-tune` khi khớp nhịp code với anim |
 | Hệ có công thức toán, vật lý | `math-physics`, `code-design` | `docs` khi phải dẫn giải |
 | Viết hoặc cập nhật tài liệu, Plan, Manual, file trong `Agent/` | `docs` | `math-physics` khi có công thức |
 | Chỉnh feeling, đo GC và batches lúc trình diễn | `feel-tune` | `async-presentation` |
