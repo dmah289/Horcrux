@@ -104,6 +104,9 @@ $D adb shell dumpsys gfxinfo <pkg>          # adb thô với đúng đường d�
 3. Mỗi trạng thái giữ **ít nhất 20 giây**, `summary` so theo đoạn. Hai trạng thái cần so thì đo liền nhau.
 4. Tách nghẽn: `threads` — luồng main ms/s chia FPS là ms CPU mỗi khung, nhỏ hơn nhiều so với 16.7 thì không do CPU game;
    `res-ab` trên đúng màn chậm — lên rõ khi giảm pixel là nghẽn ở số pixel GPU vẽ (lớp phủ toàn màn, vẽ chồng).
+5. Lỗi chập chờn (FPS kẹt sau khi app về foreground): kịch bản lặp N lượt `home` · `wait <giây nền>` · `mark lượt i` ·
+   `resume` · `wait 13`, `play --fps-out` rồi `summary --skip 1` ra mỗi lượt một dòng. Chạy trên build có bản sửa **và**
+   build không có (developer cài lại), báo số lượt kẹt k/N mỗi bên. N đủ khi `(1 − p)^N` nhỏ, p là tỉ lệ kẹt đo ở build cũ.
 
 ## Kiểm event analytics và doanh thu quảng cáo
 

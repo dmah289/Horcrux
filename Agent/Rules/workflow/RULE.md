@@ -102,7 +102,8 @@ Neo khi phân vân: **công sức đắt nhất là của developer.**
 | kịch bản hành vi trên build | chơi qua kịch bản, cheat rút đường | developer, QA; agent khi máy thật nối được (`feel-tune`) |
 
 - **Phép kiểm phải đỏ được:** mỗi bước của thuật toán có ít nhất một case đỏ khi bỏ bước đó; chạy đối chứng một lần, ghi
-  kết quả cạnh case. Case đỏ oan dạy người đọc bỏ qua màu đỏ.
+  kết quả cạnh case. Case đỏ oan dạy người đọc bỏ qua màu đỏ. Lỗi chỉ xảy ra ở một phần số lần thì một lượt đối chứng ra
+  sạch như bản sửa: đối chứng bằng bản không có bản sửa trên cùng máy, nhiều lượt mỗi bên, báo tỉ lệ hỏng.
 - **Số đo nằm trên đúng vật được hỏi**, ở đúng điều kiện nơi dùng thật; mắt developer trái số đo thì nghi chỗ đo trước.
 - **Cảm giác — dừng và giao, không dựng proxy.** Báo *"cần chơi thử"* kèm kịch bản: *vào đâu* · *làm gì* (chuỗi ngắn nhất) ·
   *nhìn gì* · *khác trước ra sao* · *dấu hiệu hỏng*. Thứ developer chơi là cảm được thì agent không vào Play qua công cụ;

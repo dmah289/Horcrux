@@ -11,7 +11,8 @@ Không tham số thì là hook: đọc JSON trên stdin, rẽ theo `hook_event_n
     SessionStart startup         lệch như `install --check` thì báo agent và developer chạy `install`.
     SessionStart compact         nhắc agent đọc lại trọn luật nền: sau compact chỉ còn bản tóm tắt.
     PreToolUse  Bash|PowerShell  chặn `git add -A|-u|.`, `git commit -a`, commit không pathspec (`-- <paths>`) ngoài lúc
-                                 merge; commit vào `Agent/` mà `check_agent.py` báo lỗi ở chính file được commit.
+                                 merge; commit vào `Agent/` mà `check_agent.py` báo lỗi ở chính file được commit;
+                                 trên Windows, lệnh Bash có `\\\\` trong thân heredoc hay nháy đơn (tới chương trình chỉ còn `\\`).
     PreToolUse  Edit|Write       chặn sửa mục developer-only của `horcrux.md`.
     PostToolUse Edit|Write       ghi file `.cs` agent vừa sửa vào `Library/HorcruxVerify/agent-edits/<session>.txt`.
     PostToolUse Bash|PowerShell|Edit|Write  báo agent khi git ghi nhận ≥ 10 dòng của một file đổi chỉ vì CR cuối dòng
@@ -20,7 +21,7 @@ Không tham số thì là hook: đọc JSON trên stdin, rẽ theo `hook_event_n
                                  (`Library/HorcruxVerify/last-ok`); lần chặn thứ hai trong cùng lượt dừng thì để qua.
 
 Mỗi lần chặn hay nhắc ghi một dòng vào `Library/HorcruxVerify/hook-log.jsonl` (luật: git-add-all, git-commit-all,
-commit-no-pathspec, agent-check, dev-only, verify-stale, eol-churn, install-drift, compact-reread); `context_audit.py
+commit-no-pathspec, agent-check, bash-backslash, dev-only, verify-stale, eol-churn, install-drift, compact-reread); `context_audit.py
 hooks` đếm.
 
 Hook hỏng (ngoại lệ) thì im lặng để qua: một hook lỗi không được chặn việc của developer.
@@ -163,8 +164,24 @@ def agent_errors(top, paths):
     return out
 
 
+def literal_double_backslash(command):
+    """Thân heredoc và chuỗi nháy đơn chứa `\\\\`: bash giữ nguyên văn chỗ đó, nhưng Bash tool trên Windows (Git Bash) gộp
+    `\\\\` thành `\\` lúc khởi tiến trình, sau hook — chương trình nhận khác điều agent viết, thường không báo lỗi.
+    Trong nháy kép và ngoài nháy bash tự gộp `\\\\` nên kết quả như nhau: để qua."""
+    hits = [m.group(0).split("\n", 1)[0] for m in HEREDOC.finditer(command) if "\\\\" in m.group(0)]
+    hits += [q for q in re.findall(r"'[^'\n]*'", HEREDOC.sub(" ", command)) if "\\\\" in q]
+    return hits
+
+
 def pre_shell(data):
     command = data.get("tool_input", {}).get("command", "")
+    if os.name == "nt" and data.get("tool_name") == "Bash":
+        hits = literal_double_backslash(command)
+        if hits:
+            return deny(data, "bash-backslash", hits[0],
+                        "Lệnh có `\\\\` trong thân heredoc hoặc chuỗi nháy đơn: Bash tool trên Windows gộp `\\\\` thành `\\` "
+                        "trước khi bash chạy, chương trình nhận khác điều bạn viết (" + hits[0][:60] + "). Ghi script, "
+                        "nội dung bằng Write rồi chạy file; sửa file bằng Edit.")
     if "git" not in command:
         return
     for where, sub, args in git_calls(command, data.get("cwd") or os.getcwd()):
