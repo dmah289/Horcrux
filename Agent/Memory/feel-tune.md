@@ -46,3 +46,8 @@ Bài học đã trả giá khi làm việc với `feel-tune`. Đọc trọn cùn
 `2026-11` · vấp 1 · đã đo · đúng với `script eval` của Unity CLI/MCP
 **Thấy:** `CS0104 'Object' is an ambiguous reference between 'UnityEngine.Object' and 'object'` ở `Object.FindFirstObjectByType`, `DestroyImmediate`, `LoadAssetAtPath<Object>` · `There is no 'MeshRenderer' attached to "x"` ở `GetComponent<MeshRenderer>()?.sortingOrder` · `Transform has been destroyed` ở dòng `return` sau khi prefab đã lưu xong. **Vì:** eval `using System` lẫn `UnityEngine` · Editor trả object giả-null cho component vắng, `?.` bỏ qua phép so null của Unity · `UnloadPrefabContents` huỷ cây vừa sửa, đọc lại nó sau đó là đọc object đã huỷ.
 **Làm:** luôn viết `UnityEngine.Object` · component có thể vắng thì `TryGetComponent` hoặc `x != null ?`, không `?.`, `??` · sửa prefab qua `PrefabEdit.Edit` (`docs/Editor/UIReskin.md`), giá trị cần trả dựng thành chuỗi trước khi dỡ; lỗi ở `return` thì soát file trên đĩa trước khi chạy lại · script dài viết file `.cs`, chạy `script eval_file` để sửa một chỗ rồi chạy lại.
+
+### Đường tới cheat trên máy thật kẹt ở màn hướng dẫn hoặc mã PIN
+`2026-11` · vấp 1 · đã đo · đúng với build phát hành giấu bảng debug sau thao tác bí mật
+**Thấy:** chạm qua adb tới bảng debug thì màn hướng dẫn chặn nút mở popup, rồi bảng debug đòi PIN; mất nhiều lượt chụp–chạm. **Vì:** lớp hướng dẫn nuốt chạm ngoài ô được chỉ; PIN là mã truy cập, agent không nhập.
+**Làm:** chơi tay qua màn hướng dẫn trước (chạm theo tay chỉ); chuỗi chạm nhanh gửi trong một `adb shell "for …; do input tap …; done"` cho khớp giới hạn khoảng cách giữa hai chạm; tới bước PIN thì gom mọi thao tác cheat cần làm vào một lời nhờ developer, kèm "không bật Bypass" khi đang kiểm tracking (`docs/Editor/DeviceProbe.md`).

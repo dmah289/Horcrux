@@ -26,7 +26,8 @@ Skill dưới `Agent/horcrux.md` (NT, tầng, ký hiệu định nghĩa ở đó
    bản nào. Dừng tool, đổi cây, chạy lại. Ngay sau khi đổi cây, Editor import và báo bận: tool tự chờ tới `--ready-wait`,
    không dựng vòng chờ bên ngoài.
 8. **Fail mới là của task, fail có sẵn thì không.** Tool so tên test fail với lượt trước (`(mới)`, `hết fail`, mốc
-   `<giờ> @<commit>`); fail mới giữ nhãn `(mới)` tới khi pass, chỉ còn fail có sẵn thì vẫn ghi mốc cho hook. Mốc không ở bản trước task (task trước còn dở, vừa pull) thì chạy một lần trước khi sửa hay merge.
+   `<giờ> @<commit>`); fail mới giữ nhãn `(mới)` tới khi pass; test có sẵn ở HEAD mà lần đầu chạy đã fail mang `(chưa có mốc)`; chỉ còn hai loại
+   này thì vẫn ghi mốc cho hook. Mốc không ở bản trước task (task trước còn dở, vừa pull) thì chạy một lần trước khi sửa hay merge.
    Báo cáo tách hai nhóm; fail có sẵn báo một dòng, không sửa trong task.
 
 ## Lệnh

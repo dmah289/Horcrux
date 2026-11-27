@@ -1,7 +1,8 @@
 # Plan — `FrameRateBootStep`: một chủ giữ FPS mục tiêu, xin lại khi app về foreground
 
 Bản tạm: category-jam `Assets/_Game/Scripts/Common/FrameRateBootStep.cs`, đã wire dưới `bootstrap_service` trong `Launcher.unity`.
-**Phụ thuộc:** Bootstrap (đã có). Gõ **sau** khi bản tạm qua chơi thử trên máy Android 90/120Hz — máy thật bác cách xin lại thì Plan đổi trước.
+**Phụ thuộc:** Bootstrap (đã có). Bản tạm đã qua đo trên máy Android 120Hz: ra nền 30 s rồi quay lại, build không có bước xin
+lại kẹt 30 FPS ở 3/8 lượt, build có bước xin lại 0/9 lượt — gõ được.
 Kiểm: `bash "<horcrux>/Editor/CompileCheck/Tools~/verify.sh" --csproj com.horcrux.runtime.csproj,Horcrux.PlayModeTests.csproj --tests Horcrux.EditModeTests`; PlayMode chạy ở Window › General › Test Runner.
 
 ## Kịch bản

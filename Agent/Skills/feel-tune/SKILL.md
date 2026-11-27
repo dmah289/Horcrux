@@ -38,6 +38,7 @@ Khi nào được vào Play và khi nào giao developer chơi thử: `workflow` 
 | tiếng "không phát", to nhỏ lệch giữa các tiếng | nguồn đang phát chưa (`PlayProbe.Field`), rồi nút `Audit Loudness` của catalog audio (`docs/Runtime/AudioSystem/AudioSystem.md`): file nhỏ hơn mặt bằng hàng chục dB nghe như không phát — sửa file, không sửa code | không (audit) |
 | FPS, giật, nóng máy chỉ thấy trên máy thật; build đang cài có bản sửa chưa | DeviceProbe (`docs/Editor/DeviceProbe.md`): `play --fps-out` kịch bản có mốc, `summary` theo trạng thái màn, tách CPU/GPU bằng `threads`, `res-ab` | trên máy |
 | chơi lại đúng chuỗi thao tác developer báo lỗi trên máy | `record` lúc developer chơi, `play` để tái hiện và đo | trên máy |
+| event analytics, doanh thu quảng cáo build thật có gửi đi không, mang tham số gì | DeviceProbe `events` (`docs/Editor/DeviceProbe.md` › Kiểm event analytics) | trên máy |
 | cảm giác, nhịp, "đã tay" | developer chơi thử | — |
 
 ## Lệnh

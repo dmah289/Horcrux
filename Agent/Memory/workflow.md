@@ -22,11 +22,6 @@ Bài học đã trả giá khi làm việc với `workflow`. Đọc trọn cùng
 **Thấy:** tới lúc sửa prefab, scene hay art chưa track mới phát hiện worktree thiếu submodule, thiếu art, và hook chặn ghi checkout chính. **Vì:** Editor và MCP chỉ mở trên checkout chính; mở worktree trong Editor phải init submodule, chép art, import lại Library rất lâu.
 **Làm:** việc cần Editor thì hỏi ngay đầu task làm ở đâu; được làm ở checkout chính thì ghi file ở scratchpad rồi chép sang, giữ kiểu xuống dòng của file gốc; không commit nếu developer chưa bảo.
 
-### File chưa track trùng type của Plan xuất hiện giữa lúc viết lại Plan
-`2026-11` · vấp 1 · đã đo
-**Thấy:** đang viết lại nhiều Plan bằng subagent thì một file code chưa track mang đúng class của một Plan xuất hiện trong Horcrux — developer đã bắt đầu gõ theo bản Plan sắp đổi. **Vì:** Plan là đầu vào developer gõ song song; grep "chưa ai gõ" lúc đầu phiên chỉ đúng tại thời điểm đó.
-**Làm:** trước khi viết lại Plan, báo developer danh sách Plan sẽ đổi; trước mỗi commit soát `git status` của thư mục code Horcrux; thấy file trùng thì dừng và hỏi giữ hay đổi Plan, không chạm file đó (`workflow` › Subagent).
-
 ### Máy canh dựng theo bài học cũ canh một cái hại không còn xảy ra
 `2026-11` · vấp 1 · đã đo · đúng với bài học sắp nâng ① sửa gốc hay ② máy canh
 **Thấy:** sắp viết hook cho một bài học vấp 2; tái hiện trước thì cái hại nó tả (diff cả file) không xảy ra ở cấu hình hiện tại, chỉ còn cảnh báo vô hại. **Vì:** phần "Vì" đúng ở điều kiện lúc vấp (cấu hình git, dữ liệu trong repo); điều kiện đổi mà dòng "đúng với" không ghi điều kiện đó.
@@ -43,7 +38,7 @@ Bài học đã trả giá khi làm việc với `workflow`. Đọc trọn cùng
 **Làm:** tách lệnh xoá khỏi lệnh sửa để phần sửa vẫn chạy; bước xoá (trong Project window, để `.meta` đi cùng) và bước trả file giao developer ở mục thao tác Editor cuối báo cáo.
 
 ### Script Python nhúng heredoc khớp 0 chỗ hoặc báo SyntaxError
-`2026-11` · vấp 5 · đã đo · đúng với Bash tool là Git Bash trên Windows
+`2026-11` · vấp 6 · đã đo · đúng với Bash tool là Git Bash trên Windows
 **Thấy:** script Python nhúng bằng heredoc `<<'EOF'` thay khối C# khớp 0 chỗ mà không báo, hoặc dừng ở `SyntaxError: unterminated string literal` khi chuỗi chứa đường dẫn `\`; `'\\'` thành `'\'`, `$"…"` mất `$`; chuỗi regex `\\.` thành `\.` chỉ báo `SyntaxWarning`, phép thay vẫn chạy nhờ may; `\\b` trong regex ghi ra file thành ký tự backspace, `assert` vẫn qua, file hỏng im lặng. **Vì:** heredoc trong Bash tool không giữ nguyên văn `\` và `$`.
 **Làm:** khối có `$`, `\`, backtick thì sửa bằng Edit, hoặc ghi script bằng Write rồi `python -X utf8 -I script.py`; mọi phép thay theo chuỗi `assert count == 1` trước khi ghi.
 

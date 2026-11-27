@@ -40,7 +40,9 @@ Code cho biết cái gì chạy, không cho biết vì sao. Với **mỗi phát 
 dẫn, dòng) · **hiểu ý định là gì** — phát biểu lại, hỏi khớp thiết kế không · **developer biết chưa** — chủ ý hay đã trôi.
 Không kể lại code. Mỗi lượt review đọc lại file hiện tại (NT10). **Sắp thay hay dựa vào một thứ có sẵn thì soát nó có chạy
 thật không** — code gọi mà asset không vẽ thì không lỗi nào báo. **Hành vi đọc giá trị sống ngoài repo** (remote config,
-server) thì bản đang chạy là bản ngoài: phát hiện nêu cả hai bản, sửa số trong repo chưa phải sửa hành vi.
+server) thì bản đang chạy là bản ngoài: phát hiện nêu cả hai bản, sửa số trong repo chưa phải sửa hành vi. **File đổi giữa
+phiên mà mình không chạm** thì đọc `git log -- <file>` và `git status` trước khi gán nguyên nhân: developer và session khác
+sửa song song, bản họ đã commit thắng bản mình; Plan sắp viết lại theo bản đó thì báo phần sẽ đổi trước.
 
 ## Báo cáo và trình bày
 
@@ -97,7 +99,7 @@ Neo khi phân vân: **công sức đắt nhất là của developer.**
 | hiệu năng | số trước–sau tại chỗ đo | agent |
 | đúng–sai xác định được mà làm tay chậm, sót | vét cạn | agent, **tự đề xuất** |
 | cảm giác chơi, nhịp, độ khó, hình ảnh | **chơi thử** | **developer** |
-| kịch bản hành vi trên build | chơi qua kịch bản, cheat rút đường | developer, QA |
+| kịch bản hành vi trên build | chơi qua kịch bản, cheat rút đường | developer, QA; agent khi máy thật nối được (`feel-tune`) |
 
 - **Phép kiểm phải đỏ được:** mỗi bước của thuật toán có ít nhất một case đỏ khi bỏ bước đó; chạy đối chứng một lần, ghi
   kết quả cạnh case. Case đỏ oan dạy người đọc bỏ qua màu đỏ.
@@ -112,7 +114,8 @@ Neo khi phân vân: **công sức đắt nhất là của developer.**
   *nhất quán chéo* (nhiều bản buộc khớp). Không dấu hiệu nào thì đọc code là xong. **Đổi mô hình của hệ thì chạy lại mọi
   dòng kịch bản đã chốt** trên dữ liệu asset thật.
 - **Cheat mở đường tới kịch bản, không mở nắp kỹ thuật:** chỉ khi kịch bản không tới được bằng đường người chơi trong thời
-  gian hợp lý; gọi đúng lệnh thật của hệ, có trong build chính thức.
+  gian hợp lý; gọi đúng lệnh thật của hệ, có trong build chính thức. Agent tự dùng cheat để tới nhanh trạng thái cần kiểm
+  khi cheat **không đổi chính thứ đang kiểm**; báo cáo nêu cheat nào và vì sao nó không chạm kết quả.
 
 ## Việc lặp lại và git
 

@@ -257,23 +257,36 @@ if os.path.exists(path):
     prev = {n.lstrip("+") for n in names if in_scope(n.lstrip("+"))}
     prev_new = {n[1:] for n in names if n.startswith("+")}
     kept = [n for n in names if not in_scope(n.lstrip("+"))]
+# Tên mọi test từng chạy (pass hay fail). Test fail mà chưa từng chạy thì mốc không biết nó có sẵn hay do task:
+# test đã có ở HEAD là "chưa có mốc" (dữ liệu commit trước đó làm đỏ thì không chặn hook mãi), test task vừa viết là mới.
+seen_path = path[:-len(".fail")] + ".seen"
+seen = set(open(seen_path, encoding="utf8").read().splitlines()) if os.path.exists(seen_path) else set()
+def at_head(name):
+    method = name.split("(")[0].rsplit(".", 1)[-1]
+    return subprocess.run(["git", "-C", project, "grep", "--recurse-submodules", "-q", "-w", "-e", method, "HEAD", "--", "*.cs"],
+                          capture_output=True).returncode == 0
+prev = prev or set()
 now = {r["FullName"] for r in fails}
-new = set() if prev is None else (now - prev) | (now & prev_new)
+first = {n for n in now - prev - prev_new if n not in seen and at_head(n)}
+new = (now - prev - first) | (now & prev_new)
 for r in fails:
     msg = (r.get("Message") or "").strip().replace("\n", " | ")
-    mark = " (mới)" if r["FullName"] in new else ""
+    mark = " (mới)" if r["FullName"] in new else (" (chưa có mốc)" if r["FullName"] in first else "")
     print("  %s: %s%s %s" % (r["FullName"], r["Status"], mark, msg[:300]))
-if prev is not None:
-    for name in sorted(prev - now):
-        print("  hết fail: %s" % name)
-    print("  so với lượt %s: %d fail mới, %d hết fail" % (stamp, len(new), len(prev - now)))
+for name in sorted(prev - now):
+    print("  hết fail: %s" % name)
+print("  so với lượt %s: %d fail mới, %d chưa có mốc, %d hết fail" % (stamp or "chưa có", len(new), len(first), len(prev - now)))
+if first:
+    print("  chưa có mốc: test có sẵn ở HEAD, lần đầu chạy trên máy này đã fail; không chặn. Tìm commit đặt dữ liệu (git log) rồi báo developer")
+with open(seen_path, "w", encoding="utf8") as f:
+    f.writelines(n + "\n" for n in sorted(seen | {r["FullName"] for r in results}))
 head = subprocess.run(["git", "-C", project, "rev-parse", "--short", "HEAD"], capture_output=True, text=True).stdout.strip()
 with open(path, "w", encoding="utf8") as f:
     f.write("%s @%s\n" % (time.strftime("%Y-%m-%d %H:%M"), head or "?"))
     f.writelines(n + "\n" for n in kept)
     f.writelines(("+" if r["FullName"] in new else "") + r["FullName"] + "\n" for r in fails)
-# Mã 1: có fail mới, hoặc chưa có lượt trước để biết fail nào có sẵn. Mã 2: có fail có sẵn.
-sys.exit(1 if new or (prev is None and fails) else (2 if fails else 0))' \
+# Mã 1: có fail mới. Mã 2: chỉ còn fail có sẵn hoặc chưa có mốc.
+sys.exit(1 if new else (2 if fails else 0))' \
     "$PROJECT/Library/HorcruxVerify/$asm.fail" "$PROJECT" "$MERGED" "$asm" "$SCOPE" "$((SECONDS - step))"
   rc=$?
   rm -f "$MERGED"

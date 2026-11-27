@@ -1,7 +1,7 @@
 """Nói chuyện với máy Android đang nối adb: đọc máy và app, điều khiển chạm, đo FPS và CPU theo luồng, kiểm APK đang cài.
 Tài liệu: docs/Editor/DeviceProbe.md
 """
-import argparse, json, os, re, shutil, statistics, subprocess, sys, tempfile, time, zipfile
+import argparse, contextlib, json, os, re, shutil, statistics, subprocess, sys, tempfile, time, zipfile
 
 sys.stdout.reconfigure(encoding="utf-8")
 
@@ -84,7 +84,8 @@ def pick_serial(wanted):
         return wanted
     if len(ready) != 1:
         sys.exit(f"cần đúng một máy hoặc --serial; đang nối: {ready or 'không có'} "
-                 "(máy hiện 'unauthorized' thì bấm Cho phép gỡ lỗi USB trên máy)")
+                 "(máy hiện 'unauthorized' thì bấm Cho phép gỡ lỗi USB trên máy; không có gì mà máy vẫn hiện trong "
+                 "Windows dạng truyền file thì Gỡ lỗi USB đang tắt — docs/Editor/DeviceProbe.md › Nối máy)")
     return ready[0]
 
 
@@ -104,8 +105,15 @@ def pick_package(wanted):
 
 def surface_layer():
     """Layer SurfaceView của app; tên đổi sau mỗi lần app quay lại foreground nên đọc lại mỗi lần đo."""
-    rows = [l.strip() for l in sh("dumpsys SurfaceFlinger --list").splitlines()
-            if l.startswith("SurfaceView - " + PKG)]
+    # Android 16 bọc tên: "RequestedLayerState{95f6a30 SurfaceView[<pkg>/<activity>](BLAST)#id parentId=…}";
+    # --latency chỉ nhận đúng tên trong ngoặc, kể cả mã đầu. Bản cũ hơn: "SurfaceView - <pkg>/<activity>(BLAST)#id".
+    rows = []
+    for l in sh("dumpsys SurfaceFlinger --list").splitlines():
+        l = l.strip()
+        m = re.match(r"RequestedLayerState\{(.*?)(?: parentId=.*)?\}$", l)
+        name = m.group(1) if m else l
+        if name.startswith("SurfaceView - " + PKG) or re.match(r"\S+ SurfaceView\[" + re.escape(PKG) + "/", name):
+            rows.append(name)
     blast = [l for l in rows if "(BLAST)" in l]
     return (blast or rows or [None])[0]
 
@@ -133,6 +141,8 @@ def cmd_info(a):
         return
     field = lambda k: (re.search(k + r"=(\S+(?: \S+)?)", pkg) or [None, "?"])[1]
     print(f"app       {PKG} {field('versionName')} ({field('versionCode').split()[0]}) · cài {field('lastUpdateTime')}")
+    installer = re.search(r"installerPackageName=(\S+)", pkg)
+    print(f"dữ liệu   nguồn cài {installer.group(1) if installer else '?'} · {restore_note(pkg)}")
     pid = sh(f"pidof {PKG}").strip()
     focus = re.search(r"mCurrentFocus=.*? (\S+)\}", sh("dumpsys window | grep mCurrentFocus"))
     print(f"chạy      pid {pid or '-'} · đang trước mặt {focus.group(1) if focus else '?'}")
@@ -140,6 +150,27 @@ def cmd_info(a):
     if sizes:
         print(f"render    buffer của app {', '.join(f'{k} ×{v}' for k, v in sizes.items())}"
               " (nhỏ hơn màn: hệ máy tự hạ độ phân giải game)")
+
+
+def restore_note(pkg_dump):
+    """Android Auto Backup trả save cũ ngay sau khi cài, kể cả cài APK tay: "xoá cài lại" chưa phải bắt đầu sạch."""
+    if "ALLOW_BACKUP" not in pkg_dump:
+        return "app tắt backup"
+    # Sự kiện cuối của package sau mốc cài là kết cục khôi phục của chính lần cài này: "Package restore finished" là có
+    # save cũ; "Restore version higher" là bỏ vì backup đến từ bản mới hơn (hạ bản thì ra save sạch).
+    installed = (re.search(r"firstInstallTime=(\S+ \S+)", pkg_dump) or [None, ""])[1]
+    lines = sh("dumpsys backup").splitlines()
+    outcome = None
+    for i, l in enumerate(lines[:-1]):
+        m = re.match(r"\[(\S+ \S+)\] - (.+)", l.strip())
+        if m and lines[i + 1].strip() == f"Package: {PKG}" and m.group(1)[:19] >= installed \
+                and m.group(2) not in ("Start package restore", "Full restore", "Key value restore"):
+            outcome = (m.group(1)[:19], m.group(2))
+    if not outcome:
+        return "backup bật; lần cài này không chạy khôi phục"
+    if outcome[1] == "Package restore finished":
+        return f"backup bật; lần cài này nhận save cũ lúc {outcome[0]} — bắt đầu sạch dùng `pm clear`, không gỡ cài"
+    return f"backup bật; khôi phục lúc cài không trả save ({outcome[1]}, {outcome[0]})"
 
 
 def save_shot(path, scale=1.0, crop=None):
@@ -215,6 +246,14 @@ class Shell:
             self.p.kill()
 
 
+def inject(out):
+    """Lệnh chạm, phím trả lỗi qua stderr và mã 0 vẫn về: bỏ qua thì kịch bản "xong" mà không chạm nào tới app."""
+    if "INJECT_EVENTS" in out or "SecurityException" in out:
+        sys.exit("máy từ chối chạm giả lập (INJECT_EVENTS). Xiaomi/HyperOS: Tuỳ chọn nhà phát triển › bật "
+                 "Gỡ lỗi USB (Cài đặt bảo mật); máy khác xem docs/Editor/DeviceProbe.md › Bẫy")
+    return out
+
+
 def after_input(a):
     if getattr(a, "wait", 0):
         time.sleep(a.wait)
@@ -227,14 +266,14 @@ def cmd_tap(a):
     if len(pts) % 2:
         sys.exit("tap cần cặp x y")
     for i in range(0, len(pts), 2):
-        sh(f"{input_cmd()} tap {pts[i]} {pts[i + 1]}")
+        inject(sh(f"{input_cmd()} tap {pts[i]} {pts[i + 1]} 2>&1"))
         if i + 2 < len(pts):
             time.sleep(a.gap)
     after_input(a)
 
 
 def cmd_swipe(a):
-    sh(f"{input_cmd()} swipe {a.x1} {a.y1} {a.x2} {a.y2} {a.ms}")
+    inject(sh(f"{input_cmd()} swipe {a.x1} {a.y1} {a.x2} {a.y2} {a.ms} 2>&1"))
     after_input(a)
 
 
@@ -243,7 +282,7 @@ def keycode(name):
 
 
 def cmd_key(a):
-    sh(f"{input_cmd()} keyevent {keycode(a.code)}")
+    inject(sh(f"{input_cmd()} keyevent {keycode(a.code)} 2>&1"))
     after_input(a)
 
 
@@ -257,6 +296,15 @@ def launcher_activity():
 def cmd_resume(a):
     """Đưa app về foreground như bấm icon: task đang chạy được kéo lên, không mở lại từ đầu."""
     sh(f"am start -n {launcher_activity()}")
+    after_input(a)
+
+
+HOME_INTENT = "am start -a android.intent.action.MAIN -c android.intent.category.HOME"
+
+
+def cmd_home(a):
+    """Đưa app ra nền bằng intent màn chính, không qua chạm giả lập: chạy cả trên máy chặn INJECT_EVENTS."""
+    sh(HOME_INTENT)
     after_input(a)
 
 
@@ -295,7 +343,7 @@ class FrameSampler:
         fresh = self.read()
         stamp = time.strftime("%H:%M:%S")
         if fresh is None:
-            return stamp + " -", None
+            return f"{stamp} - {screen_blocker() or 'app không ở trước mặt'}", None
         if len(fresh) < 2:
             return f"{stamp} n={len(fresh)}", None
         gaps = sorted((b - a) / 1e6 for a, b in zip(fresh, fresh[1:]))
@@ -304,12 +352,45 @@ class FrameSampler:
         return f"{stamp} fps={fps:5.1f} lỡ={miss:2d} max={gaps[-1]:6.1f}ms", (fps, miss)
 
 
+def screen_blocker():
+    """Màn tắt hay đang khoá thì app không vẽ lên màn: lý do cho dòng '-' thay vì để người đọc đoán."""
+    if "mWakefulness=Awake" not in sh("dumpsys power | grep mWakefulness="):
+        return "màn tắt"
+    if "isKeyguardShowing=true" in sh("dumpsys window | grep isKeyguardShowing"):
+        return "màn khoá"
+    return None
+
+
+@contextlib.contextmanager
+def keep_awake():
+    """Giữ màn sáng khi cắm USB trong lúc đo, trả cài đặt cũ sau đó: màn tự tắt giữa kịch bản thì phần còn lại đo ra rỗng."""
+    # Trả bằng `svc`, không `settings put`: Xiaomi từ chối shell ghi cài đặt global (WRITE_SECURE_SETTINGS) mà vẫn trả mã 0.
+    # Giá trị là cờ bit 1 sạc AC · 2 USB · 4 không dây; tổ hợp mà `svc` không diễn tả được thì về "true" (mọi nguồn).
+    old = sh("settings get global stay_on_while_plugged_in").strip()
+    back = {"0": "false", "1": "ac", "2": "usb", "4": "wireless"}.get(old, "true")
+    # Tín hiệu dừng thành SystemExit để finally vẫn trả cài đặt (Linux, macOS; trên Windows dừng bằng `mark --stop`).
+    import signal
+    for name in ("SIGTERM", "SIGBREAK", "SIGHUP"):
+        if hasattr(signal, name):
+            signal.signal(getattr(signal, name), lambda *_: sys.exit(1))
+    sh("svc power stayon usb")
+    try:
+        yield
+    finally:
+        sh(f"svc power stayon {back}")
+
+
 def sample(seconds, target_fps, out=None):
     sampler = FrameSampler(target_fps)
     sampler.read()
     rows, end = [], time.time() + seconds
+    stop = out.name + ".stop" if out else None
     while time.time() < end:
         time.sleep(1.0)
+        # Dừng êm qua `mark --stop`: kill của Git Bash dừng hẳn Python trên Windows, finally không chạy, máy kẹt giữ màn sáng.
+        if stop and os.path.exists(stop):
+            os.remove(stop)
+            break
         text, row = sampler.line()
         if out:
             out.write(text + "\n")
@@ -339,6 +420,8 @@ def cmd_fps(a):
 def cmd_mark(a):
     with open(a.log, "a", encoding="utf-8") as out:
         out.write(f"# {time.strftime('%H:%M:%S')} {a.text}\n")
+    if a.stop:
+        open(a.log + ".stop", "w").close()
 
 
 def cmd_summary(a):
@@ -356,6 +439,9 @@ def cmd_summary(a):
         all_rows = [r for _, rs in segments for r in rs]
         print(f"{a.last} giây cuối: {describe(all_rows[-a.last:])}")
         return
+    if not any(rows for _, rows in segments):
+        sys.exit(f"{a.log}: không có dòng fps nào — app không ở trước mặt suốt lượt đo, hoặc tool không tìm ra layer "
+                 "của app (dòng '-'; xem docs/Editor/DeviceProbe.md › Bẫy)")
     for label, rows in segments:
         if rows[a.skip:]:
             print(f"{label}\n    {describe(rows[a.skip:])}")
@@ -482,7 +568,7 @@ def cmd_play(a):
         line = raw.split("#", 1)[0].strip() if not raw.lstrip().startswith("mark") else raw.strip()
         if line:
             steps.append((n, line.split(maxsplit=1)[0], line))
-    known = {"tap", "swipe", "key", "wait", "resume", "mark", "shot"}
+    known = {"tap", "swipe", "key", "wait", "resume", "home", "mark", "shot"}
     bad = [f"dòng {n}: {w}" for n, w, _ in steps if w not in known]
     if bad:
         sys.exit("lệnh lạ trong kịch bản: " + ", ".join(bad))
@@ -511,12 +597,14 @@ def cmd_play(a):
             if word == "wait":
                 time.sleep(float(arg[0]) / a.speed)
             elif word == "tap":
-                shell.run(f"{inp} tap {arg[0]} {arg[1]}")
+                inject(shell.run(f"{inp} tap {arg[0]} {arg[1]} 2>&1"))
             elif word == "swipe":
                 ms = round(int(arg[4] if len(arg) > 4 else 300) / a.speed)
-                shell.run(f"{inp} swipe {arg[0]} {arg[1]} {arg[2]} {arg[3]} {max(ms, 50)}")
+                inject(shell.run(f"{inp} swipe {arg[0]} {arg[1]} {arg[2]} {arg[3]} {max(ms, 50)} 2>&1"))
             elif word == "key":
-                shell.run(f"{inp} keyevent {keycode(arg[0])}")
+                inject(shell.run(f"{inp} keyevent {keycode(arg[0])} 2>&1"))
+            elif word == "home":
+                shell.run(HOME_INTENT)
             elif word == "resume":
                 shell.run(f"am start -n {launcher_activity()}")
             elif word == "mark":
@@ -614,6 +702,131 @@ def cmd_log(a):
         print(l[:a.width])
 
 
+# ---------- event analytics ----------
+
+# Firebase chỉ in event ra logcat khi máy bật debug cho đúng package và hạ mức log của tag FA, FA-SVC; app phải mở lại.
+FA_PROPS = {"debug.firebase.analytics.app": ".none.", "log.tag.FA": "INFO", "log.tag.FA-SVC": "INFO"}
+FA_TAG = re.compile(r"\b[VDIWEF][ /](FA-SVC|FA)\s*[:(]")
+FA_EVENT = re.compile(r"Logging event[^:]*: origin=(\w+),name=([^,]+),params=Bundle\[\{(.*)\}\]")
+FA_USER_PROP = re.compile(r"Setting user property[^:]*: ([^,]+), ?(.*)")
+
+
+def strip_code(name):
+    """Firebase in tên kèm mã rút gọn: `screen_view(_vs)` → `screen_view`."""
+    return re.sub(r"\(_\w+\)$", "", name.strip())
+
+
+def bundle_params(body):
+    out = {}
+    for item in re.split(r", (?=[\w()]+=)", body):
+        k, _, v = item.partition("=")
+        out[strip_code(k)] = v
+    return out
+
+
+def read_events(lines, params, revenue):
+    """Đếm event Firebase, user property và callback doanh thu của SDK quảng cáo trong logcat.
+    Cùng một event có thể in ở cả FA lẫn FA-SVC: mỗi loại chỉ lấy từ tag in nhiều nhất để không đếm đôi."""
+    events = {"FA": [], "FA-SVC": []}
+    props = {"FA": [], "FA-SVC": []}
+    paid = {}
+    for l in lines:
+        m = revenue.search(l)
+        if m:
+            key = m.group(1) if m.groups() else m.group(0)
+            paid[key] = paid.get(key, 0) + 1
+        t = FA_TAG.search(l)
+        if not t:
+            continue
+        e = FA_EVENT.search(l)
+        if e:
+            p = bundle_params(e.group(3))
+            events[t.group(1)].append((e.group(1), strip_code(e.group(2)), {k: p.get(k) for k in params if k in p}))
+            continue
+        u = FA_USER_PROP.search(l)
+        if u:
+            props[t.group(1)].append((strip_code(u.group(1)), u.group(2).strip()))
+    pick = lambda d: max(d, key=lambda k: len(d[k]))
+    et, pt = pick(events), pick(props)
+    return et, events[et], pt, props[pt], paid
+
+
+def tally(values, top=4):
+    counts = {}
+    for v in values:
+        counts[v] = counts.get(v, 0) + 1
+    ranked = sorted(counts.items(), key=lambda kv: -kv[1])
+    text = " ".join(f"{v}×{n}" for v, n in ranked[:top])
+    return text + (f" +{len(ranked) - top} giá trị" if len(ranked) > top else "")
+
+
+def cmd_events(a):
+    params = [p for p in a.params.split(",") if p]
+    revenue = re.compile(a.revenue)
+    installer = re.search(r"installerPackageName=(\S+)", sh(f"dumpsys package {PKG}"))
+    print(f"nguồn cài  {installer.group(1) if installer else 'không đọc được'} (com.android.vending = Google Play)")
+
+    old = {k: sh(f"getprop {k}").strip() for k in FA_PROPS}
+    for k in FA_PROPS:
+        sh(f"setprop {k} {PKG if k.startswith('debug.') else 'VERBOSE'}")
+    raw = a.log or os.path.join(tempfile.gettempdir(), f"device_events_{os.getpid()}.log")
+    t_start = time.time()
+    try:
+        adb("logcat", "-c")
+        if a.restart:
+            sh(f"am force-stop {PKG}")
+            sh(f"am start -n {launcher_activity()}")
+            print(f"đã mở lại {PKG} để cờ debug có hiệu lực")
+        with open(raw, "w", encoding="utf-8", errors="replace") as f:
+            cat = subprocess.Popen([ADB, "-s", SERIAL, "logcat", "-v", "threadtime"], stdout=f, stderr=subprocess.DEVNULL)
+            try:
+                if a.script:
+                    cmd_play(argparse.Namespace(script=a.script, fps_out=None, speed=a.speed, target=60, skip=2))
+                    time.sleep(a.tail)
+                else:
+                    print(f"ghi {a.seconds:.0f} s — chơi trên máy (Ctrl+C dừng sớm)", flush=True)
+                    time.sleep(a.seconds)
+            except KeyboardInterrupt:
+                print("dừng sớm")
+            finally:
+                cat.terminate()
+                cat.wait(timeout=5)
+    finally:
+        # Trả cờ cả khi lỗi giữa chừng: để VERBOSE thì logcat của máy ngập FA, để debug thì event đi vào DebugView.
+        for k, default in FA_PROPS.items():
+            sh(f"setprop {k} {old[k] or default}")
+        print("cờ đã trả  " + " · ".join(f"{k}={old[k] or default}" for k, default in FA_PROPS.items()))
+
+    lines = open(raw, encoding="utf-8", errors="replace").read().splitlines()
+    et, events, pt, props, paid = read_events(lines, params, revenue)
+    print(f"ghi {time.time() - t_start:.0f} s · logcat {len(lines)} dòng" + (f" · {raw}" if a.log else ""))
+    if not a.log:
+        os.remove(raw)
+    if not events and not props:
+        print("KHÔNG thấy dòng FA nào: app không dùng Firebase, hoặc cờ chưa có hiệu lực (bỏ --no-restart), "
+              "hoặc cổng analytics của game chặn hết và Firebase chưa tự log event nào")
+
+    names = {}
+    for origin, name, p in events:
+        names.setdefault((origin, name), []).append(p)
+    print(f"event Firebase ({et}): {len(events)}")
+    for (origin, name), ps in sorted(names.items(), key=lambda kv: (kv[0][0] != "app", -len(kv[1]))):
+        detail = " · ".join(f"{k}: {tally([p[k] for p in ps if k in p])}" for k in params if any(k in p for p in ps))
+        print(f"  {len(ps):4}  {origin:<4} {name:<28} {detail}")
+    if props:
+        print(f"user property ({pt}): {len(props)}")
+        by_name = {}
+        for name, value in props:
+            by_name.setdefault(name, []).append(value)
+        for name, values in by_name.items():
+            print(f"  {len(values):4}  {name:<28} {tally(values)}")
+    print(f"callback doanh thu SDK ({a.revenue}): {sum(paid.values())}")
+    for name, n in sorted(paid.items(), key=lambda kv: -kv[1]):
+        print(f"  {n:4}  {name}")
+    impressions = sum(1 for o, n, _ in events if n == a.impression)
+    print(f"so: callback doanh thu {sum(paid.values())} · {a.impression} Firebase {impressions}")
+
+
 # ---------- CLI ----------
 
 def main():
@@ -645,11 +858,13 @@ def main():
     s.add_argument("ms", type=int, nargs="?", default=300)
     s = with_after(sub.add_parser("key")); s.add_argument("code", help="HOME, BACK, KEYCODE_… hoặc số")
     with_after(sub.add_parser("resume"))
+    with_after(sub.add_parser("home", help="ra nền bằng intent màn chính (không cần chạm giả lập)"))
     sub.add_parser("stop")
     s = sub.add_parser("wait"); s.add_argument("seconds", type=float)
     s = sub.add_parser("fps"); s.add_argument("--seconds", type=float, default=30); s.add_argument("--out")
     s.add_argument("--target", type=float, default=60, help="FPS mục tiêu; khung dài hơn 1.5 lần nhịp này tính là lỡ")
     s = sub.add_parser("mark"); s.add_argument("log"); s.add_argument("text")
+    s.add_argument("--stop", action="store_true", help="`fps` đang ghi vào log này dừng ở giây kế tiếp và trả cài đặt máy")
     s = sub.add_parser("summary"); s.add_argument("log"); s.add_argument("--skip", type=int, default=2,
                                                                          help="bỏ n giây đầu mỗi đoạn (chuyển cảnh)")
     s.add_argument("--last", type=int, help="chỉ tóm n giây cuối của log")
@@ -660,6 +875,17 @@ def main():
     s = sub.add_parser("log"); s.add_argument("--grep"); s.add_argument("--clear", action="store_true")
     s.add_argument("--max", type=int, default=80); s.add_argument("--width", type=int, default=220)
     s.add_argument("--no-dedupe", dest="dedupe", action="store_false")
+    s = sub.add_parser("events", help="bật log Firebase, ghi logcat trong lúc chơi, đếm event so với callback doanh thu, trả cờ")
+    s.add_argument("--seconds", type=float, default=120, help="thời gian ghi khi không có --script")
+    s.add_argument("--script", help="kịch bản `play` chạy trong lúc ghi")
+    s.add_argument("--speed", type=float, default=1.0); s.add_argument("--tail", type=float, default=5,
+                                                                        help="giây ghi thêm sau kịch bản (event gửi trễ)")
+    s.add_argument("--no-restart", dest="restart", action="store_false", help="không mở lại app (cờ debug có thể chưa có hiệu lực)")
+    s.add_argument("--params", default="ad_format,ad_unit_name", help="tham số event cần đếm giá trị, cách nhau bằng dấu phẩy")
+    s.add_argument("--revenue", default=r"Invoking event: (On\w*RevenuePaid\w*)",
+                   help="regex dòng callback doanh thu của SDK quảng cáo; nhóm 1 là tên (mặc định AppLovin MAX Unity)")
+    s.add_argument("--impression", default="ad_impression", help="event Firebase đối chiếu với callback doanh thu")
+    s.add_argument("--log", help="giữ logcat thô ở file này")
     s = sub.add_parser("adb", help="chạy adb với đường dẫn và máy đã chọn"); s.add_argument("args", nargs=argparse.REMAINDER)
     a = p.parse_args()
 
@@ -677,9 +903,14 @@ def main():
         r = subprocess.run([ADB, "-s", SERIAL, *a.args])
         sys.exit(r.returncode)
     PKG = pick_package(a.pkg)
-    {"info": cmd_info, "shot": cmd_shot, "tap": cmd_tap, "swipe": cmd_swipe, "key": cmd_key, "resume": cmd_resume,
-     "stop": cmd_stop, "fps": cmd_fps, "record": cmd_record, "play": cmd_play, "res-ab": cmd_res_ab, "threads": cmd_threads,
-     "apk-has": cmd_apk_has, "log": cmd_log}[a.cmd](a)
+    run = {"info": cmd_info, "shot": cmd_shot, "tap": cmd_tap, "swipe": cmd_swipe, "key": cmd_key, "resume": cmd_resume,
+           "home": cmd_home, "stop": cmd_stop, "fps": cmd_fps, "record": cmd_record, "play": cmd_play, "res-ab": cmd_res_ab,
+           "threads": cmd_threads, "apk-has": cmd_apk_has, "log": cmd_log, "events": cmd_events}[a.cmd]
+    if a.cmd in ("fps", "play", "res-ab", "events", "record"):
+        with keep_awake():
+            run(a)
+    else:
+        run(a)
 
 
 if __name__ == "__main__":
