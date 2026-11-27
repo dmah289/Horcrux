@@ -1,21 +1,25 @@
 #!/usr/bin/env bash
-# Một lệnh kiểm sau mỗi task: build các csproj → Unity recompile → test EditMode theo assembly. In gọn, mã thoát 1 khi một bước hỏng.
-# Editor phải đang mở project cho hai bước Unity; --no-unity chỉ chạy bước build.
+# Một lệnh kiểm sau mỗi task: Unity recompile → test EditMode theo assembly. In gọn, mã thoát 1 khi một bước hỏng.
+# Editor mở thì recompile là phép kiểm biên dịch, bỏ build csproj (trùng việc, tốn 20–40 s); recompile LỖI thì build để in
+# đủ lỗi mọi assembly. Editor không mở, hoặc --no-unity, thì build csproj thay.
 # Dùng: bash verify.sh [--project <path>] [--csproj a.csproj,b.csproj] [--tests Asm1,Asm2] [--no-unity] [--no-tests] [--timeout giây] [--help]
-#   --csproj   csproj do Unity sinh ở gốc project (gitignore), build bằng dotnet hoặc MSBuild, chỉ in lỗi. Bỏ trống thì bỏ bước này.
+#   --csproj   csproj do Unity sinh ở gốc project (gitignore), build bằng dotnet hoặc MSBuild, chỉ in lỗi — chỉ khi không có
+#              Editor hoặc khi recompile LỖI. Bỏ trống thì không build. --build ép build cả khi Editor mở.
 #   MSBUILD ép đường dẫn MSBuild.exe. Không đặt thì dùng `dotnet` trên PATH, thiếu nữa thì tìm MSBuild của Rider, Visual Studio.
 #   --tests    assembly test EditMode. Bỏ trống thì bỏ bước này. Mặc định chỉ chạy lớp test bị chạm bởi file đổi từ lượt
 #              test trước (affected_tests.py; không lớp nào thì bỏ bước test), kèm assembly test bị chạm mà danh sách thiếu.
 #   --all-tests  chạy cả các assembly trong --tests, không chọn — trước merge, release, hoặc khi nghi bộ chọn sót.
-#   --timeout  giây chờ mỗi assembly test (mặc định 600).
+#   --timeout  giây chờ mỗi assembly test (mặc định 600). Lượt đầu chỉ chờ --first-timeout (mặc định 150): lượt treo
+#              (Editor không xử lý lệnh) thì huỷ rồi chạy lại một lần với --timeout, thay vì chờ đủ 600 s.
 #   --ready-wait  giây chờ Editor đang bận (import sau pull, merge) về ready trước bước Unity (mặc định 600). Không Editor nào mở project thì không chờ.
 #   Test fail ghi vào Library/HorcruxVerify/<assembly>.fail; lượt sau đánh dấu fail mới, in fail đã hết so với lượt đó.
 #   OK, hoặc chỉ còn fail có sẵn (0 fail mới), thì ghi Library/HorcruxVerify/last-ok (giờ epoch, kèm hậu tố khi bỏ bước
-#   Unity) — mốc cho hook Stop của Agent. Chỉ còn fail có sẵn vẫn thoát mã 1 và in tên assembly còn fail.
+#   Unity) — mốc cho hook Stop của Agent. Chỉ còn fail có sẵn vẫn thoát mã 1 và in tên assembly còn fail. Mọi lượt
+#   chạy tới cuối (kể cả FAIL) ghi last-run: agent đã có kết quả để báo, hook không ép chạy lại.
 #   UNITY_CLI ép đường dẫn unity.exe (mặc định tìm `unity` trên PATH). Chạy từ gốc project hoặc đặt --project.
 #   --print-builder  in builder sẽ dùng (`dotnet` hoặc đường dẫn Windows của MSBuild.exe) rồi thoát; không có builder thì mã 1.
 set -u
-PROJECT="$PWD"; CSPROJ=""; TESTS=""; UNITY=1; RUN_TESTS=1; ALL_TESTS=0; TIMEOUT=600; READY_WAIT=600; PRINT_BUILDER=0
+PROJECT="$PWD"; CSPROJ=""; TESTS=""; UNITY=1; RUN_TESTS=1; ALL_TESTS=0; TIMEOUT=600; FIRST_TIMEOUT=150; READY_WAIT=600; PRINT_BUILDER=0; FORCE_BUILD=0
 HERE="$(cd "$(dirname "$0")" && pwd)"
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -26,6 +30,8 @@ while [ $# -gt 0 ]; do
     --no-unity) UNITY=0; shift ;;
     --no-tests) RUN_TESTS=0; shift ;;
     --timeout) TIMEOUT="$2"; shift 2 ;;
+    --first-timeout) FIRST_TIMEOUT="$2"; shift 2 ;;
+    --build) FORCE_BUILD=1; shift ;;
     --ready-wait) READY_WAIT="$2"; shift 2 ;;
     --print-builder) PRINT_BUILDER=1; shift ;;
     --help|-h) sed -n '2,/^set -u/p' "$0" | sed '$d;s/^# \{0,1\}//'; exit 0 ;;
@@ -56,8 +62,9 @@ print("" if cur is None else (json.dumps(cur, ensure_ascii=False) if isinstance(
 # Ghi mốc last-ok khi task không làm hỏng gì: hook Stop (Agent/Tools~/agent_hooks.py) so mtime file .cs agent đã sửa với
 # mốc này. Fail có sẵn không chặn mốc, không thì assembly còn fail từ trước làm hook chặn mọi lượt.
 finish() {
+  mkdir -p "$PROJECT/Library/HorcruxVerify" && date +%s > "$PROJECT/Library/HorcruxVerify/last-run"
   [ -n "$FAIL" ] && { echo "verify: FAIL$FAIL"; exit 1; }
-  mkdir -p "$PROJECT/Library/HorcruxVerify" && echo "$(date +%s)${1:-}" > "$PROJECT/Library/HorcruxVerify/last-ok"
+  echo "$(date +%s)${1:-}" > "$PROJECT/Library/HorcruxVerify/last-ok"
   [ -n "$KNOWN_FAIL" ] && { echo "verify: FAIL tests chỉ là fail có sẵn ($KNOWN_FAIL), 0 fail mới — đã ghi mốc last-ok ($SECONDS s)"; exit 1; }
   echo "verify: OK${1:-} ($SECONDS s)"; exit 0
 }
@@ -122,26 +129,33 @@ if [ $UNITY -eq 1 ] && wait_ready; then
   "$U" cmd --project-path "$W" --result-only --timeout 300 script eval --code "UnityEditor.AssetDatabase.Refresh(); return 0;" >/dev/null 2>&1
 fi
 
-# 1. Build csproj: chỉ dòng lỗi, bỏ dòng trùng (MSBuild in mỗi lỗi hai lần). Chọn builder một lần.
+# 1. Build csproj khi không có Editor (hoặc --build): chỉ dòng lỗi, bỏ dòng trùng (MSBuild in mỗi lỗi hai lần).
 build_csproj() {
   if [ -n "$MSB" ]; then MSYS_NO_PATHCONV=1 "$MSB" "$(cygpath -w "$1")" -t:Build -p:Configuration=Debug -v:q -nologo -clp:ErrorsOnly 2>&1
   else dotnet build "$1" -nologo -v q -clp:ErrorsOnly 2>&1; fi
 }
-IFS=',' read -ra PROJS <<< "$CSPROJ"
-if [ -n "$CSPROJ" ]; then
-  if ! pick_builder; then FAIL="$FAIL build"; PROJS=()
-  elif [ -n "$MSB" ]; then echo "build: dùng $MSB"; fi
+# Editor mở thì bỏ ở đường xanh: recompile đủ chứng minh biên dịch; recompile LỖI thì build lại để in đủ lỗi mọi assembly.
+run_builds() {
+  IFS=',' read -ra PROJS <<< "$CSPROJ"
+  [ ${#PROJS[@]} -gt 0 ] || return 0
+  if ! pick_builder; then FAIL="$FAIL build"; return 0; fi
+  [ -n "$MSB" ] && echo "build: dùng $MSB"
+  for proj in "${PROJS[@]}"; do
+    [ -z "$proj" ] && continue
+    path="$PROJECT/$proj"; [ -f "$proj" ] && path="$proj"
+    if [ ! -f "$path" ]; then echo "build $proj: không có file (Unity chưa sinh csproj?)"; FAIL="$FAIL build"; continue; fi
+    step=$SECONDS; out="$(build_csproj "$path")"; rc=$?
+    errs="$(echo "$out" | tr -d '\r' | grep -E "error (CS|MSB)[0-9]+" | sed 's/ *\[.*csproj\] *$//' | sort -u)"
+    if [ -n "$errs" ]; then echo "build $proj: LỖI"; echo "$errs" | head -40; FAIL="$FAIL build"
+    elif [ $rc -ne 0 ]; then echo "build $proj: LỖI (mã thoát $rc, không có dòng error CS/MSB)"; echo "$out" | tr -d '\r' | head -20; FAIL="$FAIL build"
+    else echo "build $proj: ok ($((SECONDS - step)) s)"; fi
+  done
+}
+if [ -n "$CSPROJ" ] && [ $EDITOR_READY -eq 1 ] && [ $FORCE_BUILD -eq 0 ]; then
+  echo "build: bỏ, Editor mở — recompile là phép kiểm biên dịch"
+else
+  run_builds
 fi
-for proj in "${PROJS[@]}"; do
-  [ -z "$proj" ] && continue
-  path="$PROJECT/$proj"; [ -f "$proj" ] && path="$proj"
-  if [ ! -f "$path" ]; then echo "build $proj: không có file (Unity chưa sinh csproj?)"; FAIL="$FAIL build"; continue; fi
-  step=$SECONDS; out="$(build_csproj "$path")"; rc=$?
-  errs="$(echo "$out" | tr -d '\r' | grep -E "error (CS|MSB)[0-9]+" | sed 's/ *\[.*csproj\] *$//' | sort -u)"
-  if [ -n "$errs" ]; then echo "build $proj: LỖI"; echo "$errs" | head -40; FAIL="$FAIL build"
-  elif [ $rc -ne 0 ]; then echo "build $proj: LỖI (mã thoát $rc, không có dòng error CS/MSB)"; echo "$out" | tr -d '\r' | head -20; FAIL="$FAIL build"
-  else echo "build $proj: ok ($((SECONDS - step)) s)"; fi
-done
 
 [ $UNITY -eq 1 ] || finish " (chỉ build csproj)"
 
@@ -163,6 +177,7 @@ done
 if [ "$status" != "completed" ] && [ "$status" != "up_to_date" ]; then echo "recompile: không xong sau 180 s (status=$status)"; FAIL="$FAIL recompile"
 elif [ "$(echo "$raw" | jfield compilationFailed)" = "True" ] || [ "$(echo "$raw" | jfield failed)" = "True" ]; then
   echo "recompile: LỖI"
+  [ -n "$CSPROJ" ] && [ $EDITOR_READY -eq 1 ] && [ $FORCE_BUILD -eq 0 ] && run_builds
   echo "$raw" | jfield errors | python -X utf8 -I -c '
 import json, sys
 for e in json.loads(sys.stdin.read() or "[]")[:40]:
@@ -178,9 +193,17 @@ for i in $(seq 1 30); do "$U" status --project-path "$W" 2>&1 | grep -q "ready" 
 # 3. Test EditMode: chỉ test bị chạm bởi file đổi từ lượt test trước (affected_tests.py), --all-tests thì cả assembly.
 # Một lần `test run` theo bộ lọc; lệnh trả in_progress thì hỏi test status tới khi xong. Kết quả vào RAW, lỗi đã in thì trả 1.
 run_filter() {
-  local label="$1" ftype="$2" filter="$3" started=$SECONDS
+  local label="$1" ftype="$2" filter="$3" started=$SECONDS first=$FIRST_TIMEOUT
+  [ "$first" -gt "$TIMEOUT" ] && first=$TIMEOUT
   # scene đang mở có thay đổi chưa lưu thì Test Runner mở hộp thoại hỏi lưu: lệnh đứng tới timeout, Editor không trả lời CLI
-  RAW="$("$U" cmd --project-path "$W" --result-only test run --mode EditMode --filter_type "$ftype" --filter "$filter" --timeout "$TIMEOUT" 2>&1)"
+  RAW="$("$U" cmd --project-path "$W" --result-only test run --mode EditMode --filter_type "$ftype" --filter "$filter" --timeout "$first" 2>&1)"
+  # Hết hạn thì CLI huỷ lượt (không trả in_progress). Lượt treo từng chờ đủ 600 s rồi chạy lại xong trong vài chục giây
+  # (đo 2026-11): huỷ sớm, chạy lại một lần với hạn đầy đủ.
+  if [ "$first" -lt "$TIMEOUT" ] && echo "$RAW" | grep -q "timed out"; then
+    echo "tests $label: lượt đầu quá $first s, chạy lại với hạn $TIMEOUT s"
+    wait_ready 60 >/dev/null; started=$SECONDS
+    RAW="$("$U" cmd --project-path "$W" --result-only test run --mode EditMode --filter_type "$ftype" --filter "$filter" --timeout "$TIMEOUT" 2>&1)"
+  fi
   # Kết nối rớt giữa lượt ("socket hang up"): test có thể vẫn chạy trong Editor nên hỏi test status; Editor mất hẳn thì nói thẳng.
   # Editor bận (domain reload vì file đổi giữa lượt, session khác sửa code) thì chờ ready; lượt bị reload cắt thì gửi lại một lần.
   if [ "$(echo "$RAW" | jfield success)" = "False" ]; then

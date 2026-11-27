@@ -350,15 +350,17 @@ def stop(data):
     log = state_dir(data) / "agent-edits" / f"{data.get('session_id', 'unknown')}.txt"
     if not log.exists():
         return
-    ok = state_dir(data) / "last-ok"
-    ok_time = ok.stat().st_mtime if ok.exists() else 0
+    # Mốc là lượt verify chạy tới cuối gần nhất, xanh hay đỏ: agent đã có kết quả để báo. Chỉ tính lượt xanh thì fail
+    # ngoài task (dữ liệu asset, test có sẵn đổi nhãn) làm hook ép chạy lại mỗi lượt dừng — đo 2026-11: 35 lần chặn/6 phiên.
+    marks = [state_dir(data) / name for name in ("last-ok", "last-run")]
+    ok_time = max((m.stat().st_mtime for m in marks if m.exists()), default=0)
     stale = [p for p in log.read_text(encoding="utf-8").splitlines()
              if compiled(p) and in_project(data, p) and os.path.exists(p) and os.path.getmtime(p) > ok_time]
     if stale:
         log_event(data, "verify-stale", " ".join(stale))
         names = ", ".join(pathlib.Path(p).name for p in stale[:5]) + (" …" if len(stale) > 5 else "")
         print(json.dumps({"decision": "block", "reason":
-                          f"Có {len(stale)} file .cs sửa sau lần verify.sh xanh cuối ({names}). Chạy compile-check "
+                          f"Có {len(stale)} file .cs sửa sau lần verify.sh cuối ({names}). Chạy compile-check "
                           "(`verify.sh` theo lệnh của dự án) và dán dòng kết quả vào báo cáo; không chạy được "
                           "(Editor đóng, thiếu builder) thì nói rõ là chưa kiểm."}, ensure_ascii=False))
 
@@ -372,6 +374,9 @@ HOOKS = [  # (sự kiện, matcher, timeout giây); mọi sự kiện gọi cùn
     ("Stop", None, 10),
 ]
 STUB_MARK = "Bản gốc nằm trong Horcrux; file này chỉ để Claude Code tìm thấy"
+# Mỗi lần gọi model gửi lại cả context: phiên dài trung vị 200–540k token × 350–420 lần gọi là ~2/3 hạn mức (đo 2026-11,
+# 12 phiên). Compact ở cửa sổ 300k giữ context dưới đó; dự án đã tự đặt giá trị khác thì giữ.
+ENV_DEFAULTS = {"CLAUDE_CODE_AUTO_COMPACT_WINDOW": "300000"}
 
 
 def agent_rel(project):
@@ -432,9 +437,12 @@ def plan(project):
     command = (f"python -X utf8 -I -c \"import os,runpy;runpy.run_path("
                f"os.environ['CLAUDE_PROJECT_DIR']+'/{script}',run_name='__main__')\"")
     new = merge_hooks(json.loads(json.dumps(old)), command)
+    env = new.setdefault("env", {})
+    for key, value in ENV_DEFAULTS.items():
+        env.setdefault(key, value)
     if new != old:
         text = json.dumps(new, indent=2, ensure_ascii=False) + "\n"
-        acts.append(("ghi hook", path, text.replace("\n", "\r\n") if "\r\n" in raw else text))
+        acts.append(("ghi hook, env", path, text.replace("\n", "\r\n") if "\r\n" in raw else text))
     return acts
 
 

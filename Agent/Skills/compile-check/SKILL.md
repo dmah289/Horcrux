@@ -10,16 +10,17 @@ Skill dưới `Agent/horcrux.md` (NT, tầng, ký hiệu định nghĩa ở đó
 
 ## Luật
 
-- **Mỗi task code kết bằng một lần `verify.sh` xanh.** Báo cáo dán dòng tool in ra (`verify: OK`, `tests …: n/m pass`, dòng
+- **Mỗi task code kết bằng một lần `verify.sh`, chạy khi phần code đã xong** — không sau mỗi sửa nhỏ giữa chừng; sửa lỗi
+  verify báo thì chạy lại một lần. Báo cáo dán dòng tool in ra (`verify: OK`, `tests …: n/m pass`, dòng
   `so với lượt …` khi có fail), không viết "đã compile sạch". `FAIL unity` (Editor chưa mở) hay thiếu builder là chưa kiểm,
   không phải xanh.
 - **Kiểm đúng phạm vi task:** tool chỉ chạy test bị chạm bởi file đổi; đụng thứ dò tên không thấy (reflection, chuỗi tên
   type), trước merge hay release thì `--all-tests`. Task chạm Horcrux luôn kèm csproj và assembly test của Horcrux.
 - **Fail mới là của task, fail có sẵn thì không.** Tool gắn nhãn so với lượt trước (`(mới)`, `hết fail`, `(chưa có mốc)`);
-  báo cáo tách hai nhóm, fail có sẵn báo một dòng, không sửa trong task. Mốc không ở bản trước task (vừa pull, task trước
+  báo cáo tách hai nhóm, fail có sẵn báo một dòng, không sửa trong task, không chạy lại để đổi kết quả. Mốc không ở bản trước task (vừa pull, task trước
   dở) thì chạy một lần trước khi sửa hay merge.
-- **Lỗi build ngay sau khi thêm, dời, pull file là lỗi tạm** (csproj chưa có file): tool Refresh Editor trước bước build;
-  còn lỗi thì chạy lại trước khi kết luận — bước recompile mới là sự thật.
+- **Editor mở thì recompile là phép kiểm biên dịch;** tool chỉ build csproj khi không có Editor hoặc recompile LỖI (để in đủ
+  lỗi). Lỗi build ngay sau khi thêm, dời, pull file là lỗi tạm (csproj chưa có file) — recompile mới là sự thật.
 - **Không đổi cây làm việc (pull, checkout, merge) khi tool đang chạy:** Editor nạp file giữa lượt, kết quả không thuộc bản
   nào: dừng tool, đổi cây, chạy lại. Ngay sau khi đổi cây, tool tự chờ Editor import xong; không dựng vòng chờ bên ngoài.
 - **PlayMode không qua tool này** (cần Play, chiếm Editor): developer chạy trong Test Runner.

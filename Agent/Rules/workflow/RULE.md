@@ -69,20 +69,23 @@ nhau không?* — rồi ghi theo `docs` › Agent.
 
 ## Subagent
 
-Subagent là ngữ cảnh trắng: prompt **tự chứa như một giai đoạn của Plan** — trích đoạn tài liệu cần, đường dẫn file sẽ chạm,
-tiêu chí nghiệm thu; thiếu thì báo về, không tự đi đọc — trừ **code nó sẽ sửa**.
+Mỗi subagent nạp lại phần nền (~90k token) trước dòng việc đầu: chỉ dùng khi việc song song thật, hay soát chéo dưới đây;
+việc vài lệnh thì tự làm. Subagent là ngữ cảnh trắng: prompt **tự chứa như một giai đoạn của Plan** — trích đoạn tài liệu
+cần, đường dẫn file sẽ chạm, tiêu chí nghiệm thu; thiếu thì báo về, không tự đi đọc — trừ **code nó sẽ sửa**.
 
 **Chạy Plan bằng subagent:** hỏi gộp một lần trước task đầu (nhánh, commit mỗi task, điểm dừng) rồi chạy liền · mỗi
 subagent commit task của nó bằng pathspec · mọi bước chơi thử và duyệt art gom thành một kịch bản cuối · review mỗi task
 loại commit ngoài Plan chen giữa.
 
-**Soát chéo khi bằng chứng là phán đoán** (khớp ảnh với demo, review diff, soát merge, duyệt Plan): agent làm đã tin kết
-luận, đọc lại chỉ thấy điều xác nhận nó. Subagent soát nhận **vật** (diff, ảnh, file, tiêu chí), không nhận kết luận của
+**Soát chéo khi bằng chứng là phán đoán và sai thì đắt** (soát merge, duyệt Plan, review diff lớn, khớp ảnh với demo khi
+developer cần): agent làm đã tin kết luận, đọc lại chỉ thấy điều xác nhận nó. Subagent soát nhận **vật** (diff, ảnh, file, tiêu chí), không nhận kết luận của
 agent làm; agent làm phân xử từng phát hiện bằng bằng chứng, nêu cả phát hiện bác bỏ.
 
 ## Nghiệm thu — phép kiểm theo loại tiêu chí
 
-Neo khi phân vân: **công sức đắt nhất là của developer.**
+Neo khi phân vân: **công sức đắt nhất là của developer.** **Kiểm vừa đủ:** developer còn tự chơi thử, QA còn kiểm logic,
+nên agent kiểm thứ hai bước đó không thấy hoặc thấy muộn — biên dịch, test tự động bị chạm, số đo được hỏi, dữ liệu ghi ra.
+Không chạy lại phép kiểm đã xanh khi phần đổi sau đó không chạm nó; không dựng phép kiểm cho thứ chơi thử thấy ngay.
 
 | Tiêu chí | Bằng chứng | Ai chạy |
 |---|---|---|
@@ -101,8 +104,8 @@ Neo khi phân vân: **công sức đắt nhất là của developer.**
   *nhìn gì* · *khác trước ra sao* · *dấu hiệu hỏng*. Play qua công cụ chỉ cho thứ developer **không cảm được** (trace, số
   đo, trạng thái nội bộ — `feel-tune`).
 - **Hướng dẫn developer tự làm là output phải nghiệm thu:** mỗi giá trị, thứ tự, tên ô đã dựng thử trên engine.
-- **Vét cạn** khi có đáp án xác định được và ít nhất một dấu hiệu — agent làm kể cả chưa được yêu cầu, vì đây là bằng
-  chứng: *sức* (không gian đầu vào lớn) · *thiên kiến* (ca biên khó nghĩ hết) · *tầm nhìn* (chứng minh **vắng mặt**) ·
+- **Vét cạn** khi có đáp án xác định được và ít nhất một dấu hiệu — agent làm kể cả chưa được yêu cầu khi sai ở đó hỏng dữ
+  liệu ghi ra hay thuật toán lõi; ngoài ra đề xuất một dòng: *sức* (không gian đầu vào lớn) · *thiên kiến* (ca biên khó nghĩ hết) · *tầm nhìn* (chứng minh **vắng mặt**) ·
   *nhất quán chéo* (nhiều bản buộc khớp). Không dấu hiệu nào thì đọc code là xong. **Đổi mô hình của hệ thì chạy lại mọi
   dòng kịch bản đã chốt** trên dữ liệu asset thật.
 - **Cheat mở đường tới kịch bản, không mở nắp kỹ thuật** (tra cứu › Cheat). Agent tự dùng cheat để tới nhanh trạng thái cần
@@ -115,10 +118,12 @@ tác, hoặc biết sẽ làm lại): một dòng *việc gì · lặp mấy l�
 lần*. Mặc định đặt ở Horcrux (tool Editor, script `Tools~`, skill); dự án chỉ giữ lớp nối. Developer đồng ý thì viết công cụ, tài
 liệu, cập nhật skill hoặc mở skill mới kèm hàng trong bảng chỉ dẫn.
 
-**Ngân sách ngữ cảnh khi dùng công cụ:** đọc kết quả tool đã tóm tắt, không đổ log, JSON, diff thô hay ảnh cỡ gốc vào ngữ
-cảnh · một lần đo là một lệnh chạy cả kịch bản; đi từng bước qua MCP chỉ khi còn đang dò mình cần nhìn gì · đọc output thẳng, không pipe qua `tail`, `head`
-(lệnh bị đẩy nền thì không biết kẹt ở đâu) · lệnh dài hơn một phút chạy nền, không đọc khi chưa xong · không chạy song song
-hai lệnh cùng chiếm Editor.
+**Ngân sách ngữ cảnh — mỗi lần gọi model gửi lại cả context, nên thứ đã vào context bị trả ở mọi lượt sau:** một phiên
+một việc; việc mới không cần ngữ cảnh đang có thì đề xuất phiên mới · file lớn đọc theo đoạn (grep rồi đọc có giới hạn),
+không `cat` cả file — luật `Agent/` vẫn đọc trọn · không đọc lại file đã đọc trong phiên trừ khi nó đổi hay sau compact ·
+kết quả tool đọc bản tóm tắt, không đổ log, JSON, diff thô; ảnh thu nhỏ, cắt đúng vùng · một lần đo là một lệnh chạy cả
+kịch bản; đi từng bước qua MCP chỉ khi còn dò mình cần nhìn gì · đọc output thẳng, không pipe qua `tail`, `head` · lệnh dài
+hơn một phút chạy nền · không chạy song song hai lệnh cùng chiếm Editor.
 
 **Git:** commit chỉ mang phần của việc mình (pathspec), không đụng thứ developer đã stage, không `stash` khi còn đường
 khác · commit trong Horcrux thì commit luôn con trỏ submodule ở dự án · sau một lượt chờ dài, đọc lại trạng thái trước bước

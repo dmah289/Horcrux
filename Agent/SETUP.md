@@ -27,6 +27,8 @@ Lệnh đưa `.claude/` của dự án về khớp Horcrux, chạy lại bao nhi
   File mồi chỉ trỏ về bản gốc để Claude Code tìm thấy skill, không chép nội dung.
 - Hook trong `.claude/settings.json`, giữ nguyên hook và cấu hình khác. Mọi sự kiện gọi cùng `agent_hooks.py`; lệnh
   đọc `CLAUDE_PROJECT_DIR` trong Python nên chạy như nhau dù Claude Code gọi hook bằng bash hay PowerShell.
+- `env.CLAUDE_CODE_AUTO_COMPACT_WINDOW = 300000` khi dự án chưa đặt: mỗi lần gọi model gửi lại cả context, nên compact
+  ở 300k token thay vì sát trần cửa sổ; giá trị dự án đã đặt thì giữ.
 
 Horcrux đổi skill hay hook thì phiên mới báo lệch (hook lúc mở phiên); chạy lại lệnh rồi commit phần đổi. `--check` chỉ
 in phần lệch, không ghi.
@@ -37,7 +39,7 @@ in phần lệch, không ghi.
 | sau compact | không chặn; nhắc agent đọc lại trọn luật nền, vì luật đọc bằng Read chỉ còn bản tóm tắt | `horcrux.md` › Luật đọc |
 | trước lệnh shell | `git add -A`, `-u`, `.` · `git commit -a` · commit không `-- <paths>` (trừ lúc merge) · commit vào `Agent/` khi `check_agent.py` báo lỗi ở chính file đó · Windows: lệnh Bash có `\\` trong thân heredoc hay nháy đơn (Git Bash gộp thành `\` sau hook) | `workflow` › Việc lặp lại, công cụ và git · `docs` › Agent |
 | trước sửa file | sửa mục developer-only của `horcrux.md` | `horcrux.md` › Yêu cầu của developer |
-| sau sửa file, khi dừng | báo xong khi còn `.cs` agent sửa sau lần `verify.sh` xanh cuối (OK, hoặc chỉ còn fail có sẵn); chặn một lần mỗi lượt dừng | `compile-check` › Luật |
+| sau sửa file, khi dừng | báo xong khi còn `.cs` agent sửa sau lần `verify.sh` chạy tới cuối gần nhất (xanh hay đỏ); chặn một lần mỗi lượt dừng | `compile-check` › Luật |
 | sau lệnh shell, sau sửa file | không chặn lệnh đã chạy; báo agent khi git ghi nhận ≥ 10 dòng của một file đổi chỉ vì CR cuối dòng, ở dự án hay submodule. Đo trên diff: `core.autocrlf=true` chuẩn hoá CR nên im; `autocrlf=false` hay file `-text` thì đổi kiểu xuống dòng thành diff cả file. Mỗi file báo một lần cho mỗi lần sửa | ghi giữ kiểu xuống dòng của file gốc |
 
 Không thấy: `.cs` sửa bằng lệnh shell, vì hook chỉ ghi file sửa qua Edit, Write.

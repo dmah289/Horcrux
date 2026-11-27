@@ -1,8 +1,8 @@
 # CompileCheck — một lệnh kiểm sau mỗi task
 
-`verify.sh` chạy ba phép kiểm mà mọi task code đều cần, theo thứ tự rẻ tới đắt, và in một dòng kết quả kèm số giây cho mỗi
-bước: build các csproj Unity sinh bằng `dotnet` hoặc MSBuild → Unity recompile trong Editor đang mở → test EditMode **bị chạm
-bởi file đổi từ lượt test trước** (`affected_tests.py`; `--all-tests` thì cả assembly). Mã thoát 1 khi một bước hỏng, nên
+`verify.sh` chạy các phép kiểm mà mọi task code đều cần, theo thứ tự rẻ tới đắt, và in một dòng kết quả kèm số giây cho mỗi
+bước: Unity recompile trong Editor đang mở (Editor không mở thì build các csproj Unity sinh bằng `dotnet` hoặc MSBuild) →
+test EditMode **bị chạm bởi file đổi từ lượt test trước** (`affected_tests.py`; `--all-tests` thì cả assembly). Mã thoát 1 khi một bước hỏng, nên
 dùng được làm điều kiện commit.
 
 ## Ngữ cảnh đã chốt
@@ -29,25 +29,27 @@ dùng được làm điều kiện commit.
 
 | Chỗ | Vì |
 |---|---|
-| Giữ cả bước build csproj dù Unity recompile đã đủ | builder báo đủ mọi lỗi của một assembly trong một lần và in chúng ra stdout; Unity dừng ở assembly đầu tiên hỏng và chỉ ghi console |
+| Editor mở thì bỏ build csproj ở đường xanh, chỉ build khi recompile LỖI (`--build` ép build) | recompile đã chứng minh biên dịch; build lặp lại việc đó tốn 20–40 s trong mỗi lượt verify 50–130 s (đo 2026-11 trên 12 phiên). Builder vẫn đáng ở đường lỗi: báo đủ mọi lỗi của một assembly trong một lần, Unity dừng ở assembly đầu tiên hỏng |
 | Đọc JSON của Unity CLI bằng `raw_decode`, không `json.load` | CLI in thêm một dòng hint của plugin sau JSON; `json.load` ném "Extra data" |
 | Lỗi build lọc bằng `sort -u` | MSBuild in mỗi lỗi hai lần (một của compiler, một của tổng kết) |
-| `AssetDatabase.Refresh` qua `script eval` **trước bước build** khi Editor mở | Editor không focus thì chưa nạp file sửa từ ngoài: recompile trả `up_to_date` trên bản cũ và báo xanh giả; file mới từ pull, merge chưa vào csproj nên build báo `CS0246` giả |
+| `AssetDatabase.Refresh` qua `script eval` **trước recompile** khi Editor mở | Editor không focus thì chưa nạp file sửa từ ngoài: recompile trả `up_to_date` trên bản cũ và báo xanh giả; file mới từ pull, merge chưa vào csproj nên build báo `CS0246` giả |
 | Editor đang bận (import sau pull) thì chờ tới `--ready-wait`, không báo `FAIL unity` | import vài chục file mất vài phút, lệnh gửi lúc đó timeout; không Editor nào mở project thì không chờ |
 | Ghi tên test fail vào `Library/HorcruxVerify/<assembly>.fail`; fail mới ghi `+tên` và giữ nhãn `(mới)` tới khi pass | fail có sẵn trước task chỉ phân biệt được với fail task gây ra bằng tên, không bằng số; ghi đè thẳng thì lượt chạy lại thứ hai coi fail mới là có sẵn. `Library` không vào git, mỗi máy một mốc; xoá file để đặt lại mốc |
 | Ghi tên mọi test từng chạy vào `<assembly>.seen`; test fail chưa từng chạy mà tên hàm có ở HEAD (`git grep --recurse-submodules`) mang nhãn `(chưa có mốc)`, không chặn | tool chỉ chạy lớp bị chạm nên test có sẵn hay chạy lần đầu: dữ liệu commit trước đó làm nó đỏ thì nhãn `(mới)` chặn hook tới khi developer sửa dữ liệu. Test task vừa viết không có ở HEAD nên vẫn là `(mới)`; test từng chạy qua rồi fail là `(mới)`. Giá: task làm đỏ một test có sẵn chưa từng chạy trên máy này cũng ra `(chưa có mốc)` — đọc message trước khi báo |
-| Ghi `Library/HorcruxVerify/last-ok` khi OK, hoặc khi chỉ còn fail có sẵn (dòng cuối `verify: FAIL tests chỉ là fail có sẵn (…)`, vẫn thoát mã 1); hỏng khác thì để nguyên | hook Stop của Agent (`Agent/Tools~/agent_hooks.py`) so mtime file `.cs` agent sửa với mốc này để chặn báo xong khi chưa kiểm; mốc chỉ dời khi task không làm hỏng gì. Chỉ tin `verify: OK` thì assembly còn fail từ trước làm hook chặn mọi lượt |
+| Ghi `Library/HorcruxVerify/last-ok` khi OK, hoặc khi chỉ còn fail có sẵn (dòng cuối `verify: FAIL tests chỉ là fail có sẵn (…)`, vẫn thoát mã 1); mọi lượt chạy tới cuối, kể cả FAIL, ghi `last-run` | hook Stop của Agent (`Agent/Tools~/agent_hooks.py`) so mtime file `.cs` agent sửa với mốc mới hơn trong hai mốc để chặn báo xong khi **chưa chạy** kiểm. Lượt FAIL đã cho agent kết quả để báo; chỉ tính lượt xanh thì fail ngoài task (dữ liệu asset) làm hook ép chạy lại mọi lượt dừng (đo 2026-11: 35 lần chặn trong 6 phiên) |
 | Đợi `unity status` ra `ready` (tối đa 60 s) giữa recompile và test | recompile xong còn domain reload, Pipeline ngắt vài giây; `test run` gửi lúc đó trả `EDITOR_NOT_RUNNING` |
+| Lượt `test run` đầu chỉ chờ `--first-timeout` (150 s), hết hạn thì chạy lại một lần với `--timeout` | hết hạn thì CLI huỷ lượt, không trả `in_progress`. Lượt treo (Editor không xử lý lệnh) từng chờ đủ 600 s rồi lượt chạy lại xong trong vài chục giây (đo 2026-11: 627 s cho 49 test); cả assembly 267 test chạy 22 s |
 | `test run` trả `success: false` thì hỏi `test status`, không báo hỏng ngay | kết nối CLI rớt giữa lượt ("socket hang up") trong khi test vẫn chạy trong Editor. Editor bận (domain reload vì file đổi giữa lượt) thì chờ tới `--ready-wait`; `test status` không có kết quả thì gửi lại `test run` một lần — reload cắt lượt test. Chỉ khi không về `ready` mới báo Editor mất |
 
 ## Luồng dữ liệu
 
 ```
 --project   ──► unity status: ready | bận → chờ tới --ready-wait | không Editor ──► (ready) AssetDatabase.Refresh — Editor sinh lại csproj
---csproj a,b ──► chọn builder (MSBUILD › dotnet › MSBuild Rider/VS) ──► build -v q -clp:ErrorsOnly ──► "build a: ok" | dòng lỗi CS/MSB | mã thoát ≠ 0
+--csproj a,b ──► (không Editor | --build | recompile LỖI) chọn builder (MSBUILD › dotnet › MSBuild Rider/VS) ──► build -v q -clp:ErrorsOnly
 (ready?)    ──► script recompile ──► poll recompile_status tới completed|up_to_date ──► errors[]          (không ready → FAIL unity)
 --tests X,Y ──► affected_tests.py: file đổi từ tested-at → lớp test bị chạm theo assembly (0 lớp → bỏ bước test)
                 ──► mỗi lớp (≤ 2) một test run --filter_type testName | quá 2 lớp, --all-tests → --filter_type assembly
+                ──► lượt đầu hạn --first-timeout; hết hạn → chạy lại một lần với --timeout
                 ──► (success false? Editor ready → test status | mất → FAIL unity) ──► (in_progress? poll tới hết --timeout)
                 ──► gộp Results ──► so tên với Library/HorcruxVerify/X.fail trong phạm vi lớp vừa chạy, ghi lượt này
                 ──► không fail mới → ghi tested-at ──► "verify: OK (n s)" | "verify: FAIL build recompile tests"
@@ -90,20 +92,22 @@ bash "<horcrux>/Editor/CompileCheck/Tools~/verify.sh" --csproj <A.csproj,B.cspro
 
 | Cờ | Nghĩa |
 |---|---|
-| `--csproj` | danh sách csproj cách nhau dấu phẩy, đường dẫn tính từ `--project`; bỏ trống thì bỏ bước build |
+| `--csproj` | danh sách csproj cách nhau dấu phẩy, đường dẫn tính từ `--project`; build khi không có Editor, hoặc khi recompile LỖI để in đủ lỗi; bỏ trống thì không build |
+| `--build` | build csproj cả khi Editor mở và recompile xanh |
 | `--tests` | assembly test EditMode (tên trong `.asmdef`); chạy lớp bị chạm, cộng assembly test bị chạm mà danh sách thiếu; bỏ trống thì bỏ bước test |
 | `--all-tests` | chạy cả các assembly trong `--tests`, không chọn: trước merge, release, hoặc khi đụng chỗ dò tên không thấy |
 | `--project` | gốc project Unity; mặc định thư mục hiện tại |
 | `--no-unity` | chỉ build csproj, cho máy không mở Editor |
 | `--no-tests` | dừng sau recompile |
 | `--timeout` | giây chờ mỗi assembly test, tính cả lượt hỏi `test status` sau đó; mặc định 600 |
+| `--first-timeout` | giây chờ lượt `test run` đầu; hết hạn thì chạy lại một lần với `--timeout`; mặc định 150 |
 | `--ready-wait` | giây chờ Editor đang bận về `ready` trước bước Unity; mặc định 600 |
 | `--print-builder` | in builder sẽ dùng (`dotnet` hoặc đường dẫn Windows của `MSBuild.exe`) rồi thoát, không kiểm gì; không có builder thì mã 1. `plan_check.py` gọi cờ này |
 | `UNITY_CLI` | biến môi trường ép đường dẫn `unity.exe`; mặc định `unity` trên PATH |
 | `MSBUILD` | biến môi trường ép đường dẫn `MSBuild.exe`; không đặt thì dùng `dotnet` trên PATH, thiếu nữa thì MSBuild mới nhất của Rider hay Visual Studio trong `Program Files` ổ c–h |
 
-Thời gian (đo 2026-11): build 3 s mỗi csproj khi đã build trước đó, 25–30 s lần đầu · Refresh 3 s · recompile 1–20 s ·
-chọn test 1–3 s · mỗi lượt `test run` ~6 s cộng thời gian test · task không chạm test nào: cả lệnh 12–19 s.
+Thời gian (đo 2026-11): Refresh 3 s · recompile 1–20 s · chọn test 1–3 s · mỗi lượt `test run` ~6 s cộng thời gian test ·
+build (chỉ khi không Editor hay recompile LỖI) 3 s mỗi csproj khi đã build trước đó, 25–30 s lần đầu.
 
 ## Đọc kết quả
 
