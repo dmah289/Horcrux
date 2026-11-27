@@ -1,11 +1,6 @@
 # workflow — kinh nghiệm
 
-Bài học đã trả giá khi làm việc với `workflow`. Đọc trọn cùng lúc với rule hoặc skill đó. Hình dạng và vòng đời ở `horcrux.md` › Memory.
-
-### Hai mốc cách xa không so được vì diff thô ngập đổi tên
-`2026-10` · vấp 1 · đã đo
-**Thấy:** cần chứng minh refactor không đổi thuật toán giữa hai commit cách xa; diff thô hàng chục nghìn dòng vì nhiều đợt đổi tên và dời thư mục. **Vì:** đổi tên và dời file che mọi thay đổi thật.
-**Làm:** ghép cặp file bằng `git diff -M20%` rồi ghép tay phần còn lại · áp bảng đổi tên (lấy lại từ git history nếu Plan đổi tên đã xoá) lên bản cũ · diff bỏ `using` và khoảng trắng · **so riêng tập chuỗi ký tự** để đổi tên không che chuỗi · đọc tay mọi cặp còn lệch · hàm trùng tên ở hai namespace thì soát `using` từng file xem resolve về bản nào · prefab lọc guid, fileID nhưng **không** lọc `m_IsActive`, `m_Enabled`, `m_LocalPosition` (`workflow` › tra cứu › Nghiệm thu).
+Bài học đã trả giá khi làm việc với `workflow`. Đọc trọn cùng lúc với rule hoặc skill đó. Hình dạng và vòng đời ở `docs` › Agent.
 
 ### File thường là nhiễu hiện trong `git status`
 `2026-11` · vấp 2 · đã đo
@@ -16,16 +11,6 @@ Bài học đã trả giá khi làm việc với `workflow`. Đọc trọn cùng
 `2026-11` · vấp 1 · đã đo · đúng với session mở trong git worktree
 **Thấy:** tới lúc sửa prefab, scene hay art chưa track mới phát hiện worktree thiếu submodule, thiếu art, và hook chặn ghi checkout chính. **Vì:** Editor và MCP chỉ mở trên checkout chính; mở worktree trong Editor phải init submodule, chép art, import lại Library rất lâu.
 **Làm:** việc cần Editor thì hỏi ngay đầu task làm ở đâu; được làm ở checkout chính thì ghi file ở scratchpad rồi chép sang, giữ kiểu xuống dòng của file gốc; không commit nếu developer chưa bảo.
-
-### Máy canh dựng theo bài học cũ canh một cái hại không còn xảy ra
-`2026-11` · vấp 1 · đã đo · đúng với bài học sắp nâng ① sửa gốc hay ② máy canh
-**Thấy:** sắp viết hook cho một bài học vấp 2; tái hiện trước thì cái hại nó tả (diff cả file) không xảy ra ở cấu hình hiện tại, chỉ còn cảnh báo vô hại. **Vì:** phần "Vì" đúng ở điều kiện lúc vấp (cấu hình git, dữ liệu trong repo); điều kiện đổi mà dòng "đúng với" không ghi điều kiện đó.
-**Làm:** trước khi nâng, dựng ca tái hiện cái hại ở mọi cấu hình có thể gặp; máy canh đo chính cái hại (thứ lọt vào commit, thứ người chơi thấy), không đo dấu hiệu bề mặt — đo dấu hiệu thì kêu ở chỗ vô hại (`horcrux.md` › Memory).
-
-### Phép kiểm heuristic chọn cách đo theo cảm tính bắt chưa nửa số ca
-`2026-11` · vấp 1 · đã đo
-**Thấy:** cảnh báo "khối memory đã nâng" so nguyên văn từng vế chỉ bắt 15/39 khối; đo theo cụm ba từ bắt 31/39, nhầm 2/34. **Vì:** đích viết lại cùng ý bằng lời khác; cách đo nghĩ ra trước khi có dữ liệu chưa được thử với ca nào.
-**Làm:** lấy các quyết định đã có (lượt dọn, review trước) làm đáp án, so vài cách đo và ngưỡng, chọn theo số bắt và số nhầm, ghi số vào comment cạnh hằng ngưỡng (`workflow` › Nghiệm thu).
 
 ### Lệnh xoá bị từ chối, kéo cả cụm lệnh đi theo
 `2026-11` · vấp 1 · suy luận · đúng với agent chạy auto mode của Claude Code

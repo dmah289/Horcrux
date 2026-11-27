@@ -57,8 +57,9 @@ và khối co theo chiều cao trôi khác nhau. Khớp khung chưa phải khớ
 đo; đo lúc nó ẩn thì khe trông rộng, dời quá tay. Ép trạng thái trong Play thì tắt thứ đang giữ trạng thái đó trước: code ghi lại hình
 theo nhịp riêng (làm mờ nút chưa dùng được, đổi khối hiện), đè lên trạng thái ép và làm sai số đo màu.
 
-**Mỗi phép đo là một lệnh chạy lại được.** Kịch bản đo của màn nằm ở dự án, chạy mọi cỡ và mọi máy trong một lần; Editor trả về view,
-cỡ, máy cũ sau khi đo. Developer nghiệm thu hình (`workflow` › Nghiệm thu); agent báo số lệch còn lại ở từng chế độ.
+**Mỗi phép đo là một lệnh chạy lại được.** Kịch bản đo của màn nằm ở dự án, chạy mọi cỡ và mọi máy trong một lần, trả
+Editor về trạng thái cũ (`editor-first` › Agent thao tác Editor qua công cụ). Developer nghiệm thu hình; agent báo số lệch
+còn lại ở từng chế độ.
 
 ## Vùng an toàn và khoảng trống thiết kế
 
@@ -76,5 +77,3 @@ Canvas HUD co theo một trục (thường khớp chiều cao). Khối world k�
 giữ trọn khung thiết kế — số lớn hơn giữa cỡ giữ bề rộng và cỡ giữ chiều cao — và khoảng từ mép tới khối đo bằng pixel thiết kế nhân cùng
 hệ số canvas, không bằng unit world. Hai luật khác nhau trùng đúng ở tỉ lệ demo nên Game view cỡ demo không bao giờ lộ; lệch lớn dần theo
 tỉ số hai aspect, rõ nhất trên tablet. Mỗi lần chỉnh bố cục so thêm ở Game view một màn rộng hơn demo (16:9, tablet) và một màn cao hơn.
-
-Kinh nghiệm đã trả giá: `Memory/demo-compare.md`, đọc trọn trước khi làm.

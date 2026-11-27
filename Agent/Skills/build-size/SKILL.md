@@ -6,28 +6,31 @@ description: Dùng khi developer hỏi vì sao build nặng, muốn giảm size,
 # build-size — tìm byte nằm ở đâu trước khi gỡ
 
 Skill dưới `Agent/horcrux.md` (NT, tầng, ký hiệu định nghĩa ở đó).
-`<horcrux>` là gốc Horcrux trong dự án. Chi tiết: `docs/Editor/BuildSize.md`. Công cụ hiện mổ APK Android;
+`<horcrux>` là gốc Horcrux trong dự án. Cờ, mục, cách đọc: `docs/Editor/BuildSize.md`. Công cụ hiện mổ APK Android;
 platform khác thì mở rộng `apk_report.py` trước khi đo.
 
 ## Luật
 
-1. **Số của build là số trong gói build.** Không kết luận từ `du Assets/` hay số file: asset không tham chiếu không vào
-   build, asset tham chiếu hai đường vào hai lần.
-2. **Quy nguồn trước, gỡ sau.** Mỗi nhóm byte chỉ ra cơ chế kéo nó vào (Resources, scene trong Build Settings, tham chiếu
-   thẳng, addressable, implicit theo addressable, dependency Gradle) rồi mới bàn cách gỡ.
-3. **Cách gỡ bày thành phương án kèm số và giá**, chốt một. Thứ đổi hành vi (R8, stripping, Remote Addressables, gỡ SDK)
-   là quyết định của developer hoặc team khác.
-4. **Không viết script mổ build mới.** Thiếu mục thì mở rộng `apk_report.py`.
+- **Số của build là số trong gói build.** Không kết luận từ `du Assets/` hay số file: asset không tham chiếu không vào
+  build, asset tham chiếu hai đường vào hai lần.
+- **Quy nguồn trước, gỡ sau.** Mỗi nhóm byte chỉ ra cơ chế kéo nó vào (Resources, scene trong Build Settings, tham chiếu
+  thẳng, addressable, implicit theo addressable, dependency Gradle) rồi mới bàn cách gỡ.
+- **Cách gỡ bày thành phương án kèm MB ước tính và rủi ro**, chốt một. Thứ đổi hành vi hay thuộc sản phẩm (R8, stripping,
+  Remote Addressables, gỡ SDK, ngôn ngữ, mạng quảng cáo, CDN) là quyết định của developer hoặc team khác.
+- **Báo cáo bảng** *nhóm · MB · % · cơ chế kéo vào*; **nghiệm thu bằng hai bảng trước–sau** trên hai bản build.
 
 ## Chọn mục theo câu hỏi
 
-| Câu hỏi | Mục | Cần |
-|---|---|---|
-| nhóm nào trong APK to nhất | `apk` | APK |
-| group Addressables nào to, bundle phân bố ra sao | `aa` | APK (+ `--layout` cho tên group thật) |
-| bundle chứa gì, asset nào bị kéo theo, cái nào trùng | `layout` | `--layout` |
-| SDK Java nào chiếm dex | `dex` | APK |
-| player data (scene, Resources, tham chiếu thẳng) kéo asset nào | `log` | `--editor-log`, Editor.log cùng phiên build |
+| Câu hỏi | Mục | Cần | Quy nguồn tiếp ở |
+|---|---|---|---|
+| nhóm nào trong APK to nhất | `apk` | APK | mục tương ứng bên dưới |
+| group Addressables nào to, bundle phân bố ra sao | `aa` | APK (+ `--layout` cho tên group thật) | group, implicit, trùng |
+| bundle chứa gì, asset nào bị kéo theo, cái nào trùng | `layout` | `--layout` | |
+| SDK Java nào chiếm dex | `dex` | APK | manifest, `mainTemplate.gradle` |
+| player data (scene, Resources, tham chiếu thẳng) kéo asset nào | `log` | `--editor-log`, Editor.log cùng phiên build | grep GUID của asset trong `.unity`, `.prefab`, settings |
+| cài đặt strip, codegen, minify, AAB | eval đọc `PlayerSettings.GetManagedStrippingLevel`, `GetIl2CppCodeGeneration`, `Android.minifyRelease`, `EditorUserBuildSettings.buildAppBundle` | Editor, không vào Play | |
+
+Khi dự án dùng TMP: font `m_AtlasPopulationMode: 1` là Dynamic, kéo nguyên file font — đếm glyph so với ngôn ngữ game hỗ trợ.
 
 ## Lệnh
 
@@ -36,25 +39,4 @@ python -X utf8 -I "<horcrux>/Editor/BuildSize/Tools~/apk_report.py" <apk> --layo
 python -X utf8 -I "<horcrux>/Editor/BuildSize/Tools~/apk_report.py" <apk> --sections dex --top 40
 ```
 
-Cài đặt ảnh hưởng size đọc một lần qua eval, không vào Play:
-
-```csharp
-return $"strip={UnityEditor.PlayerSettings.GetManagedStrippingLevel(UnityEditor.Build.NamedBuildTarget.Android)} " +
-       $"codegen={UnityEditor.PlayerSettings.GetIl2CppCodeGeneration(UnityEditor.Build.NamedBuildTarget.Android)} " +
-       $"minify={UnityEditor.PlayerSettings.Android.minifyRelease} aab={UnityEditor.EditorUserBuildSettings.buildAppBundle}";
-```
-
-## Quy trình
-
-1. Chạy lệnh đầy đủ một lần; đọc mục `apk` để xếp hạng nhóm.
-2. Với mỗi nhóm lớn, quy nguồn: `dex` → manifest và `mainTemplate.gradle` · `aa`/`layout` → group, implicit, trùng ·
-   `log` → Resources, scene, tham chiếu thẳng (grep GUID của asset trong `.unity`, `.prefab`, `TMP Settings.asset`).
-3. Khi dự án dùng TMP: font có `m_AtlasPopulationMode: 1` là Dynamic, kéo nguyên file font; đếm glyph so với ngôn ngữ game hỗ trợ.
-4. Báo cáo bảng nhóm · MB · % · cơ chế kéo vào; phương án gỡ kèm MB ước tính và rủi ro; hỏi developer thứ thuộc sản phẩm
-   (ngôn ngữ, mạng quảng cáo, CDN).
-5. Sau khi sửa: build lại, chạy lại lệnh, so hai bảng.
-
-## Ngân sách token
-
-- `--sections` đúng mục đang hỏi, `--top` nhỏ; không đổ buildlayout JSON hay Editor.log vào ngữ cảnh.
-- Lệnh chạy 1–2 giây, chạy tiền cảnh.
+`--sections` đúng mục đang hỏi, `--top` nhỏ; lệnh chạy 1–2 giây.

@@ -11,14 +11,14 @@ Khi nào được vào Play và khi nào giao developer chơi thử: `workflow` 
 
 ## Luật
 
-1. **Không viết script khung mới** (vào Play, thử lại eval, bắt log, ghi file, khoá fps, chụp, ghép ảnh). Thiếu thì mở
-   rộng công cụ trong Horcrux hoặc class đường tắt của dự án, rồi dùng.
-2. **Không đọc dữ liệu thô vào ngữ cảnh.** Trace đọc qua `stat`, `diff`, `sig`; kết quả probe tóm tắt dưới 4 KB; ảnh là
-   một sheet đã cắt và thu nhỏ.
-3. **Refactor phải giữ chuyển động thì chứng minh bằng trace**, không bằng mắt: quay mỗi frame ở cuối frame với frame rate
-   khoá (`Time.captureFramerate`), kịch bản gõ qua đúng đường input thật, ghi mọi thuộc tính nhìn thấy của mọi entity.
-   Chứng minh trace **tất định** trước — hai lần quay mốc 0 chênh, so theo chữ ký trạng thái đầu (thời gian nạp đổi số lần
-   gọi `Random`) — rồi mới so trước–sau. Trace chứng minh "không đổi", không thay chơi thử.
+- **Đo bằng công cụ dựng sẵn, chọn theo câu hỏi** (bảng dưới): khung vào Play, thử lại eval, bắt log, khoá fps, chụp, ghép
+  ảnh đã có. Thiếu thì mở rộng công cụ Horcrux hoặc class đường tắt của dự án (NT6). Dữ liệu thô không vào ngữ cảnh: trace
+  đọc qua `stat`, `diff`, `sig`; kết quả probe dưới 4 KB; ảnh là một sheet đã cắt và thu nhỏ.
+- **Refactor phải giữ chuyển động thì chứng minh bằng trace**, không bằng mắt — quay mốc **trước** khi sửa: mỗi frame ở cuối
+  frame, frame rate khoá (`Time.captureFramerate`), kịch bản gõ qua đúng đường input thật, ghi mọi thuộc tính nhìn thấy của
+  mọi entity. Chứng minh trace **tất định** trước — hai lần quay mốc 0 chênh, so theo chữ ký trạng thái đầu (thời gian nạp
+  đổi số lần gọi `Random`) — rồi mới so trước–sau. Trace chứng minh "không đổi", không thay chơi thử.
+- **Lỗi bố cục thì `PrefabDump` trước**, không vào Play. **Sửa theo `async-presentation`**; báo cáo số đo kèm tên file, phần cảm giác giao kịch bản chơi thử.
 
 ## Chọn công cụ theo câu hỏi
 
@@ -72,29 +72,14 @@ Probe tối thiểu (thân hàm, không `using`, type viết đủ namespace):
 var outPath = @"__OUT__";
 Horcrux.Editor.Probe.PlayProbe.Run(outPath, async (sb, ct) =>
 {
-    var director = await <Game>.Editor.Probe.<Game>Probe.EnterLevelAsync(1, ct);
+    await <Game>.Editor.Probe.<Game>Probe.<ĐưaTớiTrạngThái>Async(ct);
     // gõ, chờ, đo; ghi số đã tính vào sb, không ghi mỗi frame
 });
 return "playrun";
 ```
 
-**Đường tắt của dự án:** mỗi dự án giữ **một class Editor** `*Probe` đưa game tới trạng thái cần đo (vào level, chờ rảnh,
+**Đường tắt của dự án:** mỗi dự án giữ **một class Editor** `*Probe` đưa game tới trạng thái cần đo (vào màn chơi, chờ rảnh,
 chọn entity, gọi hàm private qua `PlayProbe.Call`). Đường tắt cần lần thứ hai thì thêm vào class đó; kịch bản FeelTrace
 của dự án dùng chung nó, dự án chỉ viết kịch bản.
 
-## Quy trình
-
-1. Đọc code tween, trình diễn đang chạm; lỗi bố cục thì `PrefabDump` trước.
-2. Refactor phải giữ chuyển động: kịch bản đã phủ chưa, rồi quay mốc **trước** khi sửa.
-3. Sửa theo `async-presentation` (PrimeTween, UniTask; tween nhân hay cộng trên giá trị nghỉ).
-4. Kiểm bằng con số: `diff` 0 chênh, hoặc `stat` cho số cần báo.
-5. Báo cáo: số đo kèm tên file; phần cảm giác giao kịch bản chơi thử.
-
-## Ngân sách token
-
-- Một lần đo là một lệnh Bash; không gọi MCP `start`, `stop`, `wait`, `game_view`, `screenshot` từng bước.
-- `stat --cols` chỉ lấy cột đang hỏi; `--series` chỉ khi cần từng frame.
-- Ảnh: `shrink` từ 2 trở lên, `crop` đúng vùng, nhiều khoảnh khắc ghép một sheet.
-- Lần chạy lâu hơn một phút thì chạy nền; không đọc output khi chưa xong.
-- Trên máy thật: cả đoạn chơi viết thành một file kịch bản chạy bằng `play`, không đi từng bước chạm–chụp–đọc; ảnh
-  `--scale 0.35` chỉ ở điểm kiểm.
+Trên máy thật: cả đoạn chơi viết thành một file kịch bản chạy bằng `play`; ảnh `--scale 0.35` chỉ ở điểm kiểm.

@@ -15,7 +15,7 @@ quanh từng callback trong vòng dispatch).
 - **Mỗi loop chỉ ra token của nó là đời của ai, dài đúng bằng nhịp.** Token của pha ngắn hơn đời loop thì loop **chết im
   lặng** — huỷ là hợp đồng, không log.
 - **Bước sau một lượt chờ thuộc chủ sống qua cả lượt.** Caller tự huỷ khi đóng mà còn chờ bằng token của chính nó thì bước
-  sau chết im lặng. Cặp "chờ rồi làm" vào chủ đời dài, caller gọi một hàm.
+  sau chết im lặng Cặp "chờ rồi làm" vào chủ đời dài, caller gọi một hàm.
 - **Hàm mở tiến trình sở hữu trạng thái cuối ở mọi đường ra** (xong, huỷ, thời lượng 0) qua **một** `try/finally` bọc toàn
   thân — trạng thái cuối và callback đúng một lần. Caller chỉ `await`, ghép `WhenAll`. Đường dọn từ ngoài về đúng trạng thái cuối của đường
   ra tự nhiên.

@@ -1,6 +1,6 @@
 # editor-first — tra cứu
 
-Nền tảng và Sổ tay của `editor-first`. Đọc mục được bảng Tra cứu trong `SKILL.md` gọi.
+Nền tảng và Sổ tay của `editor-first`. Đọc mục được bảng Tra cứu trong `RULE.md` gọi.
 
 ## Wiring
 
@@ -42,6 +42,17 @@ Nền tảng và Sổ tay của `editor-first`. Đọc mục được bảng Tra
 > nữa. Reference cũ vẫn trỏ bản gốc, nên thứ chép theo (atlas, ô trong asset cấu hình, entry Addressables) vẫn trỏ thư mục
 > gốc: trỏ lại chúng vào bản chép là việc phải làm, rồi soát `AssetReference` gãy
 > (`docs/Editor/AddressableReferenceAudit.md`).
+
+## Eval và Play qua công cụ
+
+> **Nền tảng** — eval của MCP, CLI biên dịch C# 6 (CodeDom) ở assembly riêng: không hàm cục bộ, không `out var`, không
+> pattern matching; type `internal` không gọi được; mọi type viết đủ namespace; `Object` mơ hồ giữa `System` và
+> `UnityEngine` — luôn viết `UnityEngine.Object`. Component vắng trả object giả-null: `?.`, `??` bỏ qua phép so null của
+> Unity, dùng `TryGetComponent` hoặc `x != null`.
+
+> **Nền tảng** — Editor mất focus thì frame Play đứng: bật `Application.runInBackground` trong Play (`PlayFrom` của Probe
+> tự bật). Scene đang mở có thay đổi chưa lưu thì vào Play hay chạy test bật hộp thoại hỏi lưu: Editor đứng, CLI chỉ thấy
+> timeout.
 
 ## Gói asset từ ngoài
 

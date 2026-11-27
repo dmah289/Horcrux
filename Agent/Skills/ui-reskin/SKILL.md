@@ -9,9 +9,6 @@ Skill dưới `Agent/horcrux.md` (NT, tầng, ký hiệu định nghĩa ở đó
 soát, chụp, đo) · `docs/Editor/Probe.md` (cỡ Game view, vào Play, chờ scene, bấm) · `docs/Editor/SpriteAtlasBuilder.md` (soát, dựng
 atlas) · `docs/ToolUsage/UIParticle.md`, `docs/ToolUsage/Spine.md` (hạt và Spine trên canvas, khi dự án dùng hai thư viện đó).
 
-Mục dưới là **tiêu chí và lý do**, không phải trình tự. Bài nào có đường ngắn hơn mà vẫn đạt tiêu chí thì đi đường đó (NT9),
-nói lý do và phép kiểm.
-
 ## Tổ chức prefab
 
 **Skin là lớp hình đặt lên prefab đang có hành vi, không phải prefab viết lại.** Script, address, reference đã nối là hợp đồng
@@ -120,34 +117,20 @@ sai khác ~0.
 
 ## Làm việc qua Editor tool
 
-**Gọi hàm Horcrux, không chép khung vào eval.** Mở, sửa, lưu, dỡ prefab, dựng node, chụp, đo đã có sẵn và đã compile thật: eval
-chỉ còn phần riêng của bài, ít chỗ cho lỗi biên dịch C# 6 và API đoán tên. Khung nào eval tới lần thứ hai mà Horcrux chưa có
-thì đề xuất công cụ theo `workflow` › Việc lặp lại và git.
+Luật chung ở `editor-first` › Agent thao tác Editor qua công cụ (asset đã lưu, gọi helper, nhìn trước khi sửa, trả trạng
+thái Editor). Riêng UI:
 
-**Nhìn trước khi sửa.** Dump cây và field serialize (`PrefabDump`, `PrefabAudit.ListOverrides`), contact sheet art
-(`DemoCompare.ContactSheet`), báo cáo sprite (`SpriteSlicing.Report`) trước khi chạm: tên file art và số trong YAML có thể đánh
-lừa, giá trị đọc qua engine thì không. Sau khi thay khối (`PrefabEdit.ReplaceWithPrefab`) hay ghép prefab, soát wiring bằng
-`PrefabDump.Refs`: ô trỏ sai chỗ không lỗi nào báo tới lúc bấm.
-
-**Edit mode cho dựng và soát; Play cho thứ cần dữ liệu thật.** Bố cục của khối xem được bằng chụp canvas ngoài Play
-(`UICapture.Canvas`); một look ở vài giá trị thông số thì chụp copy, mỗi ô một giá trị (`UICapture.Variants`; vật world thì `UICapture.World`, đúng px mỗi unit của demo). Màn cần service (chữ do script đặt, popup mở qua navigator) thì vào Play. Chuỗi Play lặp lại nhiều lần (chụp
-cùng bộ màn ở nhiều độ phân giải) gom thành một script chạy một lần (`playrun.sh`, nhiều cỡ qua `SIZES`); đi từng bước qua MCP chỉ khi còn đang dò
-mình cần nhìn gì. Hình đúng ở Prefab Mode mà sai ở Play: liệt kê điều kiện vẽ khác nhau giữa hai nơi (chế độ render canvas,
-camera, mask, quality), lật từng cái trên bản chạy, không lưu, tới khi gọi tên được nguyên nhân rồi mới sửa asset.
-Mọi trạng thái Editor đã đổi (cỡ Game view, scene khởi động, Play) trả lại trước khi báo xong.
-
-**Kết quả là asset đã lưu** (`editor-first` › Editor-first). Nghiệm thu bằng hình **sau khi lưu và nạp lại**: lỗi pivot, override
-mất chỉ lộ sau khi nạp. So với demo ở Game view đúng cỡ demo và trên máy giả lập theo `demo-compare`. Hình đúng hay chưa do developer chốt (`workflow` › Nghiệm thu); agent báo số lệch còn lại.
-
-**Commit chọn file**, không `add` cả thư mục: `workflow` › tra cứu › Git.
-
-> **Nền tảng** — eval của MCP biên dịch C# 6 (CodeDom): không hàm cục bộ, không `out var`, không pattern matching; `Object` mơ hồ
-> giữa `System` và `UnityEngine`; type `internal` không gọi được; mọi type viết đủ namespace.
-
-> **Nền tảng** — Editor mất focus thì frame Play đứng: bật `Application.runInBackground` trong Play (`PlayFrom` tự bật).
-> Scene đang mở có thay đổi chưa lưu thì vào Play hay chạy test bật hộp thoại hỏi lưu: Editor đứng, CLI chỉ thấy timeout.
-
-Kinh nghiệm đã trả giá: `Memory/ui-reskin.md`, đọc trọn trước khi làm.
+- **Nhìn trước khi sửa** bằng dump cây và override (`PrefabDump`, `PrefabAudit.ListOverrides`), contact sheet art
+  (`DemoCompare.ContactSheet`), báo cáo sprite (`SpriteSlicing.Report`). Sau khi thay khối (`PrefabEdit.ReplaceWithPrefab`)
+  hay ghép prefab, soát wiring bằng `PrefabDump.Refs`: ô trỏ sai chỗ không lỗi nào báo tới lúc bấm.
+- **Edit mode cho dựng và soát; Play cho thứ cần dữ liệu thật.** Bố cục khối chụp canvas ngoài Play (`UICapture.Canvas`); một
+  look ở vài giá trị thông số thì chụp copy, mỗi ô một giá trị (`UICapture.Variants`; vật world `UICapture.World`, đúng px
+  mỗi unit của demo). Màn cần service (chữ do script đặt, popup mở qua navigator) thì vào Play; chụp cùng bộ màn ở nhiều cỡ
+  gom một lần `playrun.sh` với `SIZES`.
+- **Hình đúng ở Prefab Mode mà sai ở Play:** liệt kê điều kiện vẽ khác nhau giữa hai nơi (chế độ render canvas, camera, mask,
+  quality), lật từng cái trên bản chạy, không lưu, tới khi gọi tên được nguyên nhân rồi mới sửa asset.
+- **So với demo** ở Game view đúng cỡ demo và trên máy giả lập theo `demo-compare`. Hình đúng hay chưa do developer chốt;
+  agent báo số lệch còn lại.
 
 ## Tra cứu — `ui-reskin/reference.md`
 

@@ -54,4 +54,4 @@ Hạt bay nốt rồi mới tắt object: chờ hết `startLifetime` lớn nh�
 | Hạt hiện thành ô vuông đặc (đỏ, hồng) qua UIParticle, trong Scene view vẫn đúng | emitter dùng material mặc định (`Particles/Standard Unlit`) hay shader cần dữ liệu camera · gán material hạt có texture và shader hợp canvas; prefab VFX gốc giữ nguyên, đổi bằng override trên instance |
 | Hạt lệch chỗ hay lệch cỡ so với demo dù khung tĩnh đã khớp | thiếu `scale` hoặc offset theo khung của tác giả · đo tâm, cỡ hiệu ứng trên demo, quy về unit rồi đặt |
 | Kiểm bằng ảnh chụp canvas ngoài Play ra đúng mà trong game sai | ảnh chụp đổi canvas sang chế độ render khác · kiểm trong Play ở chế độ render của game (`workflow` › Nghiệm thu) |
-| Shape Box phủ rộng mà hạt như đứng yên | đã ghi ở `ui-reskin` › Bẫy |
+| Shape Box phủ rộng mà hạt như đứng yên | đã ghi ở `ui-reskin` › tra cứu › Hành vi UGUI, prefab, sprite cần biết |

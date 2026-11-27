@@ -1,6 +1,6 @@
 # compile-check — kinh nghiệm
 
-Bài học đã trả giá khi làm việc với `compile-check`. Đọc trọn cùng lúc với rule hoặc skill đó. Hình dạng và vòng đời ở `horcrux.md` › Memory.
+Bài học đã trả giá khi làm việc với `compile-check`. Đọc trọn cùng lúc với rule hoặc skill đó. Hình dạng và vòng đời ở `docs` › Agent.
 
 ### Cần chạy test mà Editor không mở project
 `2026-10` · vấp 1 · đã đo · đúng với Editor không mở project đó
@@ -23,6 +23,6 @@ Bài học đã trả giá khi làm việc với `compile-check`. Đọc trọn 
 **Làm:** trước khi báo xong, `git status` các file build (asmdef, csproj, `Packages/manifest.json`) có thay đổi chưa commit thì soát code mới có dựa vào nó không; có thì commit riêng đúng dòng đó và báo developer (`workflow` › tra cứu › Git).
 
 ### Test EditMode đọc asset cấu hình đổi kết quả sau một lượt Play, code không đổi
-`2026-11` · vấp 2 · đã đo · đúng với ScriptableObject nạp qua `Resources.Load` mà game ghi giá trị lúc chạy; collection remote config của Horcrux đã tự nạp lại khi thoát Play (`RemoteConfigAssetReload`), khối này còn cho asset loại khác
+`2026-11` · vấp 2 · đã đo · đúng với ScriptableObject nạp qua `Resources.Load` mà game ghi giá trị lúc chạy, trừ collection remote config của Horcrux (tự nạp lại khi thoát Play)
 **Thấy:** chạy `verify.sh` hai lần quanh một lượt Play qua công cụ: test so giá trị asset với spec đổi fail ↔ pass, `git status` của asset sạch, nhãn `(mới)` nhảy qua lại. **Vì:** lúc Play game ghi giá trị remote vào bản trong bộ nhớ của asset; thoát Play bản đó vẫn sống, test EditMode đọc bản bộ nhớ chứ không đọc đĩa.
-**Làm:** sau lượt Play qua công cụ, `Resources.UnloadAsset` rồi `AssetDatabase.ImportAsset(path, ForceUpdate)` asset đó trước khi chạy test; fail còn lại sau khi nạp lại mới là dữ liệu trên đĩa (`compile-check` › Luật 8). Lượt mốc trước chạy trên bản bộ nhớ thì fail của dữ liệu đĩa mang nhãn `(mới)` tới khi test qua, hook chặn báo xong theo: báo kèm bằng chứng git (asset không đổi từ mốc), để developer sửa dữ liệu; không xoá mốc để lách.
+**Làm:** sau lượt Play qua công cụ, `Resources.UnloadAsset` rồi `AssetDatabase.ImportAsset(path, ForceUpdate)` asset đó trước khi chạy test; fail còn lại sau khi nạp lại mới là dữ liệu trên đĩa (`compile-check` › Luật). Lượt mốc trước chạy trên bản bộ nhớ thì fail của dữ liệu đĩa mang nhãn `(mới)` tới khi test qua, hook chặn báo xong theo: báo kèm bằng chứng git (asset không đổi từ mốc), để developer sửa dữ liệu; không xoá mốc để lách.

@@ -1,6 +1,6 @@
 # workflow — tra cứu
 
-Nền tảng và Sổ tay của `workflow`. Đọc mục được bảng Tra cứu trong `SKILL.md` gọi.
+Nền tảng và Sổ tay của `workflow`. Đọc mục được bảng Tra cứu trong `RULE.md` gọi.
 
 ## Git
 

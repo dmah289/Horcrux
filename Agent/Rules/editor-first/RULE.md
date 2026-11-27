@@ -1,9 +1,9 @@
 ---
 name: editor-first
-description: Dùng khi quyết thứ gì làm ở Editor thay vì code, khi viết tool Editor IMGUI, hoặc khi tool đọc–ghi dữ liệu của người dùng (import/export).
+description: Dùng khi quyết thứ gì làm ở Editor thay vì code, khi agent thao tác Editor qua công cụ (MCP, CLI, eval) để dựng, sửa, soát asset, khi viết tool Editor IMGUI, hoặc khi tool đọc–ghi dữ liệu của người dùng (import/export).
 ---
 
-# editor-first — Editor lo cấu hình và kết nối, tool, import/export
+# editor-first — Editor lo cấu hình và kết nối, thao tác qua công cụ, tool, import/export
 
 Rule dưới `Agent/horcrux.md` (NT, tầng, ký hiệu định nghĩa ở đó).
 
@@ -16,18 +16,29 @@ nhận reference · đọc ngầm giá trị prefab ở `Start` thay vì phơi �
 
 - **Kéo thả vào `[SerializeField]` là DI** — composition root là chính cái asset. **API nhận reference là code nối**, chỉ
   khi Inspector **thật sự không kéo được**: cùng scene thì kéo được; khác scene hoặc prefab dựng lúc chạy thì không. Wiring
-  là GUID trong file serialize, không grep được — lý do **không rải** nó, không phải lý do bỏ (phân xử ở `horcrux.md`).
+  là GUID trong file serialize, không grep được — lý do **không rải** nó, không phải lý do bỏ (`horcrux.md` › Phân xử).
 - **Thuộc tính code ghi lúc chạy không còn là ô cấu hình trên asset** — sửa ở đó không tác dụng mà không gì báo. Núm chỉnh
   nằm trên component code; asset chỉ giữ phần code không chạm, tooltip nói rõ phần nào.
 - **Bắt buộc nối bằng code thì bên đời ngắn tự trình diện với bên đời dài:** đăng ký và huỷ là **một cặp trong một file**,
   xong **trước tín hiệu cần tới nó**.
-- **Điều kiện dựng hệ ghi vào tài liệu, không sinh code canh.** Tạo asset, dựng GameObject, gán reference, đặt layer, thêm
-  scene vào build là mục **"Trước khi chạy"** của tài liệu module (`docs` › `.md`); thiếu thì xử lý theo bảng guard
-  (`code-design` › Bất biến). Bước setup tay là cách developer hiểu hệ; đổi lại hệ **nợ** mục "Trước khi chạy" đủ dựng lại
+- **Điều kiện dựng hệ là mục "Trước khi chạy" của tài liệu module** (`docs` › `.md`): tạo asset, dựng GameObject, gán
+  reference, đặt layer, thêm scene vào build. Bước setup tay là cách developer hiểu hệ; đổi lại hệ **nợ** mục đó đủ dựng lại
   từ 0.
-- **Agent làm thao tác Editor qua công cụ (MCP, eval) khi được giao** thì kết quả là **asset đã lưu** developer mở ra thấy,
-  không phải code chạy lúc boot làm thay. Soát `git status` ngay sau mỗi lệnh lưu; file ngoài phạm vi thì báo. Trạng thái
-  Editor đã đổi (view, scene, Play) trả lại trước khi báo xong. Giá trị developer đổi giữa hai lượt là quyết định của họ.
+
+## Agent thao tác Editor qua công cụ
+
+Khi được giao làm thao tác Editor qua MCP, CLI, eval:
+
+- **Kết quả là asset đã lưu** developer mở ra thấy, không phải code chạy lúc boot làm thay. Nghiệm thu **sau khi lưu và nạp
+  lại** — lỗi pivot, override mất chỉ lộ sau khi nạp.
+- **Gọi helper Horcrux, không chép khung vào eval:** mở, sửa, lưu prefab, dump, chụp, đo đã có sẵn và đã compile thật (tìm
+  ở `docs/Editor/`); eval chỉ còn phần riêng của bài.
+- **Nhìn trước khi sửa:** đọc giá trị qua engine (dump cây, field serialize, override) trước khi chạm — tên file và số trong
+  YAML có thể đánh lừa.
+- **Soát `git status` ngay sau mỗi lệnh lưu**; file ngoài phạm vi thì báo. Giá trị developer đổi giữa hai lượt là quyết định
+  của họ.
+- **Trạng thái Editor đã đổi** (scene đang mở, scene khởi động, cỡ Game view, máy Simulator, Play) **trả lại trước khi báo
+  xong.**
 
 ## Import/export — dữ liệu đi qua tool
 
@@ -50,6 +61,7 @@ nguồn · **không giấu thứ có thật** · kiểm hợp lệ chạy **khi 
 |---|---|
 | wire prefab, đăng ký–huỷ bằng code, thoát app | Wiring |
 | sửa, lưu prefab, scene, YAML, shader qua công cụ; `.meta`, GUID | Sửa asset qua công cụ |
+| viết eval, vào Play qua CLI hay MCP | Eval và Play qua công cụ |
 | nhập `.unitypackage`, gói art, plugin | Gói asset từ ngoài |
 | tool import, export dữ liệu; bố cục, điều kiện vẽ của tool có người dùng | Import/export và UX của tool |
 | viết `OnGUI`, nút đổi state hay mở hộp thoại, `PropertyDrawer`, cache style, tool đọc đối tượng runtime | IMGUI |

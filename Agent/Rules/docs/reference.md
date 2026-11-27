@@ -1,6 +1,6 @@
 # docs — tra cứu
 
-Nền tảng và Sổ tay của `docs`. Đọc mục được bảng Tra cứu trong `SKILL.md` gọi.
+Nền tảng và Sổ tay của `docs`. Đọc mục được bảng Tra cứu trong `RULE.md` gọi.
 
 ## `.md`
 
@@ -56,6 +56,8 @@ thị tĩnh. Trang: header → mục lục trỏ `id` → `<main>` → footer gh
 
 ## Plan
 
+**Bảy khối, thứ tự cố định**; khảo sát nằm ở đề xuất trong chat, không ở Plan.
+
 | Khối | Chứa | Không chứa |
 |---|---|---|
 | **dòng mở**, ≤3 dòng | nguồn bản tạm kèm đường dẫn · phụ thuộc, chung file với Plan nào, gõ trước hay sau · lệnh kiểm | phân công, repo commit, đã compile gì |
@@ -70,8 +72,8 @@ Khối không có nội dung thì bỏ, không ghi "không". Tên dự án ngu�
 
 - **Tự chứa:** code lại được từ đầu tới cuối không suy đoán, không mở tài liệu khác.
 - **Theo luồng:** mỗi giai đoạn xuyên qua mọi file chặng đó cần, kết ở một mốc compile sạch và một commit; trong giai đoạn,
-  call site trước, phần được gọi sau. Thứ tự theo luồng, không theo cây phụ thuộc type. Developer gõ lệch Plan là bình
-  thường.
+  call site trước, phần được gọi sau. Thứ tự theo luồng, không theo cây phụ thuộc type — lá trước gốc là gõ class chưa biết
+  ai dùng. Developer gõ lệch Plan là bình thường.
 - **Lý do ở hai chỗ:** comment *vì sao* trong đoạn code, chỗ code làm điều trái trực giác (trần `code-design` › Naming) —
   developer gõ luôn vào code thật · phương án bỏ ở khối cuối. Câu developer hỏi lặp lại thì ghi ngược vào một trong hai chỗ.
 - **File đã có thì chỉ chỗ thêm, không chép lại:** neo `File` › region › member có thật, không số dòng, kèm vài dòng có sẵn
@@ -83,10 +85,13 @@ Khối không có nội dung thì bỏ, không ghi "không". Tên dự án ngu�
   phần developer gõ nên không ghi tạm vào `Assets/`: viết file mẫu ở scratchpad, mỗi giai đoạn một lần
   `Editor/CompileCheck/Tools~/plan_check.py` (cách dùng ở `docs/Editor/CompileCheck.md`).
 - **Plan chạm cả Horcrux lẫn consumer thì phần Horcrux chỉ thêm** (member mới mang mặc định, API cũ giữ); xoá API cũ là việc
-  riêng. Sau mỗi giai đoạn developer gõ, agent compile, so code với Plan, phân loại chỗ lệch theo `workflow` › Chưng cất.
+  riêng. Sau mỗi giai đoạn developer gõ, agent compile, so code với Plan, phân loại chỗ lệch: *lỗi* → báo kèm bằng chứng ·
+  *trôi* (tên, thứ tự, chi tiết không mang lý do) → sync Plan theo code · *tư tưởng* (đổi hình dạng, ranh giới, kiểu, cách
+  tiêm) → qua cổng ghi (`docs` › Agent).
 - Plan chỉ có Horcrux: giai đoạn developer gõ "thấy được" là compile sạch và bảng case xanh; thấy trong game ở Chuyển dự
   án — dự án sang bản Horcrux, xoá bản tạm, xoá Plan, chơi thử theo bảng Kịch bản.
-- Code Editor không có test thì caller là nút của dự án: nối dự án ngay trong giai đoạn, xoá bản tạm cùng tên cùng lúc.
+- Plan cho code Editor (chỉ khi developer chọn tự gõ, `reuse-gate` › Đặt ở đâu): không có test thì caller là nút của dự
+  án — nối dự án ngay trong giai đoạn, xoá bản tạm cùng tên cùng lúc.
 - Nhiều utility độc lập trong một Plan: mỗi cơ chế một Kịch bản, Flow và chuỗi giai đoạn riêng; chung dòng mở, Chuyển dự
   án, Không làm.
 

@@ -1,6 +1,6 @@
 # async-presentation — kinh nghiệm
 
-Bài học đã trả giá khi làm việc với `async-presentation`. Đọc trọn cùng lúc với rule hoặc skill đó. Hình dạng và vòng đời ở `horcrux.md` › Memory.
+Bài học đã trả giá khi làm việc với `async-presentation`. Đọc trọn cùng lúc với rule hoặc skill đó. Hình dạng và vòng đời ở `docs` › Agent.
 
 ### Bước sau lượt chờ chết im lặng chỉ khi một điều kiện mở
 `2026-11` · vấp 1 · chuyển sang, chưa kiểm lại

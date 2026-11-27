@@ -1,6 +1,6 @@
 # async-presentation — tra cứu
 
-Nền tảng và Sổ tay của `async-presentation`. Đọc mục được bảng Tra cứu trong `SKILL.md` gọi.
+Nền tảng và Sổ tay của `async-presentation`. Đọc mục được bảng Tra cứu trong `RULE.md` gọi.
 
 ## Stack async
 
@@ -38,8 +38,8 @@ Nền tảng và Sổ tay của `async-presentation`. Đọc mục được bả
 
 ## Trình diễn
 
-- **Mốc "đã thấy":** trượt từ A tới B cần A người chơi đã thấy (`currAnimatedScore`); view tắt, dựng lại, nhiều instance
-  thì A trong view sai. Component thụ động trượt khi host gọi `PlayAsync(ct)`.
+- **Mốc "đã thấy":** trượt từ A tới B cần A là giá trị người chơi đã thấy, lưu trong save; view tắt, dựng lại, nhiều
+  instance thì A trong view sai. Component thụ động trượt khi host gọi `PlayAsync(ct)`.
 - **Giá trị nghỉ đọc ở `Awake`.** Kinh nghiệm: `Memory/async-presentation.md` › Nhún xong vật đổi cỡ so với lúc nghỉ.
 - **Chỗ nghỉ lần đầu:** bố cục tính được thì đặt cùng frame tạo vật; chờ frame chỉ khi đọc từ thứ engine dựng sau (layout
   UI, bounds), và ẩn vật tới lúc đặt xong. Đích là ô developer đặt.
@@ -65,7 +65,7 @@ Nền tảng và Sổ tay của `async-presentation`. Đọc mục được bả
 
 ## Vật thể
 
-- **Vật cứng** chỉ nghiêng theo hướng bay (2.5D: ≤ ±12°).
+- **Vật cứng** chỉ nghiêng nhẹ theo hướng bay; góc trần chốt bằng chơi thử.
 - **Sprite có cạnh dày (2.5D): tách gốc và thân, bóng là con của gốc** — gốc giữ vị trí và scale chủ đặt, hiệu ứng ghi lên
   thân; reset thân là về nghỉ.
 - **Lực của cú đáp:** "đập vào" là tốc độ lớn nhất lúc chạm rồi vật nhận đáp lại; "đặt xuống" là chậm dần tới đích.

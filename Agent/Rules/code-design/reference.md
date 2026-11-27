@@ -1,6 +1,6 @@
 # code-design — tra cứu
 
-Nền tảng và Sổ tay của `code-design`. Đọc mục được bảng Tra cứu trong `SKILL.md` gọi.
+Nền tảng và Sổ tay của `code-design`. Đọc mục được bảng Tra cứu trong `RULE.md` gọi.
 
 ## Stack và quy ước
 

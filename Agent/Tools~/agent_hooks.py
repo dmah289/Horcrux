@@ -192,7 +192,7 @@ def pre_shell(data):
             if bad:
                 return deny(data, "git-add-all", command,
                             f"`git add {' '.join(bad)}` gom cả file developer đang sửa. Add từng file: "
-                            "`git add -- <file mới>` (workflow › Git).")
+                            "`git add -- <file mới>` (workflow › tra cứu › Git).")
         if sub != "commit":
             continue
         if "--all" in args or short_flags([a for a in args if not a.startswith("--")], "a"):
@@ -205,7 +205,7 @@ def pre_shell(data):
         else:
             return deny(data, "commit-no-pathspec", command,
                         "Commit không pathspec lấy cả index, kể cả file developer đã stage. Ghi rõ phần của việc: "
-                        "`git commit -m … -- <paths>` (workflow › Git).")
+                        "`git commit -m … -- <paths>` (workflow › tra cứu › Git).")
         top = git(where, "rev-parse", "--show-toplevel")
         if top and (pathlib.Path(top) / "Agent" / "horcrux.md").exists():
             errs = agent_errors(pathlib.Path(top), paths)

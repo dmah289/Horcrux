@@ -1,6 +1,6 @@
 # editor-first — kinh nghiệm
 
-Bài học đã trả giá khi làm việc với `editor-first`. Đọc trọn cùng lúc với rule hoặc skill đó. Hình dạng và vòng đời ở `horcrux.md` › Memory.
+Bài học đã trả giá khi làm việc với `editor-first`. Đọc trọn cùng lúc với rule hoặc skill đó. Hình dạng và vòng đời ở `docs` › Agent.
 
 ### Tham chiếu serialize nạp ra null sau khi đổi kiểu field
 `2026-11` · vấp 1 · đã đo · đúng với prefab đang mở trong Prefab Mode
@@ -54,5 +54,5 @@ Bài học đã trả giá khi làm việc với `editor-first`. Đọc trọn c
 
 ### Đổi hoa thường tên thư mục nguồn: git không thấy, tool sinh asset xoá nhầm
 `2026-11` · vấp 1 · đã đo · đúng với Windows, macOS (ổ không phân biệt hoa thường)
-**Thấy:** đổi `yellow things` → `Yellow Things` thì `git status` sạch; chạy tool sinh asset theo tên thư mục thì asset sinh ra (atlas) bị xoá như mồ côi, entry vẫn trỏ guid đã mất. **Vì:** `core.ignorecase=true` nên git bỏ qua đổi hoa thường; tool thấy `File.Exists` đúng nên giữ file cũ, rồi so tập đường dẫn ordinal nên coi file đó không thuộc tập giữ.
+**Thấy:** đổi `foo bar` → `Foo Bar` thì `git status` sạch; chạy tool sinh asset theo tên thư mục thì asset sinh ra (atlas) bị xoá như mồ côi, entry vẫn trỏ guid đã mất. **Vì:** `core.ignorecase=true` nên git bỏ qua đổi hoa thường; tool thấy `File.Exists` đúng nên giữ file cũ, rồi so tập đường dẫn ordinal nên coi file đó không thuộc tập giữ.
 **Làm:** git: `git rm -r --cached <tên cũ>` rồi `git add <tên mới>`; commit có pathspec đọc lại đĩa nên thêm lại tên cũ (hai bản trùng guid) hoặc báo "file alias" — dựng commit bằng `read-tree HEAD` trên index tạm, `-c core.ignorecase=false rm --cached <tên cũ>`, `write-tree`, `commit-tree`, rồi `ls-tree` soát không còn tên cũ. Tool so đường dẫn hay tên asset với tập giữ thì dùng `StringComparer.OrdinalIgnoreCase`, cùng cách ổ đĩa so (`editor-first` › Import/export).

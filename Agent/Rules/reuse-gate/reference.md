@@ -1,6 +1,6 @@
 # reuse-gate — tra cứu
 
-Nền tảng và Sổ tay của `reuse-gate`. Đọc mục được bảng Tra cứu trong `SKILL.md` gọi.
+Nền tảng và Sổ tay của `reuse-gate`. Đọc mục được bảng Tra cứu trong `RULE.md` gọi.
 
 ## Khảo sát
 

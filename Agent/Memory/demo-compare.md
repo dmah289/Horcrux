@@ -1,6 +1,6 @@
 # demo-compare — kinh nghiệm
 
-Bài học đã trả giá khi làm việc với `demo-compare`. Đọc trọn cùng lúc với rule hoặc skill đó. Hình dạng và vòng đời ở `horcrux.md` › Memory.
+Bài học đã trả giá khi làm việc với `demo-compare`. Đọc trọn cùng lúc với rule hoặc skill đó. Hình dạng và vòng đời ở `docs` › Agent.
 
 ### Popup khớp trên điện thoại, tràn hai mép trên tablet
 `2026-11` · vấp 1 · chuyển sang, chưa kiểm lại

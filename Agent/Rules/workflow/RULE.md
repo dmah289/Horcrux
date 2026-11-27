@@ -1,6 +1,6 @@
 ---
 name: workflow
-description: Dùng cho mọi tác vụ, từ lúc nhận việc tới báo cáo hoàn thành: phỏng vấn tới khi chốt kịch bản, đối chiếu code với developer, báo cáo, ngữ cảnh đã chốt, chưng cất tư tưởng, subagent, nghiệm thu đúng loại bằng chứng, đề xuất công cụ cho việc lặp lại, kỷ luật git.
+description: Dùng cho mọi tác vụ, từ nhận việc tới báo cáo: phỏng vấn, đối chiếu, báo cáo, chưng cất, subagent, nghiệm thu, công cụ, git.
 ---
 
 # workflow — một việc, từ nhận việc tới báo cáo
@@ -24,7 +24,7 @@ lại, **nhiều vòng tới khi hết chỗ mơ hồ**; nhóm đã biết chắ
 | **Hướng thật** | hệ sắp đổi gì | **chắc chắn** sắp cần gì; *có thể* cần thì chưa |
 
 **Chốt bằng kịch bản viết lại:** *ai làm gì → hệ phản ứng gì → thấy gì* · ca biên đã thống nhất · thứ cố ý không làm ·
-nghiệm thu bằng gì. Developer xác nhận mới làm; **chưa có câu trả lời thì chưa làm**.
+nghiệm thu bằng gì. Developer xác nhận mới làm; **chưa có câu trả lời thì chưa làm** (khe hở nhỏ, đảo ngược được: NT1).
 
 - **Hai câu trả lời chọi nhau** thì hỏi lại đúng chỗ va kèm một ví dụ số; không tự chọn câu nào thắng.
 - **Khó đảo ngược** (luôn hỏi): ghi đè hay xoá dữ liệu đã author (level, save, asset) · migration schema, wire format · thứ
@@ -38,17 +38,19 @@ nghiệm thu bằng gì. Developer xác nhận mới làm; **chưa có câu tr�
 
 Code cho biết cái gì chạy, không cho biết vì sao. Với **mỗi phát hiện ảnh hưởng quyết định đang bàn**: **thấy gì** (đường
 dẫn, dòng) · **hiểu ý định là gì** — phát biểu lại, hỏi khớp thiết kế không · **developer biết chưa** — chủ ý hay đã trôi.
-Không kể lại code. **Sắp thay hay dựa vào một thứ có sẵn thì soát nó có chạy thật không** — code gọi mà asset không vẽ thì
-không lỗi nào báo. **Hành vi đọc giá trị sống ngoài repo** (remote config, server) thì bản đang chạy là bản ngoài: phát
-hiện nêu cả hai bản, sửa số trong repo chưa phải sửa hành vi. **File đổi giữa phiên mà mình không chạm** thì đọc
-`git log -- <file>` và `git status` trước khi gán nguyên nhân: developer và session khác sửa song song, bản họ đã commit
-thắng bản mình; Plan sắp viết lại theo bản đó thì báo phần sẽ đổi trước.
+Không kể lại code.
+
+- **Sắp thay hay dựa vào một thứ có sẵn thì soát nó có chạy thật không** — code gọi mà asset không vẽ thì không lỗi nào báo.
+- **Hành vi đọc giá trị sống ngoài repo** (remote config, server) thì bản đang chạy là bản ngoài: phát hiện nêu cả hai bản,
+  sửa số trong repo chưa phải sửa hành vi.
+- **File đổi giữa phiên mà mình không chạm** thì đọc `git log -- <file>` và `git status` trước khi gán nguyên nhân: developer
+  và session khác sửa song song, bản họ đã commit thắng bản mình; Plan sắp viết lại theo bản đó thì báo phần sẽ đổi trước.
 
 ## Báo cáo và trình bày
 
-Thêm vào NT12: một câu một ý · thuật ngữ buộc dùng thì giải nghĩa lần đầu · gọi khái niệm **đúng tên trong code** ·
-câu hỏi trả lời được không cần mở code · ví dụ kiểm trên code trước khi đưa · việc developer làm tay trong Editor gom một
-mục cuối.
+Viết theo NT12 và `docs` › Kỷ luật viết, thêm: một câu một ý · thuật ngữ buộc dùng thì giải nghĩa lần đầu · gọi khái niệm
+**đúng tên trong code** · câu hỏi trả lời được không cần mở code · ví dụ kiểm trên code trước khi đưa · **việc developer làm
+tay trong Editor gom một mục cuối** (kể cả bước công cụ bị từ chối, bước phụ thuộc Editor để lại).
 
 **Bày phương án rồi chốt một:** mỗi phương án một dòng *là gì · được gì · mất gì*, rồi chốt và nói vì sao thắng — tiêu chí
 là hợp tám yêu cầu hệ thống nhất, không phải dễ làm nhất. Quyết định thuộc developer thì chỉ thu hẹp và nêu giá; tên gợi ý
@@ -60,24 +62,15 @@ một hướng, kèm bản tạm và Plan nếu có.
 
 ## Chưng cất tư tưởng
 
-Quyết định cho một bài toán cụ thể mang tư tưởng của developer, và trôi mất khi bài toán xong. **Bài học ghi ngay lúc vấp;
-quét cuối chat là bắt buộc, không đợi nhắc:** duyệt cả chat, tìm rule, tư tưởng và bài học dùng chung cho game Unity từ thứ
-developer yêu cầu, sửa, hoặc đồng ý. Mỗi dòng định ghi đi qua: **① khái quát** — tách tư tưởng khỏi quyết định riêng, kèm
-vì sao; phép kiểm *đúng cho ít nhất hai loại game khác nhau không?* · **② cổng ghi** ở `horcrux.md` — loại nào, file nào,
-quyền gì · **③ đối chiếu với nội dung cũ** ở `horcrux.md` › Cổng ghi — bổ trợ nhau hay bản cải tiến thì tổng hợp thành
-một tri thức, không thêm khối song song.
-
-**Code thật lệch Plan:** *lỗi* → báo kèm bằng chứng · *trôi* (tên, thứ tự, chi tiết không mang lý do) → sync Plan theo
-code · *tư tưởng* (đổi hình dạng, ranh giới, kiểu, cách tiêm) → qua cổng ghi.
-
-Chỉ khái quát lựa chọn có "vì sao" lặp lại được; hằng số, tên, phạm vi một task thì không. Dòng ghi vào `Agent/` **không
-mang domain dự án** (NT8), theo `docs` › Agent.
+Quyết định cho một bài toán mang tư tưởng của developer, và trôi mất khi bài toán xong. **Bài học ghi ngay lúc vấp; quét
+cuối chat là bắt buộc, không đợi nhắc** (`Agent/Tools~/context_audit.py digest`): tìm tư tưởng, bài học dùng chung từ thứ
+developer yêu cầu, sửa, hoặc đồng ý; tách khỏi quyết định riêng, kèm vì sao, phép kiểm *đúng cho ít nhất hai loại game khác
+nhau không?* — rồi ghi theo `docs` › Agent.
 
 ## Subagent
 
-Subagent là ngữ cảnh trắng; để nó tự tìm hiểu là thuế đọc nhân theo số subagent. Prompt **tự chứa như một giai đoạn của
-Plan**: trích đoạn tài liệu cần, đường dẫn file sẽ chạm, tiêu chí nghiệm thu; thiếu thì báo về, không tự đi đọc — trừ
-**code nó sẽ sửa**.
+Subagent là ngữ cảnh trắng: prompt **tự chứa như một giai đoạn của Plan** — trích đoạn tài liệu cần, đường dẫn file sẽ chạm,
+tiêu chí nghiệm thu; thiếu thì báo về, không tự đi đọc — trừ **code nó sẽ sửa**.
 
 **Chạy Plan bằng subagent:** hỏi gộp một lần trước task đầu (nhánh, commit mỗi task, điểm dừng) rồi chạy liền · mỗi
 subagent commit task của nó bằng pathspec · mọi bước chơi thử và duyệt art gom thành một kịch bản cuối · review mỗi task
@@ -100,32 +93,37 @@ Neo khi phân vân: **công sức đắt nhất là của developer.**
 | cảm giác chơi, nhịp, độ khó, hình ảnh | **chơi thử** | **developer** |
 | kịch bản hành vi trên build | chơi qua kịch bản, cheat rút đường | developer, QA; agent khi máy thật nối được (`feel-tune`) |
 
-- **Phép kiểm phải đỏ được:** mỗi bước của thuật toán có ít nhất một case đỏ khi bỏ bước đó; chạy đối chứng một lần, ghi
-  kết quả cạnh case. Case đỏ oan dạy người đọc bỏ qua màu đỏ. Lỗi chỉ xảy ra ở một phần số lần thì một lượt đối chứng ra
-  sạch như bản sửa: đối chứng bằng bản không có bản sửa trên cùng máy, nhiều lượt mỗi bên, báo tỉ lệ hỏng.
+- **Phép kiểm phải đỏ được:** mỗi bước của thuật toán có ít nhất một case đỏ khi bỏ bước đó, chạy đối chứng một lần, ghi kết
+  quả cạnh case; case đỏ oan dạy người đọc bỏ qua màu đỏ. Lỗi chập chờn thì đối chứng với bản chưa sửa trên cùng máy, nhiều lượt mỗi bên, báo
+  tỉ lệ hỏng.
 - **Số đo nằm trên đúng vật được hỏi**, ở đúng điều kiện nơi dùng thật; mắt developer trái số đo thì nghi chỗ đo trước.
 - **Cảm giác — dừng và giao, không dựng proxy.** Báo *"cần chơi thử"* kèm kịch bản: *vào đâu* · *làm gì* (chuỗi ngắn nhất) ·
-  *nhìn gì* · *khác trước ra sao* · *dấu hiệu hỏng*. Thứ developer chơi là cảm được thì agent không vào Play qua công cụ;
-  Play qua công cụ chỉ cho thứ developer **không cảm được** (trace, số đo, trạng thái nội bộ — `feel-tune`).
+  *nhìn gì* · *khác trước ra sao* · *dấu hiệu hỏng*. Play qua công cụ chỉ cho thứ developer **không cảm được** (trace, số
+  đo, trạng thái nội bộ — `feel-tune`).
 - **Hướng dẫn developer tự làm là output phải nghiệm thu:** mỗi giá trị, thứ tự, tên ô đã dựng thử trên engine.
 - **Vét cạn** khi có đáp án xác định được và ít nhất một dấu hiệu — agent làm kể cả chưa được yêu cầu, vì đây là bằng
   chứng: *sức* (không gian đầu vào lớn) · *thiên kiến* (ca biên khó nghĩ hết) · *tầm nhìn* (chứng minh **vắng mặt**) ·
   *nhất quán chéo* (nhiều bản buộc khớp). Không dấu hiệu nào thì đọc code là xong. **Đổi mô hình của hệ thì chạy lại mọi
   dòng kịch bản đã chốt** trên dữ liệu asset thật.
-- **Cheat mở đường tới kịch bản, không mở nắp kỹ thuật:** chỉ khi kịch bản không tới được bằng đường người chơi trong thời
-  gian hợp lý; gọi đúng lệnh thật của hệ, có trong build chính thức. Agent tự dùng cheat để tới nhanh trạng thái cần kiểm
-  khi cheat **không đổi chính thứ đang kiểm**; báo cáo nêu cheat nào và vì sao nó không chạm kết quả.
+- **Cheat mở đường tới kịch bản, không mở nắp kỹ thuật** (tra cứu › Cheat). Agent tự dùng cheat để tới nhanh trạng thái cần
+  kiểm khi cheat **không đổi chính thứ đang kiểm**; báo cáo nêu cheat nào và vì sao nó không chạm kết quả.
 
-## Việc lặp lại và git
+## Việc lặp lại, công cụ và git
 
-**Việc lặp lại thì đề xuất công cụ ngay lượt đó** (lần thứ hai làm cùng chuỗi thao tác, hoặc biết sẽ làm lại): một dòng
-*việc gì · lặp mấy lần · công cụ trông thế nào · chỗ đặt · công viết · tiết kiệm mỗi lần*. Mặc định đặt ở Horcrux (tool
-Editor, script `Tools~`, skill); dự án chỉ giữ lớp nối. Developer đồng ý thì viết công cụ, tài liệu, cập nhật skill hoặc mở skill mới kèm hàng trong bảng chỉ dẫn.
+Skill nói việc nào dùng tool nào; tool thiếu thì mở rộng theo NT6. **Việc lặp lại thì đề xuất công cụ ngay lượt đó** (lần thứ hai làm cùng chuỗi thao
+tác, hoặc biết sẽ làm lại): một dòng *việc gì · lặp mấy lần · công cụ trông thế nào · chỗ đặt · công viết · tiết kiệm mỗi
+lần*. Mặc định đặt ở Horcrux (tool Editor, script `Tools~`, skill); dự án chỉ giữ lớp nối. Developer đồng ý thì viết công cụ, tài
+liệu, cập nhật skill hoặc mở skill mới kèm hàng trong bảng chỉ dẫn.
 
-**Git:** commit chỉ mang phần của việc mình, không đụng thứ developer đã stage, không `stash` khi còn đường khác · commit
-trong Horcrux thì commit luôn con trỏ submodule ở dự án · sau một lượt chờ dài, đọc lại trạng thái trước bước ghi ra ngoài
-(push, commit, pop stash) · việc áp nhiều bước Plan chia commit theo nhóm bước, theo thứ tự phụ thuộc, tên commit ghi
-bước, mỗi commit compile sạch; bước phụ thuộc Editor để lại và nêu ở mục Editor của báo cáo.
+**Ngân sách ngữ cảnh khi dùng công cụ:** đọc kết quả tool đã tóm tắt, không đổ log, JSON, diff thô hay ảnh cỡ gốc vào ngữ
+cảnh · một lần đo là một lệnh chạy cả kịch bản; đi từng bước qua MCP chỉ khi còn đang dò mình cần nhìn gì · đọc output thẳng, không pipe qua `tail`, `head`
+(lệnh bị đẩy nền thì không biết kẹt ở đâu) · lệnh dài hơn một phút chạy nền, không đọc khi chưa xong · không chạy song song
+hai lệnh cùng chiếm Editor.
+
+**Git:** commit chỉ mang phần của việc mình (pathspec), không đụng thứ developer đã stage, không `stash` khi còn đường
+khác · commit trong Horcrux thì commit luôn con trỏ submodule ở dự án · sau một lượt chờ dài, đọc lại trạng thái trước bước
+ghi ra ngoài (push, commit, pop stash) · việc áp nhiều bước Plan chia commit theo nhóm bước, theo thứ tự phụ thuộc, tên
+commit ghi bước, mỗi commit compile sạch.
 
 ## Tra cứu — `workflow/reference.md`
 
