@@ -14,7 +14,10 @@ Nền tảng và Sổ tay của `workflow`. Đọc mục được bảng Tra c�
   đọc lại `status`, `reflog`, nhánh remote — trạng thái đọc trước lượt chờ là bản chết. Commit, stage chụp cả file agent
   đang sửa dở: trước báo cáo cuối đọc `git log` từ đầu lượt và cột index của `git status --short` ở dự án và submodule, nêu
   phần nào đã vào commit, phần nào đã stage, phần nào còn ngoài.
-- Vào Play làm đổi file không thuộc task (config, scene khởi động, xuống dòng): stage theo danh sách file của task.
+- Vào Play hay import làm đổi file không thuộc task (config, scene khởi động, xuống dòng, `.meta` texture Unity tự thêm mục
+  platform mặc định): stage theo danh sách file của task.
+- **Pathspec:** `git commit -- <paths>` không nhận file chưa track, nên `git add -- <file mới>` trước; file đã `git rm` thì
+  không `git add` được nữa, chỉ để trong pathspec của commit — một path hỏng làm hỏng cả lệnh. Không chạy commit nền.
 
 ## Đối chiếu
 

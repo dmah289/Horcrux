@@ -12,7 +12,7 @@
     {
       "name": "merge-nhanh",
       "rules": ["merge-audit", "compile-check"],
-      "prompt": "Tôi cần merge nhánh feature/abc vào develop. Lên kế hoạch các bước.",
+      "prompt": "Tôi sắp merge một nhánh tính năng vào develop; nhánh đó có commit dời thư mục và sửa prefab. Nhánh chưa có trên máy này, đừng tìm nó. Lên kế hoạch các bước.",
       "must_read": ["{base}", "Skills/merge-audit/SKILL.md", "Skills/compile-check/SKILL.md"],
       "reply_has": ["merge_audit", "worktree"],
       "reply_lacks": []

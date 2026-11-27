@@ -25,8 +25,8 @@ Lệnh đưa `.claude/` của dự án về khớp Horcrux, chạy lại bao nhi
 
 - `.claude/skills/<việc>/SKILL.md` cho mỗi `Agent/Skills/<việc>`: tạo, cập nhật khi description đổi, xoá khi skill đã bỏ.
   File mồi chỉ trỏ về bản gốc để Claude Code tìm thấy skill, không chép nội dung.
-- Hook trong `.claude/settings.json`, giữ nguyên hook và cấu hình khác. Mọi sự kiện gọi cùng `agent_hooks.py`; Windows
-  cần Git Bash (lệnh đọc `$CLAUDE_PROJECT_DIR` theo cú pháp bash).
+- Hook trong `.claude/settings.json`, giữ nguyên hook và cấu hình khác. Mọi sự kiện gọi cùng `agent_hooks.py`; lệnh
+  đọc `CLAUDE_PROJECT_DIR` trong Python nên chạy như nhau dù Claude Code gọi hook bằng bash hay PowerShell.
 
 Horcrux đổi skill hay hook thì phiên mới báo lệch (hook lúc mở phiên); chạy lại lệnh rồi commit phần đổi. `--check` chỉ
 in phần lệch, không ghi.

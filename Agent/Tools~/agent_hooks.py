@@ -415,7 +415,12 @@ def plan(project):
     path = project / ".claude" / "settings.json"
     raw = path.read_bytes().decode("utf-8") if path.exists() else ""  # read_text nuốt \r\n, mất kiểu xuống dòng gốc
     old = json.loads(raw) if raw.strip() else {}
-    command = f'python -X utf8 -I "$CLAUDE_PROJECT_DIR/{agent_rel(project)}/Tools~/agent_hooks.py"'
+    # Claude Code chạy hook bằng bash hoặc PowerShell tuỳ bản và máy: `$CLAUDE_PROJECT_DIR` trong PowerShell là biến
+    # rỗng, python không mở được file thì thoát mã 2, mà mã 2 là "chặn" — mọi lệnh của agent bị chặn. Đọc biến môi
+    # trường trong Python thì hai shell như nhau; thiếu file thì FileNotFoundError, mã 1, không chặn.
+    script = f"{agent_rel(project)}/Tools~/agent_hooks.py"
+    command = (f"python -X utf8 -I -c \"import os,runpy;runpy.run_path("
+               f"os.environ['CLAUDE_PROJECT_DIR']+'/{script}',run_name='__main__')\"")
     new = merge_hooks(json.loads(json.dumps(old)), command)
     if new != old:
         text = json.dumps(new, indent=2, ensure_ascii=False) + "\n"

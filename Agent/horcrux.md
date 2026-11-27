@@ -249,7 +249,7 @@ dùng thật (payload cũ phải deserialize, developer yêu cầu). Lịch sử
 ## Yêu cầu của developer
 
 Mục này **developer tự gõ**. Agent **không sửa, không định dạng lại, không chèn, không xoá** ký tự nào giữa hai dấu dưới —
-kể cả khi thấy lỗi, dòng trùng, mâu thuẫn: chỉ báo trong chat. Chưng cất không bao giờ ghi vào đây.
+kể cả khi thấy lỗi, dòng trùng, mâu thuẫn: chỉ báo trong chat.
 
 <!-- DEVELOPER-ONLY: START — agent không sửa gì từ dòng này tới END -->
 
