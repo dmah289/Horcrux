@@ -15,7 +15,9 @@ Nền tảng và Sổ tay của `async-presentation`. Đọc mục được bả
 > - **PrimeTween**, không tự viết runner: UI đặt `useUnscaledTime`; object huỷ hay về pool thì dừng tween; exception trong
 >   callback bị bọc thành log chung — `PRIME_TWEEN_SAFETY_CHECKS` để biết tween nào. `startDelay` lặp ở **mỗi** cycle; trễ
 >   một lần thì `ChainDelay` trong Sequence. `await` tween hay Sequence bị `Stop()` trả về như chạy xong — dừng kiểu này
->   thì kiểm token của mình sau `await`. Gắn `SetCancellationToken(ct)` thì huỷ làm `await` **ném**
+>   thì kiểm token của mình sau `await`. `Stop()` bỏ qua mọi callback (`OnComplete`, `ChainCallback`): cờ tắt bằng callback
+>   cuối của một Sequence không ai `await` thì đường dừng nó phải tự tắt cờ. `Stop()` trên tween, Sequence đã xong hay chưa
+>   gán là vô hại, không cần kiểm `isAlive` trước. Gắn `SetCancellationToken(ct)` thì huỷ làm `await` **ném**
 >   `OperationCanceledException`: dòng kiểm token sau đó là code chết; handler `async void`, `UniTaskVoid` bắt nó riêng trước
 >   catch chung, không thì huỷ đúng hợp đồng thành log đỏ.
 > - Anim UI dùng `Time.unscaledDeltaTime` (popup chạy khi `timeScale` = 0) · data lớn cho GPU, Job: `NativeArray` · tài

@@ -17,6 +17,11 @@ Bài học đã trả giá khi làm việc với `demo-compare`. Đọc trọn c
 **Thấy:** video tên theo vật A quay vật B và ngược lại; đo theo tên là dựng nhịp của hiệu ứng này cho hiệu ứng kia. **Vì:** hoạ sĩ xuất nhiều bản preview rồi đặt tên tay.
 **Làm:** `video_demo.py sheet` từng video trước khi đo, gọi video theo nội dung thấy trong lưới; tên lệch thì nói trong báo cáo để developer báo lại hoạ sĩ (`demo-compare` › Demo là video).
 
+### Khoảng cách tới mép màn tưởng là hằng, lệch theo tỉ lệ màn
+`2026-11` · vấp 1 · đã đo · đúng với vật world neo mép bằng độ lệch pixel thiết kế, camera đổi trục khớp theo tỉ lệ
+**Thấy:** thiết kế chọn một hằng số cho quãng đưa vật ra ngoài mép vì vật "neo theo mép"; đo sáu cỡ màn thì quãng cần bằng nhau ở mọi cỡ rộng hơn tỉ lệ thiết kế, rồi tăng dần ở màn cao hơn. **Vì:** độ lệch pixel thiết kế co giãn theo chiều cao màn, còn camera qua tỉ lệ thiết kế thì giữ bề ngang: lề tính bằng unit lớn dần theo chiều cao. Nhiều cỡ cho cùng một số không chứng minh là hằng khi chúng nằm cùng phía của ngưỡng.
+**Làm:** câu "không đổi theo tỉ lệ màn" trong thiết kế là giả định tới khi đo: plan đặt bước đo ở các cỡ nằm hai phía tỉ lệ thiết kế, kèm luật dừng khi lệch quá ngưỡng; hằng số lấy theo cỡ xấu nhất cộng lề, hoặc tính lúc chạy (`workflow` › Nghiệm thu).
+
 ### Cỡ màn đọc trong Editor là cỡ cửa sổ, không phải cỡ máy
 `2026-10` · vấp 1 · đã đo
 **Thấy:** tính bố cục theo `Handles.GetMainGameViewSize()` ra số của cửa sổ Game view. **Vì:** ở Free Aspect hàm trả cỡ cửa sổ đang mở, không phải độ phân giải máy đang giả lập.

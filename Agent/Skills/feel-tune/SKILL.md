@@ -34,6 +34,7 @@ Khi nào được vào Play và khi nào giao developer chơi thử: `workflow` 
 | luồng dừng giữa chừng, Editor còn giữ nguyên (không chuyển màn, popup kẹt) | **không dừng Play**: `console_digest.py` tới dòng cuối trước khi im, rồi `PlayProbe.Field` đọc trạng thái hai bên chỗ đứt (hệ ngoài đã trả chưa, bên chờ còn sống không) | đang Play |
 | sửa xong, tái hiện luồng (thắng → quảng cáo → chuyển màn) | `playrun.sh`: `WaitForSceneAsync` trước mọi service, `Call` handler nút hay `Click`, đóng quảng cáo giả (`docs/Editor/Probe.md` › Bẫy), ghi số trước–sau | có |
 | mất hình, lệch lớp, nháy ở một frame | `FrameSheet` trong probe hay `Act` của kịch bản, một PNG | có |
+| vật đứng đâu trên màn, cách mép bao nhiêu, đã ra ngoài khung chưa, ở nhiều cỡ màn hay máy | `ScreenBox.Of` trong probe, chạy với `SIZES`, `DEVICES` (pixel, so với `Screen.width`, `height`) | có |
 | một look ở vài giá trị thông số (lớp vẽ có bị che, độ toả, offset, scale đỉnh) | `UICapture.Variants` qua `script eval` (`docs/Editor/UIReskin.md`) | không |
 | tiếng "không phát", to nhỏ lệch giữa các tiếng | nguồn đang phát chưa (`PlayProbe.Field`), rồi nút `Audit Loudness` của catalog audio (`docs/Runtime/AudioSystem/AudioSystem.md`): file nhỏ hơn mặt bằng hàng chục dB nghe như không phát — sửa file, không sửa code | không (audit) |
 | FPS, giật, nóng máy chỉ thấy trên máy thật; build đang cài có bản sửa chưa | DeviceProbe (`docs/Editor/DeviceProbe.md`): `play --fps-out` kịch bản có mốc, `summary` theo trạng thái màn, tách CPU/GPU bằng `threads`, `res-ab` | trên máy |

@@ -19,6 +19,7 @@ Không tham số thì là hook: đọc JSON trên stdin, rẽ theo `hook_event_n
                                  (dự án và submodule; mỗi file một lần cho mỗi lần sửa).
     Stop                         không cho dừng khi có `.cs` agent sửa sau lần `verify.sh` xanh cuối (OK, hoặc chỉ còn fail có sẵn)
                                  (`Library/HorcruxVerify/last-ok`); lần chặn thứ hai trong cùng lượt dừng thì để qua.
+                                 Bỏ qua file trong thư mục đuôi `~` và file ngoài gốc dự án (script đo ở thư mục tạm).
 
 Mỗi lần chặn hay nhắc ghi một dòng vào `Library/HorcruxVerify/hook-log.jsonl` (luật: git-add-all, git-commit-all,
 commit-no-pathspec, agent-check, bash-backslash, dev-only, verify-stale, eol-churn, install-drift, compact-reread); `context_audit.py
@@ -334,6 +335,15 @@ def compiled(path):
     return not any(part.endswith("~") for part in pathlib.PurePath(path).parts)
 
 
+def in_project(data, path):
+    """Script đo ở thư mục tạm ngoài gốc dự án không vào assembly nào: verify của dự án không nói gì về nó."""
+    try:
+        pathlib.Path(path).resolve().relative_to(project_dir(data).resolve())
+        return True
+    except (ValueError, OSError):
+        return False
+
+
 def stop(data):
     if data.get("stop_hook_active"):
         return
@@ -343,7 +353,7 @@ def stop(data):
     ok = state_dir(data) / "last-ok"
     ok_time = ok.stat().st_mtime if ok.exists() else 0
     stale = [p for p in log.read_text(encoding="utf-8").splitlines()
-             if compiled(p) and os.path.exists(p) and os.path.getmtime(p) > ok_time]
+             if compiled(p) and in_project(data, p) and os.path.exists(p) and os.path.getmtime(p) > ok_time]
     if stale:
         log_event(data, "verify-stale", " ".join(stale))
         names = ", ".join(pathlib.Path(p).name for p in stale[:5]) + (" …" if len(stale) > 5 else "")
